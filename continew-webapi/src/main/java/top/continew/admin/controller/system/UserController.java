@@ -32,16 +32,19 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import top.continew.admin.common.config.properties.CaptchaProperties;
 import top.continew.admin.common.constant.CacheConstants;
+import top.continew.admin.common.constant.SysConstants;
 import top.continew.admin.common.controller.BaseController;
 import top.continew.admin.common.constant.RegexConstants;
 import top.continew.admin.common.util.SecureUtils;
-import top.continew.admin.system.model.entity.UserDO;
+
+import top.continew.admin.system.model.entity.user.UserDO;
 import top.continew.admin.system.model.query.UserQuery;
 import top.continew.admin.system.model.req.user.*;
 import top.continew.admin.system.model.resp.user.UserDetailResp;
 import top.continew.admin.system.model.resp.user.UserImportParseResp;
 import top.continew.admin.system.model.resp.user.UserImportResp;
 import top.continew.admin.system.model.resp.user.UserResp;
+import top.continew.admin.system.service.OptionService;
 import top.continew.admin.system.service.UserService;
 import top.continew.starter.cache.redisson.util.RedisUtils;
 import top.continew.starter.core.util.ExceptionUtils;
@@ -67,6 +70,7 @@ import java.io.IOException;
     Api.EXPORT})
 public class UserController extends BaseController<UserService, UserResp, UserDetailResp, UserQuery, UserReq> {
 
+    private final OptionService optionService;
     private final UserService userService;
     private final CaptchaProperties captchaProperties;
 
@@ -74,7 +78,8 @@ public class UserController extends BaseController<UserService, UserResp, UserDe
     @PostMapping(value = "/signup")
     public BaseIdResp<Long> signup(@Validated(CrudValidationGroup.Add.class) @RequestBody UserReq req) {
         String captcha = req.getCaptcha();
-        if (!StringUtil.equals(captcha, captchaProperties.getSms().getCode())) {
+        int loginCaptchaEnabled = optionService.getValueByCode2Int("LOGIN_CAPTCHA_ENABLED");
+        if (!StringUtil.equals(captcha, captchaProperties.getSms().getCode()) && SysConstants.YES.equals(loginCaptchaEnabled)) {
             String key = StringUtil.isNotBlank(req.getUuid())
                 ? req.getUuid()
                 : StringUtil.isNotBlank(req.getPhone())

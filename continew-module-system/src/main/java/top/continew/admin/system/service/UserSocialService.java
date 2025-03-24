@@ -62,13 +62,6 @@ public interface UserSocialService {
     void bind(AuthUser authUser, Long userId);
 
     /**
-     * 根据用户 ID 删除
-     *
-     * @param userIds 用户 ID 列表
-     */
-    void deleteByUserIds(List<Long> userIds);
-
-    /**
      * 根据来源和用户 ID 删除
      *
      * @param source 来源

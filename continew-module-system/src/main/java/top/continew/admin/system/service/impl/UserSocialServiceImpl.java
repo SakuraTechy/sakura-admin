@@ -16,6 +16,7 @@
 
 package top.continew.admin.system.service.impl;
 
+import cn.hutool.core.collection.CollUtil;
 import cn.hutool.json.JSONUtil;
 import lombok.RequiredArgsConstructor;
 import me.zhyd.oauth.model.AuthUser;
@@ -93,5 +94,13 @@ public class UserSocialServiceImpl implements UserSocialService {
     @Override
     public void deleteBySourceAndUserId(String source, Long userId) {
         baseMapper.lambdaUpdate().eq(UserSocialDO::getSource, source).eq(UserSocialDO::getUserId, userId).remove();
+    }
+
+    @Override
+    public void deleteByUserIds(List<Long> userIds) {
+        if (CollUtil.isEmpty(userIds)) {
+            return;
+        }
+        baseMapper.lambdaUpdate().in(UserSocialDO::getUserId, userIds).remove();
     }
 }

@@ -21,8 +21,9 @@ project:
     url: https://github.com/continew-org/continew-admin/blob/dev/LICENSE
 
 --- ### 日志配置
+## API 请求/响应日志配置
 continew-starter.log:
-  # 包含信息
+  # 记录信息
   includes:
     - DESCRIPTION
     - MODULE

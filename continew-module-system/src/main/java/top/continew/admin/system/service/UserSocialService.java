@@ -75,4 +75,11 @@ public interface UserSocialService {
      * @param userId 用户 ID
      */
     void deleteBySourceAndUserId(String source, Long userId);
+
+    /**
+     * 根据用户 ID 删除
+     *
+     * @param userIds 用户 ID 列表
+     */
+    void deleteByUserIds(List<Long> userIds);
 }

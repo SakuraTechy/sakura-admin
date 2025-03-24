@@ -55,7 +55,7 @@ public class SysConstants {
     public static final String SUPER_ROLE_CODE = "admin";
 
     /**
-     * 普通角色编码
+     * 普通用户角色编码
      */
     public static final String GENERAL_ROLE_CODE = "general";
 
@@ -63,6 +63,11 @@ public class SysConstants {
      * 超管角色 ID
      */
     public static final Long SUPER_ROLE_ID = 1L;
+
+    /**
+     * 普通用户角色 ID
+     */
+    public static final Long GENERAL_ROLE_ID = 2L;
 
     /**
      * 全部权限标识
@@ -78,11 +83,6 @@ public class SysConstants {
      * 登出 URI
      */
     public static final String LOGOUT_URI = "/auth/logout";
-
-    /**
-     * 描述类字段后缀
-     */
-    public static final String DESCRIPTION_FIELD_SUFFIX = "String";
 
     private SysConstants() {
     }

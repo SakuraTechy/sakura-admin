@@ -129,13 +129,14 @@ captcha:
   ## 短信验证码配置
   sms:
     # 内容长度
-    length: 4
+    length: 6
     # 过期时间
     expirationInMinutes: 5
     # 模板 ID
     templateId: 1
 
 --- ### 日志配置
+## API 请求/响应日志配置
 continew-starter.log:
   # 是否打印日志，开启后可打印访问日志（类似于 Nginx access log）
   is-print: false
@@ -175,33 +176,35 @@ continew-starter.messaging.websocket:
     - ${project.url}
 
 --- ### 短信配置
+# 配置文件方式和 [短信配置] 功能可任选其一方式使用，也可共同使用，但实际开发时建议选择一种，注释或删除另一方
 sms:
-  # 从 YAML 读取配置
-  config-type: YAML
   is-print: false
-  blends:
-    cloopen:
-      # 短信厂商
-      supplier: cloopen
-      base-url: https://app.cloopen.com:8883/2013-12-26
-      access-key-id: 你的Access Key
-      access-key-secret: 你的Access Key Secret
-      sdk-app-id: 你的应用ID
+#  # 从 YAML 读取配置
+#  config-type: YAML
+#  blends:
+#    cloopen:
+#      # 短信厂商
+#      supplier: cloopen
+#      base-url: https://app.cloopen.com:8883/2013-12-26
+#      access-key-id: 你的Access Key
+#      access-key-secret: 你的Secret Key
+#      sdk-app-id: 你的应用ID
 
 --- ### 邮件配置
-spring.mail:
-  # 根据需要更换
-  host: smtp.126.com
-  port: 465
-  username: 你的邮箱
-  password: 你的邮箱授权码
-  properties:
-    mail:
-      smtp:
-        auth: true
-        socketFactory:
-          class: javax.net.ssl.SSLSocketFactory
-          port: 465
+# 配置文件方式和 [邮件配置] 功能可任选其一方式使用，实际开发时请注释或删除另一方
+#spring.mail:
+#  # 根据需要更换
+#  host: smtp.126.com
+#  port: 465
+#  username: 你的邮箱
+#  password: 你的邮箱授权码
+#  properties:
+#    mail:
+#      smtp:
+#        auth: true
+#        socketFactory:
+#          class: javax.net.ssl.SSLSocketFactory
+#          port: 465
 
 --- ### Just Auth 配置
 justauth:

@@ -164,7 +164,8 @@ public class CaptchaController {
             .set("siteCopyright", siteConfig.get("SITE_COPYRIGHT"))
             .set("captcha", captcha)
             .set("expiration", expirationInMinutes));
-        MailUtils.sendHtml(email, "【%s】邮箱验证码".formatted(projectProperties.getName()), content);
+//        MailUtils.sendHtml(email, "【%s】邮箱验证码".formatted(projectProperties.getName()), content);
+        MailUtils.sendHtml(email, "【%s】邮箱验证码".formatted(siteConfig.get("SITE_TITLE")), content);
         // 保存验证码
         String captchaKey = CacheConstants.CAPTCHA_KEY_PREFIX + email;
         RedisUtils.set(captchaKey, captcha, Duration.ofMinutes(expirationInMinutes));

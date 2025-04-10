@@ -85,8 +85,8 @@ public class ContiNewAdminApplication implements ApplicationRunner {
         if (!knife4jProperties.isProduction()) {
             log.info("API文档：{}/doc.html", baseUrl);
         }
-        log.info("在线文档：https://continew.top");
-        log.info("常见问题：https://continew.top/faq.html");
+        log.info("在线文档：https://sakura.hk.cn");
+        log.info("常见问题：https://sakura.hk.cn/src/zh/3.其它/1.常见问题");
         log.info("----------------------------------------------");
     }
 }

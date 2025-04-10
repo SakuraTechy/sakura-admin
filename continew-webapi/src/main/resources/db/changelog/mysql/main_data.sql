@@ -52,11 +52,11 @@ VALUES
 (1075, '删除', 1070, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'system:dict:delete', 5, 1, 1, NOW()),
 (1076, '清除缓存', 1070, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'system:dict:clearCache', 6, 1, 1, NOW()),
 (1080, '字典项管理', 1000, 2, '/system/dict/item', 'SystemDictItem', 'system/dict/item/index', NULL, 'bookmark', b'0', b'0', b'1', NULL, 5, 1, 1, NOW()),
-(1081, '列表', 1080, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'system:dictItem:list', 1, 1, 1, NOW()),
-(1082, '详情', 1080, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'system:dictItem:get', 2, 1, 1, NOW()),
-(1083, '新增', 1080, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'system:dictItem:create', 3, 1, 1, NOW()),
-(1084, '修改', 1080, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'system:dictItem:update', 4, 1, 1, NOW()),
-(1085, '删除', 1080, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'system:dictItem:delete', 5, 1, 1, NOW()),
+(1081, '列表', 1080, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'system:dict:item:list', 1, 1, 1, NOW()),
+(1082, '详情', 1080, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'system:dict:item:get', 2, 1, 1, NOW()),
+(1083, '新增', 1080, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'system:dict:item:create', 3, 1, 1, NOW()),
+(1084, '修改', 1080, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'system:dict:item:update', 4, 1, 1, NOW()),
+(1085, '删除', 1080, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'system:dict:item:delete', 5, 1, 1, NOW()),
 
 (1090, '通知公告', 1000, 2, '/system/notice', 'SystemNotice', 'system/notice/index', NULL, 'notification', b'0', b'0', b'0', NULL, 6, 1, 1, NOW()),
 (1091, '列表', 1090, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'system:notice:list', 1, 1, 1, NOW()),
@@ -165,25 +165,15 @@ INSERT INTO `sys_user`
 (`id`, `username`, `nickname`, `password`, `gender`, `email`, `phone`, `avatar`, `description`, `status`, `is_system`, `pwd_reset_time`, `dept_id`, `create_user`, `create_time`)
 VALUES
 (1, 'admin', '系统管理员', '{bcrypt}$2a$10$4jGwK2BMJ7FgVR.mgwGodey8.xR8FLoU1XSXpxJ9nZQt.pufhasSa', 1, '42190c6c5639d2ca4edb4150a35e058559ccf8270361a23745a2fd285a273c28', '5bda89a4609a65546422ea56bfe5eab4', NULL, '系统初始用户', 1, b'1', NOW(), 1, 1, NOW()),
-(547889293968801822, 'test', '测试员', '{bcrypt}$2a$10$xAsoeMJ.jc/kSxhviLAg7.j2iFrhi6yYAdniNdjLiIUWU/BRZl2Ti', 2, NULL, NULL, NULL, NULL, 1, b'0', NOW(), 547887852587843593, 1, NOW()),
-(547889293968801823, 'Charles', 'Charles', '{bcrypt}$2a$10$xAsoeMJ.jc/kSxhviLAg7.j2iFrhi6yYAdniNdjLiIUWU/BRZl2Ti', 1, NULL, NULL, NULL, '代码写到极致，就是艺术。', 1, b'0', NOW(), 547887852587843595, 1, NOW()),
-(547889293968801824, 'Yoofff', 'Yoofff', '{bcrypt}$2a$10$xAsoeMJ.jc/kSxhviLAg7.j2iFrhi6yYAdniNdjLiIUWU/BRZl2Ti', 1, NULL, NULL, NULL, '弱小和无知不是生存的障碍，傲慢才是。', 1, b'0', NOW(), 1, 1, NOW()),
-(547889293968801825, 'Jasmine', 'Jasmine', '{bcrypt}$2a$10$xAsoeMJ.jc/kSxhviLAg7.j2iFrhi6yYAdniNdjLiIUWU/BRZl2Ti', 1, NULL, NULL, NULL, '干就完事了！', 1, b'0', NOW(), 547887852587843605, 1, NOW()),
-(547889293968801826, 'AutumnSail', '秋登', '{bcrypt}$2a$10$xAsoeMJ.jc/kSxhviLAg7.j2iFrhi6yYAdniNdjLiIUWU/BRZl2Ti', 1, NULL, NULL, NULL, '只有追求完美，才能创造奇迹。', 1, b'0', NOW(), 547887852587843602, 1, NOW()),
-(547889293968801827, 'Kils', 'Kils', '{bcrypt}$2a$10$xAsoeMJ.jc/kSxhviLAg7.j2iFrhi6yYAdniNdjLiIUWU/BRZl2Ti', 1, NULL, NULL, NULL, '可以摆烂，但不能真的菜。', 1, b'0', NOW(), 547887852587843599, 1, NOW()),
-(547889293968801828, 'mochou', '莫愁', '{bcrypt}$2a$10$xAsoeMJ.jc/kSxhviLAg7.j2iFrhi6yYAdniNdjLiIUWU/BRZl2Ti', 1, NULL, NULL, NULL, '万事莫愁，皆得所愿。', 1, b'0', NOW(), 547887852587843602, 1, NOW()),
-(547889293968801829, 'Jing', 'MS-Jing', '{bcrypt}$2a$10$xAsoeMJ.jc/kSxhviLAg7.j2iFrhi6yYAdniNdjLiIUWU/BRZl2Ti', 1, NULL, NULL, NULL, '路虽远，行则将至。', 2, b'0', NOW(), 547887852587843599, 1, NOW()),
-(547889293968801830, 'domw', '梓陌', '{bcrypt}$2a$10$xAsoeMJ.jc/kSxhviLAg7.j2iFrhi6yYAdniNdjLiIUWU/BRZl2Ti', 1, NULL, NULL, NULL, '胜利是奖赏，挫折是常态。', 1, b'0', NOW(), 547887852587843608, 1, NOW()),
-(547889293968801831, 'xtanyu', '小熊', '{bcrypt}$2a$10$xAsoeMJ.jc/kSxhviLAg7.j2iFrhi6yYAdniNdjLiIUWU/BRZl2Ti', 1, NULL, NULL, NULL, '不想上班。', 1, b'0', NOW(), 547887852587843611, 1, NOW());
-
+(547889293968801822, 'test', '测试员', '{bcrypt}$2a$10$xAsoeMJ.jc/kSxhviLAg7.j2iFrhi6yYAdniNdjLiIUWU/BRZl2Ti', 2, NULL, NULL, NULL, NULL, 1, b'0', NOW(), 547887852587843593, 1, NOW());
 -- 初始化默认参数
 INSERT INTO `sys_option`
 (`id`, `category`, `name`, `code`, `value`, `default_value`, `description`)
 VALUES
-(1, 'SITE', '系统名称', 'SITE_TITLE', NULL, 'ContiNew Admin', '显示在浏览器标题栏和登录界面的系统名称'),
-(2, 'SITE', '系统描述', 'SITE_DESCRIPTION', NULL, '持续迭代优化的前后端分离中后台管理系统框架', '用于 SEO 的网站元描述'),
-(3, 'SITE', '版权声明', 'SITE_COPYRIGHT', NULL, 'Copyright © 2022 - present ContiNew Admin 版权所有', '显示在页面底部的版权声明文本'),
-(4, 'SITE', '备案号', 'SITE_BEIAN', NULL, NULL, '工信部 ICP 备案编号（如：京ICP备12345678号）'),
+(1, 'SITE', '系统名称', 'SITE_TITLE', NULL, 'SakurA Platform', '显示在浏览器标题栏和登录界面的系统名称'),
+(2, 'SITE', '系统描述', 'SITE_DESCRIPTION', NULL, '持续迭代优化的一站式开放自动化平台', '用于 SEO 的网站元描述'),
+(3, 'SITE', '版权声明', 'SITE_COPYRIGHT', NULL, 'Copyright © 2025 - present SakurA Platform 版权所有', '显示在页面底部的版权声明文本'),
+(4, 'SITE', '备案号', 'SITE_BEIAN', NULL, '津ICP备2022005864号-3', '工信部 ICP 备案编号（如：京ICP备12345678号）'),
 (5, 'SITE', '系统图标', 'SITE_FAVICON', NULL, '/favicon.ico', '浏览器标签页显示的网站图标（建议 .ico 格式）'),
 (6, 'SITE', '系统LOGO', 'SITE_LOGO', NULL, '/logo.svg', '显示在登录页面和系统导航栏的网站图标（建议 .svg 格式）'),
 (10, 'PASSWORD', '密码错误锁定阈值', 'PASSWORD_ERROR_LOCK_COUNT', NULL, '5', '连续登录失败次数达到该值将锁定账号（0-10次，0表示禁用锁定）'),
@@ -195,9 +185,9 @@ VALUES
 (16, 'PASSWORD', '是否允许密码包含用户名', 'PASSWORD_ALLOW_CONTAIN_USERNAME', NULL, '1', '是否允许密码包含正序或倒序的用户名字符'),
 (17, 'PASSWORD', '密码是否必须包含特殊字符', 'PASSWORD_REQUIRE_SYMBOLS', NULL, '0', '是否要求密码必须包含特殊字符（如：!@#$%）'),
 (20, 'MAIL', '邮件协议', 'MAIL_PROTOCOL', NULL, 'smtp', '邮件发送协议类型'),
-(21, 'MAIL', '服务器地址', 'MAIL_HOST', NULL, 'smtp.126.com', '邮件服务器地址'),
+(21, 'MAIL', '服务器地址', 'MAIL_HOST', NULL, 'smtp.163.com', '邮件服务器地址'),
 (22, 'MAIL', '服务器端口', 'MAIL_PORT', NULL, '465', '邮件服务器连接端口'),
-(23, 'MAIL', '邮箱账号', 'MAIL_USERNAME', NULL, 'charles7c@126.com', '发件人邮箱地址'),
+(23, 'MAIL', '邮箱账号', 'MAIL_USERNAME', NULL, 'sakuraplatform@163.com', '发件人邮箱地址'),
 (24, 'MAIL', '邮箱密码', 'MAIL_PASSWORD', NULL, NULL, '服务授权密码/客户端专用密码'),
 (25, 'MAIL', '启用SSL加密', 'MAIL_SSL_ENABLED', NULL, '1', '是否启用SSL/TLS加密连接'),
 (26, 'MAIL', 'SSL端口号', 'MAIL_SSL_PORT', NULL, '465', 'SSL加密连接的备用端口（通常与主端口一致）'),
@@ -227,16 +217,7 @@ INSERT INTO `sys_user_role`
 (`id`, `user_id`, `role_id`)
 VALUES
 (1, 1, 1),
-(2, 547889293968801822, 547888897925840927),
-(3, 547889293968801823, 547888897925840928),
-(4, 547889293968801824, 547888897925840928),
-(5, 547889293968801825, 547888897925840928),
-(6, 547889293968801826, 547888897925840928),
-(7, 547889293968801827, 547888897925840928),
-(8, 547889293968801828, 547888897925840928),
-(9, 547889293968801829, 547888897925840928),
-(10, 547889293968801830, 547888897925840928),
-(11, 547889293968801831, 547888897925840928);
+(2, 547889293968801822, 547888897925840927);
 
 -- 初始化默认角色和菜单关联数据
 INSERT INTO `sys_role_menu`
@@ -301,19 +282,6 @@ VALUES
 (2,	9000),
 (2,	9010),
 (2,	9011);
-# (547888897925840927, 1000),
-# (547888897925840927, 1010),
-# (547888897925840927, 1011),
-# (547888897925840927, 1012),
-# (547888897925840927, 1013),
-# (547888897925840927, 1014),
-# (547888897925840928, 2000),
-# (547888897925840928, 2010),
-# (547888897925840928, 2011),
-# (547888897925840928, 2020),
-# (547888897925840928, 2021),
-# (547888897925840928, 2022),
-# (547888897925840928, 2023);
 
 -- 初始化默认角色和部门关联数据
 INSERT INTO `sys_role_dept` (`role_id`, `dept_id`) VALUES (547888897925840927, 547887852587843593);

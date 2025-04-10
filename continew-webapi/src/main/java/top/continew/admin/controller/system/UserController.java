@@ -76,7 +76,7 @@ public class UserController extends BaseController<UserService, UserResp, UserDe
 
     @Operation(summary = "用户注册", description = "用户注册")
     @PostMapping(value = "/signup")
-    public BaseIdResp<Long> signup(@Validated(CrudValidationGroup.Add.class) @RequestBody UserReq req) {
+    public BaseIdResp<Long> signup(@Validated(CrudValidationGroup.Create.class) @RequestBody UserReq req) {
         String captcha = req.getCaptcha();
         int loginCaptchaEnabled = optionService.getValueByCode2Int("LOGIN_CAPTCHA_ENABLED");
         if (!StringUtil.equals(captcha, captchaProperties.getSms().getCode()) && SysConstants.YES.equals(loginCaptchaEnabled)) {
@@ -98,7 +98,7 @@ public class UserController extends BaseController<UserService, UserResp, UserDe
         ValidationUtils.throwIf(!ReUtil
             .isMatch(RegexConstants.PASSWORD, rawPassword), "密码长度为 8-32 个字符，支持大小写字母、数字、特殊字符，至少包含字母和数字");
         req.setPassword(rawPassword);
-        return super.add(req);
+        return super.create(req);
     }
 
     @Operation(summary = "修改密码", description = "修改用户登录密码")

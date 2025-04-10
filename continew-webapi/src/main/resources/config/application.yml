@@ -1,20 +1,20 @@
 --- ### 项目配置
 project:
   # 名称
-  name: ContiNew Admin
+  name: SakurA Admin
   # 应用名称
-  app-name: continew-admin
+  app-name: sakura-admin
   # 版本
   version: 3.6.0-SNAPSHOT
   # 描述
-  description: 持续迭代优化的前后端分离中后台管理系统框架，开箱即用，持续提供舒适的开发体验。
+  description: 持续迭代优化的一站式开放自动化平台，开箱即用，持续提供舒适的开发体验。
   # 基本包
   base-package: top.continew.admin
   ## 作者信息配置
   contact:
-    name: Charles7c
-    email: charles7c@126.com
-    url: https://blog.charles7c.top/about/me
+    name: hagyao520
+    email: hagyao520@163.com
+    url: https://github.com/hagyao520
   ## 许可协议信息配置
   license:
     name: Apache-2.0

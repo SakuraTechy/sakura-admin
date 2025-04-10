@@ -10,8 +10,8 @@ INSERT INTO `sys_menu`
     (`id`, `title`, `parent_id`, `type`, `permission`, `sort`, `status`, `create_user`, `create_time`)
 VALUES
     (${statics["cn.hutool.core.util.IdUtil"].getSnowflakeNextId()?c}, '列表', @parentId, 3, '${apiModuleName}:${apiName}:list', 1, 1, 1, NOW()),
-    (${statics["cn.hutool.core.util.IdUtil"].getSnowflakeNextId()?c}, '详情', @parentId, 3, '${apiModuleName}:${apiName}:detail', 2, 1, 1, NOW()),
-    (${statics["cn.hutool.core.util.IdUtil"].getSnowflakeNextId()?c}, '新增', @parentId, 3, '${apiModuleName}:${apiName}:add', 3, 1, 1, NOW()),
+    (${statics["cn.hutool.core.util.IdUtil"].getSnowflakeNextId()?c}, '详情', @parentId, 3, '${apiModuleName}:${apiName}:get', 2, 1, 1, NOW()),
+    (${statics["cn.hutool.core.util.IdUtil"].getSnowflakeNextId()?c}, '新增', @parentId, 3, '${apiModuleName}:${apiName}:create', 3, 1, 1, NOW()),
     (${statics["cn.hutool.core.util.IdUtil"].getSnowflakeNextId()?c}, '修改', @parentId, 3, '${apiModuleName}:${apiName}:update', 4, 1, 1, NOW()),
     (${statics["cn.hutool.core.util.IdUtil"].getSnowflakeNextId()?c}, '删除', @parentId, 3, '${apiModuleName}:${apiName}:delete', 5, 1, 1, NOW()),
     (${statics["cn.hutool.core.util.IdUtil"].getSnowflakeNextId()?c}, '导出', @parentId, 3, '${apiModuleName}:${apiName}:export', 6, 1, 1, NOW());
@@ -32,8 +32,8 @@ VALUES
 <#--        ("id", "title", "parent_id", "type", "permission", "sort", "status", "create_user", "create_time")-->
 <#--    VALUES-->
 <#--        (${statics["cn.hutool.core.util.IdUtil"].getSnowflakeNextId()?c}, '列表', sys_menu_id_seq, 3, '${apiModuleName}:${apiName}:list', 1, 1, 1, NOW()),-->
-<#--        (${statics["cn.hutool.core.util.IdUtil"].getSnowflakeNextId()?c}, '详情', sys_menu_id_seq, 3, '${apiModuleName}:${apiName}:detail', 2, 1, 1, NOW()),-->
-<#--        (${statics["cn.hutool.core.util.IdUtil"].getSnowflakeNextId()?c}, '新增', sys_menu_id_seq, 3, '${apiModuleName}:${apiName}:add', 3, 1, 1, NOW()),-->
+<#--        (${statics["cn.hutool.core.util.IdUtil"].getSnowflakeNextId()?c}, '详情', sys_menu_id_seq, 3, '${apiModuleName}:${apiName}:get', 2, 1, 1, NOW()),-->
+<#--        (${statics["cn.hutool.core.util.IdUtil"].getSnowflakeNextId()?c}, '新增', sys_menu_id_seq, 3, '${apiModuleName}:${apiName}:create', 3, 1, 1, NOW()),-->
 <#--        (${statics["cn.hutool.core.util.IdUtil"].getSnowflakeNextId()?c}, '修改', sys_menu_id_seq, 3, '${apiModuleName}:${apiName}:update', 4, 1, 1, NOW()),-->
 <#--        (${statics["cn.hutool.core.util.IdUtil"].getSnowflakeNextId()?c}, '删除', sys_menu_id_seq, 3, '${apiModuleName}:${apiName}:delete', 5, 1, 1, NOW()),-->
 <#--        (${statics["cn.hutool.core.util.IdUtil"].getSnowflakeNextId()?c}, '导出', sys_menu_id_seq, 3, '${apiModuleName}:${apiName}:export', 6, 1, 1, NOW());-->

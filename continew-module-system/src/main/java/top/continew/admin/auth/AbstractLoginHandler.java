@@ -67,7 +67,7 @@ public abstract class AbstractLoginHandler<T extends LoginReq> implements LoginH
     private ThreadPoolTaskExecutor threadPoolTaskExecutor;
 
     protected static final String CAPTCHA_EXPIRED = "验证码已失效";
-    protected static final String CAPTCHA_ERROR = "验证码错误";
+    protected static final String CAPTCHA_ERROR = "验证码不正确";
     protected static final String CLIENT_ID = "clientId";
 
     @Override

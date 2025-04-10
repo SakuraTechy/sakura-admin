@@ -45,7 +45,7 @@ public class MenuReq implements Serializable {
      * 类型
      */
     @Schema(description = "类型", example = "2")
-    @NotNull(message = "类型非法")
+    @NotNull(message = "类型无效")
     private MenuTypeEnum type;
 
     /**
@@ -133,6 +133,6 @@ public class MenuReq implements Serializable {
      * 状态
      */
     @Schema(description = "状态", example = "1")
-    @NotNull(message = "状态非法")
+    @NotNull(message = "状态无效")
     private DisEnableStatusEnum status;
 }

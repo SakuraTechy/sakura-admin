@@ -40,7 +40,7 @@ import top.continew.starter.extension.crud.enums.Api;
  */
 @Tag(name = "字典管理 API")
 @RestController
-@CrudRequestMapping(value = "/system/dict", api = {Api.LIST, Api.DETAIL, Api.ADD, Api.UPDATE, Api.DELETE})
+@CrudRequestMapping(value = "/system/dict", api = {Api.LIST, Api.GET, Api.CREATE, Api.UPDATE, Api.DELETE})
 public class DictController extends BaseController<DictService, DictResp, DictResp, DictQuery, DictReq> {
 
     @Operation(summary = "清除缓存", description = "清除缓存")

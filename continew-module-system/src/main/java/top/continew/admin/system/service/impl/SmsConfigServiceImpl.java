@@ -43,7 +43,7 @@ import java.util.List;
 public class SmsConfigServiceImpl extends BaseServiceImpl<SmsConfigMapper, SmsConfigDO, SmsConfigResp, SmsConfigResp, SmsConfigQuery, SmsConfigReq> implements SmsConfigService {
 
     @Override
-    public void afterAdd(SmsConfigReq req, SmsConfigDO entity) {
+    public void afterCreate(SmsConfigReq req, SmsConfigDO entity) {
         this.load(entity);
     }
 

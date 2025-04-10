@@ -20,6 +20,7 @@ import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.util.ClassUtil;
 import cn.hutool.core.util.EscapeUtil;
 import cn.hutool.core.util.StrUtil;
+import cn.hutool.core.util.URLUtil;
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.incrementer.IdentifierGenerator;
 import lombok.RequiredArgsConstructor;
@@ -53,16 +54,26 @@ public class FileRecorderImpl implements FileRecorder {
     private final StorageMapper storageMapper;
     private final IdentifierGenerator identifierGenerator;
 
+    /**
+     * 文件信息存储
+     * @param fileInfo 文件信息对象
+     * @return 是否保存成功
+     */
     @Override
     public boolean save(FileInfo fileInfo) {
         FileDO file = new FileDO();
         Number id = identifierGenerator.nextId(fileInfo);
         file.setId(id.longValue());
-        fileInfo.setId(id.longValue() + "");
+        fileInfo.setId(String.valueOf(id.longValue()));
         String originalFilename = EscapeUtil.unescape(fileInfo.getOriginalFilename());
         file.setName(StrUtil.contains(originalFilename, StringConstants.DOT)
-            ? StrUtil.subBefore(originalFilename, StringConstants.DOT, true)
-            : originalFilename);
+                ? StrUtil.subBefore(originalFilename, StringConstants.DOT, true)
+                : originalFilename);
+        StorageDO storage = (StorageDO)fileInfo.getAttr().get(ClassUtil.getClassName(StorageDO.class, false));
+        String domain = StrUtil.appendIfMissing(storage.getDomain(), StringConstants.SLASH);
+        // 处理fileInfo中存储的地址
+        fileInfo.setUrl(URLUtil.normalize(domain + fileInfo.getPath() + fileInfo.getFilename()));
+        fileInfo.setThUrl(URLUtil.normalize(domain + fileInfo.getPath() + fileInfo.getThFilename()));
         file.setUrl(fileInfo.getUrl());
         file.setSize(fileInfo.getSize());
         String absPath = fileInfo.getPath();
@@ -84,7 +95,6 @@ public class FileRecorderImpl implements FileRecorder {
         file.setThumbnailUrl(fileInfo.getThUrl());
         file.setThumbnailSize(fileInfo.getThSize());
         file.setThumbnailMetadata(JSONUtil.toJsonStr(fileInfo.getThMetadata()));
-        StorageDO storage = (StorageDO)fileInfo.getAttr().get(ClassUtil.getClassName(StorageDO.class, false));
         file.setStorageId(storage.getId());
         file.setCreateTime(DateUtil.toLocalDateTime(fileInfo.getCreateTime()));
         file.setUpdateUser(UserContextHolder.getUserId());

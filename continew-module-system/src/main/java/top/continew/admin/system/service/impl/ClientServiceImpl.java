@@ -48,7 +48,7 @@ public class ClientServiceImpl extends BaseServiceImpl<ClientMapper, ClientDO, C
     private final OnlineUserService onlineUserService;
 
     @Override
-    public void beforeAdd(ClientReq req) {
+    public void beforeCreate(ClientReq req) {
         String clientId = DigestUtil.md5Hex(req.getClientKey() + StringConstants.COLON + req.getClientSecret());
         req.setClientId(clientId);
     }

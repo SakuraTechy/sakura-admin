@@ -44,7 +44,7 @@ import top.continew.starter.extension.crud.enums.Api;
 @Tag(name = "存储管理 API")
 @Validated
 @RestController
-@CrudRequestMapping(value = "/system/storage", api = {Api.LIST, Api.DETAIL, Api.ADD, Api.UPDATE, Api.DELETE})
+@CrudRequestMapping(value = "/system/storage", api = {Api.LIST, Api.GET, Api.CREATE, Api.UPDATE, Api.DELETE})
 public class StorageController extends BaseController<StorageService, StorageResp, StorageResp, StorageQuery, StorageReq> {
 
     @Operation(summary = "修改状态", description = "修改状态")

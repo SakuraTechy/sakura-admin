@@ -67,7 +67,7 @@ public class StorageServiceImpl extends BaseServiceImpl<StorageMapper, StorageDO
     private FileService fileService;
 
     @Override
-    public void beforeAdd(StorageReq req) {
+    public void beforeCreate(StorageReq req) {
         this.decodeSecretKey(req, null);
         String code = req.getCode();
         CheckUtils.throwIf(this.isCodeExists(code, null), "新增失败，[{}] 已存在", code);
@@ -164,7 +164,7 @@ public class StorageServiceImpl extends BaseServiceImpl<StorageMapper, StorageDO
     public void load(StorageReq req) {
         CopyOnWriteArrayList<FileStorage> fileStorageList = fileStorageService.getFileStorageList();
         String domain = req.getDomain();
-        ValidationUtils.throwIf(!URLUtils.isHttpUrl(domain), "域名格式错误");
+        ValidationUtils.throwIf(!URLUtils.isHttpUrl(domain), "域名格式不正确");
         String bucketName = req.getBucketName();
         StorageTypeEnum type = req.getType();
         if (StorageTypeEnum.LOCAL.equals(type)) {

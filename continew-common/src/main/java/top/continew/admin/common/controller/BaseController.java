@@ -31,7 +31,7 @@ import top.continew.starter.extension.crud.enums.Api;
 import top.continew.starter.extension.crud.service.BaseService;
 
 import java.lang.reflect.Method;
-import java.util.List;
+import java.util.Collection;
 
 /**
  * 控制器基类
@@ -49,7 +49,7 @@ public class BaseController<S extends BaseService<L, D, Q, C>, L, D, Q, C> exten
     @Override
     public void preHandle(CrudApi crudApi, Object[] args, Method targetMethod, Class<?> targetClass) throws Exception {
         SaRequest saRequest = SaHolder.getRequest();
-        List<String> paramNames = saRequest.getParamNames();
+        Collection<String> paramNames = saRequest.getParamNames();
         if (paramNames.stream().anyMatch(SaSignTemplate.sign::equals)) {
             return;
         }

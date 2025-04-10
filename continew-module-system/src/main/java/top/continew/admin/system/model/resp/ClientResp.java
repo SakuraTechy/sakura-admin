@@ -16,10 +16,16 @@
 
 package top.continew.admin.system.model.resp;
 
+import com.alibaba.excel.annotation.ExcelIgnoreUnannotated;
+import com.alibaba.excel.annotation.ExcelProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
-import top.continew.admin.common.model.resp.BaseDetailResp;
+import top.continew.admin.common.config.excel.DictExcelProperty;
+import top.continew.admin.common.config.excel.ExcelDictConverter;
 import top.continew.admin.common.enums.DisEnableStatusEnum;
+import top.continew.admin.common.model.resp.BaseDetailResp;
+import top.continew.starter.file.excel.converter.ExcelBaseEnumConverter;
+import top.continew.starter.file.excel.converter.ExcelListConverter;
 
 import java.io.Serial;
 import java.util.List;
@@ -32,6 +38,7 @@ import java.util.List;
  * @since 2024/12/03 16:04
  */
 @Data
+@ExcelIgnoreUnannotated
 @Schema(description = "终端信息")
 public class ClientResp extends BaseDetailResp {
 
@@ -42,12 +49,14 @@ public class ClientResp extends BaseDetailResp {
      * 终端 ID
      */
     @Schema(description = "终端 ID", example = "ef51c9a3e9046c4f2ea45142c8a8344a")
+    @ExcelProperty(value = "终端 ID", order = 2)
     private String clientId;
 
     /**
      * 终端 Key
      */
     @Schema(description = "终端 Key", example = "PC")
+    @ExcelProperty(value = "终端 Key", order = 3)
     private String clientKey;
 
     /**
@@ -60,29 +69,35 @@ public class ClientResp extends BaseDetailResp {
      * 认证类型
      */
     @Schema(description = "认证类型", example = "ACCOUNT")
+    @ExcelProperty(value = "认证类型", converter = ExcelListConverter.class, order = 4)
     private List<String> authType;
 
     /**
-     * 终端类型
+     * 终端类型（取值于字典 client_type
      */
-    @Schema(description = "终端类型", example = "PC")
+    @Schema(description = "终端类型（取值于字典 client_type）", example = "PC")
+    @ExcelProperty(value = "终端类型", converter = ExcelDictConverter.class, order = 5)
+    @DictExcelProperty("client_type")
     private String clientType;
 
     /**
      * Token 最低活跃频率（单位：秒，-1：不限制，永不冻结）
      */
     @Schema(description = "Token 最低活跃频率（单位：秒，-1：不限制，永不冻结）", example = "1800")
+    @ExcelProperty(value = "Token 最低活跃频率", order = 6)
     private Long activeTimeout;
 
     /**
      * Token 有效期（单位：秒，-1：永不过期）
      */
     @Schema(description = "Token 有效期（单位：秒，-1：永不过期）", example = "86400")
+    @ExcelProperty(value = "Token 有效期", order = 7)
     private Long timeout;
 
     /**
      * 状态
      */
     @Schema(description = "状态", example = "1")
+    @ExcelProperty(value = "状态", converter = ExcelBaseEnumConverter.class, order = 8)
     private DisEnableStatusEnum status;
 }

@@ -6,6 +6,12 @@ import com.baomidou.mybatisplus.annotation.TableName;
 
 import top.continew.admin.common.model.entity.BaseDO;
 
+<#if imports??>
+    <#list imports as className>
+import ${className};
+    </#list>
+</#if>
+
 import java.io.Serial;
 <#if hasTimeField>
 import java.time.*;

@@ -38,6 +38,7 @@ import freemarker.template.DefaultObjectWrapperBuilder;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import top.continew.admin.generator.config.properties.GeneratorProperties;
@@ -54,6 +55,7 @@ import top.continew.admin.generator.model.resp.GeneratePreviewResp;
 import top.continew.admin.generator.service.GeneratorService;
 import top.continew.starter.core.autoconfigure.project.ProjectProperties;
 import top.continew.starter.core.constant.StringConstants;
+import top.continew.starter.core.enums.BaseEnum;
 import top.continew.starter.core.exception.BusinessException;
 import top.continew.starter.core.validation.CheckUtils;
 import top.continew.starter.data.core.enums.DatabaseType;
@@ -290,7 +292,15 @@ public class GeneratorServiceImpl implements GeneratorService {
         CheckUtils.throwIfNull(genConfig, "请先进行数据表 [{}] 生成配置", tableName);
         List<FieldConfigDO> fieldConfigList = fieldConfigMapper.selectListByTableName(tableName);
         CheckUtils.throwIfEmpty(fieldConfigList, "请先进行数据表 [{}] 字段配置", tableName);
+
         InnerGenConfigDO innerGenConfig = new InnerGenConfigDO(genConfig);
+        List<String> imports = new ArrayList<>();
+        // 处理枚举字段
+        List<FieldConfigDO> fieldConfigRecords = fieldConfigList.stream()
+            .map(s -> convertToFieldConfigDO(s, imports))
+            .toList();
+        innerGenConfig.setImports(imports);
+
         // 渲染代码
         String classNamePrefix = innerGenConfig.getClassNamePrefix();
         Map<String, GeneratorProperties.TemplateConfig> templateConfigMap = generatorProperties.getTemplateConfigs();
@@ -304,7 +314,7 @@ public class GeneratorServiceImpl implements GeneratorService {
         for (Map.Entry<String, GeneratorProperties.TemplateConfig> templateConfigEntry : templateConfigMap.entrySet()) {
             GeneratorProperties.TemplateConfig templateConfig = templateConfigEntry.getValue();
             // 移除需要忽略的字段
-            innerGenConfig.setFieldConfigs(fieldConfigList.stream()
+            innerGenConfig.setFieldConfigs(fieldConfigRecords.stream()
                 .filter(fieldConfig -> !StrUtil.equalsAny(fieldConfig.getFieldName(), templateConfig
                     .getExcludeFields()))
                 .toList());
@@ -332,6 +342,33 @@ public class GeneratorServiceImpl implements GeneratorService {
             this.setPreviewPath(generatePreview, innerGenConfig, templateConfig);
         }
         return generatePreviewList;
+    }
+
+    /**
+     * 添加枚举类型的属性，生成对应的import
+     *
+     * @param fieldConfigDO 属性配置信息
+     * @param imports       待导入包集合
+     * @return 新的属性配置信息
+     */
+    private FieldConfigDO convertToFieldConfigDO(FieldConfigDO fieldConfigDO, List<String> imports) {
+        FieldConfigDO fieldConfig = new FieldConfigDO();
+        BeanUtil.copyProperties(fieldConfigDO, fieldConfig);
+        String dictCode = fieldConfig.getDictCode();
+        if (StringUtils.isBlank(dictCode)) {
+            return fieldConfig;
+        }
+        Set<Class<?>> classSet = ClassUtil.scanPackageBySuper(projectProperties.getBasePackage(), BaseEnum.class);
+        Optional<Class<?>> clazzOptional = classSet.stream()
+            .filter(s -> StrUtil.toUnderlineCase(s.getSimpleName()).toLowerCase().equals(dictCode))
+            .findFirst();
+        if (clazzOptional.isEmpty()) {
+            return fieldConfig;
+        }
+        Class<?> clazz = clazzOptional.get();
+        imports.add(clazz.getName());
+        fieldConfig.setFieldType(clazz.getSimpleName());
+        return fieldConfig;
     }
 
     /**

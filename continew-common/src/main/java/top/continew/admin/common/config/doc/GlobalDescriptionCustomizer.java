@@ -20,7 +20,6 @@ import cn.hutool.core.util.StrUtil;
 import io.swagger.v3.oas.models.Operation;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.StringUtils;
 import org.springdoc.core.customizers.GlobalOperationCustomizer;
 import org.springframework.stereotype.Component;
 import org.springframework.web.method.HandlerMethod;
@@ -54,7 +53,7 @@ public class GlobalDescriptionCustomizer implements GlobalOperationCustomizer {
         // 获取原描述
         String originalDescription = operation.getDescription();
         // 根据原描述是否为空，更新描述
-        String newDescription = StringUtils.isNotEmpty(originalDescription)
+        String newDescription = StrUtil.isNotEmpty(originalDescription)
             ? originalDescription + "<br/>" + noteStr
             : noteStr;
 

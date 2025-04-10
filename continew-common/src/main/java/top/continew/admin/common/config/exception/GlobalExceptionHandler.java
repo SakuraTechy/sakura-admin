@@ -18,11 +18,14 @@ package top.continew.admin.common.config.exception;
 
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.text.CharSequenceUtil;
+import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
@@ -45,7 +48,7 @@ import top.continew.starter.web.model.R;
 public class GlobalExceptionHandler {
 
     /**
-     * 拦截业务异常
+     * 业务异常
      */
     @ExceptionHandler(BusinessException.class)
     public R handleBusinessException(BusinessException e, HttpServletRequest request) {
@@ -54,7 +57,10 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * 拦截自定义验证异常-错误请求
+     * 自定义验证异常-错误请求
+     * <p>
+     * {@code ValidationUtils.throwIfXxx(xxx)}
+     * </p>
      */
     @ExceptionHandler(BadRequestException.class)
     public R handleBadRequestException(BadRequestException e, HttpServletRequest request) {
@@ -63,7 +69,23 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * 拦截校验异常-方法参数类型不匹配异常
+     * 方法参数缺失异常
+     * <p>
+     * {@code @RequestParam} 参数缺失
+     * </p>
+     */
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public R handleMethodArgumentTypeMismatchException(MissingServletRequestParameterException e,
+                                                       HttpServletRequest request) {
+        log.error("[{}] {}", request.getMethod(), request.getRequestURI(), e);
+        return R.fail(String.valueOf(HttpStatus.BAD_REQUEST.value()), "参数 '%s' 缺失".formatted(e.getParameterName()));
+    }
+
+    /**
+     * 方法参数类型不匹配异常
+     * <p>
+     * {@code @RequestParam} 参数类型不匹配
+     * </p>
      */
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public R handleMethodArgumentTypeMismatchException(MethodArgumentTypeMismatchException e,
@@ -73,7 +95,27 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * 拦截文件上传异常-超过上传大小限制
+     * HTTP 消息不可读异常
+     * <p>
+     * 1.@RequestBody 缺失请求体<br />
+     * 2.@RequestBody 实体内参数类型不匹配<br />
+     * 3.请求体解析格式异常<br />
+     * ...
+     * </p>
+     */
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public R handleHttpMessageNotReadableException(HttpMessageNotReadableException e, HttpServletRequest request) {
+        log.error("[{}] {}", request.getMethod(), request.getRequestURI(), e);
+        // @RequestBody 实体内参数类型不匹配
+        if (e.getCause() instanceof InvalidFormatException invalidFormatException) {
+            return R.fail(String.valueOf(HttpStatus.BAD_REQUEST.value()), "参数 '%s' 类型不匹配"
+                .formatted(invalidFormatException.getValue()));
+        }
+        return R.fail(String.valueOf(HttpStatus.BAD_REQUEST.value()), "参数缺失或格式不正确");
+    }
+
+    /**
+     * 文件上传异常-超过上传大小限制
      */
     @ExceptionHandler(MultipartException.class)
     public R handleMultipartException(MultipartException e, HttpServletRequest request) {
@@ -100,7 +142,7 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * 拦截请求 URL 不存在异常
+     * 请求 URL 不存在异常
      */
     @ExceptionHandler(NoHandlerFoundException.class)
     public R handleNoHandlerFoundException(NoHandlerFoundException e, HttpServletRequest request) {
@@ -110,7 +152,7 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * 拦截不支持的 HTTP 请求方法异常
+     * 不支持的 HTTP 请求方法异常
      */
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
     public R handleHttpRequestMethodNotSupportedException(HttpRequestMethodNotSupportedException e,

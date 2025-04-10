@@ -51,7 +51,7 @@ import java.util.Set;
 public class MenuServiceImpl extends BaseServiceImpl<MenuMapper, MenuDO, MenuResp, MenuResp, MenuQuery, MenuReq> implements MenuService {
 
     @Override
-    public Long add(MenuReq req) {
+    public Long create(MenuReq req) {
         String title = req.getTitle();
         CheckUtils.throwIf(this.isTitleExists(title, req.getParentId(), null), "新增失败，标题 [{}] 已存在", title);
         // 目录和菜单的组件名称不能重复
@@ -64,7 +64,7 @@ public class MenuServiceImpl extends BaseServiceImpl<MenuMapper, MenuDO, MenuRes
             req.setComponent(StrUtil.blankToDefault(req.getComponent(), "Layout"));
         }
         RedisUtils.deleteByPattern(CacheConstants.ROLE_MENU_KEY_PREFIX + StringConstants.ASTERISK);
-        return super.add(req);
+        return super.create(req);
     }
 
     @Override

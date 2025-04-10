@@ -51,7 +51,7 @@ public class SmsLogProcessor implements CoreMethodProcessor {
             req.setParams(JSONUtil.toJsonStr(param[1]));
             req.setStatus(result.isSuccess() ? SuccessFailureStatusEnum.SUCCESS : SuccessFailureStatusEnum.FAILURE);
             req.setResMsg(JSONUtil.toJsonStr(result.getData()));
-            smsLogService.add(req);
+            smsLogService.create(req);
         }
         return CoreMethodProcessor.super.postProcessor(result, param);
     }

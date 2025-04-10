@@ -61,7 +61,7 @@
         </a-button>
       </template>
       <template #toolbar-right>
-        <a-button v-permission="['${apiModuleName}:${apiName}:add']" type="primary" @click="onAdd">
+        <a-button v-permission="['${apiModuleName}:${apiName}:create']" type="primary" @click="onAdd">
           <template #icon><icon-plus /></template>
           <template #default>新增</template>
         </a-button>
@@ -81,7 +81,7 @@
       </#list>
       <template #action="{ record }">
         <a-space>
-          <a-link v-permission="['${apiModuleName}:${apiName}:detail']" title="详情" @click="onDetail(record)">详情</a-link>
+          <a-link v-permission="['${apiModuleName}:${apiName}:get']" title="详情" @click="onDetail(record)">详情</a-link>
           <a-link v-permission="['${apiModuleName}:${apiName}:update']" title="修改" @click="onUpdate(record)">修改</a-link>
           <a-link
             v-permission="['${apiModuleName}:${apiName}:delete']"
@@ -154,7 +154,7 @@ const columns: TableInstance['columns'] = [
     width: 160,
     align: 'center',
     fixed: !isMobile() ? 'right' : undefined,
-    show: has.hasPermOr(['${apiModuleName}:${apiName}:detail', '${apiModuleName}:${apiName}:update', '${apiModuleName}:${apiName}:delete'])
+    show: has.hasPermOr(['${apiModuleName}:${apiName}:get', '${apiModuleName}:${apiName}:update', '${apiModuleName}:${apiName}:delete'])
   }
 ]
 

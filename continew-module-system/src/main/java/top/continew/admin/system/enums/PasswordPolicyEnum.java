@@ -47,12 +47,12 @@ public enum PasswordPolicyEnum {
     /**
      * 密码错误锁定阈值
      */
-    PASSWORD_ERROR_LOCK_COUNT("密码错误锁定阈值取值范围为 %d-%d", SysConstants.NO, 10, "密码错误已达 %d 次，账号锁定 %d 分钟"),
+    PASSWORD_ERROR_LOCK_COUNT("密码错误锁定阈值取值范围为 %d-%d", SysConstants.NO, 10, "由于您连续 %s 次输入错误密码，账号已被锁定 %s 分钟，预计解锁时间为 %s，请稍后再试"),
 
     /**
      * 账号锁定时长（分钟）
      */
-    PASSWORD_ERROR_LOCK_MINUTES("账号锁定时长取值范围为 %d-%d 分钟", 1, 1440, "账号锁定 %d 分钟，请稍后再试"),
+    PASSWORD_ERROR_LOCK_MINUTES("账号锁定时长取值范围为 %d-%d 分钟", 1, 1440, "您的账号已被锁定，预计解锁时间为 %s，请稍后再试"),
 
     /**
      * 密码有效期（天）

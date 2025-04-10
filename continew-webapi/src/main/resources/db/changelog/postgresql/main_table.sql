@@ -571,7 +571,7 @@ COMMENT ON COLUMN "sys_sms_config"."id"              IS 'ID';
 COMMENT ON COLUMN "sys_sms_config"."name"            IS '名称';
 COMMENT ON COLUMN "sys_sms_config"."supplier"        IS '厂商';
 COMMENT ON COLUMN "sys_sms_config"."access_key"      IS 'Access Key';
-COMMENT ON COLUMN "sys_sms_config"."access_secret"   IS 'Secret Key';
+COMMENT ON COLUMN "sys_sms_config"."secret_key"      IS 'Secret Key';
 COMMENT ON COLUMN "sys_sms_config"."signature"       IS '短信签名';
 COMMENT ON COLUMN "sys_sms_config"."template_id"     IS '模板ID';
 COMMENT ON COLUMN "sys_sms_config"."weight"          IS '负载均衡权重';

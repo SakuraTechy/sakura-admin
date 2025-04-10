@@ -38,16 +38,15 @@ continew-starter.log:
 logging:
   config: classpath:logback-spring.xml
 
---- ### 链路跟踪配置
-continew-starter.web:
-  trace:
-    enabled: true
-    trace-id-name: traceId
-    ## TLog 配置
-    tlog:
-      enable-invoke-time-print: false
-      pattern: '[$spanId][$traceId]'
-      mdc-enable: false
+--- ### 链路追踪配置
+continew-starter.trace:
+  enabled: true
+  trace-id-name: traceId
+  ## TLog 配置
+  tlog:
+    enable-invoke-time-print: false
+    pattern: '[$spanId][$traceId]'
+    mdc-enable: false
 
 --- ### 全局响应配置
 continew-starter.web:
@@ -173,12 +172,6 @@ mybatis-plus:
       # 主键类型（默认 assign_id，表示自行赋值）
       # auto 代表使用数据库自增策略（需要在表中设置好自增约束）
       id-type: ASSIGN_ID
-      # 逻辑删除字段
-      logic-delete-field: isDeleted
-      # 逻辑删除全局值（默认 1，表示已删除）
-      logic-delete-value: 1
-      # 逻辑未删除全局值（默认 0，表示未删除）
-      logic-not-delete-value: 0
   ## 扩展配置
   extension:
     enabled: true
@@ -210,7 +203,9 @@ cosid:
     share:
       # 开启时钟回拨同步
       clock-sync: true
-      friendly: true
+      converter:
+        friendly:
+          pad-start: true
     provider:
       safe-js:
         machine-bit: 7

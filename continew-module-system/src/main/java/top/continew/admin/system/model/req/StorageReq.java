@@ -64,7 +64,7 @@ public class StorageReq implements Serializable {
      * 类型
      */
     @Schema(description = "类型", example = "2")
-    @NotNull(message = "类型非法")
+    @NotNull(message = "类型无效")
     private StorageTypeEnum type;
 
     /**

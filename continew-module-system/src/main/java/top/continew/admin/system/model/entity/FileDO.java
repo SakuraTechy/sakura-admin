@@ -172,7 +172,7 @@ public class FileDO extends BaseDO {
         String relativePath = fullPath.startsWith(StringConstants.SLASH) ? fullPath.substring(1) : fullPath;
         // 如果路径以 bucketName 开头，则移除 bucketName 例如: bucketName/2024/11/27/ -> 2024/11/27/
         if (relativePath.startsWith(storageDO.getBucketName())) {
-            return StrUtil.split(relativePath, storageDO.getBucketName()).get(1);
+            return StrUtil.subAfter(relativePath, storageDO.getBucketName(), false);
         }
         return relativePath;
     }

@@ -43,7 +43,7 @@ import top.continew.starter.extension.crud.model.query.SortQuery;
 import top.continew.starter.extension.crud.model.resp.PageResp;
 import top.continew.starter.file.excel.util.ExcelUtils;
 
-import java.util.Date;
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -114,7 +114,7 @@ public class LogServiceImpl implements LogService {
         String ip = query.getIp();
         String createUserString = query.getCreateUserString();
         DisEnableStatusEnum status = query.getStatus();
-        List<Date> createTimeList = query.getCreateTime();
+        List<LocalDateTime> createTimeList = query.getCreateTime();
         return new QueryWrapper<LogDO>().and(StrUtil.isNotBlank(description), q -> q.like("t1.description", description)
             .or()
             .like("t1.module", description))

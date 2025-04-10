@@ -67,13 +67,13 @@ public class RoleServiceImpl extends BaseServiceImpl<RoleMapper, RoleDO, RoleRes
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public Long add(RoleReq req) {
+    public Long create(RoleReq req) {
         String name = req.getName();
         CheckUtils.throwIf(this.isNameExists(name, null), "新增失败，[{}] 已存在", name);
         String code = req.getCode();
         CheckUtils.throwIf(this.isCodeExists(code, null), "新增失败，[{}] 已存在", code);
         // 新增信息
-        Long roleId = super.add(req);
+        Long roleId = super.create(req);
         // 保存角色和部门关联
         roleDeptService.add(req.getDeptIds(), roleId);
         return roleId;

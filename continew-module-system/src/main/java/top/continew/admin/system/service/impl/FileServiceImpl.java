@@ -113,12 +113,8 @@ public class FileServiceImpl extends BaseServiceImpl<FileMapper, FileDO, FileRes
                 log.info("上传结束");
             }
         });
-        // 处理本地存储文件 URL
-        FileInfo fileInfo = uploadPretreatment.upload();
-        String domain = StrUtil.appendIfMissing(storage.getDomain(), StringConstants.SLASH);
-        fileInfo.setUrl(URLUtil.normalize(domain + fileInfo.getPath() + fileInfo.getFilename()));
-        fileInfo.setThUrl(URLUtil.normalize(domain + fileInfo.getPath() + fileInfo.getThFilename()));
-        return fileInfo;
+        return uploadPretreatment.upload();
+
     }
 
     @Override

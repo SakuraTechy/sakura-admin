@@ -138,8 +138,9 @@ captcha:
 --- ### 日志配置
 ## API 请求/响应日志配置
 continew-starter.log:
-  # 是否打印日志，开启后可打印访问日志（类似于 Nginx access log）
-  is-print: true
+  access-log:
+    # 是否打印访问日志（类似于 Nginx access log）
+    enabled: true
 ## 项目日志配置（配置重叠部分，优先级高于 logback-spring.xml 中的配置）
 logging:
   level:
@@ -257,8 +258,10 @@ continew-starter.security:
     enabled: true
     # BCryptPasswordEncoder
     encoding-id: bcrypt
-  ## 限流器配置
-  limiter:
+
+--- ### 限流器配置
+continew-starter:
+  rate-limiter:
     enabled: true
     key-prefix: RateLimiter
 
@@ -304,26 +307,3 @@ snail-job:
       username: ${SCHEDULE_USERNAME:admin}
       # 密码
       password: ${SCHEDULE_PASSWORD:admin}
-  ## 重试数据批量上报滑动窗口配置
-  retry:
-    reportSlidingWindow:
-      # 窗口期单位
-      chrono-unit: SECONDS
-      # 窗口期时间长度
-      duration: 10
-      # 总量窗口期阈值
-      total-threshold: 50
-      # 窗口数量预警
-      window-total-threshold: 150
-  ## 调度线程池配置
-  dispatcherThreadPool:
-    # 核心线程数
-    corePoolSize: 16
-    # 最大线程数
-    maximumPoolSize: 16
-    # 线程存活时间
-    keepAliveTime: 1
-    # 时间单位
-    timeUnit: SECONDS
-    # 队列容量
-    queueCapacity: 10000

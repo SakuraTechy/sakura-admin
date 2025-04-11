@@ -40,6 +40,9 @@ import top.continew.starter.extension.crud.annotation.EnableCrudRestController;
 import top.continew.starter.web.annotation.EnableGlobalResponse;
 import top.continew.starter.web.model.R;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+
 /**
  * 启动程序
  *
@@ -69,12 +72,18 @@ public class ContiNewAdminApplication implements ApplicationRunner {
     @SaIgnore
     @GetMapping("/")
     public R index() {
-        return R.ok(projectProperties);
+//        return R.ok(projectProperties);
+        return R.ok("%s service started successfully.".formatted(projectProperties.getName()), null);
     }
 
     @Override
-    public void run(ApplicationArguments args) {
-        String hostAddress = NetUtil.getLocalhostStr();
+    public void run(ApplicationArguments args) throws UnknownHostException {
+//        String hostAddress = NetUtil.getLocalhostStr();
+//        Integer port = serverProperties.getPort();
+//        String contextPath = serverProperties.getServlet().getContextPath();
+//        String baseUrl = URLUtil.normalize("%s:%s%s".formatted(hostAddress, port, contextPath));
+//        String hostAddress = NetUtil.getLocalhost().getHostAddress();
+        String hostAddress = InetAddress.getLocalHost().getHostAddress();
         Integer port = serverProperties.getPort();
         String contextPath = serverProperties.getServlet().getContextPath();
         String baseUrl = URLUtil.normalize("%s:%s%s".formatted(hostAddress, port, contextPath));

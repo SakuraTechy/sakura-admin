@@ -25,6 +25,12 @@
     </properties>
 
     <dependencies>
+        <!-- 项目管理模块 -->
+        <dependency>
+            <groupId>top.continew</groupId>
+            <artifactId>continew-project</artifactId>
+        </dependency>
+
         <!-- 系统管理模块 -->
         <dependency>
             <groupId>top.continew</groupId>

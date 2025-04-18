@@ -29,6 +29,7 @@
         <module>continew-plugin</module>
         <module>continew-common</module>
         <module>continew-extension</module>
+        <module>continew-project</module>
     </modules>
 
     <properties>
@@ -39,6 +40,13 @@
     <!-- 全局依赖版本管理 -->
     <dependencyManagement>
         <dependencies>
+            <!-- 项目管理模块（存放项目管理模块相关功能，例如：项目配置、环境配置、自动化配置等） -->
+            <dependency>
+                <groupId>top.continew</groupId>
+                <artifactId>continew-project</artifactId>
+                <version>${revision}</version>
+            </dependency>
+
             <!-- API 模块（存放 Controller 层代码，打包部署的模块） -->
             <dependency>
                 <groupId>top.continew</groupId>

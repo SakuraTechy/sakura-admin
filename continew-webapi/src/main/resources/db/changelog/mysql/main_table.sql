@@ -361,3 +361,27 @@ CREATE TABLE IF NOT EXISTS `sys_sms_log`  (
     INDEX `idx_config_id`(`config_id`),
     INDEX `idx_create_user`(`create_user`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='短信日志表';
+
+CREATE TABLE `project_config` (
+    `id`           bigint NOT NULL AUTO_INCREMENT COMMENT '项目ID',
+    `name`         varchar(30) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci  DEFAULT NULL COMMENT '项目名称',
+    `abbreviate`   varchar(30) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci  DEFAULT NULL COMMENT '项目简称',
+    `members`      json                                                          DEFAULT NULL COMMENT '项目成员',
+    `description`  varchar(255) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci DEFAULT NULL COMMENT '项目描述',
+    `last_domain`  varchar(255) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci DEFAULT NULL COMMENT '项目域名',
+    `last_version` varchar(255) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci DEFAULT NULL COMMENT '主线版本',
+    `status`       tinyint                                                       DEFAULT NULL COMMENT '状态（0禁用 1启用）',
+    `create_user`  bigint                                                        DEFAULT NULL COMMENT '创建者',
+    `dept_id`      bigint                                                        DEFAULT NULL COMMENT '创建部门',
+    `create_time`  datetime                                                      DEFAULT NULL COMMENT '创建时间',
+    `update_user`  bigint                                                        DEFAULT NULL COMMENT '更新者',
+    `update_time`  datetime                                                      DEFAULT NULL COMMENT '更新时间',
+    `update_ip`    varchar(255) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci DEFAULT NULL COMMENT '更新IP',
+    `remark`       varchar(0) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci   DEFAULT NULL COMMENT '备注',
+    `version`      varchar(255) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci DEFAULT NULL COMMENT '版本',
+    `del_flag`     tinyint                                                       DEFAULT NULL COMMENT '删除标志（0删除 1存在）',
+    PRIMARY KEY (`id`) USING BTREE
+) ENGINE = InnoDB
+  AUTO_INCREMENT = 703331425486663702
+  DEFAULT CHARSET = utf8mb3 COMMENT ='项目管理-项目配置表';
+

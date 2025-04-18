@@ -58,7 +58,7 @@ import java.net.UnknownHostException;
 @RestController
 @SpringBootApplication
 @RequiredArgsConstructor
-@MapperScan("top.continew.admin.system.mapper")
+@MapperScan({"top.continew.admin.system.mapper"})
 public class ContiNewAdminApplication implements ApplicationRunner {
 
     private final ProjectProperties projectProperties;

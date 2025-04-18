@@ -166,6 +166,7 @@ public class GeneratorServiceImpl implements GeneratorService {
             if (null != fieldConfig.getCreateTime()) {
                 fieldConfig.setColumnType(column.getTypeName());
                 fieldConfig.setColumnSize(column.getSize());
+                fieldConfig.setComment(column.getComment());
             }
             String fieldType = typeMappingEntrySet.stream()
                 .filter(entry -> entry.getValue().contains(fieldConfig.getColumnType()))

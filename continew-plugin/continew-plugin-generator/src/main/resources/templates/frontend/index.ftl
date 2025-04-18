@@ -2,7 +2,9 @@
   <div class="gi_table_page">
     <GiTable
       title="${businessName}管理"
+      ref="tableRef"
       row-key="id"
+      v-model:selectedKeys="selectedKeys"
       :data="dataList"
       :columns="columns"
       :loading="loading"
@@ -10,6 +12,12 @@
       :pagination="pagination"
       :disabled-tools="['size']"
       :disabled-column-keys="['name']"
+      :row-selection="{ type: 'checkbox', showCheckedAll: true }"
+      :show-selection-alert="true"
+      :selection-message="`已选中 ${selectedKeys.length} 条记录(可跨页)`"
+      no-selection-message="未选中任何记录"
+      @select="select"
+      @select-all="selectAll"
       @refresh="search"
     >
       <#-- 查询字段配置 -->
@@ -19,7 +27,16 @@
 	  <#if fieldConfig.formType == "SELECT"><#-- 下拉框 -->
         <a-select
           v-model="queryForm.${fieldConfig.fieldName}"
-          :options="${fieldConfig.dictCode}"
+          :options="${fieldConfig.dictCode!"default_value"}"
+          placeholder="请选择${fieldConfig.comment}"
+          allow-clear
+          style="width: 150px"
+          @change="search"
+        />
+      <#elseif fieldConfig.formType == "SWITCH"><#-- 开关 -->
+        <a-select
+          v-model="queryForm.${fieldConfig.fieldName}"
+          :options="${fieldConfig.dictCode!"default_value"}"
           placeholder="请选择${fieldConfig.comment}"
           allow-clear
           style="width: 150px"
@@ -70,6 +87,9 @@
           <template #default>导出</template>
         </a-button>
       </template>
+      <template #status="{ record }">
+        <GiCellStatus :status="record.status" />
+      </template>
       <#list fieldConfigs as fieldConfig>
       <#if fieldConfig.showInList>
       <#if fieldConfig.dictCode?? && fieldConfig.dictCode != "">
@@ -87,7 +107,7 @@
             v-permission="['${apiModuleName}:${apiName}:delete']"
             status="danger"
             :disabled="record.disabled"
-            :title="record.disabled ? '不可删除' : '删除'"
+            :title="record.disabled ? '禁止删除' : '删除'"
             @click="onDelete(record)"
           >
             删除
@@ -131,18 +151,25 @@ const {
   loading,
   pagination,
   search,
+  select,
+  selectAll,
+  selectedKeys,
   handleDelete
 } = useTable((page) => list${classNamePrefix}({ ...queryForm, ...page }), { immediate: true })
 const columns: TableInstance['columns'] = [
 <#if fieldConfigs??>
   <#list fieldConfigs as fieldConfig>
   <#if fieldConfig.showInList>
-   <#if fieldConfig.fieldName=="createUser" >
-  { title: '${fieldConfig.comment}', dataIndex: 'createUserString', slotName: '${fieldConfig.fieldName}' },
-   <#elseif fieldConfig.fieldName=="updateUser"  >
-  { title: '${fieldConfig.comment}', dataIndex: 'updateUserString', slotName: '${fieldConfig.fieldName}' },
-  <#else>
-  { title: '${fieldConfig.comment}', dataIndex: '${fieldConfig.fieldName}', slotName: '${fieldConfig.fieldName}' },
+    <#if fieldConfig.fieldName=="createUser" >
+    { title: '${fieldConfig.comment}', dataIndex: 'createUserString', slotName: '${fieldConfig.fieldName}', width: 120, ellipsis: true, tooltip: true },
+    <#elseif fieldConfig.fieldName=="updateUser"  >
+    { title: '${fieldConfig.comment}', dataIndex: 'updateUserString', slotName: '${fieldConfig.fieldName}', width: 120, ellipsis: true, tooltip: true },
+    <#elseif fieldConfig.fieldName=="createTime"  >
+    { title: '${fieldConfig.comment}', dataIndex: 'createTime', slotName: '${fieldConfig.fieldName}', width: 180, ellipsis: true, tooltip: true },
+    <#elseif fieldConfig.fieldName=="updateTime"  >
+    { title: '${fieldConfig.comment}', dataIndex: 'updateTime', slotName: '${fieldConfig.fieldName}', width: 180, ellipsis: true, tooltip: true },
+    <#else>
+    { title: '${fieldConfig.comment}', dataIndex: '${fieldConfig.fieldName}', slotName: '${fieldConfig.fieldName}', width: 120, ellipsis: true, tooltip: true },
   </#if>
 </#if>
 </#list>
@@ -157,6 +184,9 @@ const columns: TableInstance['columns'] = [
     show: has.hasPermOr(['${apiModuleName}:${apiName}:get', '${apiModuleName}:${apiName}:update', '${apiModuleName}:${apiName}:delete'])
   }
 ]
+
+// 表格引用
+const tableRef = ref()
 
 // 重置
 const reset = () => {
@@ -181,7 +211,16 @@ const onExport = () => {
   useDownload(() => export${classNamePrefix}(queryForm))
 }
 
-const ${classNamePrefix}AddModalRef = ref<InstanceType<typeof ${classNamePrefix}AddModal>>()
+// 组件引用类型
+interface ${classNamePrefix}AddModalType {
+  onAdd: () => void
+  onUpdate: (id: string) => void
+}
+interface ${classNamePrefix}DetailDrawerType {
+  onOpen: (id: string) => void
+}
+
+const ${classNamePrefix}AddModalRef = ref<${classNamePrefix}AddModalType>()
 // 新增
 const onAdd = () => {
   ${classNamePrefix}AddModalRef.value?.onAdd()
@@ -192,7 +231,7 @@ const onUpdate = (record: ${classNamePrefix}Resp) => {
   ${classNamePrefix}AddModalRef.value?.onUpdate(record.id)
 }
 
-const ${classNamePrefix}DetailDrawerRef = ref<InstanceType<typeof ${classNamePrefix}DetailDrawer>>()
+const ${classNamePrefix}DetailDrawerRef = ref<${classNamePrefix}DetailDrawerType>()
 // 详情
 const onDetail = (record: ${classNamePrefix}Resp) => {
   ${classNamePrefix}DetailDrawerRef.value?.onOpen(record.id)

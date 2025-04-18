@@ -48,10 +48,17 @@ const columns: ColumnItem[] = reactive([
     field: '${fieldConfig.fieldName}',
     <#if fieldConfig.formType = 'INPUT'>
     type: 'input',
+    <#if (fieldConfig.columnSize?? && fieldConfig.columnSize > 0)>
+    props: {
+      maxLength: ${fieldConfig.columnSize},
+      allowClear: true
+    }
+    </#if>
     <#elseif fieldConfig.formType = 'TEXT_AREA'>
     type: 'textarea',
     props: {
-      autoSize: true
+      autoSize: true,
+      allowClear: true
     },
     <#elseif fieldConfig.formType = 'DATE'>
     type: 'date-picker',
@@ -69,8 +76,21 @@ const columns: ColumnItem[] = reactive([
     type: 'input-number', 
     <#elseif fieldConfig.formType = 'INPUT_PASSWORD'>
     type: 'input-password',
+    <#if (fieldConfig.columnSize?? && fieldConfig.columnSize > 0)>
+    props: {
+      maxLength: ${fieldConfig.columnSize},
+      allowClear: true
+    }
+    </#if>
     <#elseif fieldConfig.formType = 'SWITCH'>
     type: 'switch',
+    props: {
+      type: 'round',
+      checkedValue: 1,
+      uncheckedValue: 2,
+      checkedText: '启用',
+      uncheckedText: '禁用',
+    },
     <#elseif fieldConfig.formType = 'CHECK_BOX'>
     type: 'checkbox-group',
    	<#elseif fieldConfig.formType = 'TREE_SELECT'>
@@ -136,6 +156,10 @@ const onUpdate = async (id: string) => {
 }
 
 defineExpose({ onAdd, onUpdate })
+</script>
+
+<script lang="ts">
+  export default {}
 </script>
 
 <style scoped lang="scss"></style>

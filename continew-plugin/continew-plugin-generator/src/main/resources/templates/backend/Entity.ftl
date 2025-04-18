@@ -27,7 +27,7 @@ import java.math.BigDecimal;
  * @since ${datetime}
  */
 @Data
-@TableName("${tableName}")
+@TableName(value = "${tableName}", autoResultMap = true)
 public class ${className} extends BaseDO {
 
     @Serial

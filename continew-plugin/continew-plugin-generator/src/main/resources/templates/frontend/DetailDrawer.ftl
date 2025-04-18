@@ -1,9 +1,15 @@
 <template>
-  <a-drawer v-model:visible="visible" title="${businessName}详情" :width="width >= 600 ? 600 : '100%'" :footer="false">
+  <a-drawer v-model:visible="visible" title="${businessName}详情" :width="width >= 800 ? 800 : '100%'" :footer="false">
     <a-descriptions :column="2" size="large" class="general-description">
       <#list fieldConfigs as fieldConfig>
       <a-descriptions-item label="${fieldConfig.comment}">{{ dataDetail?.${fieldConfig.fieldName} }}</a-descriptions-item>
-      <#if fieldConfig.fieldName = 'createUser'>
+      <#if fieldConfig.fieldName = 'status'>
+<#--      <a-descriptions-item label="状态"><GiCellStatus :status="dataDetail?.status" /></a-descriptions-item>-->
+      <a-descriptions-item label="状态">
+        <a-tag v-if="dataDetail?.status === 1" color="green">启用</a-tag>
+        <a-tag v-else color="red">禁用</a-tag>
+      </a-descriptions-item>
+      <#elseif fieldConfig.fieldName = 'createUser'>
       <a-descriptions-item label="创建人">{{ dataDetail?.createUserString }}</a-descriptions-item>
       <#elseif fieldConfig.fieldName = 'updateUser'>
       <a-descriptions-item label="修改人">{{ dataDetail?.updateUserString }}</a-descriptions-item>
@@ -37,6 +43,10 @@ const onOpen = async (id: string) => {
 }
 
 defineExpose({ onOpen })
+</script>
+
+<script lang="ts">
+  export default {}
 </script>
 
 <style scoped lang="scss"></style>

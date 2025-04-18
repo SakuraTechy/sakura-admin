@@ -32,12 +32,13 @@ public class ${className} extends BaseDetailResp {
     private static final long serialVersionUID = 1L;
 <#if fieldConfigs??>
   <#list fieldConfigs as fieldConfig>
+    <#assign orderNumber = fieldConfig_index + 2>
 
     /**
      * ${fieldConfig.comment}
      */
     @Schema(description = "${fieldConfig.comment}")
-    @ExcelProperty(value = "${fieldConfig.comment}")
+    @ExcelProperty(value = "${fieldConfig.comment}", order = ${orderNumber})
     private ${fieldConfig.fieldType} ${fieldConfig.fieldName};
   </#list>
 </#if>

@@ -46,7 +46,7 @@ defineExpose({ onOpen })
 </script>
 
 <script lang="ts">
-  export default {}
+export default {}
 </script>
 
 <style scoped lang="scss"></style>

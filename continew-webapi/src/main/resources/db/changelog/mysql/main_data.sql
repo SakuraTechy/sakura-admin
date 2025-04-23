@@ -51,21 +51,22 @@ VALUES
 (1074, '修改', 1070, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'system:dict:update', 4, 1, 1, NOW()),
 (1075, '删除', 1070, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'system:dict:delete', 5, 1, 1, NOW()),
 (1076, '清除缓存', 1070, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'system:dict:clearCache', 6, 1, 1, NOW()),
-(1080, '字典项管理', 1000, 2, '/system/dict/item', 'SystemDictItem', 'system/dict/item/index', NULL, 'bookmark', b'0', b'0', b'1', NULL, 5, 1, 1, NOW()),
+
+(1080, '字典项管理', 1000, 2, '/system/dict/item', 'SystemDictItem', 'system/dict/item/index', NULL, 'bookmark', b'0', b'0', b'1', NULL, 6, 1, 1, NOW()),
 (1081, '列表', 1080, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'system:dict:item:list', 1, 1, 1, NOW()),
 (1082, '详情', 1080, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'system:dict:item:get', 2, 1, 1, NOW()),
 (1083, '新增', 1080, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'system:dict:item:create', 3, 1, 1, NOW()),
 (1084, '修改', 1080, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'system:dict:item:update', 4, 1, 1, NOW()),
 (1085, '删除', 1080, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'system:dict:item:delete', 5, 1, 1, NOW()),
 
-(1090, '通知公告', 1000, 2, '/system/notice', 'SystemNotice', 'system/notice/index', NULL, 'notification', b'0', b'0', b'0', NULL, 6, 1, 1, NOW()),
+(1090, '通知公告', 1000, 2, '/system/notice', 'SystemNotice', 'system/notice/index', NULL, 'notification', b'0', b'0', b'0', NULL, 7, 1, 1, NOW()),
 (1091, '列表', 1090, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'system:notice:list', 1, 1, 1, NOW()),
 (1092, '公告详情', 1090, 2, '/system/notice/detail', 'SystemNoticeDetail', 'system/notice/detail/index', NULL, NULL, b'0', b'0', b'1', 'system:notice:get', 2, 1, 1, NOW()),
 (1093, '发布公告', 1090, 2, '/system/notice/add', 'SystemNoticeAdd', 'system/notice/add/index', NULL, NULL, b'0', b'0', b'1', 'system:notice:create', 3, 1, 1, NOW()),
 (1094, '修改', 1090, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'system:notice:update', 4, 1, 1, NOW()),
 (1095, '删除', 1090, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'system:notice:delete', 5, 1, 1, NOW()),
 
-(1100, '文件管理', 1000, 2, '/system/file', 'SystemFile', 'system/file/index', NULL, 'file', b'0', b'0', b'0', NULL, 7, 1, 1, NOW()),
+(1100, '文件管理', 1000, 2, '/system/file', 'SystemFile', 'system/file/index', NULL, 'file', b'0', b'0', b'0', NULL, 8, 1, 1, NOW()),
 (1101, '列表', 1100, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'system:file:list', 1, 1, 1, NOW()),
 (1102, '详情', 1100, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'system:file:get', 2, 1, 1, NOW()),
 (1103, '上传', 1100, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'system:file:upload', 3, 1, 1, NOW()),
@@ -73,7 +74,7 @@ VALUES
 (1105, '删除', 1100, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'system:file:delete', 5, 1, 1, NOW()),
 (1106, '下载', 1100, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'system:file:download', 6, 1, 1, NOW()),
 
-(1110, '存储管理', 1000, 2, '/system/storage', 'SystemStorage', 'system/storage/index', NULL, 'storage', b'0', b'0', b'0', NULL, 8, 1, 1, NOW()),
+(1110, '存储管理', 1000, 2, '/system/storage', 'SystemStorage', 'system/storage/index', NULL, 'storage', b'0', b'0', b'0', NULL, 9, 1, 1, NOW()),
 (1111, '列表', 1110, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'system:storage:list', 1, 1, 1, NOW()),
 (1112, '详情', 1110, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'system:storage:get', 2, 1, 1, NOW()),
 (1113, '新增', 1110, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'system:storage:create', 3, 1, 1, NOW()),
@@ -82,19 +83,19 @@ VALUES
 (1116, '修改状态', 1110, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'system:storage:updateStatus', 6, 1, 1, NOW()),
 (1117, '设为默认存储', 1110, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'system:storage:setDefault', 7, 1, 1, NOW()),
 
-(1180, '终端管理', 1000, 2, '/system/client', 'SystemClient', 'system/client/index', NULL, 'mobile', b'0', b'0', b'0', NULL, 9, 1, 1, NOW()),
+(1180, '终端管理', 1000, 2, '/system/client', 'SystemClient', 'system/client/index', NULL, 'mobile', b'0', b'0', b'0', NULL, 10, 1, 1, NOW()),
 (1181, '列表', 1180, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'system:client:list', 1, 1, 1, NOW()),
 (1182, '详情', 1180, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'system:client:get', 2, 1, 1, NOW()),
 (1183, '新增', 1180, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'system:client:create', 3, 1, 1, NOW()),
 (1184, '修改', 1180, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'system:client:update', 4, 1, 1, NOW()),
 (1185, '删除', 1180, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'system:client:delete', 5, 1, 1, NOW()),
 
-(1190, '系统配置', 1000, 2, '/system/config', 'SystemConfig', 'system/config/index', NULL, 'config', b'0', b'0', b'0', NULL, 999, 1, 1, NOW()),
+(1190, '系统配置', 1000, 2, '/system/config', 'SystemConfig', 'system/config/index', NULL, 'config', b'0', b'0', b'0', NULL, 11, 1, 1, NOW()),
 (1191, '查看', 1190, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'system:config:list', 1, 1, 1, NOW()),
 (1192, '修改', 1190, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'system:config:update', 2, 1, 1, NOW()),
 (1193, '重置', 1190, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'system:config:reset', 3, 1, 1, NOW()),
 
-(1200, '短信配置', 1000, 1, '/system/sms', 'SystemSms', 'Layout', '/system/sms/config', 'message', b'0', b'0', b'0', NULL, 1000, 1, 1, NOW()),
+(1200, '短信配置', 1000, 1, '/system/sms', 'SystemSms', 'Layout', '/system/sms/config', 'message', b'0', b'0', b'0', NULL, 12, 1, 1, NOW()),
 (1210, '短信配置', 1200, 2, '/system/sms/config', 'SystemSmsConfig', 'system/sms/config/index', NULL, 'message', b'0', b'0', b'0', NULL, 1, 1, 1, NOW()),
 (1211, '列表', 1210, 3, NULL, NULL, NULL, NULL, NULL, b'0', b'0', b'0', 'system:smsConfig:list', 1, 1, 1, NOW()),
 (1212, '详情', 1210, 3, NULL, NULL, NULL, NULL, NULL, b'0', b'0', b'0', 'system:smsConfig:get', 2, 1, 1, NOW()),
@@ -103,20 +104,32 @@ VALUES
 (1215, '删除', 1210, 3, NULL, NULL, NULL, NULL, NULL, b'0', b'0', b'0', 'system:smsConfig:delete', 5, 1, 1, NOW()),
 (1216, '导出', 1210, 3, NULL, NULL, NULL, NULL, NULL, b'0', b'0', b'0', 'system:smsConfig:export', 6, 1, 1, NOW()),
 
-(1220, '短信日志', 1200, 2, '/system/sms/log', 'SystemSmsLog', 'system/sms/log/index', NULL, 'history', b'0', b'0', b'0', NULL, 2, 1, 1, NOW()),
+(1220, '短信日志', 1200, 2, '/system/sms/log', 'SystemSmsLog', 'system/sms/log/index', NULL, 'history', b'0', b'0', b'0', NULL, 12, 1, 1, NOW()),
 (1221, '列表', 1220, 3, NULL, NULL, NULL, NULL, NULL, b'0', b'0', b'0', 'system:smsLog:list', 1, 1, 1, NOW()),
 (1222, '删除', 1220, 3, NULL, NULL, NULL, NULL, NULL, b'0', b'0', b'0', 'system:smsLog:delete', 2, 1, 1, NOW()),
 (1223, '导出', 1220, 3, NULL, NULL, NULL, NULL, NULL, b'0', b'0', b'0', 'system:smsLog:export', 3, 1, 1, NOW()),
 
-(2000, '系统监控', 0, 1, '/monitor', 'Monitor', 'Layout', '/monitor/online', 'computer', b'0', b'0', b'0', NULL, 2, 1, 1, NOW()),
-(2010, '在线用户', 2000, 2, '/monitor/online', 'MonitorOnline', 'monitor/online/index', NULL, 'user', b'0', b'0', b'0', NULL, 1, 1, 1, NOW()),
-(2011, '列表', 2010, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'monitor:online:list', 1, 1, 1, NOW()),
-(2012, '强退', 2010, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'monitor:online:kickout', 2, 1, 1, NOW()),
+(1230, '系统监控', 0, 1, '/monitor', 'Monitor', 'Layout', '/monitor/online', 'computer', b'0', b'0', b'0', NULL, 5, 1, 1, NOW()),
+(1240, '在线用户', 1230, 2, '/monitor/online', 'MonitorOnline', 'monitor/online/index', NULL, 'user', b'0', b'0', b'0', NULL, 1, 1, 1, NOW()),
+(1241, '列表', 1240, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'monitor:online:list', 1, 1, 1, NOW()),
+(1242, '强退', 1240, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'monitor:online:kickout', 2, 1, 1, NOW()),
 
-(2020, '系统日志', 2000, 2, '/monitor/log', 'MonitorLog', 'monitor/log/index', NULL, 'history', b'0', b'0', b'0', NULL, 2, 1, 1, NOW()),
-(2021, '列表', 2020, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'monitor:log:list', 1, 1, 1, NOW()),
-(2022, '详情', 2020, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'monitor:log:get', 2, 1, 1, NOW()),
-(2023, '导出', 2020, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'monitor:log:export', 3, 1, 1, NOW());
+(1250, '系统日志', 1230, 2, '/monitor/log', 'MonitorLog', 'monitor/log/index', NULL, 'history', b'0', b'0', b'0', NULL, 2, 1, 1, NOW()),
+(1251, '列表', 1250, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'monitor:log:list', 1, 1, 1, NOW()),
+(1252, '详情', 1250, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'monitor:log:get', 2, 1, 1, NOW()),
+(1253, '导出', 1250, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'monitor:log:export', 3, 1, 1, NOW()),
+
+(1260, '项目管理', 0, 1, '/project', 'Project', 'Layout', '/project/projectConfig', 'sort', b'0', b'0', b'0', NULL, 6, 1, 1, NOW()),
+(1270, '项目配置', 1260, 2, '/project/projectConfig', 'ProjectProjectConfig', 'project/projectConfig/index', NULL, 'apps', b'0', b'0', b'0', NULL, 1, 1, 1, NOW()),
+(1271, '列表', 1270, 3, NULL, NULL, NULL, NULL, NULL, b'0', b'0', b'0', 'project:projectConfig:list', 1, 1, 1, NOW()),
+(1272, '详情', 1270, 3, NULL, NULL, NULL, NULL, NULL, b'0', b'0', b'0', 'project:projectConfig:get', 2, 1, 1, NOW()),
+(1273, '新增', 1270, 3, NULL, NULL, NULL, NULL, NULL, b'0', b'0', b'0', 'project:projectConfig:create', 3, 1, 1, NOW()),
+(1274, '修改', 1270, 3, NULL, NULL, NULL, NULL, NULL, b'0', b'0', b'0', 'project:projectConfig:update', 4, 1, 1, NOW()),
+(1275, '删除', 1270, 3, NULL, NULL, NULL, NULL, NULL, b'0', b'0', b'0', 'project:projectConfig:delete', 5, 1, 1, NOW()),
+(1276, '导出', 1270, 3, NULL, NULL, NULL, NULL, NULL, b'0', b'0', b'0', 'project:projectConfig:export', 6, 1, 1, NOW()),
+
+(1280, '环境配置', 1260, 2, '/project/environmentConfig', 'ProjectEnvironmentConfig', 'open/app/index', NULL, 'settings', b'0', b'0', b'0', NULL, 1, 1, 1, NOW());
+
 
 -- 初始化默认部门
 INSERT INTO `sys_dept`
@@ -157,15 +170,15 @@ INSERT INTO `sys_role`
 VALUES
 (1, '系统管理员', 'admin', 1, '系统初始角色', 1, b'1', 1, NOW()),
 (2, '普通用户', 'general', 4, '系统初始角色', 2, b'0', 1, NOW()),
-(547888897925840927, '测试人员', 'tester', 5, NULL, 3, b'0', 1, NOW()),
-(547888897925840928, '研发人员', 'developer', 4, NULL, 4, b'0', 1, NOW());
+(3, '测试人员', 'tester', 5, NULL, 3, b'0', 1, NOW()),
+(4, '研发人员', 'developer', 4, NULL, 4, b'0', 1, NOW());
 
 -- 初始化默认用户：admin/admin123；test/test123
 INSERT INTO `sys_user`
 (`id`, `username`, `nickname`, `password`, `gender`, `email`, `phone`, `avatar`, `description`, `status`, `is_system`, `pwd_reset_time`, `dept_id`, `create_user`, `create_time`)
 VALUES
 (1, 'admin', '系统管理员', '{bcrypt}$2a$10$4jGwK2BMJ7FgVR.mgwGodey8.xR8FLoU1XSXpxJ9nZQt.pufhasSa', 1, '42190c6c5639d2ca4edb4150a35e058559ccf8270361a23745a2fd285a273c28', '5bda89a4609a65546422ea56bfe5eab4', NULL, '系统初始用户', 1, b'1', NOW(), 1, 1, NOW()),
-(547889293968801822, 'test', '测试员', '{bcrypt}$2a$10$xAsoeMJ.jc/kSxhviLAg7.j2iFrhi6yYAdniNdjLiIUWU/BRZl2Ti', 2, NULL, NULL, NULL, NULL, 1, b'0', NOW(), 547887852587843593, 1, NOW());
+(2, 'test', '测试员', '{bcrypt}$2a$10$xAsoeMJ.jc/kSxhviLAg7.j2iFrhi6yYAdniNdjLiIUWU/BRZl2Ti', 2, NULL, NULL, NULL, NULL, 1, b'0', NOW(), 547887852587843593, 1, NOW());
 -- 初始化默认参数
 INSERT INTO `sys_option`
 (`id`, `category`, `name`, `code`, `value`, `default_value`, `description`)
@@ -199,7 +212,8 @@ INSERT INTO `sys_dict`
 VALUES
 (1, '公告类型', 'notice_type', NULL, b'1', 1, NOW()),
 (2, '消息类型', 'message_type', NULL, b'1', 1, NOW()),
-(3, '终端类型', 'client_type', NULL, b'1', 1, NOW());
+(3, '终端类型', 'client_type', NULL, b'1', 1, NOW()),
+(4, '状态类型', 'status_type', NULL, b'1', 1, NOW());
 
 INSERT INTO `sys_dict_item`
 (`id`, `label`, `value`, `color`, `sort`, `description`, `status`, `dict_id`, `create_user`, `create_time`)
@@ -210,14 +224,16 @@ VALUES
 (4, '活动消息', '2', 'success', 2, NULL, 1, 2, 1, NOW()),
 (5, '桌面端', 'PC', 'primary', 1, NULL, 1, 3, 1, NOW()),
 (6, '安卓', 'ANDROID', 'success', 2, NULL, 1, 3, 1, NOW()),
-(7, '小程序', 'XCX', 'warning', 3, NULL, 1, 3, 1, NOW());
+(7, '小程序', 'XCX', 'warning', 3, NULL, 1, 3, 1, NOW()),
+(8, '启用', '1', 'success', 1, NULL, 1, 4, 1, NOW()),
+(9, '禁用', '2', 'error', 2, NULL, 1, 4, 1, NOW());
 
 -- 初始化默认用户和角色关联数据
 INSERT INTO `sys_user_role`
 (`id`, `user_id`, `role_id`)
 VALUES
 (1, 1, 1),
-(2, 547889293968801822, 547888897925840927);
+(2, 2, 3);
 
 -- 初始化默认角色和菜单关联数据
 INSERT INTO `sys_role_menu`
@@ -284,7 +300,7 @@ VALUES
 (2,	9011);
 
 -- 初始化默认角色和部门关联数据
-INSERT INTO `sys_role_dept` (`role_id`, `dept_id`) VALUES (547888897925840927, 547887852587843593);
+INSERT INTO `sys_role_dept` (`role_id`, `dept_id`) VALUES (3, 547887852587843593);
 
 -- 初始化默认存储
 INSERT INTO `sys_storage`

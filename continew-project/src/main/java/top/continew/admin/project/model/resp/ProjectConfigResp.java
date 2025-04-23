@@ -1,9 +1,7 @@
 package top.continew.admin.project.model.resp;
 
 import cn.crane4j.annotation.Assemble;
-import cn.crane4j.annotation.Mapping;
 import cn.crane4j.core.executor.handler.ManyToManyAssembleOperationHandler;
-import com.alibaba.excel.annotation.ExcelProperty;
 import lombok.Data;
 
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -11,11 +9,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import top.continew.admin.common.constant.ContainerConstants;
 import top.continew.admin.common.enums.DisEnableStatusEnum;
 import top.continew.admin.common.model.resp.BaseDetailResp;
-import top.continew.admin.common.model.resp.BaseResp;
-import top.continew.starter.file.excel.converter.ExcelListConverter;
 
 import java.io.Serial;
-import java.time.*;
 import java.util.List;
 
 /**
@@ -47,9 +42,10 @@ public class ProjectConfigResp extends BaseDetailResp {
      * 项目成员
      */
     @Schema(description = "项目成员", example = "[1,2,3]")
-    @Assemble(props = @Mapping(ref = "members"), container = ContainerConstants.USER_NICKNAME, handlerType = ManyToManyAssembleOperationHandler.class)
-//    @Assemble(prop = ":members", container = ContainerConstants.USER_NICKNAME, handlerType = ManyToManyAssembleOperationHandler.class)
+//    @Assemble(props = @Mapping(ref = "memberNames"), container = ContainerConstants.USER_NICKNAME, handlerType = ManyToManyAssembleOperationHandler.class)
+    @Assemble(prop = ":memberNames", container = ContainerConstants.USER_NICKNAME, handlerType = ManyToManyAssembleOperationHandler.class)
     private List<String> members;
+    private List<String> memberNames;
 
     /**
      * 项目描述
@@ -70,9 +66,9 @@ public class ProjectConfigResp extends BaseDetailResp {
     private String lastVersion;
 
     /**
-     * 状态（0禁用 1启用）
+     * 状态
      */
-    @Schema(description = "状态（0禁用 1启用）")
+    @Schema(description = "状态")
     private DisEnableStatusEnum status;
 
     /**

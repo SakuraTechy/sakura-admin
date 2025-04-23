@@ -6,7 +6,7 @@
 INSERT INTO `sys_menu`
 (`id`, `title`, `parent_id`, `type`, `path`, `name`, `component`, `redirect`, `icon`, `is_external`, `is_cache`, `is_hidden`, `permission`, `sort`, `status`, `create_user`, `create_time`)
 VALUES
-(3000, '任务调度', 0, 1, '/schedule', 'Schedule', 'Layout', '/schedule/job', 'schedule', b'0', b'0', b'0', NULL, 3, 1, 1, NOW()),
+(3000, '任务调度', 0, 1, '/schedule', 'Schedule', 'Layout', '/schedule/job', 'schedule', b'0', b'0', b'0', NULL, 2, 1, 1, NOW()),
 (3010, '任务管理', 3000, 2, '/schedule/job', 'ScheduleJob', 'schedule/job/index', NULL, 'select-all', b'0', b'0', b'0', NULL, 1, 1, 1, NOW()),
 (3011, '列表', 3010, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'schedule:job:list', 1, 1, 1, NOW()),
 (3012, '详情', 3010, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'schedule:job:get', 2, 1, 1, NOW()),

@@ -47,9 +47,9 @@ public class ProjectConfigQuery implements Serializable {
     private String abbreviate;
 
     /**
-     * 状态（0禁用 1启用）
+     * 状态
      */
-    @Schema(description = "状态（0禁用 1启用）")
+    @Schema(description = "状态")
     @Query(type = QueryType.EQ)
     private DisEnableStatusEnum status;
 }

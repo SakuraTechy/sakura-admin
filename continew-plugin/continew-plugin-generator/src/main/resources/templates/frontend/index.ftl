@@ -14,7 +14,7 @@
       :disabled-column-keys="['name']"
       :row-selection="{ type: 'checkbox', showCheckedAll: true }"
       :show-selection-alert="true"
-      :selection-message="`已选中 ${selectedKeys.length} 条记录(可跨页)`"
+      :selection-message="`已选中 <#noparse>${selectedKeys.length}</#noparse> 条记录(可跨页)`"
       no-selection-message="未选中任何记录"
       @select="select"
       @select-all="selectAll"

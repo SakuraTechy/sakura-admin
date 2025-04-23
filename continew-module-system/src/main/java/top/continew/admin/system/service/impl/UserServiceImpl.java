@@ -16,6 +16,8 @@
 
 package top.continew.admin.system.service.impl;
 
+import cn.crane4j.annotation.ContainerMethod;
+import cn.crane4j.annotation.MappingType;
 import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.collection.CollUtil;
@@ -56,6 +58,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import top.continew.admin.auth.service.OnlineUserService;
 import top.continew.admin.common.constant.CacheConstants;
+import top.continew.admin.common.constant.ContainerConstants;
 import top.continew.admin.common.constant.SysConstants;
 import top.continew.admin.common.context.UserContext;
 import top.continew.admin.common.context.UserContextHolder;
@@ -223,6 +226,12 @@ public class UserServiceImpl extends BaseServiceImpl<UserMapper, UserDO, UserRes
     public String getNicknameById(Long id) {
         return baseMapper.selectNicknameById(id);
     }
+
+//    @Override
+//    @ContainerMethod(namespace = ContainerConstants.USER_ID_LIST, type = MappingType.ORDER_OF_KEYS)
+//    public List<Long> listIdByUserId(Long id) {
+//        return baseMapper.selectNicknameById(id);
+//    }
 
     @Override
     public void downloadImportTemplate(HttpServletResponse response) throws IOException {

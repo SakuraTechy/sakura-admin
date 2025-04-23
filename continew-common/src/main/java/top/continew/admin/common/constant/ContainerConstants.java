@@ -25,6 +25,11 @@ package top.continew.admin.common.constant;
 public class ContainerConstants {
 
     /**
+     * 用户 ID 列表
+     */
+    public static final String USER_ID_LIST = "UserIdList";
+
+    /**
      * 用户昵称
      */
     public static final String USER_NICKNAME = "UserNickname";

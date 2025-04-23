@@ -608,3 +608,29 @@ COMMENT ON COLUMN "sys_sms_log"."res_msg"     IS '返回数据';
 COMMENT ON COLUMN "sys_sms_log"."create_user" IS '创建人';
 COMMENT ON COLUMN "sys_sms_log"."create_time" IS '创建时间';
 COMMENT ON TABLE "sys_sms_log" IS '短信日志表';
+
+CREATE TABLE IF NOT EXISTS "project_config" (
+                                             "id"          int8        NOT NULL,
+                                             "name"       varchar(25) NOT NULL,
+                                             "abbreviate"       varchar(25) NOT NULL,
+                                             "members"       varchar(25) NOT NULL,
+                                             "phone"       varchar(25) NOT NULL,
+                                             "phone"       varchar(25) NOT NULL,
+                                             "params"      text        DEFAULT NULL,
+                                             "status"      int2        NOT NULL DEFAULT 1,
+                                             "res_msg"     text        DEFAULT NULL,
+                                             "create_user" int8        NOT NULL,
+                                             "create_time" timestamp   NOT NULL,
+                                             PRIMARY KEY ("id")
+);
+CREATE INDEX "idx_config_create_user" ON "project_config" ("create_user");
+CREATE INDEX "idx_config_update_user" ON "project_config" ("update_user");
+COMMENT ON COLUMN "project_config"."id"          IS 'ID';
+COMMENT ON COLUMN "project_config"."config_id"   IS '配置ID';
+COMMENT ON COLUMN "project_config"."phone"       IS '手机号';
+COMMENT ON COLUMN "project_config"."params"      IS '参数配置';
+COMMENT ON COLUMN "project_config"."status"      IS '发送状态（1：成功；2：失败）';
+COMMENT ON COLUMN "project_config"."res_msg"     IS '返回数据';
+COMMENT ON COLUMN "project_config"."create_user" IS '创建人';
+COMMENT ON COLUMN "project_config"."create_time" IS '创建时间';
+COMMENT ON TABLE "project_config" IS '项目管理-项目配置表';

@@ -58,7 +58,7 @@ public class ProjectConfigDO extends BaseDO {
     private String lastVersion;
 
     /**
-     * 状态（0禁用 1启用）
+     * 状态
      */
     private DisEnableStatusEnum status;
 

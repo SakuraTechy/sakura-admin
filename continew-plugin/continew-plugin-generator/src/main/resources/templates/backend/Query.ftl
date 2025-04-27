@@ -2,13 +2,15 @@ package ${packageName}.${subPackageName};
 
 import lombok.Data;
 
+import java.io.Serial;
+import java.io.Serializable;
+
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import top.continew.starter.data.core.annotation.Query;
 import top.continew.starter.data.core.enums.QueryType;
+import top.continew.starter.data.core.enums.QueryType;
 
-import java.io.Serial;
-import java.io.Serializable;
 <#if hasTimeField>
 import java.time.*;
 </#if>
@@ -28,6 +30,7 @@ public class ${className} implements Serializable {
 
     @Serial
     private static final long serialVersionUID = 1L;
+
 <#if fieldConfigs??>
   <#list fieldConfigs as fieldConfig>
     <#if fieldConfig.showInQuery>
@@ -39,9 +42,20 @@ public class ${className} implements Serializable {
     @Query(type = QueryType.${fieldConfig.queryType})
     <#if fieldConfig.queryType = 'IN' || fieldConfig.queryType = 'NOT_IN' || fieldConfig.queryType = 'BETWEEN'>
     private ${fieldConfig.fieldType}[] ${fieldConfig.fieldName};
+    <#elseif fieldConfig.fieldName = 'status'>
+    private DisEnableStatusEnum ${fieldConfig.fieldName};
     <#else>
     private ${fieldConfig.fieldType} ${fieldConfig.fieldName};
     </#if>
+    </#if>
+    <#if fieldConfig.fieldName = 'delFlag'>
+
+    /**
+     * ${fieldConfig.comment}
+     */
+    @Schema(description = "${fieldConfig.comment}")
+    @Query(type = QueryType.EQ)
+    private ${fieldConfig.fieldType} ${fieldConfig.fieldName} = 1;
     </#if>
   </#list>
 </#if>

@@ -79,7 +79,8 @@ public class UserController extends BaseController<UserService, UserResp, UserDe
     public BaseIdResp<Long> signup(@Validated(CrudValidationGroup.Create.class) @RequestBody UserReq req) {
         String captcha = req.getCaptcha();
         int loginCaptchaEnabled = optionService.getValueByCode2Int("LOGIN_CAPTCHA_ENABLED");
-        if (!StringUtil.equals(captcha, captchaProperties.getSms().getCode()) && SysConstants.YES.equals(loginCaptchaEnabled)) {
+        if (!StringUtil.equals(captcha, captchaProperties.getSms().getCode()) && SysConstants.YES
+            .equals(loginCaptchaEnabled)) {
             String key = StringUtil.isNotBlank(req.getUuid())
                 ? req.getUuid()
                 : StringUtil.isNotBlank(req.getPhone())

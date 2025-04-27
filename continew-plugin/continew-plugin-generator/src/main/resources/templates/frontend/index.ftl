@@ -1,16 +1,16 @@
 <template>
   <div class="gi_table_page">
     <GiTable
-      title="${businessName}管理"
       ref="tableRef"
-      row-key="id"
       v-model:selectedKeys="selectedKeys"
+      title="${businessName}管理"
+      row-key="id"
       :data="dataList"
       :columns="columns"
       :loading="loading"
       :scroll="{ x: '100%', y: '100%', minWidth: 1000 }"
       :pagination="pagination"
-      :disabled-tools="['size']"
+      :disabled-tools="['']"
       :disabled-column-keys="['name']"
       :row-selection="{ type: 'checkbox', showCheckedAll: true }"
       :show-selection-alert="true"
@@ -82,6 +82,17 @@
           <template #icon><icon-plus /></template>
           <template #default>新增</template>
         </a-button>
+        <a-button
+          v-permission="['${apiModuleName}:${apiName}:delete']"
+          type="primary"
+          status="danger"
+          :disabled="!selectedKeys.length"
+          :title="!selectedKeys.length ? '请选择' : ''"
+          @click="() => onDelete()"
+        >
+          <template #icon><icon-delete /></template>
+          <template #default>删除</template>
+        </a-button>
         <a-button v-permission="['${apiModuleName}:${apiName}:export']" @click="onExport">
           <template #icon><icon-download /></template>
           <template #default>导出</template>
@@ -130,6 +141,7 @@ import { useDownload, useTable } from '@/hooks'
 import { useDict } from '@/hooks/app'
 import { isMobile } from '@/utils'
 import has from '@/utils/has'
+import GiCellTags from '@/components/GiCell/GiCellTags.vue'
 
 defineOptions({ name: '${classNamePrefix}' })
 
@@ -154,13 +166,26 @@ const {
   select,
   selectAll,
   selectedKeys,
-  handleDelete
+  handleDelete,
+  handleExport,
 } = useTable((page) => list${classNamePrefix}({ ...queryForm, ...page }), { immediate: true })
 const columns: TableInstance['columns'] = [
 <#if fieldConfigs??>
   <#list fieldConfigs as fieldConfig>
   <#if fieldConfig.showInList>
-    <#if fieldConfig.fieldName=="createUser" >
+    <#if fieldConfig.fieldType = 'List<String>'>
+    {
+      title: '${fieldConfig.comment}',
+      dataIndex: '${fieldConfig.fieldName}',
+      slotName: '${fieldConfig.fieldName}',
+      width: 160,
+      render: ({ record }) => {
+        return (
+          <GiCellTags data={record.${fieldConfig.fieldName}Names} />
+        )
+      },
+    },
+    <#elseif fieldConfig.fieldName=="createUser" >
     { title: '${fieldConfig.comment}', dataIndex: 'createUserString', slotName: '${fieldConfig.fieldName}', width: 120, ellipsis: true, tooltip: true },
     <#elseif fieldConfig.fieldName=="updateUser"  >
     { title: '${fieldConfig.comment}', dataIndex: 'updateUserString', slotName: '${fieldConfig.fieldName}', width: 120, ellipsis: true, tooltip: true },
@@ -199,16 +224,33 @@ const reset = () => {
 }
 
 // 删除
-const onDelete = (record: ${classNamePrefix}Resp) => {
-  return handleDelete(() => delete${classNamePrefix}(record.id), {
-    content: `是否确定删除该条数据？`,
-    showModal: true
+const onDelete = (record?: ${classNamePrefix}Resp) => {
+  return handleDelete(() => delete${classNamePrefix}(
+    selectedKeys.value.length
+      ? selectedKeys.value.map((id) => String(id))
+      : record!.id,
+  ), {
+    content: selectedKeys.value.length ? '是否确定删除批量选中的数据？' : `是否确定删除「<#noparse>${record!.name}</#noparse>」？`,
+    showModal: true,
+    multiple: true,
   })
 }
 
 // 导出
-const onExport = () => {
-  useDownload(() => export${classNamePrefix}(queryForm))
+const onExport = async () => {
+  return handleExport(() => export${classNamePrefix}(
+    selectedKeys.value.length
+      ? {
+          ...queryForm,
+          id: selectedKeys.value.join(','),
+          name: '批量选择导出',
+        }
+      : queryForm,
+  ), {
+    content: selectedKeys.value.length ? '是否确定导出批量选中的数据？' : `是否确定导出全部数据？`,
+    showModal: true,
+    multiple: true,
+  })
 }
 
 // 组件引用类型

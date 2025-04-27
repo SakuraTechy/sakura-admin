@@ -17,7 +17,6 @@
 package top.continew.admin;
 
 import cn.dev33.satoken.annotation.SaIgnore;
-import cn.hutool.core.net.NetUtil;
 import cn.hutool.core.util.URLUtil;
 import cn.hutool.extra.spring.SpringUtil;
 import com.alicp.jetcache.anno.config.EnableMethodCache;
@@ -72,17 +71,17 @@ public class ContiNewAdminApplication implements ApplicationRunner {
     @SaIgnore
     @GetMapping("/")
     public R index() {
-//        return R.ok(projectProperties);
+        //        return R.ok(projectProperties);
         return R.ok("%s service started successfully.".formatted(projectProperties.getName()), null);
     }
 
     @Override
     public void run(ApplicationArguments args) throws UnknownHostException {
-//        String hostAddress = NetUtil.getLocalhostStr();
-//        Integer port = serverProperties.getPort();
-//        String contextPath = serverProperties.getServlet().getContextPath();
-//        String baseUrl = URLUtil.normalize("%s:%s%s".formatted(hostAddress, port, contextPath));
-//        String hostAddress = NetUtil.getLocalhost().getHostAddress();
+        //        String hostAddress = NetUtil.getLocalhostStr();
+        //        Integer port = serverProperties.getPort();
+        //        String contextPath = serverProperties.getServlet().getContextPath();
+        //        String baseUrl = URLUtil.normalize("%s:%s%s".formatted(hostAddress, port, contextPath));
+        //        String hostAddress = NetUtil.getLocalhost().getHostAddress();
         String hostAddress = InetAddress.getLocalHost().getHostAddress();
         Integer port = serverProperties.getPort();
         String contextPath = serverProperties.getServlet().getContextPath();

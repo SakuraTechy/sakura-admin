@@ -68,7 +68,7 @@ public class UserPasswordUpdateReq implements Serializable {
      * 当前密码（加密）
      */
     @Schema(description = "当前密码（加密）", example = "E7c72TH+LDxKTwavjM99W1MdI9Lljh79aPKiv3XB9MXcplhm7qJ1BJCj28yaflbdVbfc366klMtjLIWQGqb0qw==")
-//    @NotBlank(message = "当前密码不能为空")
+    //    @NotBlank(message = "当前密码不能为空")
     private String oldPassword;
 
     /**

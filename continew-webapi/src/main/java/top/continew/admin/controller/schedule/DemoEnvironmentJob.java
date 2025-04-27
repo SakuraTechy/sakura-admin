@@ -69,8 +69,7 @@ public class DemoEnvironmentJob {
 
     private static final Long DELETE_FLAG = 10000L;
     private static final Long MESSAGE_FLAG = 0L;
-    private static final List<Long> USER_FLAG = List
-        .of(1L, 547889293968801822L);
+    private static final List<Long> USER_FLAG = List.of(1L, 547889293968801822L);
     private static final List<Long> ROLE_FLAG = List.of(1L, 2L, 547888897925840927L, 547888897925840928L);
     private static final Long DEPT_FLAG = 547887852587843611L;
 

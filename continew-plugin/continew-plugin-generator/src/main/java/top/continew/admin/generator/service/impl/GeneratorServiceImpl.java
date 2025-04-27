@@ -173,6 +173,10 @@ public class GeneratorServiceImpl implements GeneratorService {
                 .map(Map.Entry::getKey)
                 .findFirst()
                 .orElse(null);
+            // 修改为保留泛型类型：
+            if ("List".equals(fieldType) && "json".equals(fieldConfig.getColumnType())) {
+                fieldType = "List<String>"; // 显式指定泛型类型
+            }
             fieldConfig.setFieldType(fieldType);
             fieldConfig.setFieldSort(i++);
             latestFieldConfigList.add(fieldConfig);

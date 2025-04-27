@@ -1,10 +1,15 @@
 package ${packageName}.${subPackageName};
 
 import lombok.Data;
+import java.io.Serial;
+import java.util.List;
 
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
 
 import top.continew.admin.common.model.entity.BaseDO;
+import top.continew.admin.common.enums.DisEnableStatusEnum;
 
 <#if imports??>
     <#list imports as className>
@@ -12,7 +17,6 @@ import ${className};
     </#list>
 </#if>
 
-import java.io.Serial;
 <#if hasTimeField>
 import java.time.*;
 </#if>
@@ -38,7 +42,16 @@ public class ${className} extends BaseDO {
     /**
      * ${fieldConfig.comment}
      */
+    <#if fieldConfig.fieldType = 'List<String>'>
+    @TableField(typeHandler = JacksonTypeHandler.class)
     private ${fieldConfig.fieldType} ${fieldConfig.fieldName};
+    <#elseif fieldConfig.fieldName = 'status'>
+    private DisEnableStatusEnum ${fieldConfig.fieldName};
+    <#elseif fieldConfig.fieldName = 'delFlag'>
+    private ${fieldConfig.fieldType} ${fieldConfig.fieldName} = 1;
+    <#else>
+    private ${fieldConfig.fieldType} ${fieldConfig.fieldName};
+    </#if>
   </#list>
 </#if>
 }

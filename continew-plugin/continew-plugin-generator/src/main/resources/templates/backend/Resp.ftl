@@ -2,11 +2,18 @@ package ${packageName}.${subPackageName};
 
 import lombok.Data;
 
+import java.io.Serial;
+import java.util.List;
+
+import cn.crane4j.annotation.Assemble;
+import cn.crane4j.core.executor.handler.ManyToManyAssembleOperationHandler;
+
 import io.swagger.v3.oas.annotations.media.Schema;
 
-import top.continew.admin.common.model.resp.BaseResp;
+import top.continew.admin.common.constant.ContainerConstants;
+import top.continew.admin.common.enums.DisEnableStatusEnum;
+import top.continew.admin.common.model.resp.BaseDetailResp;
 
-import java.io.Serial;
 <#if hasTimeField>
 import java.time.*;
 </#if>
@@ -34,7 +41,15 @@ public class ${className} extends BaseResp {
      * ${fieldConfig.comment}
      */
     @Schema(description = "${fieldConfig.comment}")
+    <#if fieldConfig.fieldType = 'List<String>'>
+    @Assemble(prop = ":${fieldConfig.fieldName}Names", container = ContainerConstants.USER_NICKNAME, handlerType = ManyToManyAssembleOperationHandler.class)
     private ${fieldConfig.fieldType} ${fieldConfig.fieldName};
+    private ${fieldConfig.fieldType} ${fieldConfig.fieldName}Names;
+    <#elseif fieldConfig.fieldName = 'status'>
+    private DisEnableStatusEnum ${fieldConfig.fieldName};
+    <#else>
+    private ${fieldConfig.fieldType} ${fieldConfig.fieldName};
+    </#if>
     </#if>
   </#list>
 </#if>

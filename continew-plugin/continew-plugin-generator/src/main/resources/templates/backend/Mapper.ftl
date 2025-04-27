@@ -1,5 +1,7 @@
 package ${packageName}.${subPackageName};
 
+import java.util.List;
+
 import org.apache.ibatis.annotations.Mapper;
 import top.continew.starter.data.mp.base.BaseMapper;
 import ${packageName}.model.entity.${classNamePrefix}DO;
@@ -11,4 +13,6 @@ import ${packageName}.model.entity.${classNamePrefix}DO;
 * @since ${datetime}
 */
 @Mapper
-public interface ${className} extends BaseMapper<${classNamePrefix}DO> {}
+public interface ${className} extends BaseMapper<${classNamePrefix}DO> {
+    List<${classNamePrefix}DO> get${classNamePrefix}ById(Long id);
+}

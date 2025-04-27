@@ -9,6 +9,8 @@ generator:
   ## 类型映射
   typeMappings:
     MYSQL:
+      List:
+        - json
       String:
         - varchar
         - char
@@ -16,7 +18,7 @@ generator:
         - mediumtext
         - longtext
         - tinytext
-        - json
+#        - json
       Integer:
         - int
         - tinyint

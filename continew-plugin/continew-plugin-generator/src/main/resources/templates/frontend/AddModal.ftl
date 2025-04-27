@@ -17,9 +17,11 @@
 import { Message } from '@arco-design/web-vue'
 import { useWindowSize } from '@vueuse/core'
 import { get${classNamePrefix}, add${classNamePrefix}, update${classNamePrefix} } from '@/apis/${apiModuleName}/${apiName}'
-import { type ColumnItem, GiForm } from '@/components/GiForm'
+import type { ColumnItem, GiForm } from '@/components/GiForm'
 import { useResetReactive } from '@/hooks'
 import { useDict } from '@/hooks/app'
+import { listUserDict } from '@/apis/common/common'
+import type { LabelValueState } from '@/types/global'
 
 const emit = defineEmits<{
   (e: 'save-success'): void
@@ -38,7 +40,25 @@ const { <#list dictCodes as dictCode>${dictCode}<#if dictCode_has_next>,</#if></
 
 const [form, resetForm] = useResetReactive({
   // todo 待补充
+  member: [],
+  status: 1,
 })
+
+<#list fieldConfigs as fieldConfig>
+<#if fieldConfig.fieldType = 'List<String>'>
+const userList = ref<LabelValueState[]>([])
+
+const fetchUserList = async () => {
+  try {
+    const res = await listUserDict()
+    // userList.value = res.data
+    userList.value = res.data.map((item) => ({ ...item, value: `<#noparse>${item.value}</#noparse>` }))
+  } catch (error) {
+    console.error('获取用户列表失败', error)
+  }
+}
+</#if>
+</#list>
 
 const columns: ColumnItem[] = reactive([
 <#list fieldConfigs as fieldConfig>
@@ -46,6 +66,10 @@ const columns: ColumnItem[] = reactive([
   {
     label: '${fieldConfig.comment}',
     field: '${fieldConfig.fieldName}',
+    span: 24,
+    <#if fieldConfig.isRequired>
+    required: true,
+    </#if>
     <#if fieldConfig.formType = 'INPUT'>
     type: 'input',
     <#if (fieldConfig.columnSize?? && fieldConfig.columnSize > 0)>
@@ -84,13 +108,6 @@ const columns: ColumnItem[] = reactive([
     </#if>
     <#elseif fieldConfig.formType = 'SWITCH'>
     type: 'switch',
-    props: {
-      type: 'round',
-      checkedValue: 1,
-      uncheckedValue: 2,
-      checkedText: '启用',
-      uncheckedText: '禁用',
-    },
     <#elseif fieldConfig.formType = 'CHECK_BOX'>
     type: 'checkbox-group',
    	<#elseif fieldConfig.formType = 'TREE_SELECT'>
@@ -100,11 +117,24 @@ const columns: ColumnItem[] = reactive([
     <#elseif fieldConfig.formType = 'RADIO'>
     type: 'radio-group',
     </#if>
-    span: 24,
-    <#if fieldConfig.isRequired>
-    required: true,
-    </#if>
-    <#if fieldConfig.dictCode?? && fieldConfig.dictCode != ''>
+    <#if fieldConfig.fieldType = 'List<String>'>
+    props: {
+      options: userList,
+      placeholder: '请选择${fieldConfig.comment}',
+      multiple: true,
+      allowClear: true,
+      allowSearch: true,
+    },
+    <#elseif fieldConfig.fieldName = 'status'>
+    props: {
+      options: <#list dictCodes as dictCode>${dictCode}<#if dictCode_has_next>,</#if></#list>,
+      type: 'round',
+      checkedValue: 1,
+      uncheckedValue: 2,
+      checkedText: '启用',
+      uncheckedText: '禁用',
+    },
+    <#elseif fieldConfig.dictCode?? && fieldConfig.dictCode != ''>
     props: {
       options: ${fieldConfig.dictCode},
     },
@@ -143,6 +173,7 @@ const save = async () => {
 const onAdd = async () => {
   reset()
   dataId.value = ''
+  await fetchUserList()
   visible.value = true
 }
 
@@ -150,6 +181,7 @@ const onAdd = async () => {
 const onUpdate = async (id: string) => {
   reset()
   dataId.value = id
+  await fetchUserList()
   const { data } = await get${classNamePrefix}(id)
   Object.assign(form, data)
   visible.value = true

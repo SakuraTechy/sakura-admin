@@ -1,10 +1,13 @@
 package ${packageName}.${subPackageName};
 
+import java.util.List;
+import java.util.ArrayList;
+import cn.hutool.core.bean.BeanUtil;
 import lombok.RequiredArgsConstructor;
-
 import org.springframework.stereotype.Service;
 
 import top.continew.starter.extension.crud.service.BaseServiceImpl;
+import top.continew.admin.common.context.UserContextHolder;
 import ${packageName}.mapper.${classNamePrefix}Mapper;
 import ${packageName}.model.entity.${classNamePrefix}DO;
 import ${packageName}.model.query.${classNamePrefix}Query;
@@ -21,4 +24,36 @@ import ${packageName}.service.${classNamePrefix}Service;
  */
 @Service
 @RequiredArgsConstructor
-public class ${className} extends BaseServiceImpl<${classNamePrefix}Mapper, ${classNamePrefix}DO, ${classNamePrefix}Resp, ${classNamePrefix}DetailResp, ${classNamePrefix}Query, ${classNamePrefix}Req> implements ${classNamePrefix}Service {}
+public class ${className} extends BaseServiceImpl<${classNamePrefix}Mapper, ${classNamePrefix}DO, ${classNamePrefix}Resp, ${classNamePrefix}DetailResp, ${classNamePrefix}Query, ${classNamePrefix}Req> implements ${classNamePrefix}Service {
+    @Override
+    public List<ProjectConfigDetailResp> selectByIds(List<Long> ids) {
+        List<ProjectConfigDetailResp> list = BeanUtil.copyToList(baseMapper.selectByIds(ids), ProjectConfigDetailResp.class);
+        list.forEach(item -> {
+            List<String> memberNames = new ArrayList<>();
+            item.getMembers().forEach(memberId -> {
+//                String memberName1 = ExceptionUtils.exToNull(() -> SpringUtil.getBean(CommonUserService.class).getNicknameById(Long.valueOf(memberId)));
+                String memberName = UserContextHolder.getNickname(Long.valueOf(memberId));
+                memberNames.add(memberName);
+            });
+            item.setMembers(memberNames);
+            item.setCreateUserString(UserContextHolder.getNickname(item.getCreateUser()));
+            item.setUpdateUserString(UserContextHolder.getNickname(item.getUpdateUser()));
+        });
+        return list;
+    }
+
+    @Override
+    public void deleteByIds(List<Long> ids) {
+        baseMapper.deleteByIds(ids);
+    }
+
+    @Override
+    public boolean isExists(String name, String abbreviate, Long id) {
+        return baseMapper.lambdaQuery()
+                .eq(ProjectConfigDO::getName, name)
+                .eq(ProjectConfigDO::getAbbreviate, abbreviate)
+                .eq(ProjectConfigDO::getDelFlag, 1)
+                .ne(null != id, ProjectConfigDO::getId, id)
+                .exists();
+    }
+}

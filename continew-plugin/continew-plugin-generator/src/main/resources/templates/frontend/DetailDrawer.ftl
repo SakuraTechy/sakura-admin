@@ -3,7 +3,9 @@
     <a-descriptions :column="2" size="large" class="general-description">
       <#list fieldConfigs as fieldConfig>
       <a-descriptions-item label="${fieldConfig.comment}">{{ dataDetail?.${fieldConfig.fieldName} }}</a-descriptions-item>
-      <#if fieldConfig.fieldName = 'status'>
+      <#if fieldConfig.fieldType = 'List<String>'>
+      <a-descriptions-item label="${fieldConfig.comment}"><GiCellTags :data="dataDetail?.${fieldConfig.fieldName}Names || []" /></a-descriptions-item>
+      <#elseif fieldConfig.fieldName = 'status'>
 <#--      <a-descriptions-item label="状态"><GiCellStatus :status="dataDetail?.status" /></a-descriptions-item>-->
       <a-descriptions-item label="状态">
         <a-tag v-if="dataDetail?.status === 1" color="green">启用</a-tag>

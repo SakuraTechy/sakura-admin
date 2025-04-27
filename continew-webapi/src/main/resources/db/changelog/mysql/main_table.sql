@@ -366,7 +366,7 @@ CREATE TABLE IF NOT EXISTS `project_config` (
     `id`           bigint NOT NULL AUTO_INCREMENT COMMENT '项目ID',
     `name`         varchar(30) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci  DEFAULT NULL COMMENT '项目名称',
     `abbreviate`   varchar(30) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci  DEFAULT NULL COMMENT '项目简称',
-    `members`      json                                                          DEFAULT NULL COMMENT '项目成员',
+    `member`      json                                                          DEFAULT NULL COMMENT '项目成员',
     `description`  varchar(255) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci DEFAULT NULL COMMENT '项目描述',
     `last_domain`  varchar(255) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci DEFAULT NULL COMMENT '项目域名',
     `last_version` varchar(255) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci DEFAULT NULL COMMENT '主线版本',

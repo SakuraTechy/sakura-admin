@@ -613,7 +613,7 @@ CREATE TABLE IF NOT EXISTS "project_config" (
                                              "id"          int8        NOT NULL,
                                              "name"       varchar(25) NOT NULL,
                                              "abbreviate"       varchar(25) NOT NULL,
-                                             "members"       varchar(25) NOT NULL,
+                                             "member"       varchar(25) NOT NULL,
                                              "phone"       varchar(25) NOT NULL,
                                              "phone"       varchar(25) NOT NULL,
                                              "params"      text        DEFAULT NULL,

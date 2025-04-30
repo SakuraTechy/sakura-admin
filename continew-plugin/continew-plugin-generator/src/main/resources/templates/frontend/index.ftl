@@ -98,14 +98,12 @@
           <template #default>导出</template>
         </a-button>
       </template>
-      <template #status="{ record }">
-        <GiCellStatus :status="record.status" />
-      </template>
       <#list fieldConfigs as fieldConfig>
       <#if fieldConfig.showInList>
       <#if fieldConfig.dictCode?? && fieldConfig.dictCode != "">
       <template #${fieldConfig.fieldName}="{ record }">
         <GiCellTag :value="record.${fieldConfig.fieldName}" :dict="${fieldConfig.dictCode}" />
+<#--        <GiCellStatus :status="record.status" />-->
       </template>
       </#if>
       </#if>
@@ -132,7 +130,7 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script setup lang="tsx">
 import type { TableInstance } from '@arco-design/web-vue'
 import ${classNamePrefix}AddModal from './${classNamePrefix}AddModal.vue'
 import ${classNamePrefix}DetailDrawer from './${classNamePrefix}DetailDrawer.vue'
@@ -155,7 +153,7 @@ const queryForm = reactive<${classNamePrefix}Query>({
   ${fieldConfig.fieldName}: undefined,
 </#if>
 </#list>
-  sort: ['id,desc']
+  sort: ['createTime,desc']
 })
 
 const {
@@ -169,6 +167,7 @@ const {
   handleDelete,
   handleExport,
 } = useTable((page) => list${classNamePrefix}({ ...queryForm, ...page }), { immediate: true })
+
 const columns: TableInstance['columns'] = [
 <#if fieldConfigs??>
   <#list fieldConfigs as fieldConfig>
@@ -185,6 +184,8 @@ const columns: TableInstance['columns'] = [
         )
       },
     },
+    <#elseif fieldConfig.fieldName=="status"  >
+    { title: '${fieldConfig.comment}', dataIndex: '${fieldConfig.fieldName}', slotName: '${fieldConfig.fieldName}', width: 120, ellipsis: true, tooltip: true, align: 'center' },
     <#elseif fieldConfig.fieldName=="createUser" >
     { title: '${fieldConfig.comment}', dataIndex: 'createUserString', slotName: '${fieldConfig.fieldName}', width: 120, ellipsis: true, tooltip: true },
     <#elseif fieldConfig.fieldName=="updateUser"  >

@@ -69,9 +69,10 @@ public class ProjectConfigDetailResp extends BaseDetailResp {
      * 项目成员
      */
     @Schema(description = "项目成员")
-    @ExcelProperty(value = "项目成员", converter = ExcelListConverter.class, order = 4)
     @Assemble(prop = ":memberNames", container = ContainerConstants.USER_NICKNAME, handlerType = ManyToManyAssembleOperationHandler.class)
     private List<String> member;
+
+    @ExcelProperty(value = "项目成员", converter = ExcelListConverter.class, order = 4)
     private List<String> memberNames;
 
     /**

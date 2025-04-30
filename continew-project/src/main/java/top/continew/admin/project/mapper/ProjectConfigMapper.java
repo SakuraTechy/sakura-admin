@@ -30,5 +30,5 @@ import top.continew.admin.project.model.entity.ProjectConfigDO;
  */
 @Mapper
 public interface ProjectConfigMapper extends BaseMapper<ProjectConfigDO> {
-    List<ProjectConfigDO> getProjectConfigById(Long id);
+    ProjectConfigDO getProjectConfigById(Long id);
 }

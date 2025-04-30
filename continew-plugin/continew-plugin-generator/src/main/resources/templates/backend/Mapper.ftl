@@ -14,5 +14,5 @@ import ${packageName}.model.entity.${classNamePrefix}DO;
 */
 @Mapper
 public interface ${className} extends BaseMapper<${classNamePrefix}DO> {
-    List<${classNamePrefix}DO> get${classNamePrefix}ById(Long id);
+    ${classNamePrefix}DO get${classNamePrefix}ById(Long id);
 }

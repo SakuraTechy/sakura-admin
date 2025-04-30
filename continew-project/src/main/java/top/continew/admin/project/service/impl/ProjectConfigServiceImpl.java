@@ -19,9 +19,13 @@ package top.continew.admin.project.service.impl;
 import java.util.List;
 import java.util.ArrayList;
 import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.core.bean.copier.CopyOptions;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import org.springframework.transaction.annotation.Transactional;
+import top.continew.admin.project.model.resp.ProjectVersionConfigDetailResp;
 import top.continew.starter.extension.crud.service.BaseServiceImpl;
 import top.continew.admin.common.context.UserContextHolder;
 import top.continew.admin.project.mapper.ProjectConfigMapper;
@@ -43,19 +47,19 @@ import top.continew.admin.project.service.ProjectConfigService;
 public class ProjectConfigServiceImpl extends BaseServiceImpl<ProjectConfigMapper, ProjectConfigDO, ProjectConfigResp, ProjectConfigDetailResp, ProjectConfigQuery, ProjectConfigReq> implements ProjectConfigService {
     @Override
     public List<ProjectConfigDetailResp> selectByIds(List<Long> ids) {
-        List<ProjectConfigDetailResp> list = BeanUtil.copyToList(baseMapper
-            .selectByIds(ids), ProjectConfigDetailResp.class);
-        list.forEach(item -> {
+        List<ProjectConfigDetailResp> list = BeanUtil.copyToList(baseMapper.selectByIds(ids), ProjectConfigDetailResp.class);
+        for (ProjectConfigDetailResp item : list) {
             List<String> memberNames = new ArrayList<>();
+            List<String> updateUserString = new ArrayList<>();
             item.getMember().forEach(memberId -> {
-                //                String memberName1 = ExceptionUtils.exToNull(() -> SpringUtil.getBean(CommonUserService.class).getNicknameById(Long.valueOf(memberId)));
+//                String memberName1 = ExceptionUtils.exToNull(() -> SpringUtil.getBean(CommonUserService.class).getNicknameById(Long.valueOf(memberId)));
                 String memberName = UserContextHolder.getNickname(Long.valueOf(memberId));
                 memberNames.add(memberName);
             });
-            item.setMember(memberNames);
+            item.setMemberNames(memberNames);
             item.setCreateUserString(UserContextHolder.getNickname(item.getCreateUser()));
             item.setUpdateUserString(UserContextHolder.getNickname(item.getUpdateUser()));
-        });
+        };
         return list;
     }
 

@@ -23,6 +23,8 @@ import top.continew.admin.common.context.UserContextHolder;
 import top.continew.admin.common.model.entity.BaseDO;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * MyBatis Plus 元对象处理器配置（插入或修改时自动填充）
@@ -87,6 +89,13 @@ public class MyBatisPlusMetaObjectHandler implements MetaObjectHandler {
         if (metaObject.getOriginalObject() instanceof BaseDO baseDO) {
             // 继承了 BaseDO 的类，填充修改信息
             baseDO.setUpdateUser(updateUser);
+//            List<String> updateUserList = new ArrayList<>(baseDO.getUpdateUser() == null ? new ArrayList<>() : baseDO.getUpdateUser());
+//            // 只有当列表中不包含该用户ID时才添加
+//            String userId = String.valueOf(UserContextHolder.getUserId());
+//            if (!updateUserList.contains(userId)) {
+//                updateUserList.add(userId);
+//            }
+//            baseDO.setUpdateUser(updateUserList);
             baseDO.setUpdateTime(updateTime);
         } else {
             // 未继承 BaseDO 的类，根据类中拥有的修改信息字段进行填充，不存在修改信息字段不进行填充

@@ -6,7 +6,11 @@ export interface ${classNamePrefix}Resp {
 <#if fieldConfigs??>
 <#list fieldConfigs as fieldConfig>
   <#if fieldConfig.showInList>
+  <#if fieldConfig.fieldType == 'Integer'>
+  ${fieldConfig.fieldName}: number
+  <#else>
   ${fieldConfig.fieldName}: string
+  </#if>
   </#if>
 </#list>
   createUserString: string
@@ -17,7 +21,11 @@ export interface ${classNamePrefix}Resp {
 export interface ${classNamePrefix}DetailResp {
 <#if fieldConfigs??>
 <#list fieldConfigs as fieldConfig>
+  <#if fieldConfig.fieldType == 'Integer'>
+  ${fieldConfig.fieldName}: number
+  <#else>
   ${fieldConfig.fieldName}: string
+  </#if>
 </#list>
   createUserString: string
   updateUserString: string
@@ -27,7 +35,11 @@ export interface ${classNamePrefix}Query {
 <#if fieldConfigs??>
 <#list fieldConfigs as fieldConfig>
   <#if fieldConfig.showInQuery>
+  <#if fieldConfig.fieldType == 'Integer'>
+  ${fieldConfig.fieldName}: number | undefined
+  <#else>
   ${fieldConfig.fieldName}: string | undefined
+  </#if>
   </#if>
 </#list>
 </#if>

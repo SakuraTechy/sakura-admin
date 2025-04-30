@@ -20,7 +20,7 @@ public interface ${className} extends BaseService<${classNamePrefix}Resp, ${clas
      *
      * @param ids ID 列表
      */
-    List<ProjectConfigDetailResp> selectByIds(List<Long> ids);
+    List<${classNamePrefix}DetailResp> selectByIds(List<Long> ids);
 
     /**
      * 根据 ID 删除
@@ -30,12 +30,12 @@ public interface ${className} extends BaseService<${classNamePrefix}Resp, ${clas
     void deleteByIds(List<Long> ids);
 
     /**
-     * 根据项目名称和简称，判断项目是否存在
+     * 根据参数一和参数二，判断项目是否存在
      *
-     * @param name 项目名称
-     * @param abbreviate 项目简称
+     * @param param1 项目名称
+     * @param param2 项目简称
      * @param id   ID
      * @return true：存在；false：不存在
      */
-    boolean isExists(String name, String abbreviate, Long id);
+    boolean isExists(Object param1, Object param2, Long id);
 }

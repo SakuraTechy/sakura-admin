@@ -16,7 +16,6 @@ import top.continew.admin.common.enums.DisEnableStatusEnum;
 import ${className};
     </#list>
 </#if>
-
 <#if hasTimeField>
 import java.time.*;
 </#if>

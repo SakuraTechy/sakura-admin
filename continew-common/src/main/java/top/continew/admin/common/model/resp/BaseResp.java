@@ -19,6 +19,7 @@ package top.continew.admin.common.model.resp;
 import cn.crane4j.annotation.Assemble;
 import cn.crane4j.annotation.Mapping;
 import cn.crane4j.annotation.condition.ConditionOnPropertyNotNull;
+import cn.crane4j.core.executor.handler.ManyToManyAssembleOperationHandler;
 import com.alibaba.excel.annotation.ExcelProperty;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -29,6 +30,7 @@ import top.continew.admin.common.constant.ContainerConstants;
 import java.io.Serial;
 import java.io.Serializable;
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * 响应参数基类
@@ -71,27 +73,28 @@ public class BaseResp implements Serializable {
     @ExcelProperty(value = "创建时间", order = Integer.MAX_VALUE - 3)
     private LocalDateTime createTime;
 
-    //    /**
-    //     * 修改人
-    //     */
-    //    @JsonIgnore
-    //    @ConditionOnPropertyNotNull
-    //    @Assemble(container = ContainerConstants.USER_NICKNAME, props = @Mapping(ref = "updateUserString"))
-    //    private Long updateUser;
-    //
-    //    /**
-    //     * 修改人
-    //     */
-    //    @Schema(description = "修改人", example = "李四")
-    //    @ExcelProperty(value = "修改人", order = Integer.MAX_VALUE - 2)
-    //    private String updateUserString;
-    //
-    //    /**
-    //     * 修改时间
-    //     */
-    //    @Schema(description = "修改时间", example = "2023-08-08 08:08:08", type = "string")
-    //    @ExcelProperty(value = "修改时间", order = Integer.MAX_VALUE - 1)
-    //    private LocalDateTime updateTime;
+    /**
+     * 修改人
+     */
+    @JsonIgnore
+    @ConditionOnPropertyNotNull
+//    @Assemble(container = ContainerConstants.USER_NICKNAME, props = @Mapping(ref = "updateUserString"))
+    @Assemble(prop = ":updateUserString", container = ContainerConstants.USER_NICKNAME, handlerType = ManyToManyAssembleOperationHandler.class)
+    private Long updateUser;
+
+    /**
+     * 修改人
+     */
+    @Schema(description = "修改人", example = "李四")
+    @ExcelProperty(value = "修改人", order = Integer.MAX_VALUE - 2)
+    private String updateUserString;
+
+    /**
+     * 修改时间
+     */
+    @Schema(description = "修改时间", example = "2023-08-08 08:08:08", type = "string")
+    @ExcelProperty(value = "修改时间", order = Integer.MAX_VALUE - 1)
+    private LocalDateTime updateTime;
 
     /**
      * 是否禁用修改

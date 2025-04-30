@@ -26,8 +26,8 @@ import ${packageName}.service.${classNamePrefix}Service;
 @RequiredArgsConstructor
 public class ${className} extends BaseServiceImpl<${classNamePrefix}Mapper, ${classNamePrefix}DO, ${classNamePrefix}Resp, ${classNamePrefix}DetailResp, ${classNamePrefix}Query, ${classNamePrefix}Req> implements ${classNamePrefix}Service {
     @Override
-    public List<ProjectConfigDetailResp> selectByIds(List<Long> ids) {
-        List<ProjectConfigDetailResp> list = BeanUtil.copyToList(baseMapper.selectByIds(ids), ProjectConfigDetailResp.class);
+    public List<${classNamePrefix}DetailResp> selectByIds(List<Long> ids) {
+        List<${classNamePrefix}DetailResp> list = BeanUtil.copyToList(baseMapper.selectByIds(ids), ${classNamePrefix}DetailResp.class);
         list.forEach(item -> {
             List<String> memberNames = new ArrayList<>();
             item.getMembers().forEach(memberId -> {
@@ -48,12 +48,12 @@ public class ${className} extends BaseServiceImpl<${classNamePrefix}Mapper, ${cl
     }
 
     @Override
-    public boolean isExists(String name, String abbreviate, Long id) {
+    public boolean isExists(Object param1, Object param2, Long id) {
         return baseMapper.lambdaQuery()
-                .eq(ProjectConfigDO::getName, name)
-                .eq(ProjectConfigDO::getAbbreviate, abbreviate)
-                .eq(ProjectConfigDO::getDelFlag, 1)
-                .ne(null != id, ProjectConfigDO::getId, id)
+                .eq(${classNamePrefix}DO::getName, param1)
+                .eq(${classNamePrefix}DO::getAbbreviate, param2)
+                .eq(${classNamePrefix}DO::getDelFlag, 1)
+                .ne(null != id, ${classNamePrefix}DO::getId, id)
                 .exists();
     }
 }

@@ -41,11 +41,11 @@ import top.continew.starter.file.excel.util.ExcelUtils;
 @RestController
 @RequiredArgsConstructor
 @CrudRequestMapping(value = "/${apiModuleName}/${apiName}", api = {Api.PAGE, Api.GET, Api.CREATE, Api.UPDATE, Api.DELETE, Api.EXPORT})
-public class ProjectConfigController extends BaseController<ProjectConfigService, ProjectConfigResp, ProjectConfigDetailResp, ProjectConfigQuery, ProjectConfigReq> {
+public class ${className} extends BaseController<${classNamePrefix}Service, ${classNamePrefix}Resp, ${classNamePrefix}DetailResp, ${classNamePrefix}Query, ${classNamePrefix}Req> {
     @Override
     @Operation(summary = "新增数据", description = "新增数据")
-    @SaCheckPermission("project:projectConfig:create")
-    public BaseIdResp<Long> create(@Validated(CrudValidationGroup.Create.class) @RequestBody ProjectConfigReq req) {
+    @SaCheckPermission("project:${classNamePrefix}:create")
+    public BaseIdResp<Long> create(@Validated(CrudValidationGroup.Create.class) @RequestBody ${classNamePrefix}Req req) {
         String name = req.getName();
         String abbreviate = req.getAbbreviate();
         CheckUtils.throwIf(baseService.isExists(name, abbreviate,null), "新增失败，项目 [{}] 已存在", name, abbreviate);
@@ -54,8 +54,8 @@ public class ProjectConfigController extends BaseController<ProjectConfigService
 
     @Override
     @Operation(summary = "修改数据", description = "修改数据")
-    @SaCheckPermission("project:projectConfig:update")
-    public void update(@Validated(CrudValidationGroup.Update.class) @RequestBody ProjectConfigReq req, @PathVariable("id") Long id) {
+    @SaCheckPermission("project:${classNamePrefix}:update")
+    public void update(@Validated(CrudValidationGroup.Update.class) @RequestBody ${classNamePrefix}Req req, @PathVariable("id") Long id) {
         String name = req.getName();
         String abbreviate = req.getAbbreviate();
         CheckUtils.throwIf(baseService.isExists(name, abbreviate, id), "修改失败，项目 [{}] 已存在", name, abbreviate);
@@ -64,11 +64,11 @@ public class ProjectConfigController extends BaseController<ProjectConfigService
 
     @Operation(summary = "删除数据", description = "根据ID列表删除数据")
     @Parameter(name = "ids", description = "逗号分隔的ID列表", example = "1,2", in = ParameterIn.PATH)
-    @SaCheckPermission("project:projectConfig:delete")
+    @SaCheckPermission("project:${classNamePrefix}:delete")
     @DeleteMapping("/{ids}")
     public void delete(@PathVariable List<Long> ids) {
 //        baseService.deleteByIds(ids);
-        ProjectConfigReq req = new ProjectConfigReq();
+        ${classNamePrefix}Req req = new ${classNamePrefix}Req();
         ids.forEach(id -> {
             req.setDelFlag(0);
             super.update(req, id);
@@ -77,9 +77,9 @@ public class ProjectConfigController extends BaseController<ProjectConfigService
 
     @Operation(summary = "导出数据", description = "根据ID列表导出数据")
     @Parameter(name = "ids", description = "逗号分隔的ID列表", example = "1,2", in = ParameterIn.PATH)
-    @SaCheckPermission("project:projectConfig:export")
+    @SaCheckPermission("project:${classNamePrefix}:export")
     @GetMapping("/export")
-    public void export(@Validated ProjectConfigQuery query, @Validated SortQuery sortQuery, HttpServletResponse response) {
+    public void export(@Validated ${classNamePrefix}Query query, @Validated SortQuery sortQuery, HttpServletResponse response) {
         try {
             String idStr = Objects.requireNonNull(query.getId(), "ID string is null");
             List<Long> ids = Arrays.stream(idStr.split(","))
@@ -88,8 +88,8 @@ public class ProjectConfigController extends BaseController<ProjectConfigService
                     .map(Long::parseLong)
                     .toList();
             if (!ids.isEmpty() && query.getName().equals("批量选择导出")) {
-                List<ProjectConfigDetailResp> list = baseService.selectByIds(ids);
-                ExcelUtils.export(list, "导出数据", ProjectConfigDetailResp.class, response);
+                List<${classNamePrefix}DetailResp> list = baseService.selectByIds(ids);
+                ExcelUtils.export(list, "导出数据", ${classNamePrefix}DetailResp.class, response);
             }else{
                 throw new IllegalArgumentException("No valid IDs provided");
             }

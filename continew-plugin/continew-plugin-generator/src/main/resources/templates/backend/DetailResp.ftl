@@ -49,9 +49,10 @@ public class ${className} extends BaseDetailResp {
      */
     @Schema(description = "${fieldConfig.comment}")
     <#if fieldConfig.fieldType = 'List<String>'>
-    @ExcelProperty(value = "${fieldConfig.comment}", converter = ExcelListConverter.class, order = ${orderNumber})
     @Assemble(prop = ":${fieldConfig.fieldName}Names", container = ContainerConstants.USER_NICKNAME, handlerType = ManyToManyAssembleOperationHandler.class)
     private ${fieldConfig.fieldType} ${fieldConfig.fieldName};
+
+    @ExcelProperty(value = "${fieldConfig.comment}", converter = ExcelListConverter.class, order = ${orderNumber})
     private ${fieldConfig.fieldType} ${fieldConfig.fieldName}Names;
     <#elseif fieldConfig.fieldName = 'status'>
     @ExcelProperty(value = "${fieldConfig.comment}", converter = ExcelBaseEnumConverter.class, order = ${orderNumber})

@@ -18,11 +18,13 @@ package top.continew.admin.common.model.entity;
 
 import com.baomidou.mybatisplus.annotation.FieldFill;
 import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
 import lombok.Data;
 import top.continew.starter.extension.crud.model.entity.BaseIdDO;
 
 import java.io.Serial;
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * 实体类基类
@@ -53,6 +55,8 @@ public class BaseDO extends BaseIdDO {
      */
     @TableField(fill = FieldFill.UPDATE)
     private Long updateUser;
+//    @TableField(typeHandler = JacksonTypeHandler.class, fill = FieldFill.UPDATE)
+//    private List<String> updateUser;
 
     /**
      * 修改时间

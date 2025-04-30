@@ -37,6 +37,8 @@ import top.continew.admin.system.model.entity.FileDO;
 import top.continew.admin.system.model.entity.StorageDO;
 import top.continew.starter.core.constant.StringConstants;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -98,6 +100,9 @@ public class FileRecorderImpl implements FileRecorder {
         file.setThumbnailMetadata(JSONUtil.toJsonStr(fileInfo.getThMetadata()));
         file.setStorageId(storage.getId());
         file.setCreateTime(DateUtil.toLocalDateTime(fileInfo.getCreateTime()));
+//        List<String> updateUser =  new java.util.ArrayList<>();
+//        updateUser.add(String.valueOf(UserContextHolder.getUserId()));
+//        file.setUpdateUser(updateUser);
         file.setUpdateUser(UserContextHolder.getUserId());
         file.setUpdateTime(file.getCreateTime());
         fileMapper.insert(file);

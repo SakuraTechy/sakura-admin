@@ -39,8 +39,6 @@ const { <#list dictCodes as dictCode>${dictCode}<#if dictCode_has_next>,</#if></
 </#if>
 
 const [form, resetForm] = useResetReactive({
-  // todo 待补充
-  member: [],
   status: 1,
 })
 

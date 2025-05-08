@@ -8,8 +8,9 @@
       <#elseif fieldConfig.fieldName = 'status'>
 <#--      <a-descriptions-item label="状态"><GiCellStatus :status="dataDetail?.status" /></a-descriptions-item>-->
       <a-descriptions-item label="状态">
-        <a-tag v-if="dataDetail?.status === 1" color="green">启用</a-tag>
-        <a-tag v-else color="red">禁用</a-tag>
+<#--        <a-tag v-if="dataDetail?.status === 1" color="green">启用</a-tag>-->
+<#--        <a-tag v-else color="red">禁用</a-tag>-->
+        <GiCellTag :value="dataDetail?.status" :dict="status_type" />
       </a-descriptions-item>
       <#elseif fieldConfig.fieldName = 'createUser'>
       <a-descriptions-item label="创建人">{{ dataDetail?.createUserString }}</a-descriptions-item>
@@ -24,6 +25,9 @@
 <script setup lang="ts">
 import { useWindowSize } from '@vueuse/core'
 import { type ${classNamePrefix}DetailResp, get${classNamePrefix} as getDetail } from '@/apis/${apiModuleName}/${apiName}'
+import { useDict } from '@/hooks/app'
+
+const { status_type } = useDict('status_type')
 
 const { width } = useWindowSize()
 

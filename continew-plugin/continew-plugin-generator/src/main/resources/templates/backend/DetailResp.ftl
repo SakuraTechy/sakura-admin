@@ -48,7 +48,7 @@ public class ${className} extends BaseDetailResp {
      * ${fieldConfig.comment}
      */
     @Schema(description = "${fieldConfig.comment}")
-    <#if fieldConfig.fieldType = 'List<String>'>
+    <#if fieldConfig.fieldType = 'List<Object>'>
     @Assemble(prop = ":${fieldConfig.fieldName}Names", container = ContainerConstants.USER_NICKNAME, handlerType = ManyToManyAssembleOperationHandler.class)
     private ${fieldConfig.fieldType} ${fieldConfig.fieldName};
 

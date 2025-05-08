@@ -58,7 +58,7 @@ const fetchUserList = async () => {
 </#if>
 </#list>
 
-const columns: ColumnItem[] = reactive([
+const columns = computed<ColumnItem[]>(() => [
 <#list fieldConfigs as fieldConfig>
   <#if fieldConfig.showInForm>
   {
@@ -125,7 +125,7 @@ const columns: ColumnItem[] = reactive([
     },
     <#elseif fieldConfig.fieldName = 'status'>
     props: {
-      options: <#list dictCodes as dictCode>${dictCode}<#if dictCode_has_next>,</#if></#list>,
+      options: <#list dictCodes as dictCode>${dictCode}.value<#if dictCode_has_next>,</#if></#list>,
       type: 'round',
       checkedValue: 1,
       uncheckedValue: 2,
@@ -134,7 +134,7 @@ const columns: ColumnItem[] = reactive([
     },
     <#elseif fieldConfig.dictCode?? && fieldConfig.dictCode != ''>
     props: {
-      options: ${fieldConfig.dictCode},
+      options: ${fieldConfig.dictCode}.value,
     },
     </#if>
   },

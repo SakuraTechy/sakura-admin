@@ -41,7 +41,7 @@ public class ${className} extends BaseDO {
     /**
      * ${fieldConfig.comment}
      */
-    <#if fieldConfig.fieldType = 'List<String>'>
+    <#if fieldConfig.fieldType = 'List<Object>'>
     @TableField(typeHandler = JacksonTypeHandler.class)
     private ${fieldConfig.fieldType} ${fieldConfig.fieldName};
     <#elseif fieldConfig.fieldName = 'status'>

@@ -46,9 +46,10 @@ public class ${className} extends BaseController<${classNamePrefix}Service, ${cl
     @Operation(summary = "新增数据", description = "新增数据")
     @SaCheckPermission("project:${classNamePrefix}:create")
     public BaseIdResp<Long> create(@Validated(CrudValidationGroup.Create.class) @RequestBody ${classNamePrefix}Req req) {
-        String name = req.getName();
-        String abbreviate = req.getAbbreviate();
-        CheckUtils.throwIf(baseService.isExists(name, abbreviate,null), "新增失败，项目 [{}] 已存在", name, abbreviate);
+        Object projectId = req.getProjectId();
+        Object ip = req.getIp();
+        Object port = req.getPort();
+        CheckUtils.throwIf(baseService.isExists(null, projectId, ip, port), "修改失败，项目 [{}] 已存在", projectId, ip, port);
         return super.create(req);
     }
 
@@ -56,9 +57,10 @@ public class ${className} extends BaseController<${classNamePrefix}Service, ${cl
     @Operation(summary = "修改数据", description = "修改数据")
     @SaCheckPermission("project:${classNamePrefix}:update")
     public void update(@Validated(CrudValidationGroup.Update.class) @RequestBody ${classNamePrefix}Req req, @PathVariable("id") Long id) {
-        String name = req.getName();
-        String abbreviate = req.getAbbreviate();
-        CheckUtils.throwIf(baseService.isExists(name, abbreviate, id), "修改失败，项目 [{}] 已存在", name, abbreviate);
+        Object projectId = req.getProjectId();
+        Object ip = req.getIp();
+        Object port = req.getPort();
+        CheckUtils.throwIf(baseService.isExists(id, projectId, ip, port), "修改失败，项目 [{}] 已存在", projectId, ip, port);
         super.update(req, id);
     }
 
@@ -81,7 +83,7 @@ public class ${className} extends BaseController<${classNamePrefix}Service, ${cl
     @GetMapping("/export")
     public void export(@Validated ${classNamePrefix}Query query, @Validated SortQuery sortQuery, HttpServletResponse response) {
         try {
-            String idStr = Objects.requireNonNull(query.getId(), "ID string is null");
+            String idStr = String.valueOf(Objects.requireNonNull(query.getId(), "ID string is null"));
             List<Long> ids = Arrays.stream(idStr.split(","))
                     .map(String::trim)
                     .filter(s -> !s.isEmpty())

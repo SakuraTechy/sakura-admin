@@ -30,6 +30,7 @@
           :options="${fieldConfig.dictCode!"default_value"}"
           placeholder="请选择${fieldConfig.comment}"
           allow-clear
+          allow-search
           style="width: 150px"
           @change="search"
         />
@@ -68,7 +69,7 @@
         />
         </#if>
 	  <#else>
-	    <a-input-search v-model="queryForm.${fieldConfig.fieldName}" placeholder="请输入${fieldConfig.comment}" allow-clear @search="search" />
+	      <a-input-search v-model="queryForm.${fieldConfig.fieldName}" placeholder="请输入${fieldConfig.comment}" allow-clear @search="search" />
       </#if>
       </#if>
       </#list>
@@ -134,7 +135,7 @@
 import type { TableInstance } from '@arco-design/web-vue'
 import ${classNamePrefix}AddModal from './${classNamePrefix}AddModal.vue'
 import ${classNamePrefix}DetailDrawer from './${classNamePrefix}DetailDrawer.vue'
-import { type ${classNamePrefix}Resp, type ${classNamePrefix}Query, delete${classNamePrefix}, export${classNamePrefix}, list${classNamePrefix} } from '@/apis/${apiModuleName}/${apiName}'
+import { type ${classNamePrefix}Query, type ${classNamePrefix}Resp, delete${classNamePrefix}, export${classNamePrefix}, list${classNamePrefix} } from '@/apis/${apiModuleName}/${apiName}'
 import { useDownload, useTable } from '@/hooks'
 import { useDict } from '@/hooks/app'
 import { isMobile } from '@/utils'

@@ -48,10 +48,11 @@ public class ${className} extends BaseServiceImpl<${classNamePrefix}Mapper, ${cl
     }
 
     @Override
-    public boolean isExists(Object param1, Object param2, Long id) {
+    public boolean isExists(Long id, Object param1, Object param2, Object... param3) {
         return baseMapper.lambdaQuery()
-                .eq(${classNamePrefix}DO::getName, param1)
-                .eq(${classNamePrefix}DO::getAbbreviate, param2)
+                .eq(${classNamePrefix}DO::getProjectId, param1)
+                .eq(${classNamePrefix}DO::getIp, param2)
+                .eq(${classNamePrefix}DO::getPort, param3)
                 .eq(${classNamePrefix}DO::getDelFlag, 1)
                 .ne(null != id, ${classNamePrefix}DO::getId, id)
                 .exists();

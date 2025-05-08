@@ -37,5 +37,5 @@ public interface ${className} extends BaseService<${classNamePrefix}Resp, ${clas
      * @param id   ID
      * @return true：存在；false：不存在
      */
-    boolean isExists(Object param1, Object param2, Long id);
+    boolean isExists(Long id, Object param1, Object param2, Object... param3);
 }

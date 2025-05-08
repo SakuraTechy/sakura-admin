@@ -51,7 +51,7 @@ public class ${className} implements Serializable {
     <#if fieldConfig.fieldType = 'String' && fieldConfig.columnSize??>
     @Length(max = ${fieldConfig.columnSize?c}, message = "${fieldConfig.comment}长度不能超过 {max} 个字符")
     </#if>
-    <#if fieldConfig.fieldType = 'List<String>'>
+    <#if fieldConfig.fieldType = 'List<Object>'>
     @NotEmpty(message = "${fieldConfig.comment}不能为空")
     @Size(max = 10, message = "${fieldConfig.comment}最多支持 {max} 人")
     private ${fieldConfig.fieldType} ${fieldConfig.fieldName};

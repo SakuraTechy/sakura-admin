@@ -6,7 +6,14 @@ export interface ${classNamePrefix}Resp {
 <#if fieldConfigs??>
 <#list fieldConfigs as fieldConfig>
   <#if fieldConfig.showInList>
-  <#if fieldConfig.fieldType == 'Integer'>
+  <#if fieldConfig.fieldType = 'List<Object>'>
+  ${fieldConfig.fieldName}: Array<object>
+  <#elseif fieldConfig.fieldName = 'configList'>
+  ${fieldConfig.fieldName}?: [{
+    paramsName: string
+    paramsValue: string
+  }]
+  <#elseif fieldConfig.fieldType == 'Integer'>
   ${fieldConfig.fieldName}: number
   <#else>
   ${fieldConfig.fieldName}: string
@@ -21,7 +28,14 @@ export interface ${classNamePrefix}Resp {
 export interface ${classNamePrefix}DetailResp {
 <#if fieldConfigs??>
 <#list fieldConfigs as fieldConfig>
-  <#if fieldConfig.fieldType == 'Integer'>
+  <#if fieldConfig.fieldType = 'List<Object>'>
+  ${fieldConfig.fieldName}: Array<object>
+  <#elseif fieldConfig.fieldName = 'configList'>
+  ${fieldConfig.fieldName}?: [{
+    paramsName: string
+    paramsValue: string
+  }]
+  <#elseif fieldConfig.fieldType == 'Integer'>
   ${fieldConfig.fieldName}: number
   <#else>
   ${fieldConfig.fieldName}: string

@@ -30,7 +30,6 @@ import top.continew.admin.common.constant.ContainerConstants;
 import java.io.Serial;
 import java.io.Serializable;
 import java.time.LocalDateTime;
-import java.util.List;
 
 /**
  * 响应参数基类
@@ -78,7 +77,7 @@ public class BaseResp implements Serializable {
      */
     @JsonIgnore
     @ConditionOnPropertyNotNull
-//    @Assemble(container = ContainerConstants.USER_NICKNAME, props = @Mapping(ref = "updateUserString"))
+    //    @Assemble(container = ContainerConstants.USER_NICKNAME, props = @Mapping(ref = "updateUserString"))
     @Assemble(prop = ":updateUserString", container = ContainerConstants.USER_NICKNAME, handlerType = ManyToManyAssembleOperationHandler.class)
     private Long updateUser;
 

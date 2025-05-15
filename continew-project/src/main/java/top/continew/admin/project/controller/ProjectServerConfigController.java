@@ -1,5 +1,20 @@
-package top.continew.admin.project.controller;
+/*
+ * Copyright (c) 2022-present Charles7c Authors. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
+package top.continew.admin.project.controller;
 
 import java.util.List;
 import java.util.Arrays;
@@ -40,7 +55,8 @@ import top.continew.starter.file.excel.util.ExcelUtils;
 @Tag(name = "项目管理-服务器配置管理 API")
 @RestController
 @RequiredArgsConstructor
-@CrudRequestMapping(value = "/project/projectServerConfig", api = {Api.PAGE, Api.GET, Api.CREATE, Api.UPDATE, Api.DELETE, Api.EXPORT})
+@CrudRequestMapping(value = "/project/projectServerConfig", api = {Api.PAGE, Api.GET, Api.CREATE, Api.UPDATE,
+    Api.DELETE, Api.EXPORT})
 public class ProjectServerConfigController extends BaseController<ProjectServerConfigService, ProjectServerConfigResp, ProjectServerConfigDetailResp, ProjectServerConfigQuery, ProjectServerConfigReq> {
     @Override
     @Operation(summary = "新增数据", description = "新增数据")
@@ -49,18 +65,21 @@ public class ProjectServerConfigController extends BaseController<ProjectServerC
         Object projectId = req.getProjectId();
         Object ip = req.getIp();
         Object port = req.getPort();
-        CheckUtils.throwIf(baseService.isExists(null, projectId, ip, port), "新增失败，该项目环境下服务器配置 [{}] 已存在", projectId, ip, port);
+        CheckUtils.throwIf(baseService
+            .isExists(null, projectId, ip, port), "新增失败，该项目环境下服务器配置 [{}] 已存在", projectId, ip, port);
         return super.create(req);
     }
 
     @Override
     @Operation(summary = "修改数据", description = "修改数据")
     @SaCheckPermission("project:ProjectServerConfig:update")
-    public void update(@Validated(CrudValidationGroup.Update.class) @RequestBody ProjectServerConfigReq req, @PathVariable("id") Long id) {
+    public void update(@Validated(CrudValidationGroup.Update.class) @RequestBody ProjectServerConfigReq req,
+                       @PathVariable("id") Long id) {
         Object projectId = req.getProjectId();
         Object ip = req.getIp();
         Object port = req.getPort();
-        CheckUtils.throwIf(baseService.isExists(id, projectId, ip, port), "修改失败，该项目环境下服务器配置 [{}] 已存在", projectId, ip, port);
+        CheckUtils.throwIf(baseService
+            .isExists(id, projectId, ip, port), "修改失败，该项目环境下服务器配置 [{}] 已存在", projectId, ip, port);
         super.update(req, id);
     }
 
@@ -69,7 +88,7 @@ public class ProjectServerConfigController extends BaseController<ProjectServerC
     @SaCheckPermission("project:ProjectServerConfig:delete")
     @DeleteMapping("/{ids}")
     public void delete(@PathVariable List<Long> ids) {
-//        baseService.deleteByIds(ids);
+        //        baseService.deleteByIds(ids);
         ProjectServerConfigReq req = new ProjectServerConfigReq();
         ids.forEach(id -> {
             req.setDelFlag(0);
@@ -81,18 +100,20 @@ public class ProjectServerConfigController extends BaseController<ProjectServerC
     @Parameter(name = "ids", description = "逗号分隔的ID列表", example = "1,2", in = ParameterIn.PATH)
     @SaCheckPermission("project:ProjectServerConfig:export")
     @GetMapping("/export")
-    public void export(@Validated ProjectServerConfigQuery query, @Validated SortQuery sortQuery, HttpServletResponse response) {
+    public void export(@Validated ProjectServerConfigQuery query,
+                       @Validated SortQuery sortQuery,
+                       HttpServletResponse response) {
         try {
             String idStr = String.valueOf(Objects.requireNonNull(query.getId(), "ID string is null"));
             List<Long> ids = Arrays.stream(idStr.split(","))
-                    .map(String::trim)
-                    .filter(s -> !s.isEmpty())
-                    .map(Long::parseLong)
-                    .toList();
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .map(Long::parseLong)
+                .toList();
             if (!ids.isEmpty() && query.getIp().equals("批量选择导出")) {
                 List<ProjectServerConfigDetailResp> list = baseService.selectByIds(ids);
                 ExcelUtils.export(list, "导出数据", ProjectServerConfigDetailResp.class, response);
-            }else{
+            } else {
                 throw new IllegalArgumentException("No valid IDs provided");
             }
         } catch (NumberFormatException e) {
@@ -100,5 +121,13 @@ public class ProjectServerConfigController extends BaseController<ProjectServerC
         } catch (Exception e) {
             baseService.export(query, sortQuery, response);
         }
+    }
+
+    @Operation(summary = "测试服务器配置信息", description = "测试服务器配置信息")
+    @SaCheckPermission("project:ProjectServerConfig:get")
+    @PostMapping("/test")
+    public void test(@RequestBody @Validated ProjectServerConfigReq projectServerConfigReq) {
+        boolean isConnected = baseService.testServer(projectServerConfigReq);
+        CheckUtils.throwIf(!isConnected, "服务器连接失败，请检查环境及用户名密码是否正确且开启远程连接权限！");
     }
 }

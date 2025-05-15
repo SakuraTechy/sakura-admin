@@ -29,7 +29,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import top.continew.admin.common.constant.ContainerConstants;
 import top.continew.admin.common.enums.DisEnableStatusEnum;
 import top.continew.admin.common.model.resp.BaseDetailResp;
-import top.continew.admin.common.model.resp.BaseResp;
 
 /**
  * 项目配置信息

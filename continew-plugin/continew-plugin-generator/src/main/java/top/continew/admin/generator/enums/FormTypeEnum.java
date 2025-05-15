@@ -88,7 +88,12 @@ public enum FormTypeEnum implements BaseEnum<Integer> {
     /**
      * 时间框
      */
-    DATE_TIME(12, "日期时间框"),;
+    DATE_TIME(12, "日期时间框"),
+
+    /**
+     * 自定义
+     */
+    CUSTOM(13, "自定义"),;
 
     private final Integer value;
     private final String description;

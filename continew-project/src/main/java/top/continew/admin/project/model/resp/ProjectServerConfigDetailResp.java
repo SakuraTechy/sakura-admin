@@ -1,3 +1,19 @@
+/*
+ * Copyright (c) 2022-present Charles7c Authors. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package top.continew.admin.project.model.resp;
 
 import cn.crane4j.annotation.AssembleMethod;
@@ -5,7 +21,6 @@ import cn.crane4j.annotation.ContainerMethod;
 import cn.crane4j.annotation.Mapping;
 import cn.crane4j.annotation.condition.ConditionOnExpression;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
 
 import java.io.Serial;
 import java.util.List;
@@ -15,12 +30,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import com.alibaba.excel.annotation.ExcelProperty;
 import com.alibaba.excel.annotation.ExcelIgnoreUnannotated;
 
-import cn.crane4j.annotation.Assemble;
-import cn.crane4j.core.executor.handler.ManyToManyAssembleOperationHandler;
-
 import top.continew.admin.common.config.excel.DictExcelProperty;
 import top.continew.admin.common.config.excel.ExcelDictConverter;
-import top.continew.admin.common.constant.ContainerConstants;
 import top.continew.admin.common.enums.DisEnableStatusEnum;
 import top.continew.admin.common.model.resp.BaseDetailResp;
 import top.continew.admin.project.service.ProjectConfigService;
@@ -58,7 +69,7 @@ public class ProjectServerConfigDetailResp extends BaseDetailResp {
      * 服务器类型
      */
     @Schema(description = "服务器类型")
-    @ExcelProperty(value = "类型", converter = ExcelDictConverter.class, order = 3)
+    @ExcelProperty(value = "服务器类型", converter = ExcelDictConverter.class, order = 3)
     @DictExcelProperty("server_type")
     private String type;
 
@@ -81,7 +92,7 @@ public class ProjectServerConfigDetailResp extends BaseDetailResp {
      */
     @Schema(description = "服务器端口")
     @ExcelProperty(value = "服务器端口", order = 6)
-    private Long port;
+    private Integer port;
 
     /**
      * 服务器用户名
@@ -110,7 +121,6 @@ public class ProjectServerConfigDetailResp extends BaseDetailResp {
     @Schema(description = "服务器参数配置")
     @ExcelProperty(value = "服务器参数配置", converter = ExcelListConverter.class, order = 10)
     private List<Object> configList;
-
 
     /**
      * 状态

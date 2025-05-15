@@ -3,8 +3,16 @@
     <a-descriptions :column="2" size="large" class="general-description">
       <#list fieldConfigs as fieldConfig>
       <a-descriptions-item label="${fieldConfig.comment}">{{ dataDetail?.${fieldConfig.fieldName} }}</a-descriptions-item>
-      <#if fieldConfig.fieldType = 'List<String>'>
+      <#if fieldConfig.fieldType = 'List<Object>'>
       <a-descriptions-item label="${fieldConfig.comment}"><GiCellTags :data="dataDetail?.${fieldConfig.fieldName}Names || []" /></a-descriptions-item>
+      <#elseif fieldConfig.fieldName = 'version'>
+      <a-descriptions-item label="${fieldConfig.comment}">
+        <GiCellVersion :version="dataDetail?.version ?? ''" />
+      </a-descriptions-item>
+      <#elseif fieldConfig.fieldName = 'passWord'>
+      <a-descriptions-item label="${fieldConfig.comment}">
+        <GiCellPassword :value="dataDetail?.passWord" />
+      </a-descriptions-item>
       <#elseif fieldConfig.fieldName = 'status'>
 <#--      <a-descriptions-item label="状态"><GiCellStatus :status="dataDetail?.status" /></a-descriptions-item>-->
       <a-descriptions-item label="状态">
@@ -55,4 +63,14 @@ defineExpose({ onOpen })
 export default {}
 </script>
 
-<style scoped lang="scss"></style>
+<style scoped lang="scss">
+<#list fieldConfigs as fieldConfig>
+<#if fieldConfig.fieldName = 'passWord'>
+:deep(.gi-cell-key-value) {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+</#if>
+</#list>
+</style>

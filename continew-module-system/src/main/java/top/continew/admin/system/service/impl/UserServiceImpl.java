@@ -129,7 +129,8 @@ public class UserServiceImpl extends BaseServiceImpl<UserMapper, UserDO, UserRes
     public PageResp<UserResp> page(UserQuery query, PageQuery pageQuery) {
         QueryWrapper<UserDO> queryWrapper = this.buildQueryWrapper(query);
         super.sort(queryWrapper, pageQuery);
-        IPage<UserDetailResp> page = baseMapper.selectUserPage(new Page<>(pageQuery.getPage(), pageQuery.getSize()), queryWrapper);
+        IPage<UserDetailResp> page = baseMapper.selectUserPage(new Page<>(pageQuery.getPage(), pageQuery
+            .getSize()), queryWrapper);
         PageResp<UserResp> pageResp = PageResp.build(page, super.getListClass());
         pageResp.getList().forEach(this::fill);
         return pageResp;
@@ -170,8 +171,10 @@ public class UserServiceImpl extends BaseServiceImpl<UserMapper, UserDO, UserRes
             .getUserId()), "不允许禁用当前用户");
         UserDO oldUser = super.getById(id);
         if (Boolean.TRUE.equals(oldUser.getIsSystem())) {
-            CheckUtils.throwIfEqual(DisEnableStatusEnum.DISABLE, newStatus, "[{}] 是系统内置用户，不允许禁用", oldUser.getNickname());
-            Collection<Long> disjunctionRoleIds = CollUtil.disjunction(req.getRoleIds(), userRoleService.listRoleIdByUserId(id));
+            CheckUtils.throwIfEqual(DisEnableStatusEnum.DISABLE, newStatus, "[{}] 是系统内置用户，不允许禁用", oldUser
+                .getNickname());
+            Collection<Long> disjunctionRoleIds = CollUtil.disjunction(req.getRoleIds(), userRoleService
+                .listRoleIdByUserId(id));
             CheckUtils.throwIfNotEmpty(disjunctionRoleIds, "[{}] 是系统内置用户，不允许变更角色", oldUser.getNickname());
         }
         // 更新信息
@@ -323,10 +326,12 @@ public class UserServiceImpl extends BaseServiceImpl<UserMapper, UserDO, UserRes
             .filter(Objects::nonNull)
             .toList());
         List<String> existUsernames = existUserList.stream().map(UserDO::getUsername).toList();
-        CheckUtils.throwIf(isExitImportUser(req, importUserList, existUsernames, existEmails, existPhones), "数据不符合导入策略，已退出导入");
+        CheckUtils
+            .throwIf(isExitImportUser(req, importUserList, existUsernames, existEmails, existPhones), "数据不符合导入策略，已退出导入");
 
         // 基础数据准备
-        Map<String, Long> userMap = existUserList.stream().collect(Collectors.toMap(UserDO::getUsername, UserDO::getId));
+        Map<String, Long> userMap = existUserList.stream()
+            .collect(Collectors.toMap(UserDO::getUsername, UserDO::getId));
         List<RoleDO> roleList = roleService.listByNames(importUserList.stream()
             .map(UserImportRowReq::getRoleName)
             .distinct()

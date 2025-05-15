@@ -69,7 +69,7 @@ public class ExcelDictConverter implements Converter<Object> {
         }
         // 转换字典值为字典标签
         return new WriteCellData<>(dictItemList.stream()
-            .filter(item -> Objects.equals(data, item.getValue()))
+            .filter(item -> Objects.equals(data, item.getLabel()))
             .findFirst()
             .map(LabelValueResp::getLabel)
             .orElse(StringConstants.EMPTY));

@@ -175,7 +175,7 @@ public class GeneratorServiceImpl implements GeneratorService {
                 .orElse(null);
             // 修改为保留泛型类型：
             if ("List".equals(fieldType) && "json".equals(fieldConfig.getColumnType())) {
-                fieldType = "List<String>"; // 显式指定泛型类型
+                fieldType = "List<Object>"; // 显式指定泛型类型
             }
             fieldConfig.setFieldType(fieldType);
             fieldConfig.setFieldSort(i++);

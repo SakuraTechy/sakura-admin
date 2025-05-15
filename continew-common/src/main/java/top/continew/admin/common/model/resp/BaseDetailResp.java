@@ -16,21 +16,12 @@
 
 package top.continew.admin.common.model.resp;
 
-import cn.crane4j.annotation.Assemble;
-import cn.crane4j.annotation.Mapping;
-import cn.crane4j.annotation.condition.ConditionOnPropertyNotNull;
-import cn.crane4j.core.executor.handler.ManyToManyAssembleOperationHandler;
 import com.alibaba.excel.annotation.ExcelProperty;
-import com.baomidou.mybatisplus.annotation.TableField;
-import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
-import top.continew.admin.common.constant.ContainerConstants;
 
 import java.io.Serial;
 import java.time.LocalDateTime;
-import java.util.List;
 
 /**
  * 详情响应基类
@@ -44,22 +35,22 @@ public class BaseDetailResp extends BaseResp {
     @Serial
     private static final long serialVersionUID = 1L;
 
-//    /**
-//     * 修改人
-//     */
-//    @JsonIgnore
-//    @ConditionOnPropertyNotNull
-////    @Assemble(container = ContainerConstants.USER_NICKNAME, props = @Mapping(ref = "updateUserString"))
+    //    /**
+    //     * 修改人
+    //     */
+    //    @JsonIgnore
+    //    @ConditionOnPropertyNotNull
+    ////    @Assemble(container = ContainerConstants.USER_NICKNAME, props = @Mapping(ref = "updateUserString"))
 ////    @Assemble(prop = ":updateUserString1", container = ContainerConstants.USER_NICKNAME, handlerType = ManyToManyAssembleOperationHandler.class)
-//    @Assemble(container = ContainerConstants.USER_NICKNAME, props = @Mapping(ref = "updateUserString"))
-//    private Long updateUser;
-//
-//    /**
-//     * 修改人
-//     */
-//    @Schema(description = "修改人", example = "李四")
-//    @ExcelProperty(value = "修改人", order = Integer.MAX_VALUE - 2)
-//    private List<String> updateUserString;
+    //    @Assemble(container = ContainerConstants.USER_NICKNAME, props = @Mapping(ref = "updateUserString"))
+    //    private Long updateUser;
+    //
+    //    /**
+    //     * 修改人
+    //     */
+    //    @Schema(description = "修改人", example = "李四")
+    //    @ExcelProperty(value = "修改人", order = Integer.MAX_VALUE - 2)
+    //    private List<String> updateUserString;
 
     /**
      * 修改时间

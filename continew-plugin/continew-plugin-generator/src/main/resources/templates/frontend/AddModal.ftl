@@ -22,6 +22,7 @@ import { useResetReactive } from '@/hooks'
 import { useDict } from '@/hooks/app'
 import { listUserDict } from '@/apis/common/common'
 import type { LabelValueState } from '@/types/global'
+import KeyValuePairForm from '@/components/KeyValuePairForm'
 
 const emit = defineEmits<{
   (e: 'save-success'): void
@@ -43,7 +44,7 @@ const [form, resetForm] = useResetReactive({
 })
 
 <#list fieldConfigs as fieldConfig>
-<#if fieldConfig.fieldType = 'List<String>'>
+<#if fieldConfig.fieldType = 'List<Object>'>
 const userList = ref<LabelValueState[]>([])
 
 const fetchUserList = async () => {
@@ -114,8 +115,22 @@ const columns = computed<ColumnItem[]>(() => [
     type: 'select', 
     <#elseif fieldConfig.formType = 'RADIO'>
     type: 'radio-group',
+    <#elseif fieldConfig.formType = 'CUSTOM'>
+    type: 'custom',
+    slots: {
+      default: () => h(KeyValuePairForm, {
+        'modelValue': form.configList,
+        'onUpdate:modelValue': (val: any) => {
+          form.configList = val
+        },
+        'nameColSpan': 5,
+        'valueColSpan': 13,
+        'actionColSpan': 2,
+        'colGap': 10,
+      }),
+    },
     </#if>
-    <#if fieldConfig.fieldType = 'List<String>'>
+    <#if fieldConfig.fieldType = 'List<Object>'>
     props: {
       options: userList,
       placeholder: '请选择${fieldConfig.comment}',
@@ -125,7 +140,8 @@ const columns = computed<ColumnItem[]>(() => [
     },
     <#elseif fieldConfig.fieldName = 'status'>
     props: {
-      options: <#list dictCodes as dictCode>${dictCode}.value<#if dictCode_has_next>,</#if></#list>,
+      <#--options: <#list dictCodes as dictCode>${dictCode}.value<#if dictCode_has_next>,</#if></#list>,-->
+      options: status_type.value
       type: 'round',
       checkedValue: 1,
       uncheckedValue: 2,
@@ -135,6 +151,8 @@ const columns = computed<ColumnItem[]>(() => [
     <#elseif fieldConfig.dictCode?? && fieldConfig.dictCode != ''>
     props: {
       options: ${fieldConfig.dictCode}.value,
+      allowClear: true,
+      allowSearch: true,
     },
     </#if>
   },

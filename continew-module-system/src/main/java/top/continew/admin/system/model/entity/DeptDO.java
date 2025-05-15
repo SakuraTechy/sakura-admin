@@ -30,7 +30,7 @@ import java.io.Serial;
  * @since 2023/1/22 13:50
  */
 @Data
-@TableName(value ="sys_dept", autoResultMap = true)
+@TableName(value = "sys_dept", autoResultMap = true)
 public class DeptDO extends BaseDO {
 
     @Serial

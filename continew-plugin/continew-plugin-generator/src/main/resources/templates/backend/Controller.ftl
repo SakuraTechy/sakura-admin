@@ -49,7 +49,7 @@ public class ${className} extends BaseController<${classNamePrefix}Service, ${cl
         Object projectId = req.getProjectId();
         Object ip = req.getIp();
         Object port = req.getPort();
-        CheckUtils.throwIf(baseService.isExists(null, projectId, ip, port), "修改失败，项目 [{}] 已存在", projectId, ip, port);
+        CheckUtils.throwIf(baseService.isExists(null, projectId, ip, port), "新增失败，${businessName} [{}] 已存在", projectId, ip, port);
         return super.create(req);
     }
 

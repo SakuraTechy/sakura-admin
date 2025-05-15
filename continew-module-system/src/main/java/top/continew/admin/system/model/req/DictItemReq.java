@@ -53,7 +53,7 @@ public class DictItemReq implements Serializable {
      */
     @Schema(description = "值", example = "1")
     @NotBlank(message = "值不能为空")
-    @Length(max = 30, message = "值长度不能超过 {max} 个字符")
+    @Length(max = 60, message = "值长度不能超过 {max} 个字符")
     private String value;
 
     /**

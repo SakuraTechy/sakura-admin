@@ -19,7 +19,6 @@ package top.continew.admin.system.model.resp;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import top.continew.admin.common.model.resp.BaseDetailResp;
-import top.continew.admin.common.model.resp.BaseResp;
 import top.continew.admin.system.enums.NoticeScopeEnum;
 import top.continew.admin.system.enums.NoticeStatusEnum;
 

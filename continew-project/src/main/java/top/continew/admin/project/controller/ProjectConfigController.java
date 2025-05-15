@@ -71,7 +71,8 @@ public class ProjectConfigController extends BaseController<ProjectConfigService
     @Override
     @Operation(summary = "修改数据", description = "修改数据")
     @SaCheckPermission("project:projectConfig:update")
-    public void update(@Validated(CrudValidationGroup.Update.class) @RequestBody ProjectConfigReq req, @PathVariable("id") Long id) {
+    public void update(@Validated(CrudValidationGroup.Update.class) @RequestBody ProjectConfigReq req,
+                       @PathVariable("id") Long id) {
         String name = req.getName();
         String abbreviate = req.getAbbreviate();
         CheckUtils.throwIf(baseService.isExists(name, abbreviate, id), "修改失败，项目 [{}] 已存在", name, abbreviate);
@@ -95,7 +96,9 @@ public class ProjectConfigController extends BaseController<ProjectConfigService
     @Parameter(name = "ids", description = "逗号分隔的ID列表", example = "1,2", in = ParameterIn.PATH)
     @SaCheckPermission("project:projectConfig:export")
     @GetMapping("/export")
-    public void export(@Validated ProjectConfigQuery query, @Validated SortQuery sortQuery, HttpServletResponse response) {
+    public void export(@Validated ProjectConfigQuery query,
+                       @Validated SortQuery sortQuery,
+                       HttpServletResponse response) {
         try {
             String idStr = String.valueOf(Objects.requireNonNull(query.getId(), "ID string is null"));
             List<Long> ids = Arrays.stream(idStr.split(","))

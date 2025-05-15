@@ -101,7 +101,16 @@
       </template>
       <#list fieldConfigs as fieldConfig>
       <#if fieldConfig.showInList>
-      <#if fieldConfig.dictCode?? && fieldConfig.dictCode != "">
+      <#if fieldConfig.fieldName = 'passWord'>
+      <template #${fieldConfig.fieldName}="{ record }">
+        <GiCellPassword
+          :value="record.#${fieldConfig.fieldName}"
+          permission="${apiModuleName}:${apiName}:get"
+          :on-show="() => onSecret(record)"
+          :on-hide="() => onSecretHide(record)"
+        />
+      </template>
+      <#elseif fieldConfig.dictCode?? && fieldConfig.dictCode != "">
       <template #${fieldConfig.fieldName}="{ record }">
         <GiCellTag :value="record.${fieldConfig.fieldName}" :dict="${fieldConfig.dictCode}" />
 <#--        <GiCellStatus :status="record.status" />-->
@@ -140,7 +149,9 @@ import { useDownload, useTable } from '@/hooks'
 import { useDict } from '@/hooks/app'
 import { isMobile } from '@/utils'
 import has from '@/utils/has'
-import GiCellTags from '@/components/GiCell/GiCellTags.vue'
+import type { LabelValueState } from '@/types/global'
+import { listProjectConfig } from '@/apis/project/projectConfig'
+import { GiCellKeyValue, GiCellPassword, GiCellTags, GiCellVersion } from '@/components/GiCell'
 
 defineOptions({ name: '${classNamePrefix}' })
 
@@ -173,7 +184,7 @@ const columns: TableInstance['columns'] = [
 <#if fieldConfigs??>
   <#list fieldConfigs as fieldConfig>
   <#if fieldConfig.showInList>
-    <#if fieldConfig.fieldType = 'List<String>'>
+    <#if fieldConfig.fieldType = 'List<Object>'>
     {
       title: '${fieldConfig.comment}',
       dataIndex: '${fieldConfig.fieldName}',
@@ -182,6 +193,19 @@ const columns: TableInstance['columns'] = [
       render: ({ record }) => {
         return (
           <GiCellTags data={record.${fieldConfig.fieldName}Names} />
+        )
+      },
+    },
+    <#elseif fieldConfig.fieldName=="configList"  >
+    {
+      title: '${fieldConfig.comment}',
+      dataIndex: '${fieldConfig.fieldName}',
+      slotName: '${fieldConfig.fieldName}',
+      width: 120,
+      align: 'center',
+      render: ({ record }) => {
+        return (
+          <GiCellKeyValue data={record.${fieldConfig.fieldName}} title="${fieldConfig.comment}" />
         )
       },
     },
@@ -214,6 +238,23 @@ const columns: TableInstance['columns'] = [
 
 // 表格引用
 const tableRef = ref()
+
+<#list fieldConfigs as fieldConfig>
+<#if fieldConfig.showInList>
+<#if fieldConfig.fieldName = 'passWord'>
+// 显示密码
+const onSecret = async (record: ${classNamePrefix}Resp) => {
+  const { data } = await getProjectServerConfig(record.id)
+  return record.passWord = data.passWord
+}
+
+// 隐藏密码
+const onSecretHide = (record: ${classNamePrefix}Resp) => {
+  return record.passWord = undefined
+}
+</#if>
+</#if>
+</#list>
 
 // 重置
 const reset = () => {

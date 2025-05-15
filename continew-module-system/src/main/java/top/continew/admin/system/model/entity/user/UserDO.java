@@ -38,7 +38,7 @@ import java.time.LocalDateTime;
  */
 @Data
 @DictField(labelKey = "nickname", extraKeys = {"username"})
-@TableName(value ="sys_user", autoResultMap = true)
+@TableName(value = "sys_user", autoResultMap = true)
 public class UserDO extends BaseDO {
 
     @Serial

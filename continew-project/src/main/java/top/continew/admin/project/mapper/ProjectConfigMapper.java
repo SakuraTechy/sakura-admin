@@ -16,8 +16,6 @@
 
 package top.continew.admin.project.mapper;
 
-import java.util.List;
-
 import org.apache.ibatis.annotations.Mapper;
 import top.continew.starter.data.mp.base.BaseMapper;
 import top.continew.admin.project.model.entity.ProjectConfigDO;

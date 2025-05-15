@@ -309,6 +309,7 @@
 <!--            </exclusions>-->
 <!--        </dependency>-->
 
+        <!-- Phoenix-hbase-2.4-5.2.0 -->
 <!--        <dependency>-->
 <!--            <groupId>org.apache.hbase</groupId>-->
 <!--            <artifactId>hbase-client</artifactId>-->

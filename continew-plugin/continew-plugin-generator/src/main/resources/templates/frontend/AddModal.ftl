@@ -141,7 +141,7 @@ const columns = computed<ColumnItem[]>(() => [
     <#elseif fieldConfig.fieldName = 'status'>
     props: {
       <#--options: <#list dictCodes as dictCode>${dictCode}.value<#if dictCode_has_next>,</#if></#list>,-->
-      options: status_type.value
+      options: status_type.value,
       type: 'round',
       checkedValue: 1,
       uncheckedValue: 2,

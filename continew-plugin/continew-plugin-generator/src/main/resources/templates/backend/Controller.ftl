@@ -46,10 +46,8 @@ public class ${className} extends BaseController<${classNamePrefix}Service, ${cl
     @Operation(summary = "新增数据", description = "新增数据")
     @SaCheckPermission("project:${classNamePrefix}:create")
     public BaseIdResp<Long> create(@Validated(CrudValidationGroup.Create.class) @RequestBody ${classNamePrefix}Req req) {
-        Object projectId = req.getProjectId();
-        Object ip = req.getIp();
-        Object port = req.getPort();
-        CheckUtils.throwIf(baseService.isExists(null, projectId, ip, port), "新增失败，${businessName} [{}] 已存在", projectId, ip, port);
+        Object[] param = new Object[]{req.getProjectId(), req.getIp(), req.getPort()};
+        CheckUtils.throwIf(baseService.isExists(null, param), "新增失败，${businessName} [{}] 已存在", param);
         return super.create(req);
     }
 
@@ -57,10 +55,8 @@ public class ${className} extends BaseController<${classNamePrefix}Service, ${cl
     @Operation(summary = "修改数据", description = "修改数据")
     @SaCheckPermission("project:${classNamePrefix}:update")
     public void update(@Validated(CrudValidationGroup.Update.class) @RequestBody ${classNamePrefix}Req req, @PathVariable("id") Long id) {
-        Object projectId = req.getProjectId();
-        Object ip = req.getIp();
-        Object port = req.getPort();
-        CheckUtils.throwIf(baseService.isExists(id, projectId, ip, port), "修改失败，项目 [{}] 已存在", projectId, ip, port);
+        Object[] param = new Object[]{req.getProjectId(), req.getIp(), req.getPort()};
+        CheckUtils.throwIf(baseService.isExists(id, param), "修改失败，${businessName} [{}] 已存在", param);
         super.update(req, id);
     }
 

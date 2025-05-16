@@ -210,7 +210,7 @@ const columns: TableInstance['columns'] = [
       },
     },
     <#elseif fieldConfig.fieldName=="status"  >
-    { title: '${fieldConfig.comment}', dataIndex: '${fieldConfig.fieldName}', slotName: '${fieldConfig.fieldName}', width: 120, ellipsis: true, tooltip: true, align: 'center' },
+    { title: '${fieldConfig.comment}', dataIndex: '${fieldConfig.fieldName}', slotName: '${fieldConfig.fieldName}', width: 80, ellipsis: true, tooltip: true, align: 'center' },
     <#elseif fieldConfig.fieldName=="createUser" >
     { title: '${fieldConfig.comment}', dataIndex: 'createUserString', slotName: '${fieldConfig.fieldName}', width: 120, ellipsis: true, tooltip: true },
     <#elseif fieldConfig.fieldName=="updateUser"  >

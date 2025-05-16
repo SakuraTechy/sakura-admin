@@ -55,31 +55,23 @@ import top.continew.starter.file.excel.util.ExcelUtils;
 @Tag(name = "项目管理-服务器配置管理 API")
 @RestController
 @RequiredArgsConstructor
-@CrudRequestMapping(value = "/project/projectServerConfig", api = {Api.PAGE, Api.GET, Api.CREATE, Api.UPDATE,
-    Api.DELETE, Api.EXPORT})
+@CrudRequestMapping(value = "/project/projectServerConfig", api = {Api.PAGE, Api.GET, Api.CREATE, Api.UPDATE, Api.DELETE, Api.EXPORT})
 public class ProjectServerConfigController extends BaseController<ProjectServerConfigService, ProjectServerConfigResp, ProjectServerConfigDetailResp, ProjectServerConfigQuery, ProjectServerConfigReq> {
     @Override
     @Operation(summary = "新增数据", description = "新增数据")
     @SaCheckPermission("project:ProjectServerConfig:create")
     public BaseIdResp<Long> create(@Validated(CrudValidationGroup.Create.class) @RequestBody ProjectServerConfigReq req) {
-        Object projectId = req.getProjectId();
-        Object ip = req.getIp();
-        Object port = req.getPort();
-        CheckUtils.throwIf(baseService
-            .isExists(null, projectId, ip, port), "新增失败，该项目环境下服务器配置 [{}] 已存在", projectId, ip, port);
+        Object[] param = new Object[]{req.getProjectId(), req.getIp(), req.getPort()};
+        CheckUtils.throwIf(baseService.isExists(null, param), "新增失败，该项目环境下服务器配置 [{}] 已存在", param);
         return super.create(req);
     }
 
     @Override
     @Operation(summary = "修改数据", description = "修改数据")
     @SaCheckPermission("project:ProjectServerConfig:update")
-    public void update(@Validated(CrudValidationGroup.Update.class) @RequestBody ProjectServerConfigReq req,
-                       @PathVariable("id") Long id) {
-        Object projectId = req.getProjectId();
-        Object ip = req.getIp();
-        Object port = req.getPort();
-        CheckUtils.throwIf(baseService
-            .isExists(id, projectId, ip, port), "修改失败，该项目环境下服务器配置 [{}] 已存在", projectId, ip, port);
+    public void update(@Validated(CrudValidationGroup.Update.class) @RequestBody ProjectServerConfigReq req, @PathVariable("id") Long id) {
+        Object[] param = new Object[]{req.getProjectId(), req.getIp(), req.getPort()};
+        CheckUtils.throwIf(baseService.isExists(id, param), "修改失败，该项目环境下服务器配置 [{}] 已存在", param);
         super.update(req, id);
     }
 
@@ -100,9 +92,7 @@ public class ProjectServerConfigController extends BaseController<ProjectServerC
     @Parameter(name = "ids", description = "逗号分隔的ID列表", example = "1,2", in = ParameterIn.PATH)
     @SaCheckPermission("project:ProjectServerConfig:export")
     @GetMapping("/export")
-    public void export(@Validated ProjectServerConfigQuery query,
-                       @Validated SortQuery sortQuery,
-                       HttpServletResponse response) {
+    public void export(@Validated ProjectServerConfigQuery query, @Validated SortQuery sortQuery, HttpServletResponse response) {
         try {
             String idStr = String.valueOf(Objects.requireNonNull(query.getId(), "ID string is null"));
             List<Long> ids = Arrays.stream(idStr.split(","))
@@ -124,7 +114,7 @@ public class ProjectServerConfigController extends BaseController<ProjectServerC
     }
 
     @Operation(summary = "测试服务器配置信息", description = "测试服务器配置信息")
-    @SaCheckPermission("project:ProjectServerConfig:get")
+    @SaCheckPermission("project:ProjectServerConfig:test")
     @PostMapping("/test")
     public void test(@RequestBody @Validated ProjectServerConfigReq projectServerConfigReq) {
         boolean isConnected = baseService.testServer(projectServerConfigReq);

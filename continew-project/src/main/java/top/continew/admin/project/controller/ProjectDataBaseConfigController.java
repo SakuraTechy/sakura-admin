@@ -62,24 +62,17 @@ public class ProjectDataBaseConfigController extends BaseController<ProjectDataB
     @Operation(summary = "新增数据", description = "新增数据")
     @SaCheckPermission("project:ProjectDataBaseConfig:create")
     public BaseIdResp<Long> create(@Validated(CrudValidationGroup.Create.class) @RequestBody ProjectDataBaseConfigReq req) {
-        Object projectId = req.getProjectId();
-        Object ip = req.getIp();
-        Object port = req.getPort();
-        CheckUtils.throwIf(baseService
-            .isExists(null, projectId, ip, port), "新增失败，项目管理-数据库配置 [{}] 已存在", projectId, ip, port);
+        Object[] param = new Object[]{req.getProjectId(), req.getIp(), req.getPort()};
+        CheckUtils.throwIf(baseService.isExists(null, param), "新增失败，项目管理-数据库配置 [{}] 已存在", param);
         return super.create(req);
     }
 
     @Override
     @Operation(summary = "修改数据", description = "修改数据")
     @SaCheckPermission("project:ProjectDataBaseConfig:update")
-    public void update(@Validated(CrudValidationGroup.Update.class) @RequestBody ProjectDataBaseConfigReq req,
-                       @PathVariable("id") Long id) {
-        Object projectId = req.getProjectId();
-        Object ip = req.getIp();
-        Object port = req.getPort();
-        CheckUtils.throwIf(baseService
-            .isExists(id, projectId, ip, port), "修改失败，项目管理-数据库配置 [{}] 已存在", projectId, ip, port);
+    public void update(@Validated(CrudValidationGroup.Update.class) @RequestBody ProjectDataBaseConfigReq req, @PathVariable("id") Long id) {
+        Object[] param = new Object[]{req.getProjectId(), req.getIp(), req.getPort()};
+        CheckUtils.throwIf(baseService.isExists(id, param), "修改失败，项目管理-数据库配置 [{}] 已存在", param);
         super.update(req, id);
     }
 

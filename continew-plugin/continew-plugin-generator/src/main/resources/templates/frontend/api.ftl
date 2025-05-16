@@ -50,19 +50,19 @@ export interface ${classNamePrefix}Query {
 <#list fieldConfigs as fieldConfig>
   <#if fieldConfig.showInQuery>
   <#if fieldConfig.fieldType == 'Integer'>
-  ${fieldConfig.fieldName}: number | undefined
+  ${fieldConfig.fieldName}?: number | undefined
   <#else>
-  ${fieldConfig.fieldName}: string | undefined
+  ${fieldConfig.fieldName}?: string | undefined
   </#if>
   </#if>
 </#list>
 </#if>
-  sort: Array<string>
+  sort?: Array<string>
 }
 export interface ${classNamePrefix}PageQuery extends ${classNamePrefix}Query, PageQuery {}
 
 /** @desc 查询${businessName}列表 */
-export function list${classNamePrefix}(query: ${classNamePrefix}PageQuery) {
+export function list${classNamePrefix}(query?: ${classNamePrefix}PageQuery) {
   return http.get<PageRes<${classNamePrefix}Resp[]>>(`${'$'}{BASE_URL}`, query)
 }
 

@@ -46,12 +46,11 @@ public interface ProjectVersionConfigService extends BaseService<ProjectVersionC
     void deleteByIds(List<Long> ids);
 
     /**
-     * 根据参数一和参数二，判断项目是否存在
+     * 根据参数条件，判断项目是否存在
      *
-     * @param param1 参数一
-     * @param param2 参数二
-     * @param id     ID
+     * @param param 参数条件
+     * @param id   ID
      * @return true：存在；false：不存在
      */
-    boolean isExists(Long id, Object param1, Object param2, Object... param3);
+    boolean isExists(Long id, Object... param);
 }

@@ -22,6 +22,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import top.continew.admin.common.db.DataBaseUtil;
+import top.continew.admin.project.model.entity.ProjectServerConfigDO;
 import top.continew.admin.project.service.ProjectConfigService;
 import top.continew.starter.extension.crud.service.BaseServiceImpl;
 import top.continew.admin.common.context.UserContextHolder;
@@ -64,16 +65,15 @@ public class ProjectDataBaseConfigServiceImpl extends BaseServiceImpl<ProjectDat
     }
 
     @Override
-    public boolean isExists(Long id, Object param1, Object param2, Object... param3) {
+    public boolean isExists(Long id, Object... param) {
         return baseMapper.lambdaQuery()
-            .eq(ProjectDataBaseConfigDO::getProjectId, param1)
-            .eq(ProjectDataBaseConfigDO::getIp, param2)
-            .eq(ProjectDataBaseConfigDO::getPort, param3)
-            .eq(ProjectDataBaseConfigDO::getDelFlag, 1)
-            .ne(null != id, ProjectDataBaseConfigDO::getId, id)
-            .exists();
+                .eq(ProjectDataBaseConfigDO::getProjectId, param[0])
+                .eq(ProjectDataBaseConfigDO::getIp, param[1])
+                .eq(ProjectDataBaseConfigDO::getPort, param[2])
+                .eq(ProjectDataBaseConfigDO::getDelFlag, 1)
+                .ne(null != id, ProjectDataBaseConfigDO::getId, id)
+                .exists();
     }
-
     /**
      * 测试数据库配置信息
      *

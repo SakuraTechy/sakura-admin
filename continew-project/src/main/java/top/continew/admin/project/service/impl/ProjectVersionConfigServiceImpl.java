@@ -63,10 +63,10 @@ public class ProjectVersionConfigServiceImpl extends BaseServiceImpl<ProjectVers
     }
 
     @Override
-    public boolean isExists(Long id, Object param1, Object param2, Object... param3) {
+    public boolean isExists(Long id, Object... param) {
         return baseMapper.lambdaQuery()
-            .eq(ProjectVersionConfigDO::getProjectId, param1)
-            .eq(ProjectVersionConfigDO::getName, param2)
+            .eq(ProjectVersionConfigDO::getProjectId, param[0])
+            .eq(ProjectVersionConfigDO::getName, param[1])
             .eq(ProjectVersionConfigDO::getDelFlag, 1)
             .ne(null != id, ProjectVersionConfigDO::getId, id)
             .exists();

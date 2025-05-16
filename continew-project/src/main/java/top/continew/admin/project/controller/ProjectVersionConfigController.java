@@ -62,20 +62,17 @@ public class ProjectVersionConfigController extends BaseController<ProjectVersio
     @Operation(summary = "新增数据", description = "新增数据")
     @SaCheckPermission("project:ProjectVersionConfig:create")
     public BaseIdResp<Long> create(@Validated(CrudValidationGroup.Create.class) @RequestBody ProjectVersionConfigReq req) {
-        Object projectId = req.getProjectId();
-        Object name = req.getName();
-        CheckUtils.throwIf(baseService.isExists(null, projectId, name), "新增失败，项目 [{}] 已存在", projectId, name);
+        Object[] param = new Object[]{req.getProjectId(), req.getName()};
+        CheckUtils.throwIf(baseService.isExists(null, param), "新增失败，项目 [{}] 已存在", param);
         return super.create(req);
     }
 
     @Override
     @Operation(summary = "修改数据", description = "修改数据")
     @SaCheckPermission("project:ProjectVersionConfig:update")
-    public void update(@Validated(CrudValidationGroup.Update.class) @RequestBody ProjectVersionConfigReq req,
-                       @PathVariable("id") Long id) {
-        Object projectId = req.getProjectId();
-        Object name = req.getName();
-        CheckUtils.throwIf(baseService.isExists(id, projectId, name), "修改失败，项目 [{}] 已存在", projectId, name);
+    public void update(@Validated(CrudValidationGroup.Update.class) @RequestBody ProjectVersionConfigReq req, @PathVariable("id") Long id) {
+        Object[] param = new Object[]{req.getProjectId(), req.getName()};
+        CheckUtils.throwIf(baseService.isExists(id, param), "修改失败，项目 [{}] 已存在", param);
         super.update(req, id);
     }
 

@@ -63,7 +63,7 @@ public class ProjectDataBaseConfigController extends BaseController<ProjectDataB
     @SaCheckPermission("project:ProjectDataBaseConfig:create")
     public BaseIdResp<Long> create(@Validated(CrudValidationGroup.Create.class) @RequestBody ProjectDataBaseConfigReq req) {
         Object[] param = new Object[]{req.getProjectId(), req.getIp(), req.getPort()};
-        CheckUtils.throwIf(baseService.isExists(null, param), "新增失败，项目管理-数据库配置 [{}] 已存在", param);
+        CheckUtils.throwIf(baseService.isExists(null, param), "新增失败，项目管理-数据库配置 [{}] 已存在", param[1]);
         return super.create(req);
     }
 
@@ -72,7 +72,7 @@ public class ProjectDataBaseConfigController extends BaseController<ProjectDataB
     @SaCheckPermission("project:ProjectDataBaseConfig:update")
     public void update(@Validated(CrudValidationGroup.Update.class) @RequestBody ProjectDataBaseConfigReq req, @PathVariable("id") Long id) {
         Object[] param = new Object[]{req.getProjectId(), req.getIp(), req.getPort()};
-        CheckUtils.throwIf(baseService.isExists(id, param), "修改失败，项目管理-数据库配置 [{}] 已存在", param);
+        CheckUtils.throwIf(baseService.isExists(id, param), "修改失败，项目管理-数据库配置 [{}] 已存在", param[1]);
         super.update(req, id);
     }
 

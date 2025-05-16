@@ -62,7 +62,7 @@ public class ProjectServerConfigController extends BaseController<ProjectServerC
     @SaCheckPermission("project:ProjectServerConfig:create")
     public BaseIdResp<Long> create(@Validated(CrudValidationGroup.Create.class) @RequestBody ProjectServerConfigReq req) {
         Object[] param = new Object[]{req.getProjectId(), req.getIp(), req.getPort()};
-        CheckUtils.throwIf(baseService.isExists(null, param), "新增失败，该项目环境下服务器配置 [{}] 已存在", param);
+        CheckUtils.throwIf(baseService.isExists(null, param), "新增失败，该项目环境下服务器配置 [{}] 已存在", param[1]);
         return super.create(req);
     }
 
@@ -71,7 +71,7 @@ public class ProjectServerConfigController extends BaseController<ProjectServerC
     @SaCheckPermission("project:ProjectServerConfig:update")
     public void update(@Validated(CrudValidationGroup.Update.class) @RequestBody ProjectServerConfigReq req, @PathVariable("id") Long id) {
         Object[] param = new Object[]{req.getProjectId(), req.getIp(), req.getPort()};
-        CheckUtils.throwIf(baseService.isExists(id, param), "修改失败，该项目环境下服务器配置 [{}] 已存在", param);
+        CheckUtils.throwIf(baseService.isExists(id, param), "修改失败，该项目环境下服务器配置 [{}] 已存在", param[1]);
         super.update(req, id);
     }
 

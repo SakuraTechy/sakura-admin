@@ -117,7 +117,7 @@ public class ProjectDataBaseConfigController extends BaseController<ProjectDataB
     }
 
     @Operation(summary = "测试数据库配置信息", description = "测试数据库配置信息")
-    @SaCheckPermission("project:ProjectDataBaseConfig:get")
+    @SaCheckPermission("project:ProjectDataBaseConfig:test")
     @PostMapping("/test")
     public void test(@RequestBody @Validated ProjectDataBaseConfigReq projectDataBaseConfigReq) {
         boolean isConnected = baseService.testDataBase(projectDataBaseConfigReq);

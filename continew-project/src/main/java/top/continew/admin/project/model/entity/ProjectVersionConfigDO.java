@@ -21,6 +21,7 @@ import java.io.Serial;
 
 import com.baomidou.mybatisplus.annotation.TableName;
 
+import top.continew.admin.common.enums.StatusTypeEnum;
 import top.continew.admin.common.model.entity.BaseDO;
 import top.continew.admin.common.enums.DisEnableStatusEnum;
 
@@ -63,7 +64,7 @@ public class ProjectVersionConfigDO extends BaseDO {
     private String updateIp;
 
     /**
-     * 删除标志（0删除 1存在）
+     * 删除标志（3正常 4异常）
      */
-    private Integer delFlag = 1;
+    private StatusTypeEnum delFlag = StatusTypeEnum.NORMAL;
 }

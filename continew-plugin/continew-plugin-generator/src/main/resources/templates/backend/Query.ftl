@@ -7,7 +7,7 @@ import java.io.Serializable;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
-import top.continew.admin.common.enums.DisEnableStatusEnum;
+import top.continew.admin.common.enums.StatusTypeEnum;
 import top.continew.starter.data.core.annotation.Query;
 import top.continew.starter.data.core.enums.QueryType;
 
@@ -43,7 +43,7 @@ public class ${className} implements Serializable {
     <#if fieldConfig.queryType = 'IN' || fieldConfig.queryType = 'NOT_IN' || fieldConfig.queryType = 'BETWEEN'>
     private ${fieldConfig.fieldType}[] ${fieldConfig.fieldName};
     <#elseif fieldConfig.fieldName = 'status'>
-    private DisEnableStatusEnum ${fieldConfig.fieldName};
+    private StatusTypeEnum ${fieldConfig.fieldName};
     <#else>
     private ${fieldConfig.fieldType} ${fieldConfig.fieldName};
     </#if>
@@ -55,7 +55,7 @@ public class ${className} implements Serializable {
      */
     @Schema(description = "${fieldConfig.comment}")
     @Query(type = QueryType.EQ)
-    private ${fieldConfig.fieldType} ${fieldConfig.fieldName} = 1;
+    private ${fieldConfig.fieldType} ${fieldConfig.fieldName} = StatusTypeEnum.NORMAL;
     </#if>
   </#list>
 </#if>

@@ -31,6 +31,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
 
+import top.continew.admin.common.enums.StatusTypeEnum;
 import top.continew.starter.extension.crud.annotation.CrudRequestMapping;
 import top.continew.admin.common.controller.BaseController;
 import top.continew.admin.project.model.query.ProjectVersionConfigQuery;
@@ -60,38 +61,39 @@ import top.continew.starter.file.excel.util.ExcelUtils;
 public class ProjectVersionConfigController extends BaseController<ProjectVersionConfigService, ProjectVersionConfigResp, ProjectVersionConfigDetailResp, ProjectVersionConfigQuery, ProjectVersionConfigReq> {
     @Override
     @Operation(summary = "新增数据", description = "新增数据")
-    @SaCheckPermission("project:ProjectVersionConfig:create")
+    @SaCheckPermission("project:projectVersionConfig:create")
     public BaseIdResp<Long> create(@Validated(CrudValidationGroup.Create.class) @RequestBody ProjectVersionConfigReq req) {
-        Object[] param = new Object[]{req.getProjectId(), req.getName()};
+        Object[] param = new Object[] {req.getProjectId(), req.getName()};
         CheckUtils.throwIf(baseService.isExists(null, param), "新增失败，项目 [{}] 已存在", param[1]);
         return super.create(req);
     }
 
     @Override
     @Operation(summary = "修改数据", description = "修改数据")
-    @SaCheckPermission("project:ProjectVersionConfig:update")
-    public void update(@Validated(CrudValidationGroup.Update.class) @RequestBody ProjectVersionConfigReq req, @PathVariable("id") Long id) {
-        Object[] param = new Object[]{req.getProjectId(), req.getName()};
+    @SaCheckPermission("project:projectVersionConfig:update")
+    public void update(@Validated(CrudValidationGroup.Update.class) @RequestBody ProjectVersionConfigReq req,
+                       @PathVariable("id") Long id) {
+        Object[] param = new Object[] {req.getProjectId(), req.getName()};
         CheckUtils.throwIf(baseService.isExists(id, param), "修改失败，项目 [{}] 已存在", param[1]);
         super.update(req, id);
     }
 
     @Operation(summary = "删除数据", description = "根据ID列表删除数据")
     @Parameter(name = "ids", description = "逗号分隔的ID列表", example = "1,2", in = ParameterIn.PATH)
-    @SaCheckPermission("project:ProjectVersionConfig:delete")
+    @SaCheckPermission("project:projectVersionConfig:delete")
     @DeleteMapping("/{ids}")
     public void delete(@PathVariable List<Long> ids) {
         //        baseService.deleteByIds(ids);
         ProjectVersionConfigReq req = new ProjectVersionConfigReq();
         ids.forEach(id -> {
-            req.setDelFlag(0);
+            req.setDelFlag(StatusTypeEnum.ABNORMAL);
             super.update(req, id);
         });
     }
 
     @Operation(summary = "导出数据", description = "根据ID列表导出数据")
     @Parameter(name = "ids", description = "逗号分隔的ID列表", example = "1,2", in = ParameterIn.PATH)
-    @SaCheckPermission("project:ProjectVersionConfig:export")
+    @SaCheckPermission("project:projectVersionConfig:export")
     @GetMapping("/export")
     public void export(@Validated ProjectVersionConfigQuery query,
                        @Validated SortQuery sortQuery,

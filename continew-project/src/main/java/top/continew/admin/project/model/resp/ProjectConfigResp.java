@@ -28,6 +28,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 import top.continew.admin.common.constant.ContainerConstants;
 import top.continew.admin.common.enums.DisEnableStatusEnum;
+import top.continew.admin.common.enums.StatusTypeEnum;
 import top.continew.admin.common.model.resp.BaseDetailResp;
 
 /**
@@ -113,8 +114,8 @@ public class ProjectConfigResp extends BaseDetailResp {
     private String version;
 
     /**
-     * 删除标志（0删除 1存在）
+     * 删除标志（3正常 4异常）
      */
-    @Schema(description = "删除标志（0删除 1存在）")
-    private Integer delFlag;
+    @Schema(description = "删除标志（3正常 4异常）")
+    private StatusTypeEnum delFlag;
 }

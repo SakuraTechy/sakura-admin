@@ -1,5 +1,20 @@
-package top.continew.admin.project.controller;
+/*
+ * Copyright (c) 2022-present Charles7c Authors. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
+package top.continew.admin.project.controller;
 
 import java.util.List;
 import java.util.Arrays;
@@ -16,6 +31,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
 
+import top.continew.admin.common.enums.StatusTypeEnum;
 import top.continew.starter.extension.crud.annotation.CrudRequestMapping;
 import top.continew.admin.common.controller.BaseController;
 import top.continew.admin.project.model.query.ProjectEnvironmentConfigQuery;
@@ -40,55 +56,59 @@ import top.continew.starter.file.excel.util.ExcelUtils;
 @Tag(name = "项目管理-环境配置管理 API")
 @RestController
 @RequiredArgsConstructor
-@CrudRequestMapping(value = "/project/projectEnvironmentConfig", api = {Api.PAGE, Api.GET, Api.CREATE, Api.UPDATE, Api.DELETE, Api.EXPORT})
+@CrudRequestMapping(value = "/project/projectEnvironmentConfig", api = {Api.PAGE, Api.GET, Api.CREATE, Api.UPDATE,
+    Api.DELETE, Api.EXPORT})
 public class ProjectEnvironmentConfigController extends BaseController<ProjectEnvironmentConfigService, ProjectEnvironmentConfigResp, ProjectEnvironmentConfigDetailResp, ProjectEnvironmentConfigQuery, ProjectEnvironmentConfigReq> {
     @Override
     @Operation(summary = "新增数据", description = "新增数据")
-    @SaCheckPermission("project:ProjectEnvironmentConfig:create")
+    @SaCheckPermission("project:projectEnvironmentConfig:create")
     public BaseIdResp<Long> create(@Validated(CrudValidationGroup.Create.class) @RequestBody ProjectEnvironmentConfigReq req) {
-        Object[] param = new Object[]{req.getProjectId(), req.getName()};
+        Object[] param = new Object[] {req.getProjectId(), req.getName()};
         CheckUtils.throwIf(baseService.isExists(null, param), "新增失败，项目管理-环境配置 [{}] 已存在", param[1]);
         return super.create(req);
     }
 
     @Override
     @Operation(summary = "修改数据", description = "修改数据")
-    @SaCheckPermission("project:ProjectEnvironmentConfig:update")
-    public void update(@Validated(CrudValidationGroup.Update.class) @RequestBody ProjectEnvironmentConfigReq req, @PathVariable("id") Long id) {
-        Object[] param = new Object[]{req.getProjectId(), req.getName()};
+    @SaCheckPermission("project:projectEnvironmentConfig:update")
+    public void update(@Validated(CrudValidationGroup.Update.class) @RequestBody ProjectEnvironmentConfigReq req,
+                       @PathVariable("id") Long id) {
+        Object[] param = new Object[] {req.getProjectId(), req.getName()};
         CheckUtils.throwIf(baseService.isExists(id, param), "修改失败，项目管理-环境配置 [{}] 已存在", param[1]);
         super.update(req, id);
     }
 
     @Operation(summary = "删除数据", description = "根据ID列表删除数据")
     @Parameter(name = "ids", description = "逗号分隔的ID列表", example = "1,2", in = ParameterIn.PATH)
-    @SaCheckPermission("project:ProjectEnvironmentConfig:delete")
+    @SaCheckPermission("project:projectEnvironmentConfig:delete")
     @DeleteMapping("/{ids}")
     public void delete(@PathVariable List<Long> ids) {
-//        baseService.deleteByIds(ids);
+        //        baseService.deleteByIds(ids);
         ProjectEnvironmentConfigReq req = new ProjectEnvironmentConfigReq();
         ids.forEach(id -> {
-            req.setDelFlag(0);
+            req.setDelFlag(StatusTypeEnum.ABNORMAL);
             super.update(req, id);
         });
     }
 
     @Operation(summary = "导出数据", description = "根据ID列表导出数据")
     @Parameter(name = "ids", description = "逗号分隔的ID列表", example = "1,2", in = ParameterIn.PATH)
-    @SaCheckPermission("project:ProjectEnvironmentConfig:export")
+    @SaCheckPermission("project:projectEnvironmentConfig:export")
     @GetMapping("/export")
-    public void export(@Validated ProjectEnvironmentConfigQuery query, @Validated SortQuery sortQuery, HttpServletResponse response) {
+    public void export(@Validated ProjectEnvironmentConfigQuery query,
+                       @Validated SortQuery sortQuery,
+                       HttpServletResponse response) {
         try {
             String idStr = String.valueOf(Objects.requireNonNull(query.getId(), "ID string is null"));
             List<Long> ids = Arrays.stream(idStr.split(","))
-                    .map(String::trim)
-                    .filter(s -> !s.isEmpty())
-                    .map(Long::parseLong)
-                    .toList();
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .map(Long::parseLong)
+                .toList();
             if (!ids.isEmpty() && query.getName().equals("批量选择导出")) {
                 List<ProjectEnvironmentConfigDetailResp> list = baseService.selectByIds(ids);
                 ExcelUtils.export(list, "导出数据", ProjectEnvironmentConfigDetailResp.class, response);
-            }else{
+            } else {
                 throw new IllegalArgumentException("No valid IDs provided");
             }
         } catch (NumberFormatException e) {

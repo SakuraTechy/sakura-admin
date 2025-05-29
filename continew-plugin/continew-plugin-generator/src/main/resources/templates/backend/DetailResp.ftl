@@ -15,7 +15,7 @@ import cn.crane4j.annotation.Assemble;
 import cn.crane4j.core.executor.handler.ManyToManyAssembleOperationHandler;
 
 import top.continew.admin.common.constant.ContainerConstants;
-import top.continew.admin.common.enums.DisEnableStatusEnum;
+import top.continew.admin.common.enums.StatusTypeEnum;
 import top.continew.admin.common.model.resp.BaseDetailResp;
 import top.continew.starter.file.excel.converter.ExcelBaseEnumConverter;
 import top.continew.starter.file.excel.converter.ExcelListConverter;
@@ -56,7 +56,7 @@ public class ${className} extends BaseDetailResp {
     private ${fieldConfig.fieldType} ${fieldConfig.fieldName}Names;
     <#elseif fieldConfig.fieldName = 'status'>
     @ExcelProperty(value = "${fieldConfig.comment}", converter = ExcelBaseEnumConverter.class, order = ${orderNumber})
-    private DisEnableStatusEnum ${fieldConfig.fieldName};
+    private StatusTypeEnum ${fieldConfig.fieldName};
     <#else>
     @ExcelProperty(value = "${fieldConfig.comment}", order = ${orderNumber})
     private ${fieldConfig.fieldType} ${fieldConfig.fieldName};

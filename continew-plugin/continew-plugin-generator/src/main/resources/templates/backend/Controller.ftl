@@ -44,7 +44,7 @@ import top.continew.starter.file.excel.util.ExcelUtils;
 public class ${className} extends BaseController<${classNamePrefix}Service, ${classNamePrefix}Resp, ${classNamePrefix}DetailResp, ${classNamePrefix}Query, ${classNamePrefix}Req> {
     @Override
     @Operation(summary = "新增数据", description = "新增数据")
-    @SaCheckPermission("project:${classNamePrefix}:create")
+    @SaCheckPermission("${apiModuleName}:${apiName}:create")
     public BaseIdResp<Long> create(@Validated(CrudValidationGroup.Create.class) @RequestBody ${classNamePrefix}Req req) {
         Object[] param = new Object[]{req.getProjectId(), req.getIp(), req.getPort()};
         CheckUtils.throwIf(baseService.isExists(null, param), "新增失败，${businessName} [{}] 已存在", param[1]);
@@ -53,7 +53,7 @@ public class ${className} extends BaseController<${classNamePrefix}Service, ${cl
 
     @Override
     @Operation(summary = "修改数据", description = "修改数据")
-    @SaCheckPermission("project:${classNamePrefix}:update")
+    @SaCheckPermission("${apiModuleName}:${apiName}:update")
     public void update(@Validated(CrudValidationGroup.Update.class) @RequestBody ${classNamePrefix}Req req, @PathVariable("id") Long id) {
         Object[] param = new Object[]{req.getProjectId(), req.getIp(), req.getPort()};
         CheckUtils.throwIf(baseService.isExists(id, param), "修改失败，${businessName} [{}] 已存在", param[1]);
@@ -62,20 +62,20 @@ public class ${className} extends BaseController<${classNamePrefix}Service, ${cl
 
     @Operation(summary = "删除数据", description = "根据ID列表删除数据")
     @Parameter(name = "ids", description = "逗号分隔的ID列表", example = "1,2", in = ParameterIn.PATH)
-    @SaCheckPermission("project:${classNamePrefix}:delete")
+    @SaCheckPermission("${apiModuleName}:${apiName}:delete")
     @DeleteMapping("/{ids}")
     public void delete(@PathVariable List<Long> ids) {
 //        baseService.deleteByIds(ids);
         ${classNamePrefix}Req req = new ${classNamePrefix}Req();
         ids.forEach(id -> {
-            req.setDelFlag(0);
+            req.setDelFlag(StatusTypeEnum.ABNORMAL);
             super.update(req, id);
         });
     }
 
     @Operation(summary = "导出数据", description = "根据ID列表导出数据")
     @Parameter(name = "ids", description = "逗号分隔的ID列表", example = "1,2", in = ParameterIn.PATH)
-    @SaCheckPermission("project:${classNamePrefix}:export")
+    @SaCheckPermission("${apiModuleName}:${classNamePrefix}:export")
     @GetMapping("/export")
     public void export(@Validated ${classNamePrefix}Query query, @Validated SortQuery sortQuery, HttpServletResponse response) {
         try {

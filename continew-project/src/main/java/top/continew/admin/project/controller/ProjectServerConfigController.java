@@ -31,6 +31,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
 
+import top.continew.admin.common.enums.StatusTypeEnum;
 import top.continew.starter.extension.crud.annotation.CrudRequestMapping;
 import top.continew.admin.common.controller.BaseController;
 import top.continew.admin.project.model.query.ProjectServerConfigQuery;
@@ -55,44 +56,48 @@ import top.continew.starter.file.excel.util.ExcelUtils;
 @Tag(name = "项目管理-服务器配置管理 API")
 @RestController
 @RequiredArgsConstructor
-@CrudRequestMapping(value = "/project/projectServerConfig", api = {Api.PAGE, Api.GET, Api.CREATE, Api.UPDATE, Api.DELETE, Api.EXPORT})
+@CrudRequestMapping(value = "/project/projectServerConfig", api = {Api.PAGE, Api.GET, Api.CREATE, Api.UPDATE,
+    Api.DELETE, Api.EXPORT})
 public class ProjectServerConfigController extends BaseController<ProjectServerConfigService, ProjectServerConfigResp, ProjectServerConfigDetailResp, ProjectServerConfigQuery, ProjectServerConfigReq> {
     @Override
     @Operation(summary = "新增数据", description = "新增数据")
-    @SaCheckPermission("project:ProjectServerConfig:create")
+    @SaCheckPermission("project:projectServerConfig:create")
     public BaseIdResp<Long> create(@Validated(CrudValidationGroup.Create.class) @RequestBody ProjectServerConfigReq req) {
-        Object[] param = new Object[]{req.getProjectId(), req.getIp(), req.getPort()};
+        Object[] param = new Object[] {req.getProjectId(), req.getIp(), req.getPort()};
         CheckUtils.throwIf(baseService.isExists(null, param), "新增失败，该项目环境下服务器配置 [{}] 已存在", param[1]);
         return super.create(req);
     }
 
     @Override
     @Operation(summary = "修改数据", description = "修改数据")
-    @SaCheckPermission("project:ProjectServerConfig:update")
-    public void update(@Validated(CrudValidationGroup.Update.class) @RequestBody ProjectServerConfigReq req, @PathVariable("id") Long id) {
-        Object[] param = new Object[]{req.getProjectId(), req.getIp(), req.getPort()};
+    @SaCheckPermission("project:projectServerConfig:update")
+    public void update(@Validated(CrudValidationGroup.Update.class) @RequestBody ProjectServerConfigReq req,
+                       @PathVariable("id") Long id) {
+        Object[] param = new Object[] {req.getProjectId(), req.getIp(), req.getPort()};
         CheckUtils.throwIf(baseService.isExists(id, param), "修改失败，该项目环境下服务器配置 [{}] 已存在", param[1]);
         super.update(req, id);
     }
 
     @Operation(summary = "删除数据", description = "根据ID列表删除数据")
     @Parameter(name = "ids", description = "逗号分隔的ID列表", example = "1,2", in = ParameterIn.PATH)
-    @SaCheckPermission("project:ProjectServerConfig:delete")
+    @SaCheckPermission("project:projectServerConfig:delete")
     @DeleteMapping("/{ids}")
     public void delete(@PathVariable List<Long> ids) {
         //        baseService.deleteByIds(ids);
         ProjectServerConfigReq req = new ProjectServerConfigReq();
         ids.forEach(id -> {
-            req.setDelFlag(0);
+            req.setDelFlag(StatusTypeEnum.ABNORMAL);
             super.update(req, id);
         });
     }
 
     @Operation(summary = "导出数据", description = "根据ID列表导出数据")
     @Parameter(name = "ids", description = "逗号分隔的ID列表", example = "1,2", in = ParameterIn.PATH)
-    @SaCheckPermission("project:ProjectServerConfig:export")
+    @SaCheckPermission("project:projectServerConfig:export")
     @GetMapping("/export")
-    public void export(@Validated ProjectServerConfigQuery query, @Validated SortQuery sortQuery, HttpServletResponse response) {
+    public void export(@Validated ProjectServerConfigQuery query,
+                       @Validated SortQuery sortQuery,
+                       HttpServletResponse response) {
         try {
             String idStr = String.valueOf(Objects.requireNonNull(query.getId(), "ID string is null"));
             List<Long> ids = Arrays.stream(idStr.split(","))
@@ -114,7 +119,7 @@ public class ProjectServerConfigController extends BaseController<ProjectServerC
     }
 
     @Operation(summary = "测试服务器配置信息", description = "测试服务器配置信息")
-    @SaCheckPermission("project:ProjectServerConfig:test")
+    @SaCheckPermission("project:projectServerConfig:test")
     @PostMapping("/test")
     public void test(@RequestBody @Validated ProjectServerConfigReq projectServerConfigReq) {
         boolean isConnected = baseService.testServer(projectServerConfigReq);

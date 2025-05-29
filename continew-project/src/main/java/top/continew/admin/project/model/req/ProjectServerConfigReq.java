@@ -27,6 +27,7 @@ import jakarta.validation.constraints.*;
 import io.swagger.v3.oas.annotations.media.Schema;
 import org.hibernate.validator.constraints.Length;
 import top.continew.admin.common.enums.DisEnableStatusEnum;
+import top.continew.admin.common.enums.StatusTypeEnum;
 
 import java.time.*;
 
@@ -121,8 +122,8 @@ public class ProjectServerConfigReq implements Serializable {
     private DisEnableStatusEnum status;
 
     /**
-     * 删除标志（0删除 1存在）
+     * 删除标志（3正常 4异常）
      */
-    @Schema(description = "删除标志（0删除 1存在）")
-    private Integer delFlag = 1;
+    @Schema(description = "删除标志（3正常 4异常）")
+    private StatusTypeEnum delFlag = StatusTypeEnum.NORMAL;
 }

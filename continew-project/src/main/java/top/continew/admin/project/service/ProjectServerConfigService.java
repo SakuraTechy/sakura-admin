@@ -49,7 +49,7 @@ public interface ProjectServerConfigService extends BaseService<ProjectServerCon
      * 根据参数条件，判断项目是否存在
      *
      * @param param 参数条件
-     * @param id   ID
+     * @param id    ID
      * @return true：存在；false：不存在
      */
     boolean isExists(Long id, Object... param);

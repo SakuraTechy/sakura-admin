@@ -67,7 +67,7 @@ public class ProjectVersionConfigServiceImpl extends BaseServiceImpl<ProjectVers
         return baseMapper.lambdaQuery()
             .eq(ProjectVersionConfigDO::getProjectId, param[0])
             .eq(ProjectVersionConfigDO::getName, param[1])
-            .eq(ProjectVersionConfigDO::getDelFlag, 1)
+            .eq(ProjectVersionConfigDO::getDelFlag, 3)
             .ne(null != id, ProjectVersionConfigDO::getId, id)
             .exists();
     }

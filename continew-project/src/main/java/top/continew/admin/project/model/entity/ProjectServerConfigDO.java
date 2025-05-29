@@ -24,6 +24,7 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
 
+import top.continew.admin.common.enums.StatusTypeEnum;
 import top.continew.admin.common.model.entity.BaseDO;
 import top.continew.admin.common.enums.DisEnableStatusEnum;
 import top.continew.starter.security.crypto.annotation.FieldEncrypt;
@@ -99,7 +100,7 @@ public class ProjectServerConfigDO extends BaseDO {
     private String updateIp;
 
     /**
-     * 删除标志（0删除 1存在）
+     * 删除标志（3正常 4异常）
      */
-    private Integer delFlag = 1;
+    private StatusTypeEnum delFlag = StatusTypeEnum.NORMAL;
 }

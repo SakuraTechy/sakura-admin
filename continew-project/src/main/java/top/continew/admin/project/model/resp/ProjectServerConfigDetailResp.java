@@ -33,6 +33,7 @@ import com.alibaba.excel.annotation.ExcelIgnoreUnannotated;
 import top.continew.admin.common.config.excel.DictExcelProperty;
 import top.continew.admin.common.config.excel.ExcelDictConverter;
 import top.continew.admin.common.enums.DisEnableStatusEnum;
+import top.continew.admin.common.enums.StatusTypeEnum;
 import top.continew.admin.common.model.resp.BaseDetailResp;
 import top.continew.admin.project.service.ProjectConfigService;
 import top.continew.starter.file.excel.converter.ExcelBaseEnumConverter;
@@ -137,9 +138,9 @@ public class ProjectServerConfigDetailResp extends BaseDetailResp {
     private String updateIp;
 
     /**
-     * 删除标志（0删除 1存在）
+     * 删除标志（3正常 4异常）
      */
-    @Schema(description = "删除标志（0删除 1存在）")
-    @ExcelProperty(value = "删除标志（0删除 1存在）", order = 13)
-    private Integer delFlag;
+    @Schema(description = "删除标志（3正常 4异常）")
+    @ExcelProperty(value = "删除标志（3正常 4异常）", converter = ExcelBaseEnumConverter.class, order = 13)
+    private StatusTypeEnum delFlag;
 }

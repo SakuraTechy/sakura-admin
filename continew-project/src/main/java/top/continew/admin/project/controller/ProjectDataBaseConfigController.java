@@ -31,6 +31,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
 
+import top.continew.admin.common.enums.StatusTypeEnum;
 import top.continew.starter.extension.crud.annotation.CrudRequestMapping;
 import top.continew.admin.common.controller.BaseController;
 import top.continew.admin.project.model.query.ProjectDataBaseConfigQuery;
@@ -60,38 +61,39 @@ import top.continew.starter.file.excel.util.ExcelUtils;
 public class ProjectDataBaseConfigController extends BaseController<ProjectDataBaseConfigService, ProjectDataBaseConfigResp, ProjectDataBaseConfigDetailResp, ProjectDataBaseConfigQuery, ProjectDataBaseConfigReq> {
     @Override
     @Operation(summary = "新增数据", description = "新增数据")
-    @SaCheckPermission("project:ProjectDataBaseConfig:create")
+    @SaCheckPermission("project:projectDataBaseConfig:create")
     public BaseIdResp<Long> create(@Validated(CrudValidationGroup.Create.class) @RequestBody ProjectDataBaseConfigReq req) {
-        Object[] param = new Object[]{req.getProjectId(), req.getIp(), req.getPort()};
+        Object[] param = new Object[] {req.getProjectId(), req.getIp(), req.getPort()};
         CheckUtils.throwIf(baseService.isExists(null, param), "新增失败，项目管理-数据库配置 [{}] 已存在", param[1]);
         return super.create(req);
     }
 
     @Override
     @Operation(summary = "修改数据", description = "修改数据")
-    @SaCheckPermission("project:ProjectDataBaseConfig:update")
-    public void update(@Validated(CrudValidationGroup.Update.class) @RequestBody ProjectDataBaseConfigReq req, @PathVariable("id") Long id) {
-        Object[] param = new Object[]{req.getProjectId(), req.getIp(), req.getPort()};
+    @SaCheckPermission("project:projectDataBaseConfig:update")
+    public void update(@Validated(CrudValidationGroup.Update.class) @RequestBody ProjectDataBaseConfigReq req,
+                       @PathVariable("id") Long id) {
+        Object[] param = new Object[] {req.getProjectId(), req.getIp(), req.getPort()};
         CheckUtils.throwIf(baseService.isExists(id, param), "修改失败，项目管理-数据库配置 [{}] 已存在", param[1]);
         super.update(req, id);
     }
 
     @Operation(summary = "删除数据", description = "根据ID列表删除数据")
     @Parameter(name = "ids", description = "逗号分隔的ID列表", example = "1,2", in = ParameterIn.PATH)
-    @SaCheckPermission("project:ProjectDataBaseConfig:delete")
+    @SaCheckPermission("project:projectDataBaseConfig:delete")
     @DeleteMapping("/{ids}")
     public void delete(@PathVariable List<Long> ids) {
         //        baseService.deleteByIds(ids);
         ProjectDataBaseConfigReq req = new ProjectDataBaseConfigReq();
         ids.forEach(id -> {
-            req.setDelFlag(0);
+            req.setDelFlag(StatusTypeEnum.ABNORMAL);
             super.update(req, id);
         });
     }
 
     @Operation(summary = "导出数据", description = "根据ID列表导出数据")
     @Parameter(name = "ids", description = "逗号分隔的ID列表", example = "1,2", in = ParameterIn.PATH)
-    @SaCheckPermission("project:ProjectDataBaseConfig:export")
+    @SaCheckPermission("project:projectDataBaseConfig:export")
     @GetMapping("/export")
     public void export(@Validated ProjectDataBaseConfigQuery query,
                        @Validated SortQuery sortQuery,
@@ -117,7 +119,7 @@ public class ProjectDataBaseConfigController extends BaseController<ProjectDataB
     }
 
     @Operation(summary = "测试数据库配置信息", description = "测试数据库配置信息")
-    @SaCheckPermission("project:ProjectDataBaseConfig:test")
+    @SaCheckPermission("project:projectDataBaseConfig:test")
     @PostMapping("/test")
     public void test(@RequestBody @Validated ProjectDataBaseConfigReq projectDataBaseConfigReq) {
         boolean isConnected = baseService.testDataBase(projectDataBaseConfigReq);

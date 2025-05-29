@@ -379,7 +379,7 @@ CREATE TABLE IF NOT EXISTS `project_config` (
     `update_ip`    varchar(255) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci DEFAULT NULL COMMENT '更新IP',
     `remark`       varchar(0) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci   DEFAULT NULL COMMENT '备注',
     `version`      varchar(255) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci DEFAULT NULL COMMENT '版本',
-    `del_flag`     tinyint                                                       DEFAULT NULL COMMENT '删除标志（0删除 1存在）',
+    `del_flag`     tinyint                                                       DEFAULT NULL COMMENT '删除标志（3正常 4异常）',
     PRIMARY KEY (`id`),
     INDEX `idx_create_user`(`create_user`),
     INDEX `idx_update_user`(`update_user`)

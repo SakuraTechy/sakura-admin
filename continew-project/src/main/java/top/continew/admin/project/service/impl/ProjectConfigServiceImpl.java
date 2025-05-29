@@ -71,7 +71,7 @@ public class ProjectConfigServiceImpl extends BaseServiceImpl<ProjectConfigMappe
         return baseMapper.lambdaQuery()
             .eq(ProjectConfigDO::getName, name)
             .eq(ProjectConfigDO::getAbbreviate, abbreviate)
-            .eq(ProjectConfigDO::getDelFlag, 1)
+            .eq(ProjectConfigDO::getDelFlag, 3)
             .ne(null != id, ProjectConfigDO::getId, id)
             .exists();
     }

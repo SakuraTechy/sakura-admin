@@ -31,6 +31,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
 
+import top.continew.admin.common.enums.StatusTypeEnum;
 import top.continew.starter.extension.crud.annotation.CrudRequestMapping;
 import top.continew.admin.common.controller.BaseController;
 import top.continew.admin.project.model.query.ProjectConfigQuery;
@@ -87,7 +88,7 @@ public class ProjectConfigController extends BaseController<ProjectConfigService
         //        baseService.deleteByIds(ids);
         ProjectConfigReq req = new ProjectConfigReq();
         ids.forEach(id -> {
-            req.setDelFlag(0);
+            req.setDelFlag(StatusTypeEnum.ABNORMAL);
             super.update(req, id);
         });
     }

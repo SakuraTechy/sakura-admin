@@ -48,7 +48,8 @@ public class ProjectServerConfigServiceImpl extends BaseServiceImpl<ProjectServe
 
     @Override
     public List<ProjectServerConfigDetailResp> selectByIds(List<Long> ids) {
-        List<ProjectServerConfigDetailResp> list = BeanUtil.copyToList(baseMapper.selectByIds(ids), ProjectServerConfigDetailResp.class);
+        List<ProjectServerConfigDetailResp> list = BeanUtil.copyToList(baseMapper
+            .selectByIds(ids), ProjectServerConfigDetailResp.class);
         for (ProjectServerConfigDetailResp item : list) {
             String projectName = projectConfigService.get(item.getProjectId()).getName();
             item.setProjectName(projectName);
@@ -69,7 +70,7 @@ public class ProjectServerConfigServiceImpl extends BaseServiceImpl<ProjectServe
             .eq(ProjectServerConfigDO::getProjectId, param[0])
             .eq(ProjectServerConfigDO::getIp, param[1])
             .eq(ProjectServerConfigDO::getPort, param[2])
-            .eq(ProjectServerConfigDO::getDelFlag, 1)
+            .eq(ProjectServerConfigDO::getDelFlag, 3)
             .ne(null != id, ProjectServerConfigDO::getId, id)
             .exists();
     }
@@ -83,9 +84,11 @@ public class ProjectServerConfigServiceImpl extends BaseServiceImpl<ProjectServe
     @Override
     public boolean testServer(ProjectServerConfigReq projectServerConfigReq) {
         if (projectServerConfigReq.getType().equals("Linux")) {
-            return SSHUtil.testConnection(projectServerConfigReq.getIp(), projectServerConfigReq.getPort(), projectServerConfigReq.getUserName(), projectServerConfigReq.getPassWord());
+            return SSHUtil.testConnection(projectServerConfigReq.getIp(), projectServerConfigReq
+                .getPort(), projectServerConfigReq.getUserName(), projectServerConfigReq.getPassWord());
         } else if (projectServerConfigReq.getType().equals("Windows")) {
-            return FreeSshUtil.testConnection(projectServerConfigReq.getIp(), projectServerConfigReq.getUserName(), projectServerConfigReq.getPassWord());
+            return FreeSshUtil.testConnection(projectServerConfigReq.getIp(), projectServerConfigReq
+                .getUserName(), projectServerConfigReq.getPassWord());
         }
         return false;
     }

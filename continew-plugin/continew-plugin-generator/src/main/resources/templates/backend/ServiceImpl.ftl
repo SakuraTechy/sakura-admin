@@ -53,7 +53,7 @@ public class ${className} extends BaseServiceImpl<${classNamePrefix}Mapper, ${cl
                 .eq(${classNamePrefix}DO::getProjectId, param[0])
                 .eq(${classNamePrefix}DO::getIp, param[1])
                 .eq(${classNamePrefix}DO::getPort, param[2])
-                .eq(${classNamePrefix}DO::getDelFlag, 1)
+                .eq(${classNamePrefix}DO::getDelFlag, 3)
                 .ne(null != id, ${classNamePrefix}DO::getId, id)
                 .exists();
     }

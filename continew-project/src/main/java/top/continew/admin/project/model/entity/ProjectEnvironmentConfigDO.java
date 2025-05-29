@@ -1,3 +1,19 @@
+/*
+ * Copyright (c) 2022-present Charles7c Authors. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package top.continew.admin.project.model.entity;
 
 import lombok.Data;
@@ -8,9 +24,9 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
 
+import top.continew.admin.common.enums.StatusTypeEnum;
 import top.continew.admin.common.model.entity.BaseDO;
 import top.continew.admin.common.enums.DisEnableStatusEnum;
-
 
 /**
  * 项目管理-环境配置实体
@@ -94,7 +110,7 @@ public class ProjectEnvironmentConfigDO extends BaseDO {
     private String version;
 
     /**
-     * 删除标志（0删除 1存在）
+     * 删除标志（3正常 4异常）
      */
-    private Integer delFlag = 1;
+    private StatusTypeEnum delFlag = StatusTypeEnum.NORMAL;
 }

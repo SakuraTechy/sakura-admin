@@ -203,7 +203,16 @@ const onUpdate = async (id: string) => {
   visible.value = true
 }
 
-defineExpose({ onAdd, onUpdate })
+// 复制
+const onCopy = async (id: string) => {
+  reset()
+  dataId.value = ''
+  const { data } = await get${classNamePrefix}(id)
+  Object.assign(form, data)
+  visible.value = true
+}
+
+defineExpose({ onAdd, onUpdate, onCopy })
 </script>
 
 <script lang="ts">

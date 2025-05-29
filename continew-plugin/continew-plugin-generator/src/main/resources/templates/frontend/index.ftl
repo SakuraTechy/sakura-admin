@@ -27,7 +27,7 @@
 	  <#if fieldConfig.formType == "SELECT"><#-- 下拉框 -->
         <a-select
           v-model="queryForm.${fieldConfig.fieldName}"
-          :options="${fieldConfig.dictCode!"default_value"}"
+          :options="${fieldConfig.dictCode!"default_value"}.filter(item => item.value === '1' || item.value === '2')"
           placeholder="请选择${fieldConfig.comment}"
           allow-clear
           allow-search
@@ -104,7 +104,7 @@
       <#if fieldConfig.fieldName = 'passWord'>
       <template #${fieldConfig.fieldName}="{ record }">
         <GiCellPassword
-          :value="record.#${fieldConfig.fieldName}"
+          :value="record.${fieldConfig.fieldName}"
           permission="${apiModuleName}:${apiName}:get"
           :on-show="() => onSecret(record)"
           :on-hide="() => onSecretHide(record)"
@@ -122,6 +122,7 @@
         <a-space>
           <a-link v-permission="['${apiModuleName}:${apiName}:get']" title="详情" @click="onDetail(record)">详情</a-link>
           <a-link v-permission="['${apiModuleName}:${apiName}:update']" title="修改" @click="onUpdate(record)">修改</a-link>
+          <a-link v-permission="['${apiModuleName}:${apiName}:create']" title="复制" @click="onCopy(record)">复制</a-link>
           <a-link
             v-permission="['${apiModuleName}:${apiName}:delete']"
             status="danger"
@@ -144,7 +145,7 @@
 import type { TableInstance } from '@arco-design/web-vue'
 import ${classNamePrefix}AddModal from './${classNamePrefix}AddModal.vue'
 import ${classNamePrefix}DetailDrawer from './${classNamePrefix}DetailDrawer.vue'
-import { type ${classNamePrefix}Query, type ${classNamePrefix}Resp, delete${classNamePrefix}, export${classNamePrefix}, list${classNamePrefix} } from '@/apis/${apiModuleName}/${apiName}'
+import { type ${classNamePrefix}Query, type ${classNamePrefix}Resp, delete${classNamePrefix}, export${classNamePrefix}, get${classNamePrefix}, list${classNamePrefix} } from '@/apis/${apiModuleName}/${apiName}'
 import { useDownload, useTable } from '@/hooks'
 import { useDict } from '@/hooks/app'
 import { isMobile } from '@/utils'
@@ -229,7 +230,7 @@ const columns: TableInstance['columns'] = [
     title: '操作',
     dataIndex: 'action',
     slotName: 'action',
-    width: 160,
+    width: 200,
     align: 'center',
     fixed: !isMobile() ? 'right' : undefined,
     show: has.hasPermOr(['${apiModuleName}:${apiName}:get', '${apiModuleName}:${apiName}:update', '${apiModuleName}:${apiName}:delete'])
@@ -244,13 +245,13 @@ const tableRef = ref()
 <#if fieldConfig.fieldName = 'passWord'>
 // 显示密码
 const onSecret = async (record: ${classNamePrefix}Resp) => {
-  const { data } = await getProjectServerConfig(record.id)
+  const { data } = await get${classNamePrefix}(record.id)
   return record.passWord = data.passWord
 }
 
 // 隐藏密码
 const onSecretHide = (record: ${classNamePrefix}Resp) => {
-  return record.passWord = undefined
+  return record.passWord = ''
 }
 </#if>
 </#if>
@@ -300,6 +301,7 @@ const onExport = async () => {
 interface ${classNamePrefix}AddModalType {
   onAdd: () => void
   onUpdate: (id: string) => void
+  onCopy: (id: string) => void
 }
 interface ${classNamePrefix}DetailDrawerType {
   onOpen: (id: string) => void
@@ -314,6 +316,11 @@ const onAdd = () => {
 // 修改
 const onUpdate = (record: ${classNamePrefix}Resp) => {
   ${classNamePrefix}AddModalRef.value?.onUpdate(record.id)
+}
+
+// 复制
+const onCopy = (record: ${classNamePrefix}Resp) => {
+  ${classNamePrefix}AddModalRef.value?.onCopy(record.id)
 }
 
 const ${classNamePrefix}DetailDrawerRef = ref<${classNamePrefix}DetailDrawerType>()

@@ -44,7 +44,7 @@ public class ${className} implements Serializable {
     <#if fieldConfig.isRequired>
     <#if fieldConfig.fieldType = 'String'>
     @NotBlank(message = "${fieldConfig.comment}不能为空")
-    <#elseif fieldConfig.fieldType != 'List<String>'>
+    <#elseif fieldConfig.fieldType != 'String' && fieldConfig.fieldType != 'List<Object>'>
     @NotNull(message = "${fieldConfig.comment}不能为空")
     </#if>
     </#if>

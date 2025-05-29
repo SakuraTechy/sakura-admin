@@ -39,7 +39,7 @@ public enum DisEnableStatusEnum implements BaseEnum<Integer> {
     /**
      * 禁用
      */
-    DISABLE(2, "禁用", UiConstants.COLOR_ERROR),;
+    DISABLE(2, "禁用", UiConstants.COLOR_ERROR);
 
     private final Integer value;
     private final String description;

@@ -30,6 +30,7 @@
         <module>continew-common</module>
         <module>continew-extension</module>
         <module>continew-project</module>
+        <module>continew-automation</module>
     </modules>
 
     <properties>
@@ -40,6 +41,13 @@
     <!-- 全局依赖版本管理 -->
     <dependencyManagement>
         <dependencies>
+            <!-- 自动化管理模块（存放项目配置，Jenkins配置，浏览器配置模块等） -->
+            <dependency>
+                <groupId>top.continew</groupId>
+                <artifactId>continew-automation</artifactId>
+                <version>${revision}</version>
+            </dependency>
+
             <!-- 项目管理模块（存放项目管理模块相关功能，例如：项目配置、环境配置、自动化配置等） -->
             <dependency>
                 <groupId>top.continew</groupId>

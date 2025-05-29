@@ -9,8 +9,8 @@
         <version>${revision}</version>
     </parent>
 
-    <artifactId>continew-project</artifactId>
-    <description>项目管理模块（存放项目配置，版本配置，服务器配置，数据库配置，环境配置模块等）</description>
+    <artifactId>continew-automation</artifactId>
+    <description>自动化管理模块（存放项目配置，Jenkins配置，浏览器配置模块等）</description>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>

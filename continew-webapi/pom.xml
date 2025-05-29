@@ -25,6 +25,12 @@
     </properties>
 
     <dependencies>
+        <!-- 自动化管理模块 -->
+        <dependency>
+            <groupId>top.continew</groupId>
+            <artifactId>continew-automation</artifactId>
+        </dependency>
+
         <!-- 项目管理模块 -->
         <dependency>
             <groupId>top.continew</groupId>

@@ -54,7 +54,7 @@ public class ${className} extends BaseDetailResp {
 
     @ExcelProperty(value = "${fieldConfig.comment}", converter = ExcelListConverter.class, order = ${orderNumber})
     private ${fieldConfig.fieldType} ${fieldConfig.fieldName}Names;
-    <#elseif fieldConfig.fieldName = 'status'>
+    <#elseif fieldConfig.fieldName = 'status' ||  fieldConfig.fieldName = 'delFlag'>
     @ExcelProperty(value = "${fieldConfig.comment}", converter = ExcelBaseEnumConverter.class, order = ${orderNumber})
     private StatusTypeEnum ${fieldConfig.fieldName};
     <#else>

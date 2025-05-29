@@ -18,12 +18,12 @@ import io.swagger.v3.oas.annotations.enums.ParameterIn;
 
 import top.continew.starter.extension.crud.annotation.CrudRequestMapping;
 import top.continew.admin.common.controller.BaseController;
+import top.continew.admin.common.enums.StatusTypeEnum;
 import ${packageName}.model.query.${classNamePrefix}Query;
 import ${packageName}.model.req.${classNamePrefix}Req;
 import ${packageName}.model.resp.${classNamePrefix}DetailResp;
 import ${packageName}.model.resp.${classNamePrefix}Resp;
 import ${packageName}.service.${classNamePrefix}Service;
-
 import top.continew.starter.core.validation.CheckUtils;
 import top.continew.starter.extension.crud.enums.Api;
 import top.continew.starter.extension.crud.model.query.SortQuery;

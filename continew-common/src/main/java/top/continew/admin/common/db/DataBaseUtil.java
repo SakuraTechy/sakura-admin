@@ -353,7 +353,6 @@ public class DataBaseUtil {
             cs = con.prepareCall(prc_name);
             if (params != null && params.length > 0) {
                 for (int i = 0; i < params.length; i++) {
-                    // TODO set类型对应数据库,包含输入和输出
                     cs.setString(i + 1, String.valueOf(params[i]));
                 }
             }

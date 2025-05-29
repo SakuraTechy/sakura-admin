@@ -12,7 +12,7 @@ import jakarta.validation.constraints.*;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import org.hibernate.validator.constraints.Length;
-import top.continew.admin.common.enums.DisEnableStatusEnum;
+import top.continew.admin.common.enums.StatusTypeEnum;
 
 <#if hasTimeField>
 import java.time.*;
@@ -56,7 +56,7 @@ public class ${className} implements Serializable {
     @Size(max = 10, message = "${fieldConfig.comment}最多支持 {max} 人")
     private ${fieldConfig.fieldType} ${fieldConfig.fieldName};
     <#elseif fieldConfig.fieldName = 'status'>
-    private DisEnableStatusEnum ${fieldConfig.fieldName};
+    private StatusTypeEnum ${fieldConfig.fieldName};
     <#else>
     private ${fieldConfig.fieldType} ${fieldConfig.fieldName};
     </#if>
@@ -67,7 +67,7 @@ public class ${className} implements Serializable {
      * ${fieldConfig.comment}
      */
     @Schema(description = "${fieldConfig.comment}")
-    private ${fieldConfig.fieldType} ${fieldConfig.fieldName} = 1;
+    private StatusTypeEnum ${fieldConfig.fieldName} = StatusTypeEnum.NORMAL;
     </#if>
   </#list>
 </#if>

@@ -9,7 +9,7 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
 
 import top.continew.admin.common.model.entity.BaseDO;
-import top.continew.admin.common.enums.DisEnableStatusEnum;
+import top.continew.admin.common.enums.StatusTypeEnum;
 
 <#if imports??>
     <#list imports as className>
@@ -45,9 +45,9 @@ public class ${className} extends BaseDO {
     @TableField(typeHandler = JacksonTypeHandler.class)
     private ${fieldConfig.fieldType} ${fieldConfig.fieldName};
     <#elseif fieldConfig.fieldName = 'status'>
-    private DisEnableStatusEnum ${fieldConfig.fieldName};
+    private StatusTypeEnum ${fieldConfig.fieldName};
     <#elseif fieldConfig.fieldName = 'delFlag'>
-    private ${fieldConfig.fieldType} ${fieldConfig.fieldName} = 1;
+    private StatusTypeEnum ${fieldConfig.fieldName} = StatusTypeEnum.NORMAL;
     <#else>
     private ${fieldConfig.fieldType} ${fieldConfig.fieldName};
     </#if>

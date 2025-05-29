@@ -65,7 +65,7 @@ public class ProjectConfigController extends BaseController<ProjectConfigService
     public BaseIdResp<Long> create(@Validated(CrudValidationGroup.Create.class) @RequestBody ProjectConfigReq req) {
         String name = req.getName();
         String abbreviate = req.getAbbreviate();
-        CheckUtils.throwIf(baseService.isExists(name, abbreviate, null), "新增失败，项目 [{}] 已存在", name, abbreviate);
+        CheckUtils.throwIf(baseService.isExists(name, abbreviate, null), "新增失败，项目管理-项目配置 [{}] 已存在", name, abbreviate);
         return super.create(req);
     }
 
@@ -76,7 +76,7 @@ public class ProjectConfigController extends BaseController<ProjectConfigService
                        @PathVariable("id") Long id) {
         String name = req.getName();
         String abbreviate = req.getAbbreviate();
-        CheckUtils.throwIf(baseService.isExists(name, abbreviate, id), "修改失败，项目 [{}] 已存在", name, abbreviate);
+        CheckUtils.throwIf(baseService.isExists(name, abbreviate, id), "修改失败，项目管理-项目配置 [{}] 已存在", name, abbreviate);
         super.update(req, id);
     }
 

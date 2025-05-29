@@ -11,7 +11,7 @@ import cn.crane4j.core.executor.handler.ManyToManyAssembleOperationHandler;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import top.continew.admin.common.constant.ContainerConstants;
-import top.continew.admin.common.enums.DisEnableStatusEnum;
+import top.continew.admin.common.enums.StatusTypeEnum;
 import top.continew.admin.common.model.resp.BaseDetailResp;
 
 <#if hasTimeField>
@@ -46,10 +46,18 @@ public class ${className} extends BaseDetailResp {
     private ${fieldConfig.fieldType} ${fieldConfig.fieldName};
     private ${fieldConfig.fieldType} ${fieldConfig.fieldName}Names;
     <#elseif fieldConfig.fieldName = 'status'>
-    private DisEnableStatusEnum ${fieldConfig.fieldName};
+    private StatusTypeEnum ${fieldConfig.fieldName};
     <#else>
     private ${fieldConfig.fieldType} ${fieldConfig.fieldName};
     </#if>
+    </#if>
+    <#if fieldConfig.fieldName = 'delFlag'>
+
+    /**
+     * ${fieldConfig.comment}
+     */
+     @Schema(description = "${fieldConfig.comment}")
+     private StatusTypeEnum ${fieldConfig.fieldName} = StatusTypeEnum.NORMAL;
     </#if>
   </#list>
 </#if>

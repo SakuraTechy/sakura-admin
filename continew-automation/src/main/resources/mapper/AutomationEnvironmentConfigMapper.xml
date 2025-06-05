@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="top.continew.admin.automation.mapper.AutomationEnvironmentConfigMapper">
+    <select id="getAutomationEnvironmentConfigById" resultType="top.continew.admin.automation.model.entity.AutomationEnvironmentConfigDO">
+        SELECT * FROM automation_environment_config WHERE id = #{id}
+    </select>
+</mapper>

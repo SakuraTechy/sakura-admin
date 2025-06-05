@@ -47,17 +47,11 @@ public class ${className} extends BaseDetailResp {
     private ${fieldConfig.fieldType} ${fieldConfig.fieldName}Names;
     <#elseif fieldConfig.fieldName = 'status'>
     private StatusTypeEnum ${fieldConfig.fieldName};
+    <#elseif fieldConfig.fieldName = 'delFlag'>
+    private StatusTypeEnum ${fieldConfig.fieldName} = StatusTypeEnum.NORMAL;
     <#else>
     private ${fieldConfig.fieldType} ${fieldConfig.fieldName};
     </#if>
-    </#if>
-    <#if fieldConfig.fieldName = 'delFlag'>
-
-    /**
-     * ${fieldConfig.comment}
-     */
-     @Schema(description = "${fieldConfig.comment}")
-     private StatusTypeEnum ${fieldConfig.fieldName} = StatusTypeEnum.NORMAL;
     </#if>
   </#list>
 </#if>

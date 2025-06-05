@@ -3,6 +3,7 @@ package top.continew.admin.automation.service.impl;
 import java.util.Collections;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Objects;
 
 import cn.hutool.core.bean.BeanUtil;
 import com.alibaba.fastjson.JSON;
@@ -13,7 +14,13 @@ import lombok.extern.slf4j.Slf4j;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import top.continew.admin.automation.mapper.AutomationEnvironmentConfigMapper;
+import top.continew.admin.automation.model.entity.AutomationEnvironmentConfigDO;
+import top.continew.admin.automation.model.query.AutomationEnvironmentConfigQuery;
+import top.continew.admin.automation.model.req.AutomationEnvironmentConfigReq;
+import top.continew.admin.automation.model.resp.AutomationEnvironmentConfigResp;
 import top.continew.admin.automation.model.resp.AutomationJenkinsConfigDetailResp;
+import top.continew.admin.automation.service.AutomationEnvironmentConfigService;
 import top.continew.admin.automation.service.AutomationJenkinsConfigService;
 import top.continew.admin.common.enums.StatusTypeEnum;
 import top.continew.admin.common.jenkins.JenkinsService;
@@ -41,6 +48,8 @@ import top.continew.admin.automation.service.AutomationNodeConfigService;
 public class AutomationNodeConfigServiceImpl extends BaseServiceImpl<AutomationNodeConfigMapper, AutomationNodeConfigDO, AutomationNodeConfigResp, AutomationNodeConfigDetailResp, AutomationNodeConfigQuery, AutomationNodeConfigReq> implements AutomationNodeConfigService {
 
     private final AutomationJenkinsConfigService automationJenkinsConfigService;
+    private final AutomationEnvironmentConfigService automationEnvironmentConfigService;
+    private final AutomationEnvironmentConfigMapper automationEnvironmentConfigMapper;
 
     @Override
     public List<AutomationNodeConfigDetailResp> selectByIds(List<Long> ids) {
@@ -80,6 +89,9 @@ public class AutomationNodeConfigServiceImpl extends BaseServiceImpl<AutomationN
                     .eq(AutomationNodeConfigDO::getJenkinsId, jenkinsId)
                     .eq(AutomationNodeConfigDO::getDelFlag, 3)
                     .list();
+            List<AutomationEnvironmentConfigDO> automationEnvironmentConfigDOList = automationEnvironmentConfigMapper.lambdaQuery()
+                    .eq(AutomationEnvironmentConfigDO::getDelFlag, 3)
+                    .list();
             if (StringUtils.isNotEmpty(automationNodeConfigDOList) && jsonNode.get("computer").size() == automationNodeConfigDOList.size()) {
                 for (JsonNode computer : jsonNode.get("computer")) {
                     final String[] displayName = {computer.path("displayName").asText()};
@@ -107,11 +119,11 @@ public class AutomationNodeConfigServiceImpl extends BaseServiceImpl<AutomationN
                                 active.setOffline(offline);
                                 AutomationNodeConfigDO.Active.Idle idle = new AutomationNodeConfigDO.Active.Idle();
                                 boolean idleStatus = computer.get("idle").asBoolean();
-                                idle.setStatus(idleStatus ? 7 : 8);
-                                automationNodeConfigDO.setIdleStatus(idleStatus ? StatusTypeEnum.IDLE : StatusTypeEnum.IN_USE);
+                                idle.setStatus(offlineStatus ? 6 : idleStatus ? 7 : 8);
+                                automationNodeConfigDO.setIdleStatus(offlineStatus ? StatusTypeEnum.OFFLINE : idleStatus ? StatusTypeEnum.IDLE : StatusTypeEnum.IN_USE);
                                 if (!idleStatus) {
                                     List<AutomationNodeConfigDO.Active.Idle.CurrentExecutable> currentExecutableList = new ArrayList<>();
-//                            List<AutomationNodeConfigDO.Active.Idle.CurrentExecutable> currentExecutableList = automationNodeConfigDO.getActive().getIdle().getCurrentExecutable();
+//                                    List<AutomationNodeConfigDO.Active.Idle.CurrentExecutable> currentExecutableList = automationNodeConfigDO.getActive().getIdle().getCurrentExecutable();
                                     for (JsonNode executors : computer.get("executors")) {
                                         JsonNode currentExecutableJn = executors.get("currentExecutable");
                                         if (!currentExecutableJn.isEmpty()) {
@@ -129,36 +141,112 @@ public class AutomationNodeConfigServiceImpl extends BaseServiceImpl<AutomationN
                                 active.setIdle(idle);
                                 automationNodeConfigDO.setActive(active);
 
-                                List<AutomationNodeConfigDO.Config> configList = automationNodeConfigDO.getConfigList();
+//                                List<AutomationNodeConfigDO.Config> configList = automationNodeConfigDO.getConfigList();
+//                                Response response = JenkinsService.getJenkinsNodeDetails(jenkinsUrl, jenkinsUserName, jenkinsPassWord, displayName[0]);
+//                                JsonNode rootNode = JenkinsService.parseXmlToJson(response.xmlPath());
+//                                JsonNode credentialsId = rootNode.get("slave").get("launcher").get("credentialsId");
+//                                if (credentialsId != null && !credentialsId.isMissingNode()) {
+//                                    description.setSystemType("Linux");
+//                                    description.setCredentialsId(jenkinsUrl+"/credentials/store/system/domain/_/credential/"+credentialsId.asText());
+//                                    automationNodeConfigDO.setType("Linux");
+//                                } else {
+//                                    description.setSystemType("Windows");
+//                                    automationNodeConfigDO.setType("Windows");
+//                                }
+//                                automationNodeConfigDO.setDescription(description);
+////                                automationNodeConfigDO.setJson(rootNode.toString());
+//
+//                                configList.stream().filter(o -> "workDirPath".equals(o.getParamsName())).forEach(f -> {
+//                                    f.setParamsValue(rootNode.get("slave").path("remoteFS").asText());
+//                                });
+//                                JsonNode toolLocationNode = rootNode.get("slave").get("nodeProperties").get("hudson.tools.ToolLocationNodeProperty").get("locations").get("hudson.tools.ToolLocationNodeProperty_-ToolLocation");
+//                                for (JsonNode tools : toolLocationNode) {
+//                                    configList.stream().filter(o -> o.getParamsName().equals(tools.path("name").asText())).forEach(f -> {
+//                                        f.setParamsValue(tools.path("home").asText());
+//                                    });
+//                                }
+//                                // 获取 string 列表节点
+//                                JsonNode treeMapNode = rootNode.get("slave")
+//                                        .get("nodeProperties")
+//                                        .get("hudson.slaves.EnvironmentVariablesNodeProperty")
+//                                        .get("envVars")
+//                                        .get("tree-map")
+//                                        .get("string");
+//                                // 遍历 string 列表
+//                                for (int i = 0; i < treeMapNode.size(); i += 2) {
+//                                    String paramsName = treeMapNode.get(i).asText();
+//                                    if (i + 1 < treeMapNode.size()) {
+//                                        String paramsValue = treeMapNode.get(i + 1).asText();
+//                                        AutomationNodeConfigDO.Config config = new AutomationNodeConfigDO.Config();
+//                                        config.setParamsName(paramsName);
+//                                        config.setParamsValue(paramsValue);
+//                                        configList.add(config);
+//                                    }
+//                                }
+                                List<AutomationNodeConfigDO.Config> configList = new ArrayList<>();
+                                AutomationNodeConfigDO.Config config = new AutomationNodeConfigDO.Config();
                                 Response response = JenkinsService.getJenkinsNodeDetails(jenkinsUrl, jenkinsUserName, jenkinsPassWord, displayName[0]);
                                 JsonNode rootNode = JenkinsService.parseXmlToJson(response.xmlPath());
-                                configList.stream().filter(o -> "workDirPath".equals(o.getParamsName())).forEach(f -> {
-                                    f.setParamsValue(rootNode.get("slave").path("remoteFS").asText());
-                                });
-                                JsonNode credentialsId = rootNode.get("slave").get("launcher").get("credentialsId");
-                                if (credentialsId != null && !credentialsId.isMissingNode()) {
-                                    description.setSystemType("Linux");
-                                    description.setCredentialsId(jenkinsUrl+"/credentials/store/system/domain/_/credential/"+credentialsId.asText());
-                                    automationNodeConfigDO.setType("Linux");
-                                } else {
-                                    description.setSystemType("Windows");
-                                    automationNodeConfigDO.setType("Windows");
-                                }
-                                automationNodeConfigDO.setDescription(description);
-//                                automationNodeConfigDO.setJson(rootNode.toString());
-                                JsonNode toolLocationNode = rootNode.get("slave").get("nodeProperties").get("hudson.tools.ToolLocationNodeProperty").get("locations").get("hudson.tools.ToolLocationNodeProperty_-ToolLocation");
-                                for (JsonNode tools : toolLocationNode) {
-                                    configList.stream().filter(o -> o.getParamsName().equals(tools.path("name").asText())).forEach(f -> {
-                                        f.setParamsValue(tools.path("home").asText());
-                                    });
-                                }
+                                if (rootNode != null) {
+                                    JsonNode credentialsId = rootNode.get("slave").get("launcher").get("credentialsId");
+                                    if (credentialsId != null && !credentialsId.isMissingNode()) {
+                                        description.setSystemType("Linux");
+                                        description.setCredentialsId(jenkinsUrl+"/credentials/store/system/domain/_/credential/"+credentialsId.asText());
+                                        automationNodeConfigDO.setType("Linux");
+                                    } else {
+                                        description.setSystemType("Windows");
+                                        automationNodeConfigDO.setType("Windows");
+                                    }
+                                    automationNodeConfigDO.setDescription(description);
+//                                    automationNodeConfigDO.setJson(rootNode.toString());
 
+                                    config.setParamsName("workDirPath");
+                                    config.setParamsValue(rootNode.get("slave").path("remoteFS").asText());
+                                    configList.add(config);
+                                    JsonNode toolLocationNode = rootNode.get("slave").get("nodeProperties").get("hudson.tools.ToolLocationNodeProperty").get("locations").get("hudson.tools.ToolLocationNodeProperty_-ToolLocation");
+                                    for (JsonNode tools : toolLocationNode) {
+                                        config = new AutomationNodeConfigDO.Config();
+                                        config.setParamsName(tools.path("name").asText());
+                                        config.setParamsValue(tools.path("home").asText());
+                                        configList.add(config);
+                                    }
+                                    // 获取 string 列表节点
+                                    JsonNode treeMapNode = rootNode.get("slave")
+                                            .get("nodeProperties")
+                                            .get("hudson.slaves.EnvironmentVariablesNodeProperty")
+                                            .get("envVars")
+                                            .get("tree-map")
+                                            .get("string");
+                                    // 遍历 string 列表
+                                    for (int i = 0; i < treeMapNode.size(); i += 2) {
+                                        String paramsName = treeMapNode.get(i).asText();
+                                        if (i + 1 < treeMapNode.size()) {
+                                            String paramsValue = treeMapNode.get(i + 1).asText();
+                                            config = new AutomationNodeConfigDO.Config();
+                                            config.setParamsName(paramsName);
+                                            config.setParamsValue(paramsValue);
+                                            configList.add(config);
+                                        }
+                                    }
+                                }
                                 automationNodeConfigDO.setConfigList(configList);
 //                                automationNodeConfigDO.setStatus(0);
 //                                automationNodeConfigDO.setCreateUserString(UserContextHolder.getNickname(automationNodeConfigDO.getCreateUser()));
 //                                automationNodeConfigDO.setCreateTime(DateUtils.getTime());
 //                                automationNodeConfigDO.setUpdateUserString(UserContextHolder.getNickname(automationNodeConfigDO.getCreateUser()));
 //                                automationNodeConfigDO.setUpdateTime(DateUtils.getTime());
+                            }
+                            for (AutomationEnvironmentConfigDO automationEnvironmentConfigDO : automationEnvironmentConfigDOList) {
+                                List<AutomationNodeConfigDO> nodeConfigList = automationEnvironmentConfigDO.getNodeConfig();
+                                for (int i = 0; i < nodeConfigList.size(); i++) {
+                                    if (Objects.equals(nodeConfigList.get(i).getId(), automationNodeConfigDO.getId())) {
+                                        nodeConfigList.set(i, automationNodeConfigDO);
+                                        break;
+                                    }
+                                }
+                                automationEnvironmentConfigDO.setNodeConfig(nodeConfigList);
+                                automationEnvironmentConfigMapper.updateById(automationEnvironmentConfigDO);
+                                break;
                             }
                             baseMapper.updateById(automationNodeConfigDO);
                         });
@@ -197,8 +285,8 @@ public class AutomationNodeConfigServiceImpl extends BaseServiceImpl<AutomationN
                         active.setOffline(offline);
                         AutomationNodeConfigDO.Active.Idle idle = new AutomationNodeConfigDO.Active.Idle();
                         boolean idleStatus = computer.get("idle").asBoolean();
-                        idle.setStatus(idleStatus ? 7 : 8);
-                        automationNodeConfigDO.setIdleStatus(idleStatus ? StatusTypeEnum.IDLE : StatusTypeEnum.IN_USE);
+                        idle.setStatus(offlineStatus ? 6 : idleStatus ? 7 : 8);
+                        automationNodeConfigDO.setIdleStatus(offlineStatus ? StatusTypeEnum.OFFLINE : idleStatus ? StatusTypeEnum.IDLE : StatusTypeEnum.IN_USE);
                         if (!idleStatus) {
                             List<AutomationNodeConfigDO.Active.Idle.CurrentExecutable> currentExecutableList = new ArrayList<>();
                             for (JsonNode executors : computer.get("executors")) {
@@ -223,16 +311,6 @@ public class AutomationNodeConfigServiceImpl extends BaseServiceImpl<AutomationN
                         Response response = JenkinsService.getJenkinsNodeDetails(jenkinsUrl, jenkinsUserName, jenkinsPassWord, displayName);
                         JsonNode rootNode = JenkinsService.parseXmlToJson(response.xmlPath());
                         if (rootNode != null) {
-                            config.setParamsName("workDirPath");
-                            config.setParamsValue(rootNode.get("slave").path("remoteFS").asText());
-                            configList.add(config);
-                            JsonNode toolLocationNode = rootNode.get("slave").get("nodeProperties").get("hudson.tools.ToolLocationNodeProperty").get("locations").get("hudson.tools.ToolLocationNodeProperty_-ToolLocation");
-                            for (JsonNode tools : toolLocationNode) {
-                                config = new AutomationNodeConfigDO.Config();
-                                config.setParamsName(tools.path("name").asText());
-                                config.setParamsValue(tools.path("home").asText());
-                                configList.add(config);
-                            }
                             JsonNode credentialsId = rootNode.get("slave").get("launcher").get("credentialsId");
                             if (credentialsId != null && !credentialsId.isMissingNode()) {
                                 description.setSystemType("Linux");
@@ -244,6 +322,35 @@ public class AutomationNodeConfigServiceImpl extends BaseServiceImpl<AutomationN
                             }
                             automationNodeConfigDO.setDescription(description);
 //                            automationNodeConfigDO.setJson(rootNode.toString());
+
+                            config.setParamsName("workDirPath");
+                            config.setParamsValue(rootNode.get("slave").path("remoteFS").asText());
+                            configList.add(config);
+                            JsonNode toolLocationNode = rootNode.get("slave").get("nodeProperties").get("hudson.tools.ToolLocationNodeProperty").get("locations").get("hudson.tools.ToolLocationNodeProperty_-ToolLocation");
+                            for (JsonNode tools : toolLocationNode) {
+                                config = new AutomationNodeConfigDO.Config();
+                                config.setParamsName(tools.path("name").asText());
+                                config.setParamsValue(tools.path("home").asText());
+                                configList.add(config);
+                            }
+                            // 获取 string 列表节点
+                            JsonNode treeMapNode = rootNode.get("slave")
+                                    .get("nodeProperties")
+                                    .get("hudson.slaves.EnvironmentVariablesNodeProperty")
+                                    .get("envVars")
+                                    .get("tree-map")
+                                    .get("string");
+                            // 遍历 string 列表
+                            for (int i = 0; i < treeMapNode.size(); i += 2) {
+                                String paramsName = treeMapNode.get(i).asText();
+                                if (i + 1 < treeMapNode.size()) {
+                                    String paramsValue = treeMapNode.get(i + 1).asText();
+                                    config = new AutomationNodeConfigDO.Config();
+                                    config.setParamsName(paramsName);
+                                    config.setParamsValue(paramsValue);
+                                    configList.add(config);
+                                }
+                            }
                         }
                         automationNodeConfigDO.setConfigList(configList);
                         automationNodeConfigDO.setStatus(StatusTypeEnum.ENABLE);
@@ -301,8 +408,8 @@ public class AutomationNodeConfigServiceImpl extends BaseServiceImpl<AutomationN
                             active.setOffline(offline);
                             AutomationNodeConfigDO.Active.Idle idle = new AutomationNodeConfigDO.Active.Idle();
                             boolean idleStatus = computer.get("idle").asBoolean();
-                            idle.setStatus(idleStatus ? 7 : 8);
-                            item.setIdleStatus(idleStatus ? StatusTypeEnum.IDLE : StatusTypeEnum.IN_USE);
+                            idle.setStatus(offlineStatus ? 6 : idleStatus ? 7 : 8);
+                            item.setIdleStatus(offlineStatus ? StatusTypeEnum.OFFLINE : idleStatus ? StatusTypeEnum.IDLE : StatusTypeEnum.IN_USE);
                             if (!idleStatus) {
                                 List<AutomationNodeConfigDO.Active.Idle.CurrentExecutable> currentExecutableList = new ArrayList<>();
 //                            List<AutomationNodeConfigDO.Active.Idle.CurrentExecutable> currentExecutableList = item.getActive().getIdle().getCurrentExecutable();
@@ -323,14 +430,12 @@ public class AutomationNodeConfigServiceImpl extends BaseServiceImpl<AutomationN
                             active.setIdle(idle);
                             item.setActive(active);
 
-                            List<AutomationNodeConfigDO.Config> configList = item.getConfigList();
+                            List<AutomationNodeConfigDO.Config> configList = new ArrayList<>();
+                            AutomationNodeConfigDO.Config config = new AutomationNodeConfigDO.Config();
                             Response response = JenkinsService.getJenkinsNodeDetails(jenkinsUrl, jenkinsUserName, jenkinsPassWord, displayName[0]);
                             item.setXml(response.asString());
                             JsonNode rootNode = JenkinsService.parseXmlToJson(response.xmlPath());
-                            configList.stream().filter(o -> "workDirPath".equals(o.getParamsName())).forEach(f -> {
-                                f.setParamsValue(rootNode.get("slave").path("remoteFS").asText());
-                            });
-                            try {
+                            if (rootNode != null) {
                                 JsonNode credentialsId = rootNode.get("slave").get("launcher").get("credentialsId");
                                 if (credentialsId != null && !credentialsId.isMissingNode()) {
                                     description.setSystemType("Linux");
@@ -340,19 +445,45 @@ public class AutomationNodeConfigServiceImpl extends BaseServiceImpl<AutomationN
                                     description.setSystemType("Windows");
                                     item.setType("Windows");
                                 }
-                            } catch (Exception e){
-                                log.error("获取节点描述失败，跳过该节点: {}", displayName[0], e);
-                            }
-                            item.setDescription(description);
-                            JsonNode toolLocationNode = rootNode.get("slave").get("nodeProperties").get("hudson.tools.ToolLocationNodeProperty").get("locations").get("hudson.tools.ToolLocationNodeProperty_-ToolLocation");
-                            for (JsonNode tools : toolLocationNode) {
-                                configList.stream().filter(o -> o.getParamsName().equals(tools.path("name").asText())).forEach(f -> {
-                                    f.setParamsValue(tools.path("home").asText());
-                                });
+                                item.setDescription(description);
+
+                                config.setParamsName("workDirPath");
+                                config.setParamsValue(rootNode.get("slave").path("remoteFS").asText());
+                                configList.add(config);
+                                JsonNode toolLocationNode = rootNode.get("slave").get("nodeProperties").get("hudson.tools.ToolLocationNodeProperty").get("locations").get("hudson.tools.ToolLocationNodeProperty_-ToolLocation");
+                                for (JsonNode tools : toolLocationNode) {
+                                    config = new AutomationNodeConfigDO.Config();
+                                    config.setParamsName(tools.path("name").asText());
+                                    config.setParamsValue(tools.path("home").asText());
+                                    configList.add(config);
+                                }
+                                // 获取 string 列表节点
+                                JsonNode treeMapNode = rootNode.get("slave")
+                                        .get("nodeProperties")
+                                        .get("hudson.slaves.EnvironmentVariablesNodeProperty")
+                                        .get("envVars")
+                                        .get("tree-map")
+                                        .get("string");
+                                // 遍历 string 列表
+                                for (int i = 0; i < treeMapNode.size(); i += 2) {
+                                    String paramsName = treeMapNode.get(i).asText();
+                                    if (i + 1 < treeMapNode.size()) {
+                                        String paramsValue = treeMapNode.get(i + 1).asText();
+                                        config = new AutomationNodeConfigDO.Config();
+                                        config.setParamsName(paramsName);
+                                        config.setParamsValue(paramsValue);
+                                        configList.add(config);
+                                    }
+                                }
                             }
                             item.setConfigList(configList);
                         }
-                        baseMapper.updateById(item);
+                        if(automationEnvironmentConfigService.updateNodeConfig("update", item.getId())){
+                            baseMapper.updateById(item);
+                        }else{
+                            throw new IllegalArgumentException("删除失败，自动化环境关联节点配置信息异常");
+                        }
+                        return true;
                     } catch (Exception e) {
                         log.error("更新节点配置失败，跳过该节点: {}", displayName[0], e);
                     }
@@ -360,9 +491,8 @@ public class AutomationNodeConfigServiceImpl extends BaseServiceImpl<AutomationN
             }
         } catch (Exception e) {
             log.error("同步Jenkins节点配置失败", e);
-            return false;
         }
-        return true;
+        return false;
     }
 
     @Override
@@ -395,8 +525,8 @@ public class AutomationNodeConfigServiceImpl extends BaseServiceImpl<AutomationN
                 active.setOffline(offline);
                 AutomationNodeConfigDO.Active.Idle idle = new AutomationNodeConfigDO.Active.Idle();
                 boolean idleStatus = computer.get("idle").asBoolean();
-                idle.setStatus(idleStatus ? 7 : 8);
-                automationNodeConfigDO.setIdleStatus(idleStatus ? StatusTypeEnum.IDLE : StatusTypeEnum.IN_USE);
+                idle.setStatus(offlineStatus ? 6 : idleStatus ? 7 : 8);
+                automationNodeConfigDO.setIdleStatus(offlineStatus ? StatusTypeEnum.OFFLINE : idleStatus ? StatusTypeEnum.IDLE : StatusTypeEnum.IN_USE);
                 if (!idleStatus) {
                     List<AutomationNodeConfigDO.Active.Idle.CurrentExecutable> currentExecutableList = new ArrayList<>();
                     for (JsonNode executors : computer.get("executors")) {
@@ -420,21 +550,22 @@ public class AutomationNodeConfigServiceImpl extends BaseServiceImpl<AutomationN
                 AutomationNodeConfigDO.Config config = new AutomationNodeConfigDO.Config();
                 Response response = JenkinsService.getJenkinsNodeDetails(jenkinsUrl, jenkinsUserName, jenkinsPassWord, nodeName);
                 JsonNode rootNode = JenkinsService.parseXmlToJson(response.xmlPath());
-                try {
-                    JsonNode credentialsId = rootNode.get("slave").get("launcher").get("credentialsId");
-                    if (credentialsId != null && !credentialsId.isMissingNode()) {
-                        description.setSystemType("Linux");
-                        description.setCredentialsId(jenkinsUrl+"/credentials/store/system/domain/_/credential/"+credentialsId.asText());
-                        automationNodeConfigDO.setType("Linux");
-                    } else {
-                        description.setSystemType("Windows");
-                        automationNodeConfigDO.setType("Windows");
-                    }
-                } catch (Exception e){
-                    log.error("获取节点描述失败，跳过该节点: {}", nodeName, e);
-                }
-                automationNodeConfigDO.setDescription(description);
                 if (rootNode != null) {
+                    try {
+                        JsonNode credentialsId = rootNode.get("slave").get("launcher").get("credentialsId");
+                        if (credentialsId != null && !credentialsId.isMissingNode()) {
+                            description.setSystemType("Linux");
+                            description.setCredentialsId(jenkinsUrl+"/credentials/store/system/domain/_/credential/"+credentialsId.asText());
+                            automationNodeConfigDO.setType("Linux");
+                        } else {
+                            description.setSystemType("Windows");
+                            automationNodeConfigDO.setType("Windows");
+                        }
+                    } catch (Exception e){
+                        log.error("获取节点描述失败，跳过该节点: {}", nodeName, e);
+                    }
+                    automationNodeConfigDO.setDescription(description);
+
                     config.setParamsName("workDirPath");
                     config.setParamsValue(rootNode.get("slave").path("remoteFS").asText());
                     configList.add(config);
@@ -450,7 +581,7 @@ public class AutomationNodeConfigServiceImpl extends BaseServiceImpl<AutomationN
                 automationNodeConfigDO.setStatus(StatusTypeEnum.ENABLE);
                 automationNodeConfigDO.setJenkinsId(jenkinsId);
                 baseMapper.insert(automationNodeConfigDO);
-                return true;
+                return syncNode(Collections.singletonList(automationNodeConfigDO.getId()));
             }
         } catch (Exception e) {
             log.error("添加Jenkins节点配置失败", e);

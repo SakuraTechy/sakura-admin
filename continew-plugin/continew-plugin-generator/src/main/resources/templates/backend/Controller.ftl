@@ -42,6 +42,15 @@ import top.continew.starter.file.excel.util.ExcelUtils;
 @RequiredArgsConstructor
 @CrudRequestMapping(value = "/${apiModuleName}/${apiName}", api = {Api.PAGE, Api.GET, Api.CREATE, Api.UPDATE, Api.DELETE, Api.EXPORT})
 public class ${className} extends BaseController<${classNamePrefix}Service, ${classNamePrefix}Resp, ${classNamePrefix}DetailResp, ${classNamePrefix}Query, ${classNamePrefix}Req> {
+
+    @Override
+    @Operation(summary = "查询数据", description = "根据查询条件查询数据")
+    @SaCheckPermission("${apiModuleName}:${apiName}:list")
+    @GetMapping("/list")
+    public List<${classNamePrefix}DetailResp> list(@Validated ${classNamePrefix}Query query, @Validated SortQuery sortQuery) {
+        return super.list(query, sortQuery);
+    }
+
     @Override
     @Operation(summary = "新增数据", description = "新增数据")
     @SaCheckPermission("${apiModuleName}:${apiName}:create")

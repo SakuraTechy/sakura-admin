@@ -32,7 +32,6 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
 
 import top.continew.admin.common.enums.StatusTypeEnum;
-import top.continew.starter.extension.crud.annotation.CrudRequestMapping;
 import top.continew.admin.common.controller.BaseController;
 import top.continew.admin.project.model.query.ProjectVersionConfigQuery;
 import top.continew.admin.project.model.req.ProjectVersionConfigReq;
@@ -40,12 +39,13 @@ import top.continew.admin.project.model.resp.ProjectVersionConfigDetailResp;
 import top.continew.admin.project.model.resp.ProjectVersionConfigResp;
 import top.continew.admin.project.service.ProjectVersionConfigService;
 
+import top.continew.starter.file.excel.util.ExcelUtils;
 import top.continew.starter.core.validation.CheckUtils;
 import top.continew.starter.extension.crud.enums.Api;
 import top.continew.starter.extension.crud.model.query.SortQuery;
 import top.continew.starter.extension.crud.model.resp.BaseIdResp;
+import top.continew.starter.extension.crud.annotation.CrudRequestMapping;
 import top.continew.starter.extension.crud.validation.CrudValidationGroup;
-import top.continew.starter.file.excel.util.ExcelUtils;
 
 /**
  * 项目管理-版本配置管理 API
@@ -59,6 +59,15 @@ import top.continew.starter.file.excel.util.ExcelUtils;
 @CrudRequestMapping(value = "/project/projectVersionConfig", api = {Api.PAGE, Api.GET, Api.CREATE, Api.UPDATE,
     Api.DELETE, Api.EXPORT})
 public class ProjectVersionConfigController extends BaseController<ProjectVersionConfigService, ProjectVersionConfigResp, ProjectVersionConfigDetailResp, ProjectVersionConfigQuery, ProjectVersionConfigReq> {
+
+    @Override
+    @Operation(summary = "查询数据", description = "根据查询条件查询数据")
+    @SaCheckPermission("automation:projectVersionConfig:list")
+    @GetMapping("/list")
+    public List<ProjectVersionConfigResp> list(@Validated ProjectVersionConfigQuery query, @Validated SortQuery sortQuery) {
+        return super.list(query, sortQuery);
+    }
+
     @Override
     @Operation(summary = "新增数据", description = "新增数据")
     @SaCheckPermission("project:projectVersionConfig:create")

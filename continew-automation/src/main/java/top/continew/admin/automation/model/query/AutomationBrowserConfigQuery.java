@@ -7,6 +7,7 @@ import java.io.Serializable;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
+import top.continew.admin.common.enums.DisEnableStatusEnum;
 import top.continew.admin.common.enums.StatusTypeEnum;
 import top.continew.starter.data.core.annotation.Query;
 import top.continew.starter.data.core.enums.QueryType;
@@ -47,6 +48,13 @@ public class AutomationBrowserConfigQuery implements Serializable {
     @Schema(description = "浏览器名称")
     @Query(type = QueryType.LIKE)
     private String name;
+
+    /**
+     * 状态
+     */
+    @Schema(description = "状态")
+    @Query(type = QueryType.EQ)
+    private DisEnableStatusEnum status;
 
     /**
      * 删除标志（3正常 4异常）

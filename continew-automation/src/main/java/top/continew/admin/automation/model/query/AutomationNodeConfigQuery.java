@@ -43,6 +43,13 @@ public class AutomationNodeConfigQuery implements Serializable {
     private Long jenkinsId;
 
     /**
+     * 节点类型
+     */
+    @Schema(description = "节点类型")
+    @Query(type = QueryType.EQ)
+    private String type;
+
+    /**
      * 节点名称
      */
     @Schema(description = "节点名称")

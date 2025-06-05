@@ -1,6 +1,5 @@
 package top.continew.admin.automation.controller;
 
-
 import java.util.List;
 import java.util.Arrays;
 import java.util.Objects;
@@ -16,6 +15,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
 
+import top.continew.admin.automation.service.AutomationEnvironmentConfigService;
 import top.continew.admin.common.enums.StatusTypeEnum;
 import top.continew.starter.extension.crud.annotation.CrudRequestMapping;
 import top.continew.admin.common.controller.BaseController;
@@ -43,6 +43,9 @@ import top.continew.starter.file.excel.util.ExcelUtils;
 @RequiredArgsConstructor
 @CrudRequestMapping(value = "/automation/automationJenkinsConfig", api = {Api.PAGE, Api.GET, Api.CREATE, Api.UPDATE, Api.DELETE, Api.EXPORT})
 public class AutomationJenkinsConfigController extends BaseController<AutomationJenkinsConfigService, AutomationJenkinsConfigResp, AutomationJenkinsConfigDetailResp, AutomationJenkinsConfigQuery, AutomationJenkinsConfigReq> {
+
+    private final AutomationEnvironmentConfigService automationEnvironmentConfigService;
+
     @Override
     @Operation(summary = "新增数据", description = "新增数据")
     @SaCheckPermission("project:AutomationJenkinsConfig:create")
@@ -59,6 +62,9 @@ public class AutomationJenkinsConfigController extends BaseController<Automation
         Object[] param = new Object[]{req.getIp(), req.getPort()};
         CheckUtils.throwIf(baseService.isExists(id, param), "修改失败，自动化管理-Jenkins配置 [{}] 已存在", param[0]);
         super.update(req, id);
+        if(!automationEnvironmentConfigService.updateJenkinsConfig("update",id)){
+            throw new IllegalArgumentException("修改失败，自动化环境关联Jenkins配置信息异常");
+        }
     }
 
     @Operation(summary = "删除数据", description = "根据ID列表删除数据")
@@ -69,8 +75,12 @@ public class AutomationJenkinsConfigController extends BaseController<Automation
 //        baseService.deleteByIds(ids);
         AutomationJenkinsConfigReq req = new AutomationJenkinsConfigReq();
         ids.forEach(id -> {
-            req.setDelFlag(StatusTypeEnum.ABNORMAL);
-            super.update(req, id);
+            if(automationEnvironmentConfigService.updateJenkinsConfig("delete", id)){
+                req.setDelFlag(StatusTypeEnum.ABNORMAL);
+                super.update(req, id);
+            }else{
+                throw new IllegalArgumentException("删除失败，自动化环境关联Jenkins配置信息异常");
+            }
         });
     }
 

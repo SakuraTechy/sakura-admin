@@ -125,6 +125,18 @@ public class AutomationNodeConfigDO extends BaseDO {
     @TableField(typeHandler = JacksonTypeHandler.class)
     private List<Config> configList;
 
+//    /**
+//     * 节点工具参数列表
+//     */
+//    @TableField(typeHandler = JacksonTypeHandler.class)
+//    private List<Config> locationList;
+//
+//    /**
+//     * 节点环境变量列表
+//     */
+//    @TableField(typeHandler = JacksonTypeHandler.class)
+//    private List<Config> envVarList;
+
     @Data
     public static class Config {
         private String paramsName;

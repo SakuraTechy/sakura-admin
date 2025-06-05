@@ -32,7 +32,6 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
 
 import top.continew.admin.common.enums.StatusTypeEnum;
-import top.continew.starter.extension.crud.annotation.CrudRequestMapping;
 import top.continew.admin.common.controller.BaseController;
 import top.continew.admin.project.model.query.ProjectConfigQuery;
 import top.continew.admin.project.model.req.ProjectConfigReq;
@@ -40,12 +39,13 @@ import top.continew.admin.project.model.resp.ProjectConfigDetailResp;
 import top.continew.admin.project.model.resp.ProjectConfigResp;
 import top.continew.admin.project.service.ProjectConfigService;
 
+import top.continew.starter.file.excel.util.ExcelUtils;
 import top.continew.starter.core.validation.CheckUtils;
 import top.continew.starter.extension.crud.enums.Api;
 import top.continew.starter.extension.crud.model.query.SortQuery;
 import top.continew.starter.extension.crud.model.resp.BaseIdResp;
+import top.continew.starter.extension.crud.annotation.CrudRequestMapping;
 import top.continew.starter.extension.crud.validation.CrudValidationGroup;
-import top.continew.starter.file.excel.util.ExcelUtils;
 
 /**
  * 项目管理-项目配置管理 API
@@ -56,9 +56,16 @@ import top.continew.starter.file.excel.util.ExcelUtils;
 @Tag(name = "项目管理-项目配置管理 API")
 @RestController
 @RequiredArgsConstructor
-@CrudRequestMapping(value = "/project/projectConfig", api = {Api.PAGE, Api.GET, Api.CREATE, Api.UPDATE, Api.DELETE,
-    Api.EXPORT})
+@CrudRequestMapping(value = "/project/projectConfig", api = {Api.PAGE, Api.GET, Api.CREATE, Api.UPDATE, Api.DELETE, Api.EXPORT})
 public class ProjectConfigController extends BaseController<ProjectConfigService, ProjectConfigResp, ProjectConfigDetailResp, ProjectConfigQuery, ProjectConfigReq> {
+    @Override
+    @Operation(summary = "查询数据", description = "根据查询条件查询数据")
+    @SaCheckPermission("automation:projectDataBaseConfig:list")
+    @GetMapping("/list")
+    public List<ProjectConfigResp> list(@Validated ProjectConfigQuery query, @Validated SortQuery sortQuery) {
+        return super.list(query, sortQuery);
+    }
+
     @Override
     @Operation(summary = "新增数据", description = "新增数据")
     @SaCheckPermission("project:projectConfig:create")

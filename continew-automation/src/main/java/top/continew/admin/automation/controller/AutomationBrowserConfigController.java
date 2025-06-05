@@ -16,6 +16,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
 
+import top.continew.admin.automation.service.AutomationEnvironmentConfigService;
 import top.continew.admin.common.enums.StatusTypeEnum;
 import top.continew.starter.extension.crud.annotation.CrudRequestMapping;
 import top.continew.admin.common.controller.BaseController;
@@ -43,6 +44,17 @@ import top.continew.starter.file.excel.util.ExcelUtils;
 @RequiredArgsConstructor
 @CrudRequestMapping(value = "/automation/automationBrowserConfig", api = {Api.PAGE, Api.GET, Api.CREATE, Api.UPDATE, Api.DELETE, Api.EXPORT})
 public class AutomationBrowserConfigController extends BaseController<AutomationBrowserConfigService, AutomationBrowserConfigResp, AutomationBrowserConfigDetailResp, AutomationBrowserConfigQuery, AutomationBrowserConfigReq> {
+
+    private final AutomationEnvironmentConfigService automationEnvironmentConfigService;
+
+    @Override
+    @Operation(summary = "查询数据", description = "根据查询条件查询数据")
+    @SaCheckPermission("automation:automationBrowserConfig:list")
+    @GetMapping("/list")
+    public List<AutomationBrowserConfigResp> list(@Validated AutomationBrowserConfigQuery query, @Validated SortQuery sortQuery) {
+        return super.list(query, sortQuery);
+    }
+
     @Override
     @Operation(summary = "新增数据", description = "新增数据")
     @SaCheckPermission("automation:automationBrowserConfig:create")
@@ -59,6 +71,9 @@ public class AutomationBrowserConfigController extends BaseController<Automation
         Object[] param = new Object[]{req.getType(), req.getName(), req.getVersion()};
         CheckUtils.throwIf(baseService.isExists(id, param), "修改失败，自动化管理-浏览器配置 [{}] 已存在", param[1]);
         super.update(req, id);
+        if(!automationEnvironmentConfigService.updateBrowserConfig("update", id)){
+            throw new IllegalArgumentException("修改失败，自动化环境关联Jenkins配置信息异常");
+        }
     }
 
     @Operation(summary = "删除数据", description = "根据ID列表删除数据")
@@ -71,6 +86,9 @@ public class AutomationBrowserConfigController extends BaseController<Automation
         ids.forEach(id -> {
             req.setDelFlag(StatusTypeEnum.ABNORMAL);
             super.update(req, id);
+            if(!automationEnvironmentConfigService.updateBrowserConfig("delete", id)){
+                throw new IllegalArgumentException("删除失败，自动化环境关联Jenkins配置信息异常");
+            }
         });
     }
 

@@ -1,11 +1,9 @@
 package top.continew.admin.automation.controller;
 
-
 import java.util.List;
 import java.util.Arrays;
 import java.util.Objects;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import cn.dev33.satoken.annotation.SaCheckPermission;
@@ -18,12 +16,10 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
 
-import top.continew.admin.automation.model.entity.AutomationNodeConfigDO;
+import top.continew.admin.automation.service.AutomationEnvironmentConfigService;
 import top.continew.admin.common.enums.StatusTypeEnum;
-import top.continew.admin.common.jenkins.JenkinsService;
-import top.continew.starter.core.exception.BusinessException;
-import top.continew.starter.extension.crud.annotation.CrudRequestMapping;
 import top.continew.admin.common.controller.BaseController;
+import top.continew.admin.automation.model.entity.AutomationNodeConfigDO;
 import top.continew.admin.automation.model.query.AutomationNodeConfigQuery;
 import top.continew.admin.automation.model.req.AutomationNodeConfigReq;
 import top.continew.admin.automation.model.resp.AutomationNodeConfigDetailResp;
@@ -31,9 +27,11 @@ import top.continew.admin.automation.model.resp.AutomationNodeConfigResp;
 import top.continew.admin.automation.service.AutomationNodeConfigService;
 
 import top.continew.starter.core.validation.CheckUtils;
+import top.continew.starter.core.exception.BusinessException;
 import top.continew.starter.extension.crud.enums.Api;
 import top.continew.starter.extension.crud.model.query.SortQuery;
 import top.continew.starter.extension.crud.model.resp.BaseIdResp;
+import top.continew.starter.extension.crud.annotation.CrudRequestMapping;
 import top.continew.starter.extension.crud.validation.CrudValidationGroup;
 import top.continew.starter.file.excel.util.ExcelUtils;
 import top.continew.starter.web.model.R;
@@ -49,6 +47,17 @@ import top.continew.starter.web.model.R;
 @RequiredArgsConstructor
 @CrudRequestMapping(value = "/automation/automationNodeConfig", api = {Api.PAGE, Api.GET, Api.CREATE, Api.UPDATE, Api.DELETE, Api.EXPORT})
 public class AutomationNodeConfigController extends BaseController<AutomationNodeConfigService, AutomationNodeConfigResp, AutomationNodeConfigDetailResp, AutomationNodeConfigQuery, AutomationNodeConfigReq> {
+
+    private final AutomationEnvironmentConfigService automationEnvironmentConfigService;
+
+    @Override
+    @Operation(summary = "查询数据", description = "根据查询条件查询数据")
+    @SaCheckPermission("automation:automationNodeConfig:list")
+    @GetMapping("/list")
+    public List<AutomationNodeConfigResp> list(@Validated AutomationNodeConfigQuery query, @Validated SortQuery sortQuery) {
+        return super.list(query, sortQuery);
+    }
+
     @Override
     @Operation(summary = "新增数据", description = "新增数据")
     @SaCheckPermission("automation:automationNodeConfig:create")
@@ -91,11 +100,15 @@ public class AutomationNodeConfigController extends BaseController<AutomationNod
         ids.forEach(id -> {
             // 删除Jenkins远程节点
             AutomationNodeConfigDetailResp automationNodeConfigDetailResp = baseService.get(id);
-            if(baseService.delNode(automationNodeConfigDetailResp)){
-                req.setDelFlag(StatusTypeEnum.ABNORMAL);
-                super.update(req, id);
+            if(automationEnvironmentConfigService.updateNodeConfig("delete", id)){
+                if(baseService.delNode(automationNodeConfigDetailResp)){
+                    req.setDelFlag(StatusTypeEnum.ABNORMAL);
+                    super.update(req, id);
+                }else{
+                    throw new BusinessException("【"+automationNodeConfigDetailResp.getName()+"】删除失败");
+                }
             }else{
-                throw new BusinessException("【"+automationNodeConfigDetailResp.getName()+"】删除失败");
+                throw new IllegalArgumentException("删除失败，自动化环境关联节点配置信息异常："+ id);
             }
         });
     }

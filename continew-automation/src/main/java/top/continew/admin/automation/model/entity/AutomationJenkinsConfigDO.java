@@ -76,7 +76,7 @@ public class AutomationJenkinsConfigDO extends BaseDO {
     /**
      * 状态
      */
-    private DisEnableStatusEnum status;
+    private StatusTypeEnum status;
 
     /**
      * 更新人IP

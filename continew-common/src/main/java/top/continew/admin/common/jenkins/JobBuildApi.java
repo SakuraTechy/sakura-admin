@@ -1,3 +1,19 @@
+/*
+ * Copyright (c) 2022-present Charles7c Authors. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package top.continew.admin.common.jenkins;
 
 import com.offbytwo.jenkins.JenkinsServer;
@@ -34,7 +50,7 @@ public class JobBuildApi {
     /**
      * 获取 Job 最后的 Build
      */
-    public void getJobLastBuild(){
+    public void getJobLastBuild() {
         try {
             // 获取 Job 信息
             JobWithDetails job = jenkinsServer.getJob("Sakura.Web.UI.Automation.Test");
@@ -60,7 +76,7 @@ public class JobBuildApi {
     /**
      * 获取 Job 首次 Build
      */
-    public void getJobFirstBuild(){
+    public void getJobFirstBuild() {
         try {
             // 获取 Job 信息
             JobWithDetails job = jenkinsServer.getJob("Sakura.Web.UI.Automation.Test");
@@ -74,7 +90,7 @@ public class JobBuildApi {
     /**
      * 根据 Job Build 编号获取编译信息
      */
-    public void getJobByNumber(){
+    public void getJobByNumber() {
         try {
             // 获取 Job 信息
             JobWithDetails job = jenkinsServer.getJob("Sakura.Web.UI.Automation.Test");
@@ -88,13 +104,13 @@ public class JobBuildApi {
     /**
      * 获取全部 Job Build列表
      */
-    public void getJobBuildListAll(){
+    public void getJobBuildListAll() {
         try {
             // 获取 Job 信息
             JobWithDetails job = jenkinsServer.getJob("Sakura.Web.UI.Automation.Test");
             // 获取全部 Build 信息
             List<Build> builds = job.getAllBuilds();
-            for (Build build:builds){
+            for (Build build : builds) {
                 System.out.println(build.getNumber());
             }
         } catch (IOException e) {
@@ -105,7 +121,7 @@ public class JobBuildApi {
     /**
      * 获取 Job 一定范围的 Build 列表
      */
-    public void getJobBuildListRange(){
+    public void getJobBuildListRange() {
         try {
             // 获取 Job 信息
             JobWithDetails job = jenkinsServer.getJob("Sakura.Web.UI.Automation.Test");
@@ -114,7 +130,7 @@ public class JobBuildApi {
             System.err.println(range.getRangeString());
             // 获取一定范围的 Build 信息
             List<Build> builds = job.getAllBuilds(range);
-            for (Build build:builds){
+            for (Build build : builds) {
                 System.out.println(build.getNumber());
             }
         } catch (IOException e) {
@@ -125,7 +141,7 @@ public class JobBuildApi {
     /**
      * 获取 Build 基本信息
      */
-    public void getJobBuildInfo(){
+    public void getJobBuildInfo() {
         try {
             // 获取 Job 信息
             JobWithDetails job = jenkinsServer.getJob("Sakura.Web.UI.Automation.Test");
@@ -136,11 +152,11 @@ public class JobBuildApi {
             // 获取构建编号
             System.out.println(build.getNumber());
             // 获取测试报告
-//            System.out.println(build.getTestReport().getUrlName());
-//            // 获取测试结果
-//            System.out.println(build.getTestResult());
-//            System.out.println(build.getTestResult().getDuration());
-//            System.out.println(build.getTestResult().getPassCount());
+            //            System.out.println(build.getTestReport().getUrlName());
+            //            // 获取测试结果
+            //            System.out.println(build.getTestResult());
+            //            System.out.println(build.getTestResult().getDuration());
+            //            System.out.println(build.getTestResult().getPassCount());
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -149,7 +165,7 @@ public class JobBuildApi {
     /**
      * 获取 Build 详细信息
      */
-    public void getJobBuildDetailInfo(){
+    public void getJobBuildDetailInfo() {
         try {
             // 获取 Job 信息
             JobWithDetails job = jenkinsServer.getJob("Sakura.Web.UI.Automation.Test");
@@ -171,7 +187,7 @@ public class JobBuildApi {
             System.out.println(build.getTimestamp());
             // 获取构建头信息，里面包含构建的用户，上游信息，时间戳等
             List<BuildCause> buildCauses = build.getCauses();
-            for (BuildCause bc:buildCauses){
+            for (BuildCause bc : buildCauses) {
                 System.out.println(bc.getUserId());
                 System.out.println(bc.getShortDescription());
                 System.out.println(bc.getUpstreamBuild());
@@ -187,7 +203,7 @@ public class JobBuildApi {
     /**
      * 获取 Build Log 日志信息
      */
-    public void getJobBuildLog(){
+    public void getJobBuildLog() {
         try {
             // 获取 Job 信息
             JobWithDetails job = jenkinsServer.getJob("Sakura.Web.UI.Automation.Test");
@@ -208,7 +224,7 @@ public class JobBuildApi {
             System.out.println(consoleLog.getHasMoreData());
             // 获取当前截取的日志信息
             System.out.println(consoleLog.getConsoleLog());
-        }catch (IOException e) {
+        } catch (IOException e) {
             e.printStackTrace();
         }
     }
@@ -216,7 +232,7 @@ public class JobBuildApi {
     /**
      * 获取正在执行构建任务的日志信息
      */
-    public void getBuildActiveLog(){
+    public void getBuildActiveLog() {
         try {
             // 这里用最后一次编译来示例
             BuildWithDetails build = jenkinsServer.getJob("Sakura.Web.UI.Automation.Test").getLastBuild().details();
@@ -225,7 +241,7 @@ public class JobBuildApi {
             // 输出当前获取日志信息
             System.out.println(currentLog.getConsoleLog());
             // 检测是否还有更多日志,如果是则继续循环获取
-            while (currentLog.getHasMoreData()){
+            while (currentLog.getHasMoreData()) {
                 // 获取最新日志信息
                 ConsoleLog newLog = build.getConsoleOutputText(currentLog.getCurrentBufferSize());
                 // 输出最新日志
@@ -234,7 +250,7 @@ public class JobBuildApi {
                 // 睡眠1s
                 Thread.sleep(1000);
             }
-        }catch (IOException | InterruptedException e) {
+        } catch (IOException | InterruptedException e) {
             e.printStackTrace();
         }
     }
@@ -242,22 +258,22 @@ public class JobBuildApi {
     public static void main(String[] args) {
         JobBuildApi jobBuildApi = new JobBuildApi();
         // 获取 Job 最后的 Build
-//        jobBuildApi.getJobLastBuild();
-//        // 获取 Job 首次 Build
-//        jobBuildApi.getJobFirstBuild();
-//        // 根据 Job Build 编号获取编译信息
-//        jobBuildApi.getJobByNumber();
-//        // 获取 Build 全部列表
-//        jobBuildApi.getJobBuildListAll();
-//        // 获取一定范围的 Build 列表
-//        jobBuildApi.getJobBuildListRange();
-//        // 获取 Build 基本信息
-//        jobBuildApi.getJobBuildInfo();
-//        // 获取 Build 详细信息
-//        jobBuildApi.getJobBuildDetailInfo();
-//        // 获取 Build Log 日志信息
-//        jobBuildApi.getJobBuildLog();
-//        // 获得正在执行的编译 Log 日志信息
-//        jobBuildApi.getBuildActiveLog();
+        //        jobBuildApi.getJobLastBuild();
+        //        // 获取 Job 首次 Build
+        //        jobBuildApi.getJobFirstBuild();
+        //        // 根据 Job Build 编号获取编译信息
+        //        jobBuildApi.getJobByNumber();
+        //        // 获取 Build 全部列表
+        //        jobBuildApi.getJobBuildListAll();
+        //        // 获取一定范围的 Build 列表
+        //        jobBuildApi.getJobBuildListRange();
+        //        // 获取 Build 基本信息
+        //        jobBuildApi.getJobBuildInfo();
+        //        // 获取 Build 详细信息
+        //        jobBuildApi.getJobBuildDetailInfo();
+        //        // 获取 Build Log 日志信息
+        //        jobBuildApi.getJobBuildLog();
+        //        // 获得正在执行的编译 Log 日志信息
+        //        jobBuildApi.getBuildActiveLog();
     }
 }

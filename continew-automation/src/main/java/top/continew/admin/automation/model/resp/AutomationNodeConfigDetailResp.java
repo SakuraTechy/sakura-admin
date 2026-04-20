@@ -1,3 +1,19 @@
+/*
+ * Copyright (c) 2022-present Charles7c Authors. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package top.continew.admin.automation.model.resp;
 
 import com.alibaba.excel.annotation.ExcelIgnore;
@@ -18,7 +34,6 @@ import cn.crane4j.annotation.condition.ConditionOnExpression;
 
 import top.continew.admin.automation.model.entity.AutomationNodeConfigDO;
 import top.continew.admin.automation.service.AutomationJenkinsConfigService;
-import top.continew.admin.common.config.excel.ExcelDictConverter;
 import top.continew.admin.common.enums.StatusTypeEnum;
 import top.continew.admin.common.model.resp.BaseDetailResp;
 
@@ -56,7 +71,6 @@ public class AutomationNodeConfigDetailResp extends BaseDetailResp {
     @Schema(description = "节点名称")
     @ExcelProperty(value = "节点名称", order = 3)
     private String name;
-
 
     /**
      * 节点类型
@@ -101,11 +115,11 @@ public class AutomationNodeConfigDetailResp extends BaseDetailResp {
     private AutomationNodeConfigDO.Active active;
 
     @Schema(description = "节点在线状态")
-    @ExcelProperty(value = "节点在线状态", converter = ExcelBaseEnumConverter.class,  order = 10)
+    @ExcelProperty(value = "节点在线状态", converter = ExcelBaseEnumConverter.class, order = 10)
     private StatusTypeEnum offlineStatus;
 
     @Schema(description = "节点使用状态")
-    @ExcelProperty(value = "节点使用状态", converter = ExcelBaseEnumConverter.class,  order = 11)
+    @ExcelProperty(value = "节点使用状态", converter = ExcelBaseEnumConverter.class, order = 11)
     private StatusTypeEnum idleStatus;
 
     /**

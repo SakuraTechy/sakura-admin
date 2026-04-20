@@ -77,23 +77,30 @@ public class ProjectVersionConfigDetailResp extends BaseDetailResp {
     private String description;
 
     /**
+     * 版本类型
+     */
+    @Schema(description = "版本类型")
+    @ExcelProperty(value = "版本描述", order = 5)
+    private String type;
+
+    /**
      * 状态
      */
     @Schema(description = "状态")
-    @ExcelProperty(value = "状态", converter = ExcelBaseEnumConverter.class, order = 5)
+    @ExcelProperty(value = "状态", converter = ExcelBaseEnumConverter.class, order = 6)
     private DisEnableStatusEnum status;
 
     /**
      * 更新人IP
      */
     @Schema(description = "更新人IP")
-    @ExcelProperty(value = "更新人IP", order = 6)
+    @ExcelProperty(value = "更新人IP", order = 7)
     private String updateIp;
 
     /**
      * 删除标志（3正常 4异常）
      */
     @Schema(description = "删除标志（3正常 4异常）")
-    @ExcelProperty(value = "删除标志（3正常 4异常）", converter = ExcelBaseEnumConverter.class, order = 7)
+    @ExcelProperty(value = "删除标志（3正常 4异常）", converter = ExcelBaseEnumConverter.class, order = 8)
     private StatusTypeEnum delFlag;
 }

@@ -1,3 +1,19 @@
+/*
+ * Copyright (c) 2022-present Charles7c Authors. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package top.continew.admin.common.util;
 
 import org.springframework.util.AntPathMatcher;
@@ -12,8 +28,7 @@ import java.util.*;
  *
  * @author liuzhi
  */
-public class StringUtils extends org.apache.commons.lang3.StringUtils
-{
+public class StringUtils extends org.apache.commons.lang3.StringUtils {
     /** 空字符串 */
     private static final String NULLSTR = "";
 
@@ -21,14 +36,14 @@ public class StringUtils extends org.apache.commons.lang3.StringUtils
     private static final char SEPARATOR = '_';
 
     public static final String DOULEFORMAT = "#0.00";
+
     /**
      * 获取参数不为空值
      *
      * @param value defaultValue 要判断的value
      * @return value 返回值
      */
-    public static <T> T nvl(T value, T defaultValue)
-    {
+    public static <T> T nvl(T value, T defaultValue) {
         return value != null ? value : defaultValue;
     }
 
@@ -38,8 +53,7 @@ public class StringUtils extends org.apache.commons.lang3.StringUtils
      * @param coll 要判断的Collection
      * @return true：为空 false：非空
      */
-    public static boolean isEmpty(Collection<?> coll)
-    {
+    public static boolean isEmpty(Collection<?> coll) {
         return isNull(coll) || coll.isEmpty();
     }
 
@@ -49,8 +63,7 @@ public class StringUtils extends org.apache.commons.lang3.StringUtils
      * @param coll 要判断的Collection
      * @return true：非空 false：空
      */
-    public static boolean isNotEmpty(Collection<?> coll)
-    {
+    public static boolean isNotEmpty(Collection<?> coll) {
         return !isEmpty(coll);
     }
 
@@ -60,8 +73,7 @@ public class StringUtils extends org.apache.commons.lang3.StringUtils
      * @param objects 要判断的对象数组
      ** @return true：为空 false：非空
      */
-    public static boolean isEmpty(Object[] objects)
-    {
+    public static boolean isEmpty(Object[] objects) {
         return isNull(objects) || (objects.length == 0);
     }
 
@@ -71,8 +83,7 @@ public class StringUtils extends org.apache.commons.lang3.StringUtils
      * @param objects 要判断的对象数组
      * @return true：非空 false：空
      */
-    public static boolean isNotEmpty(Object[] objects)
-    {
+    public static boolean isNotEmpty(Object[] objects) {
         return !isEmpty(objects);
     }
 
@@ -82,8 +93,7 @@ public class StringUtils extends org.apache.commons.lang3.StringUtils
      * @param map 要判断的Map
      * @return true：为空 false：非空
      */
-    public static boolean isEmpty(Map<?, ?> map)
-    {
+    public static boolean isEmpty(Map<?, ?> map) {
         return isNull(map) || map.isEmpty();
     }
 
@@ -93,8 +103,7 @@ public class StringUtils extends org.apache.commons.lang3.StringUtils
      * @param map 要判断的Map
      * @return true：非空 false：空
      */
-    public static boolean isNotEmpty(Map<?, ?> map)
-    {
+    public static boolean isNotEmpty(Map<?, ?> map) {
         return !isEmpty(map);
     }
 
@@ -104,8 +113,7 @@ public class StringUtils extends org.apache.commons.lang3.StringUtils
      * @param str String
      * @return true：为空 false：非空
      */
-    public static boolean isEmpty(String str)
-    {
+    public static boolean isEmpty(String str) {
         return isNull(str) || NULLSTR.equals(str.trim());
     }
 
@@ -115,8 +123,7 @@ public class StringUtils extends org.apache.commons.lang3.StringUtils
      * @param str String
      * @return true：非空串 false：空串
      */
-    public static boolean isNotEmpty(String str)
-    {
+    public static boolean isNotEmpty(String str) {
         return !isEmpty(str);
     }
 
@@ -126,8 +133,7 @@ public class StringUtils extends org.apache.commons.lang3.StringUtils
      * @param object Object
      * @return true：为空 false：非空
      */
-    public static boolean isNull(Object object)
-    {
+    public static boolean isNull(Object object) {
         return object == null;
     }
 
@@ -137,8 +143,7 @@ public class StringUtils extends org.apache.commons.lang3.StringUtils
      * @param object Object
      * @return true：非空 false：空
      */
-    public static boolean isNotNull(Object object)
-    {
+    public static boolean isNotNull(Object object) {
         return !isNull(object);
     }
 
@@ -148,44 +153,37 @@ public class StringUtils extends org.apache.commons.lang3.StringUtils
      * @param object 对象
      * @return true：是数组 false：不是数组
      */
-    public static boolean isArray(Object object)
-    {
+    public static boolean isArray(Object object) {
         return isNotNull(object) && object.getClass().isArray();
     }
 
     /**
      * 去空格
      */
-    public static String trim(String str)
-    {
+    public static String trim(String str) {
         return (str == null ? "" : str.trim());
     }
 
     /**
      * 截取字符串
      *
-     * @param str 字符串
+     * @param str   字符串
      * @param start 开始
      * @return 结果
      */
-    public static String substring(final String str, int start)
-    {
-        if (str == null)
-        {
+    public static String substring(final String str, int start) {
+        if (str == null) {
             return NULLSTR;
         }
 
-        if (start < 0)
-        {
+        if (start < 0) {
             start = str.length() + start;
         }
 
-        if (start < 0)
-        {
+        if (start < 0) {
             start = 0;
         }
-        if (start > str.length())
-        {
+        if (start > str.length()) {
             return NULLSTR;
         }
 
@@ -195,43 +193,35 @@ public class StringUtils extends org.apache.commons.lang3.StringUtils
     /**
      * 截取字符串
      *
-     * @param str 字符串
+     * @param str   字符串
      * @param start 开始
-     * @param end 结束
+     * @param end   结束
      * @return 结果
      */
-    public static String substring(final String str, int start, int end)
-    {
-        if (str == null)
-        {
+    public static String substring(final String str, int start, int end) {
+        if (str == null) {
             return NULLSTR;
         }
 
-        if (end < 0)
-        {
+        if (end < 0) {
             end = str.length() + end;
         }
-        if (start < 0)
-        {
+        if (start < 0) {
             start = str.length() + start;
         }
 
-        if (end > str.length())
-        {
+        if (end > str.length()) {
             end = str.length();
         }
 
-        if (start > end)
-        {
+        if (start > end) {
             return NULLSTR;
         }
 
-        if (start < 0)
-        {
+        if (start < 0) {
             start = 0;
         }
-        if (end < 0)
-        {
+        if (end < 0) {
             end = 0;
         }
 
@@ -248,13 +238,11 @@ public class StringUtils extends org.apache.commons.lang3.StringUtils
      * 转义\： format("this is \\\\{} for {}", "a", "b") -> this is \a for b<br>
      *
      * @param template 文本模板，被替换的部分用 {} 表示
-     * @param params 参数值
+     * @param params   参数值
      * @return 格式化后的文本
      */
-    public static String format(String template, Object... params)
-    {
-        if (isEmpty(params) || isEmpty(template))
-        {
+    public static String format(String template, Object... params) {
+        if (isEmpty(params) || isEmpty(template)) {
             return template;
         }
         return StrFormatter.format(template, params);
@@ -267,42 +255,35 @@ public class StringUtils extends org.apache.commons.lang3.StringUtils
      * @param sep 分隔符
      * @return set集合
      */
-    public static final Set<String> str2Set(String str, String sep)
-    {
+    public static final Set<String> str2Set(String str, String sep) {
         return new HashSet<String>(str2List(str, sep, true, false));
     }
 
     /**
      * 字符串转list
      *
-     * @param str 字符串
-     * @param sep 分隔符
+     * @param str         字符串
+     * @param sep         分隔符
      * @param filterBlank 过滤纯空白
-     * @param trim 去掉首尾空白
+     * @param trim        去掉首尾空白
      * @return list集合
      */
-    public static final List<String> str2List(String str, String sep, boolean filterBlank, boolean trim)
-    {
+    public static final List<String> str2List(String str, String sep, boolean filterBlank, boolean trim) {
         List<String> list = new ArrayList<String>();
-        if (StringUtils.isEmpty(str))
-        {
+        if (StringUtils.isEmpty(str)) {
             return list;
         }
 
         // 过滤空白字符串
-        if (filterBlank && StringUtils.isBlank(str))
-        {
+        if (filterBlank && StringUtils.isBlank(str)) {
             return list;
         }
         String[] split = str.split(sep);
-        for (String string : split)
-        {
-            if (filterBlank && StringUtils.isBlank(string))
-            {
+        for (String string : split) {
+            if (filterBlank && StringUtils.isBlank(string)) {
                 continue;
             }
-            if (trim)
-            {
+            if (trim) {
                 string = string.trim();
             }
             list.add(string);
@@ -314,10 +295,8 @@ public class StringUtils extends org.apache.commons.lang3.StringUtils
     /**
      * 驼峰转下划线命名
      */
-    public static String toUnderScoreCase(String str)
-    {
-        if (str == null)
-        {
+    public static String toUnderScoreCase(String str) {
+        if (str == null) {
             return null;
         }
         StringBuilder sb = new StringBuilder();
@@ -327,31 +306,23 @@ public class StringUtils extends org.apache.commons.lang3.StringUtils
         boolean curreCharIsUpperCase = true;
         // 下一字符是否大写
         boolean nexteCharIsUpperCase = true;
-        for (int i = 0; i < str.length(); i++)
-        {
+        for (int i = 0; i < str.length(); i++) {
             char c = str.charAt(i);
-            if (i > 0)
-            {
+            if (i > 0) {
                 preCharIsUpperCase = Character.isUpperCase(str.charAt(i - 1));
-            }
-            else
-            {
+            } else {
                 preCharIsUpperCase = false;
             }
 
             curreCharIsUpperCase = Character.isUpperCase(c);
 
-            if (i < (str.length() - 1))
-            {
+            if (i < (str.length() - 1)) {
                 nexteCharIsUpperCase = Character.isUpperCase(str.charAt(i + 1));
             }
 
-            if (preCharIsUpperCase && curreCharIsUpperCase && !nexteCharIsUpperCase)
-            {
+            if (preCharIsUpperCase && curreCharIsUpperCase && !nexteCharIsUpperCase) {
                 sb.append(SEPARATOR);
-            }
-            else if ((i != 0 && !preCharIsUpperCase) && curreCharIsUpperCase)
-            {
+            } else if ((i != 0 && !preCharIsUpperCase) && curreCharIsUpperCase) {
                 sb.append(SEPARATOR);
             }
             sb.append(Character.toLowerCase(c));
@@ -363,18 +334,14 @@ public class StringUtils extends org.apache.commons.lang3.StringUtils
     /**
      * 是否包含字符串
      *
-     * @param str 验证字符串
+     * @param str  验证字符串
      * @param strs 字符串组
      * @return 包含返回true
      */
-    public static boolean inStringIgnoreCase(String str, String... strs)
-    {
-        if (str != null && strs != null)
-        {
-            for (String s : strs)
-            {
-                if (str.equalsIgnoreCase(trim(s)))
-                {
+    public static boolean inStringIgnoreCase(String str, String... strs) {
+        if (str != null && strs != null) {
+            for (String s : strs) {
+                if (str.equalsIgnoreCase(trim(s))) {
                     return true;
                 }
             }
@@ -385,20 +352,16 @@ public class StringUtils extends org.apache.commons.lang3.StringUtils
     /**
      * 查找指定字符串是否包含指定字符串列表中的任意一个字符串同时串忽略大小写
      *
-     * @param cs 指定字符串
+     * @param cs                  指定字符串
      * @param searchCharSequences 需要检查的字符串数组
      * @return 是否包含任意一个字符串
      */
-    public static boolean containsAnyIgnoreCase(CharSequence cs, CharSequence... searchCharSequences)
-    {
-        if (isEmpty(cs) || isEmpty(searchCharSequences))
-        {
+    public static boolean containsAnyIgnoreCase(CharSequence cs, CharSequence... searchCharSequences) {
+        if (isEmpty(cs) || isEmpty(searchCharSequences)) {
             return false;
         }
-        for (CharSequence testStr : searchCharSequences)
-        {
-            if (containsIgnoreCase(cs, testStr))
-            {
+        for (CharSequence testStr : searchCharSequences) {
+            if (containsIgnoreCase(cs, testStr)) {
                 return true;
             }
         }
@@ -411,27 +374,21 @@ public class StringUtils extends org.apache.commons.lang3.StringUtils
      * @param name 转换前的下划线大写方式命名的字符串
      * @return 转换后的驼峰式命名的字符串
      */
-    public static String convertToCamelCase(String name)
-    {
+    public static String convertToCamelCase(String name) {
         StringBuilder result = new StringBuilder();
         // 快速检查
-        if (name == null || name.isEmpty())
-        {
+        if (name == null || name.isEmpty()) {
             // 没必要转换
             return "";
-        }
-        else if (!name.contains("_"))
-        {
+        } else if (!name.contains("_")) {
             // 不含下划线，仅将首字母大写
             return name.substring(0, 1).toUpperCase() + name.substring(1);
         }
         // 用下划线将原始字符串分割
         String[] camels = name.split("_");
-        for (String camel : camels)
-        {
+        for (String camel : camels) {
             // 跳过原始字符串中开头、结尾的下换线或双重下划线
-            if (camel.isEmpty())
-            {
+            if (camel.isEmpty()) {
                 continue;
             }
             // 首字母大写
@@ -444,40 +401,33 @@ public class StringUtils extends org.apache.commons.lang3.StringUtils
     /**
      * 驼峰式命名法 例如：user_name->userName
      */
-    public static String toCamelCase(String s)
-    {
-        if (s == null)
-        {
+    public static String toCamelCase(String s) {
+        if (s == null) {
             return null;
         }
         s = s.toLowerCase();
         StringBuilder sb = new StringBuilder(s.length());
         boolean upperCase = false;
-        for (int i = 0; i < s.length(); i++)
-        {
+        for (int i = 0; i < s.length(); i++) {
             char c = s.charAt(i);
 
-            if (c == SEPARATOR)
-            {
+            if (c == SEPARATOR) {
                 upperCase = true;
-            }
-            else if (upperCase)
-            {
+            } else if (upperCase) {
                 sb.append(Character.toUpperCase(c));
                 upperCase = false;
-            }
-            else
-            {
+            } else {
                 sb.append(c);
             }
         }
         return sb.toString();
     }
+
     /**
      * 转换为Double类型
      */
-    public static Double toDouble(Object val){
-        if (val == null){
+    public static Double toDouble(Object val) {
+        if (val == null) {
             return 0D;
         }
         try {
@@ -490,60 +440,58 @@ public class StringUtils extends org.apache.commons.lang3.StringUtils
     /**
      * 转换为Float类型
      */
-    public static Float toFloat(Object val){
+    public static Float toFloat(Object val) {
         return toDouble(val).floatValue();
     }
 
     /**
      * 转换为Long类型
      */
-    public static Long toLong(Object val){
+    public static Long toLong(Object val) {
         return toDouble(val).longValue();
     }
 
     /**
      * 转换为Integer类型
      */
-    public static Integer toInteger(Object val){
+    public static Integer toInteger(Object val) {
         return toLong(val).intValue();
     }
 
-
-
     @SuppressWarnings("unchecked")
-    public static <T> T cast(Object obj)
-    {
-        return (T) obj;
+    public static <T> T cast(Object obj) {
+        return (T)obj;
     }
 
     /**
      * 获得用户远程地址
      */
-    public static String getRemoteAddr(HttpServletRequest request){
+    public static String getRemoteAddr(HttpServletRequest request) {
         String remoteAddr = request.getHeader("X-Real-IP");
         if (isNotBlank(remoteAddr)) {
             remoteAddr = request.getHeader("X-Forwarded-For");
-        }else if (isNotBlank(remoteAddr)) {
+        } else if (isNotBlank(remoteAddr)) {
             remoteAddr = request.getHeader("Proxy-Client-IP");
-        }else if (isNotBlank(remoteAddr)) {
+        } else if (isNotBlank(remoteAddr)) {
             remoteAddr = request.getHeader("WL-Proxy-Client-IP");
         }
         return remoteAddr != null ? remoteAddr : request.getRemoteAddr();
     }
 
-    public static String doubleFormat(Double value){
+    public static String doubleFormat(Double value) {
         DecimalFormat df = new DecimalFormat(DOULEFORMAT);
-        if(value != null){
+        if (value != null) {
             return df.format(value);
-        }else{
+        } else {
             return "";
         }
     }
-    public static String doubleFormat(Double value, String format){
+
+    public static String doubleFormat(Double value, String format) {
         DecimalFormat df = new DecimalFormat(format);
-        if(value != null){
+        if (value != null) {
             return df.format(value);
-        }else{
+        } else {
             return "";
         }
     }
@@ -551,20 +499,16 @@ public class StringUtils extends org.apache.commons.lang3.StringUtils
     /**
      * 查找指定字符串是否匹配指定字符串列表中的任意一个字符串
      *
-     * @param str 指定字符串
+     * @param str  指定字符串
      * @param strs 需要检查的字符串数组
      * @return 是否匹配
      */
-    public static boolean matches(String str, List<String> strs)
-    {
-        if (isEmpty(str) || isEmpty(strs))
-        {
+    public static boolean matches(String str, List<String> strs) {
+        if (isEmpty(str) || isEmpty(strs)) {
             return false;
         }
-        for (String pattern : strs)
-        {
-            if (isMatch(pattern, str))
-            {
+        for (String pattern : strs) {
+            if (isMatch(pattern, str)) {
                 return true;
             }
         }
@@ -578,11 +522,10 @@ public class StringUtils extends org.apache.commons.lang3.StringUtils
      * ** 表示任意层路径;
      *
      * @param pattern 匹配规则
-     * @param url 需要匹配的url
+     * @param url     需要匹配的url
      * @return
      */
-    public static boolean isMatch(String pattern, String url)
-    {
+    public static boolean isMatch(String pattern, String url) {
         AntPathMatcher matcher = new AntPathMatcher();
         return matcher.match(pattern, url);
     }

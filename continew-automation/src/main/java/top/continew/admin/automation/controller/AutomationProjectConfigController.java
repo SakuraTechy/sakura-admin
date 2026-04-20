@@ -1,11 +1,25 @@
-package top.continew.admin.automation.controller;
+/*
+ * Copyright (c) 2022-present Charles7c Authors. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
+package top.continew.admin.automation.controller;
 
 import java.util.List;
 import java.util.Arrays;
 import java.util.Objects;
 
-import cn.hutool.core.bean.BeanUtil;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import cn.dev33.satoken.annotation.SaCheckPermission;
@@ -43,7 +57,8 @@ import top.continew.starter.extension.crud.validation.CrudValidationGroup;
 @Tag(name = "自动化管理-项目配置管理 API")
 @RestController
 @RequiredArgsConstructor
-@CrudRequestMapping(value = "/automation/automationProjectConfig", api = {Api.PAGE, Api.GET, Api.CREATE, Api.UPDATE, Api.DELETE, Api.EXPORT})
+@CrudRequestMapping(value = "/automation/automationProjectConfig", api = {Api.PAGE, Api.GET, Api.CREATE, Api.UPDATE,
+    Api.DELETE, Api.EXPORT})
 public class AutomationProjectConfigController extends BaseController<AutomationProjectConfigService, AutomationProjectConfigResp, AutomationProjectConfigDetailResp, AutomationProjectConfigQuery, AutomationProjectConfigReq> {
 
     private final AutomationEnvironmentConfigService automationEnvironmentConfigService;
@@ -52,7 +67,7 @@ public class AutomationProjectConfigController extends BaseController<Automation
     @Operation(summary = "新增数据", description = "新增数据")
     @SaCheckPermission("project:AutomationProjectConfig:create")
     public BaseIdResp<Long> create(@Validated(CrudValidationGroup.Create.class) @RequestBody AutomationProjectConfigReq req) {
-        Object[] param = new Object[]{req.getName(), req.getUrl()};
+        Object[] param = new Object[] {req.getName(), req.getUrl()};
         CheckUtils.throwIf(baseService.isExists(null, param), "新增失败，自动化管理-项目配置 [{}] 已存在", param[1]);
         return super.create(req);
     }
@@ -60,12 +75,13 @@ public class AutomationProjectConfigController extends BaseController<Automation
     @Override
     @Operation(summary = "修改数据", description = "修改数据")
     @SaCheckPermission("project:AutomationProjectConfig:update")
-    public void update(@Validated(CrudValidationGroup.Update.class) @RequestBody AutomationProjectConfigReq req, @PathVariable("id") Long id) {
-        Object[] param = new Object[]{req.getName(), req.getUrl()};
+    public void update(@Validated(CrudValidationGroup.Update.class) @RequestBody AutomationProjectConfigReq req,
+                       @PathVariable("id") Long id) {
+        Object[] param = new Object[] {req.getName(), req.getUrl()};
         CheckUtils.throwIf(baseService.isExists(id, param), "修改失败，自动化管理-项目配置 [{}] 已存在", param[1]);
-        if(automationEnvironmentConfigService.updateProjectConfig("update", id)){
+        if (automationEnvironmentConfigService.updateProjectConfig("update", id)) {
             super.update(req, id);
-        }else{
+        } else {
             throw new IllegalArgumentException("修改失败，自动化环境关联项目配置信息异常");
         }
     }
@@ -75,13 +91,13 @@ public class AutomationProjectConfigController extends BaseController<Automation
     @SaCheckPermission("project:AutomationProjectConfig:delete")
     @DeleteMapping("/{ids}")
     public void delete(@PathVariable List<Long> ids) {
-//        baseService.deleteByIds(ids);
+        //        baseService.deleteByIds(ids);
         AutomationProjectConfigReq req = new AutomationProjectConfigReq();
         ids.forEach(id -> {
-            if(automationEnvironmentConfigService.updateProjectConfig("delete", id)){
+            if (automationEnvironmentConfigService.updateProjectConfig("delete", id)) {
                 req.setDelFlag(StatusTypeEnum.ABNORMAL);
                 super.update(req, id);
-            }else{
+            } else {
                 throw new IllegalArgumentException("删除失败，自动化环境关联项目配置信息异常");
             }
         });
@@ -91,18 +107,20 @@ public class AutomationProjectConfigController extends BaseController<Automation
     @Parameter(name = "ids", description = "逗号分隔的ID列表", example = "1,2", in = ParameterIn.PATH)
     @SaCheckPermission("project:AutomationProjectConfig:export")
     @GetMapping("/export")
-    public void export(@Validated AutomationProjectConfigQuery query, @Validated SortQuery sortQuery, HttpServletResponse response) {
+    public void export(@Validated AutomationProjectConfigQuery query,
+                       @Validated SortQuery sortQuery,
+                       HttpServletResponse response) {
         try {
             String idStr = String.valueOf(Objects.requireNonNull(query.getId(), "ID string is null"));
             List<Long> ids = Arrays.stream(idStr.split(","))
-                    .map(String::trim)
-                    .filter(s -> !s.isEmpty())
-                    .map(Long::parseLong)
-                    .toList();
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .map(Long::parseLong)
+                .toList();
             if (!ids.isEmpty() && query.getName().equals("批量选择导出")) {
                 List<AutomationProjectConfigDetailResp> list = baseService.selectByIds(ids);
                 ExcelUtils.export(list, "导出数据", AutomationProjectConfigDetailResp.class, response);
-            }else{
+            } else {
                 throw new IllegalArgumentException("No valid IDs provided");
             }
         } catch (NumberFormatException e) {

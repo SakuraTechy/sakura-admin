@@ -1,3 +1,19 @@
+/*
+ * Copyright (c) 2022-present Charles7c Authors. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package top.continew.admin.automation.service.impl;
 
 import java.util.List;
@@ -27,7 +43,8 @@ import top.continew.admin.automation.service.AutomationBrowserConfigService;
 public class AutomationBrowserConfigServiceImpl extends BaseServiceImpl<AutomationBrowserConfigMapper, AutomationBrowserConfigDO, AutomationBrowserConfigResp, AutomationBrowserConfigDetailResp, AutomationBrowserConfigQuery, AutomationBrowserConfigReq> implements AutomationBrowserConfigService {
     @Override
     public List<AutomationBrowserConfigDetailResp> selectByIds(List<Long> ids) {
-        List<AutomationBrowserConfigDetailResp> list = BeanUtil.copyToList(baseMapper.selectByIds(ids), AutomationBrowserConfigDetailResp.class);
+        List<AutomationBrowserConfigDetailResp> list = BeanUtil.copyToList(baseMapper
+            .selectByIds(ids), AutomationBrowserConfigDetailResp.class);
         list.forEach(item -> {
             List<String> memberNames = new ArrayList<>();
             item.setCreateUserString(UserContextHolder.getNickname(item.getCreateUser()));
@@ -44,11 +61,11 @@ public class AutomationBrowserConfigServiceImpl extends BaseServiceImpl<Automati
     @Override
     public boolean isExists(Long id, Object... param) {
         return baseMapper.lambdaQuery()
-                .eq(AutomationBrowserConfigDO::getType, param[0])
-                .eq(AutomationBrowserConfigDO::getName, param[1])
-                .eq(AutomationBrowserConfigDO::getVersion, param[2])
-                .eq(AutomationBrowserConfigDO::getDelFlag, 3)
-                .ne(null != id, AutomationBrowserConfigDO::getId, id)
-                .exists();
+            .eq(AutomationBrowserConfigDO::getType, param[0])
+            .eq(AutomationBrowserConfigDO::getName, param[1])
+            .eq(AutomationBrowserConfigDO::getVersion, param[2])
+            .eq(AutomationBrowserConfigDO::getDelFlag, 3)
+            .ne(null != id, AutomationBrowserConfigDO::getId, id)
+            .exists();
     }
 }

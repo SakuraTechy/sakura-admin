@@ -66,12 +66,12 @@ export function list${classNamePrefix}(query?: ${classNamePrefix}PageQuery) {
   return http.get<PageRes<${classNamePrefix}Resp[]>>(`${'$'}{BASE_URL}`, query)
 }
 
-/** @desc 分页查询${businessName}列表 */
-export function list${classNamePrefix}(query?: ${classNamePrefix}PageQuery) {
+/** @desc 全部查询${businessName}列表 */
+export function get${classNamePrefix}List(query?: ${classNamePrefix}PageQuery) {
 return http.get<${classNamePrefix}Resp[]>(`${'$'}{BASE_URL}/list`, query)
 }
 
-/** @desc 全部查询${businessName}详情 */
+/** @desc 查询${businessName}详情 */
 export function get${classNamePrefix}(id: string) {
   return http.get<${classNamePrefix}DetailResp>(`${'$'}{BASE_URL}/${'$'}{id}`)
 }

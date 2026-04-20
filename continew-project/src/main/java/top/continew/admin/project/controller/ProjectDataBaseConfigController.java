@@ -56,13 +56,15 @@ import top.continew.starter.extension.crud.validation.CrudValidationGroup;
 @Tag(name = "项目管理-数据库配置管理 API")
 @RestController
 @RequiredArgsConstructor
-@CrudRequestMapping(value = "/project/projectDataBaseConfig", api = {Api.PAGE, Api.GET, Api.CREATE, Api.UPDATE, Api.DELETE, Api.EXPORT})
+@CrudRequestMapping(value = "/project/projectDataBaseConfig", api = {Api.PAGE, Api.GET, Api.CREATE, Api.UPDATE,
+    Api.DELETE, Api.EXPORT})
 public class ProjectDataBaseConfigController extends BaseController<ProjectDataBaseConfigService, ProjectDataBaseConfigResp, ProjectDataBaseConfigDetailResp, ProjectDataBaseConfigQuery, ProjectDataBaseConfigReq> {
     @Override
     @Operation(summary = "查询数据", description = "根据查询条件查询数据")
     @SaCheckPermission("automation:projectDataBaseConfig:list")
     @GetMapping("/list")
-    public List<ProjectDataBaseConfigResp> list(@Validated ProjectDataBaseConfigQuery query, @Validated SortQuery sortQuery) {
+    public List<ProjectDataBaseConfigResp> list(@Validated ProjectDataBaseConfigQuery query,
+                                                @Validated SortQuery sortQuery) {
         return super.list(query, sortQuery);
     }
 

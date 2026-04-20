@@ -54,6 +54,11 @@ public class ProjectVersionConfigDO extends BaseDO {
     private String description;
 
     /**
+     * 版本类型
+     */
+    private String type;
+
+    /**
      * 状态
      */
     private DisEnableStatusEnum status;

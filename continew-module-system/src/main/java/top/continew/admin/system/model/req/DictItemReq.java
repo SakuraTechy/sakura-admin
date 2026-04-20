@@ -74,7 +74,7 @@ public class DictItemReq implements Serializable {
      * 描述
      */
     @Schema(description = "描述", example = "通知描述信息")
-    @Length(max = 200, message = "描述长度不能超过 {max} 个字符")
+    @Length(max = 2000, message = "描述长度不能超过 {max} 个字符")
     private String description;
 
     /**

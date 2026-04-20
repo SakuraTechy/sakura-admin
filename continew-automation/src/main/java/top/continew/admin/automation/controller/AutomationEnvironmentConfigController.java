@@ -1,5 +1,20 @@
-package top.continew.admin.automation.controller;
+/*
+ * Copyright (c) 2022-present Charles7c Authors. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
+package top.continew.admin.automation.controller;
 
 import java.util.List;
 import java.util.Arrays;
@@ -41,14 +56,16 @@ import top.continew.starter.extension.crud.validation.CrudValidationGroup;
 @Tag(name = "自动化管理-环境配置管理 API")
 @RestController
 @RequiredArgsConstructor
-@CrudRequestMapping(value = "/automation/automationEnvironmentConfig", api = {Api.PAGE, Api.GET, Api.CREATE, Api.UPDATE, Api.DELETE, Api.EXPORT})
+@CrudRequestMapping(value = "/automation/automationEnvironmentConfig", api = {Api.PAGE, Api.GET, Api.CREATE, Api.UPDATE,
+    Api.DELETE, Api.EXPORT})
 public class AutomationEnvironmentConfigController extends BaseController<AutomationEnvironmentConfigService, AutomationEnvironmentConfigResp, AutomationEnvironmentConfigDetailResp, AutomationEnvironmentConfigQuery, AutomationEnvironmentConfigReq> {
 
     @Override
     @Operation(summary = "查询数据", description = "根据查询条件查询数据")
     @SaCheckPermission("automation:projectEnvironmentConfig:list")
     @GetMapping("/list")
-    public List<AutomationEnvironmentConfigResp> list(@Validated AutomationEnvironmentConfigQuery query, @Validated SortQuery sortQuery) {
+    public List<AutomationEnvironmentConfigResp> list(@Validated AutomationEnvironmentConfigQuery query,
+                                                      @Validated SortQuery sortQuery) {
         return super.list(query, sortQuery);
     }
 
@@ -56,7 +73,7 @@ public class AutomationEnvironmentConfigController extends BaseController<Automa
     @Operation(summary = "新增数据", description = "新增数据")
     @SaCheckPermission("automation:automationEnvironmentConfig:create")
     public BaseIdResp<Long> create(@Validated(CrudValidationGroup.Create.class) @RequestBody AutomationEnvironmentConfigReq req) {
-        Object[] param = new Object[]{req.getType(), req.getName()};
+        Object[] param = new Object[] {req.getType(), req.getName()};
         CheckUtils.throwIf(baseService.isExists(null, param), "新增失败，自动化管理-环境配置 [{}] 已存在", param[1]);
         return super.create(req);
     }
@@ -64,8 +81,9 @@ public class AutomationEnvironmentConfigController extends BaseController<Automa
     @Override
     @Operation(summary = "修改数据", description = "修改数据")
     @SaCheckPermission("automation:automationEnvironmentConfig:update")
-    public void update(@Validated(CrudValidationGroup.Update.class) @RequestBody AutomationEnvironmentConfigReq req, @PathVariable("id") Long id) {
-        Object[] param = new Object[]{req.getType(), req.getName()};
+    public void update(@Validated(CrudValidationGroup.Update.class) @RequestBody AutomationEnvironmentConfigReq req,
+                       @PathVariable("id") Long id) {
+        Object[] param = new Object[] {req.getType(), req.getName()};
         CheckUtils.throwIf(baseService.isExists(id, param), "修改失败，自动化管理-环境配置 [{}] 已存在", param[1]);
         super.update(req, id);
     }
@@ -75,7 +93,7 @@ public class AutomationEnvironmentConfigController extends BaseController<Automa
     @SaCheckPermission("automation:automationEnvironmentConfig:delete")
     @DeleteMapping("/{ids}")
     public void delete(@PathVariable List<Long> ids) {
-//        baseService.deleteByIds(ids);
+        //        baseService.deleteByIds(ids);
         AutomationEnvironmentConfigReq req = new AutomationEnvironmentConfigReq();
         ids.forEach(id -> {
             req.setDelFlag(StatusTypeEnum.ABNORMAL);
@@ -87,18 +105,20 @@ public class AutomationEnvironmentConfigController extends BaseController<Automa
     @Parameter(name = "ids", description = "逗号分隔的ID列表", example = "1,2", in = ParameterIn.PATH)
     @SaCheckPermission("automation:AutomationEnvironmentConfig:export")
     @GetMapping("/export")
-    public void export(@Validated AutomationEnvironmentConfigQuery query, @Validated SortQuery sortQuery, HttpServletResponse response) {
+    public void export(@Validated AutomationEnvironmentConfigQuery query,
+                       @Validated SortQuery sortQuery,
+                       HttpServletResponse response) {
         try {
             String idStr = String.valueOf(Objects.requireNonNull(query.getId(), "ID string is null"));
             List<Long> ids = Arrays.stream(idStr.split(","))
-                    .map(String::trim)
-                    .filter(s -> !s.isEmpty())
-                    .map(Long::parseLong)
-                    .toList();
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .map(Long::parseLong)
+                .toList();
             if (!ids.isEmpty() && query.getName().equals("批量选择导出")) {
                 List<AutomationEnvironmentConfigDetailResp> list = baseService.selectByIds(ids);
                 ExcelUtils.export(list, "导出数据", AutomationEnvironmentConfigDetailResp.class, response);
-            }else{
+            } else {
                 throw new IllegalArgumentException("No valid IDs provided");
             }
         } catch (NumberFormatException e) {

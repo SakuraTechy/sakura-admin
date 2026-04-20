@@ -34,9 +34,12 @@ import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import top.continew.admin.common.enums.StatusTypeEnum;
 import top.continew.admin.common.controller.BaseController;
 import top.continew.admin.project.model.query.ProjectVersionConfigQuery;
+import top.continew.admin.project.model.req.ProjectModuleConfigReq;
 import top.continew.admin.project.model.req.ProjectVersionConfigReq;
 import top.continew.admin.project.model.resp.ProjectVersionConfigDetailResp;
 import top.continew.admin.project.model.resp.ProjectVersionConfigResp;
+import top.continew.admin.project.service.ProjectConfigService;
+import top.continew.admin.project.service.ProjectModuleConfigService;
 import top.continew.admin.project.service.ProjectVersionConfigService;
 
 import top.continew.starter.file.excel.util.ExcelUtils;
@@ -60,11 +63,15 @@ import top.continew.starter.extension.crud.validation.CrudValidationGroup;
     Api.DELETE, Api.EXPORT})
 public class ProjectVersionConfigController extends BaseController<ProjectVersionConfigService, ProjectVersionConfigResp, ProjectVersionConfigDetailResp, ProjectVersionConfigQuery, ProjectVersionConfigReq> {
 
+    private final ProjectConfigService projectConfigService;
+    private final ProjectModuleConfigService projectModuleConfigService;
+
     @Override
     @Operation(summary = "查询数据", description = "根据查询条件查询数据")
     @SaCheckPermission("automation:projectVersionConfig:list")
     @GetMapping("/list")
-    public List<ProjectVersionConfigResp> list(@Validated ProjectVersionConfigQuery query, @Validated SortQuery sortQuery) {
+    public List<ProjectVersionConfigResp> list(@Validated ProjectVersionConfigQuery query,
+                                               @Validated SortQuery sortQuery) {
         return super.list(query, sortQuery);
     }
 
@@ -74,7 +81,19 @@ public class ProjectVersionConfigController extends BaseController<ProjectVersio
     public BaseIdResp<Long> create(@Validated(CrudValidationGroup.Create.class) @RequestBody ProjectVersionConfigReq req) {
         Object[] param = new Object[] {req.getProjectId(), req.getName()};
         CheckUtils.throwIf(baseService.isExists(null, param), "新增失败，项目管理-版本配置 [{}] 已存在", param[1]);
-        return super.create(req);
+        BaseIdResp<Long> version = super.create(req);
+        if (version != null) {
+            ProjectModuleConfigReq projectModuleConfigReq = new ProjectModuleConfigReq();
+            projectModuleConfigReq.setProjectId(req.getProjectId());
+            projectModuleConfigReq.setVersionId(version.getId());
+            projectModuleConfigReq.setParentId(0L);
+            projectModuleConfigReq.setName(projectConfigService.get(req.getProjectId()).getName());
+            projectModuleConfigReq.setSort(0);
+            projectModuleConfigReq.setDescription("默认顶级模块");
+            projectModuleConfigReq.setStatus(StatusTypeEnum.ENABLE);
+            projectModuleConfigService.create(projectModuleConfigReq);
+        }
+        return version;
     }
 
     @Override

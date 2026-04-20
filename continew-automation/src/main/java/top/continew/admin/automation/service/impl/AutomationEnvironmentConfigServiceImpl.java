@@ -1,3 +1,19 @@
+/*
+ * Copyright (c) 2022-present Charles7c Authors. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package top.continew.admin.automation.service.impl;
 
 import java.util.List;
@@ -34,7 +50,8 @@ public class AutomationEnvironmentConfigServiceImpl extends BaseServiceImpl<Auto
 
     @Override
     public List<AutomationEnvironmentConfigDetailResp> selectByIds(List<Long> ids) {
-        List<AutomationEnvironmentConfigDetailResp> list = BeanUtil.copyToList(baseMapper.selectByIds(ids), AutomationEnvironmentConfigDetailResp.class);
+        List<AutomationEnvironmentConfigDetailResp> list = BeanUtil.copyToList(baseMapper
+            .selectByIds(ids), AutomationEnvironmentConfigDetailResp.class);
         list.forEach(item -> {
             item.setCreateUserString(UserContextHolder.getNickname(item.getCreateUser()));
             item.setUpdateUserString(UserContextHolder.getNickname(item.getUpdateUser()));
@@ -50,25 +67,25 @@ public class AutomationEnvironmentConfigServiceImpl extends BaseServiceImpl<Auto
     @Override
     public boolean isExists(Long id, Object... param) {
         return baseMapper.lambdaQuery()
-                .eq(AutomationEnvironmentConfigDO::getType, param[0])
-                .eq(AutomationEnvironmentConfigDO::getName, param[1])
-                .eq(AutomationEnvironmentConfigDO::getDelFlag, 3)
-                .ne(null != id, AutomationEnvironmentConfigDO::getId, id)
-                .exists();
+            .eq(AutomationEnvironmentConfigDO::getType, param[0])
+            .eq(AutomationEnvironmentConfigDO::getName, param[1])
+            .eq(AutomationEnvironmentConfigDO::getDelFlag, 3)
+            .ne(null != id, AutomationEnvironmentConfigDO::getId, id)
+            .exists();
     }
 
     @Override
     public boolean updateProjectConfig(String type, Long id) {
-        try  {
+        try {
             List<AutomationEnvironmentConfigDO> automationEnvironmentConfigDOList = baseMapper.lambdaQuery()
-                    .eq(AutomationEnvironmentConfigDO::getDelFlag, 3)
-                    .list();
+                .eq(AutomationEnvironmentConfigDO::getDelFlag, 3)
+                .list();
             AutomationProjectConfigDO automationProjectConfigDO = automationProjectConfigMapper.selectById(id);
             for (AutomationEnvironmentConfigDO automationEnvironmentConfigDO : automationEnvironmentConfigDOList) {
                 List<AutomationProjectConfigDO> projectConfigList = automationEnvironmentConfigDO.getProjectConfig();
-                if(type.equals("delete")){
+                if (type.equals("delete")) {
                     projectConfigList.removeIf(a -> Objects.equals(a.getId(), id));
-                }else{
+                } else {
                     for (int i = 0; i < projectConfigList.size(); i++) {
                         if (Objects.equals(projectConfigList.get(i).getId(), id)) {
                             projectConfigList.set(i, automationProjectConfigDO);
@@ -80,7 +97,7 @@ public class AutomationEnvironmentConfigServiceImpl extends BaseServiceImpl<Auto
                 baseMapper.updateById(automationEnvironmentConfigDO);
                 return true;
             }
-        } catch (Exception e){
+        } catch (Exception e) {
             log.error("更新环境项目配置失败，{}", e);
         }
         return false;
@@ -88,16 +105,16 @@ public class AutomationEnvironmentConfigServiceImpl extends BaseServiceImpl<Auto
 
     @Override
     public boolean updateJenkinsConfig(String type, Long id) {
-        try  {
+        try {
             List<AutomationEnvironmentConfigDO> automationEnvironmentConfigDOList = baseMapper.lambdaQuery()
-                    .eq(AutomationEnvironmentConfigDO::getDelFlag, 3)
-                    .list();
+                .eq(AutomationEnvironmentConfigDO::getDelFlag, 3)
+                .list();
             AutomationJenkinsConfigDO automationJenkinsConfigDO = automationJenkinsConfigMapper.selectById(id);
             for (AutomationEnvironmentConfigDO automationEnvironmentConfigDO : automationEnvironmentConfigDOList) {
                 List<AutomationJenkinsConfigDO> jenkinsConfigList = automationEnvironmentConfigDO.getJenkinsConfig();
-                if(type.equals("delete")){
+                if (type.equals("delete")) {
                     jenkinsConfigList.removeIf(a -> Objects.equals(a.getId(), id));
-                }else{
+                } else {
                     for (int i = 0; i < jenkinsConfigList.size(); i++) {
                         if (Objects.equals(jenkinsConfigList.get(i).getId(), id)) {
                             jenkinsConfigList.set(i, automationJenkinsConfigDO);
@@ -117,16 +134,16 @@ public class AutomationEnvironmentConfigServiceImpl extends BaseServiceImpl<Auto
 
     @Override
     public boolean updateNodeConfig(String type, Long id) {
-        try  {
+        try {
             List<AutomationEnvironmentConfigDO> automationEnvironmentConfigDOList = baseMapper.lambdaQuery()
-                    .eq(AutomationEnvironmentConfigDO::getDelFlag, 3)
-                    .list();
+                .eq(AutomationEnvironmentConfigDO::getDelFlag, 3)
+                .list();
             AutomationNodeConfigDO automationNodeConfigDO = automationNodeConfigMapper.selectById(id);
             for (AutomationEnvironmentConfigDO automationEnvironmentConfigDO : automationEnvironmentConfigDOList) {
                 List<AutomationNodeConfigDO> nodeConfigList = automationEnvironmentConfigDO.getNodeConfig();
-                if(type.equals("delete")){
+                if (type.equals("delete")) {
                     nodeConfigList.removeIf(a -> Objects.equals(a.getId(), id));
-                }else{
+                } else {
                     for (int i = 0; i < nodeConfigList.size(); i++) {
                         if (Objects.equals(nodeConfigList.get(i).getId(), id)) {
                             nodeConfigList.set(i, automationNodeConfigDO);
@@ -146,16 +163,16 @@ public class AutomationEnvironmentConfigServiceImpl extends BaseServiceImpl<Auto
 
     @Override
     public boolean updateBrowserConfig(String type, Long id) {
-        try  {
+        try {
             List<AutomationEnvironmentConfigDO> automationEnvironmentConfigDOList = baseMapper.lambdaQuery()
-                    .eq(AutomationEnvironmentConfigDO::getDelFlag, 3)
-                    .list();
+                .eq(AutomationEnvironmentConfigDO::getDelFlag, 3)
+                .list();
             AutomationBrowserConfigDO automationBrowserConfigDO = automationBrowserConfigMapper.selectById(id);
             for (AutomationEnvironmentConfigDO automationEnvironmentConfigDO : automationEnvironmentConfigDOList) {
                 List<AutomationBrowserConfigDO> browserConfigList = automationEnvironmentConfigDO.getBrowserConfig();
-                if(type.equals("delete")){
+                if (type.equals("delete")) {
                     browserConfigList.removeIf(a -> Objects.equals(a.getId(), id));
-                }else{
+                } else {
                     for (int i = 0; i < browserConfigList.size(); i++) {
                         if (Objects.equals(browserConfigList.get(i).getId(), id)) {
                             browserConfigList.set(i, automationBrowserConfigDO);

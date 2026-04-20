@@ -1,3 +1,19 @@
+/*
+ * Copyright (c) 2022-present Charles7c Authors. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package top.continew.admin.common.date;
 
 import org.apache.commons.lang3.time.DateFormatUtils;
@@ -27,19 +43,18 @@ public class DateUtils extends org.apache.commons.lang3.time.DateUtils {
 
     public static final String YYYY_MM_DD_HH_MM_SS = "yyyy-MM-dd HH:mm:ss";
 
-    private static String[] parsePatterns = {
-            "yyyy-MM-dd", "yyyy-MM-dd HH:mm:ss", "yyyy-MM-dd HH:mm", "yyyy-MM",
-            "yyyy/MM/dd", "yyyy/MM/dd HH:mm:ss", "yyyy/MM/dd HH:mm", "yyyy/MM",
-            "yyyy.MM.dd", "yyyy.MM.dd HH:mm:ss", "yyyy.MM.dd HH:mm", "yyyy.MM"};
+    private static String[] parsePatterns = {"yyyy-MM-dd", "yyyy-MM-dd HH:mm:ss", "yyyy-MM-dd HH:mm", "yyyy-MM",
+        "yyyy/MM/dd", "yyyy/MM/dd HH:mm:ss", "yyyy/MM/dd HH:mm", "yyyy/MM", "yyyy.MM.dd", "yyyy.MM.dd HH:mm:ss",
+        "yyyy.MM.dd HH:mm", "yyyy.MM"};
 
     public static void main(String[] args) {
         Date dateTime1Str = stringToDate("2023-12-08 00:00:02", YYYY_MM_DD_HH_MM_SS);
         Date dateTime2Str = stringToDate("2023-12-08 01:01:05", YYYY_MM_DD_HH_MM_SS);
-        String millis = getDatePoor(dateTime2Str,dateTime1Str);
+        String millis = getDatePoor(dateTime2Str, dateTime1Str);
         System.out.println("Milliseconds: " + millis);
-        String millis1 = getDatePoors(dateTime2Str,dateTime1Str);
+        String millis1 = getDatePoors(dateTime2Str, dateTime1Str);
         System.out.println("Milliseconds: " + millis1);
-        long millis2= calculateTimeDifference("2023-12-08 09:29:15","2023-12-08 09:30:12", YYYY_MM_DD_HH_MM_SS);
+        long millis2 = calculateTimeDifference("2023-12-08 09:29:15", "2023-12-08 09:30:12", YYYY_MM_DD_HH_MM_SS);
         System.out.println("Milliseconds: " + millis2);
     }
 
@@ -145,9 +160,8 @@ public class DateUtils extends org.apache.commons.lang3.time.DateUtils {
     /**
      * 计算相差天数
      */
-    public static int differentDaysByMillisecond(Date date1, Date date2)
-    {
-        return Math.abs((int) ((date2.getTime() - date1.getTime()) / (1000 * 3600 * 24)));
+    public static int differentDaysByMillisecond(Date date1, Date date2) {
+        return Math.abs((int)((date2.getTime() - date1.getTime()) / (1000 * 3600 * 24)));
     }
 
     /**
@@ -157,7 +171,7 @@ public class DateUtils extends org.apache.commons.lang3.time.DateUtils {
         long nd = 1000 * 24 * 60 * 60;
         long nh = 1000 * 60 * 60;
         long nm = 1000 * 60;
-         long ns = 1000;
+        long ns = 1000;
         // 获得两个时间的毫秒时间差异
         long diff = endDate.getTime() - nowDate.getTime();
         // 计算差多少天
@@ -167,7 +181,7 @@ public class DateUtils extends org.apache.commons.lang3.time.DateUtils {
         // 计算差多少分钟
         long min = diff % nd % nh / nm;
         // 计算差多少秒//输出结果
-         long sec = diff % nd % nh % nm / ns;
+        long sec = diff % nd % nh % nm / ns;
         return day + "天" + hour + "小时" + min + "分钟" + sec + "秒";
     }
 
@@ -423,8 +437,8 @@ public class DateUtils extends org.apache.commons.lang3.time.DateUtils {
     /**
      * 判断两个日期那个大。
      *
-     * @param d1 today 大于  data 返回  false
-     * @param d1  data 大于  today 返回  true
+     * @param d1 today 大于 data 返回 false
+     * @param d1 data 大于 today 返回 true
      * @return
      */
     public static boolean compareDate(Date d1, Date d2) {
@@ -443,8 +457,7 @@ public class DateUtils extends org.apache.commons.lang3.time.DateUtils {
     /**
      * 增加 LocalDateTime ==> Date
      */
-    public static Date toDate(LocalDateTime temporalAccessor)
-    {
+    public static Date toDate(LocalDateTime temporalAccessor) {
         ZonedDateTime zdt = temporalAccessor.atZone(ZoneId.systemDefault());
         return Date.from(zdt.toInstant());
     }
@@ -452,8 +465,7 @@ public class DateUtils extends org.apache.commons.lang3.time.DateUtils {
     /**
      * 增加 LocalDate ==> Date
      */
-    public static Date toDate(LocalDate temporalAccessor)
-    {
+    public static Date toDate(LocalDate temporalAccessor) {
         LocalDateTime localDateTime = LocalDateTime.of(temporalAccessor, LocalTime.of(0, 0, 0));
         ZonedDateTime zdt = localDateTime.atZone(ZoneId.systemDefault());
         return Date.from(zdt.toInstant());

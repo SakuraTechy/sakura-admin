@@ -1,8 +1,23 @@
+/*
+ * Copyright (c) 2022-present Charles7c Authors. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package top.continew.admin.automation.service;
 
 import java.util.List;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import top.continew.admin.automation.model.entity.AutomationNodeConfigDO;
 import top.continew.starter.extension.crud.service.BaseService;
 import top.continew.admin.automation.model.query.AutomationNodeConfigQuery;
@@ -35,13 +50,14 @@ public interface AutomationNodeConfigService extends BaseService<AutomationNodeC
      * 根据参数条件，判断项目是否存在
      *
      * @param param 参数条件
-     * @param id   ID
+     * @param id    ID
      * @return true：存在；false：不存在
      */
     boolean isExists(Long id, Object... param);
 
     /**
      * 同步所有节点配置信息
+     * 
      * @param jenkinsId 所属Jenkins
      * @return 结果
      */
@@ -49,6 +65,7 @@ public interface AutomationNodeConfigService extends BaseService<AutomationNodeC
 
     /**
      * 同步单个节点配置信息
+     * 
      * @param ids ID 列表
      * @return 结果
      */
@@ -56,6 +73,7 @@ public interface AutomationNodeConfigService extends BaseService<AutomationNodeC
 
     /**
      * 添加节点配置信息
+     * 
      * @param automationNodeConfigDO 节点配置信息
      * @return 节点配置信息
      */
@@ -63,6 +81,7 @@ public interface AutomationNodeConfigService extends BaseService<AutomationNodeC
 
     /**
      * 更新节点配置信息
+     * 
      * @param automationNodeConfigDO 节点配置信息
      * @return 节点配置信息
      */
@@ -70,6 +89,7 @@ public interface AutomationNodeConfigService extends BaseService<AutomationNodeC
 
     /**
      * 删除节点配置信息
+     * 
      * @param automationNodeConfigDetailResp 节点配置详情信息
      * @return 节点配置信息
      */

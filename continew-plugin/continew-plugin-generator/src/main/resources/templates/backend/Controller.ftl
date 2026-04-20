@@ -47,7 +47,7 @@ public class ${className} extends BaseController<${classNamePrefix}Service, ${cl
     @Operation(summary = "查询数据", description = "根据查询条件查询数据")
     @SaCheckPermission("${apiModuleName}:${apiName}:list")
     @GetMapping("/list")
-    public List<${classNamePrefix}DetailResp> list(@Validated ${classNamePrefix}Query query, @Validated SortQuery sortQuery) {
+    public List<${classNamePrefix}Resp> list(@Validated ${classNamePrefix}Query query, @Validated SortQuery sortQuery) {
         return super.list(query, sortQuery);
     }
 

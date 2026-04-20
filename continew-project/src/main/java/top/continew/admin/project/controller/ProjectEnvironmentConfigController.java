@@ -56,14 +56,16 @@ import top.continew.starter.extension.crud.validation.CrudValidationGroup;
 @Tag(name = "项目管理-环境配置管理 API")
 @RestController
 @RequiredArgsConstructor
-@CrudRequestMapping(value = "/project/projectEnvironmentConfig", api = {Api.PAGE, Api.GET, Api.CREATE, Api.UPDATE, Api.DELETE, Api.EXPORT})
+@CrudRequestMapping(value = "/project/projectEnvironmentConfig", api = {Api.PAGE, Api.GET, Api.CREATE, Api.UPDATE,
+    Api.DELETE, Api.EXPORT})
 public class ProjectEnvironmentConfigController extends BaseController<ProjectEnvironmentConfigService, ProjectEnvironmentConfigResp, ProjectEnvironmentConfigDetailResp, ProjectEnvironmentConfigQuery, ProjectEnvironmentConfigReq> {
 
     @Override
     @Operation(summary = "查询数据", description = "根据查询条件查询数据")
     @SaCheckPermission("automation:projectEnvironmentConfig:list")
     @GetMapping("/list")
-    public List<ProjectEnvironmentConfigResp> list(@Validated ProjectEnvironmentConfigQuery query, @Validated SortQuery sortQuery) {
+    public List<ProjectEnvironmentConfigResp> list(@Validated ProjectEnvironmentConfigQuery query,
+                                                   @Validated SortQuery sortQuery) {
         return super.list(query, sortQuery);
     }
 

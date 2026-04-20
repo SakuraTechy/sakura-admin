@@ -66,12 +66,12 @@ public class FreeSshUtil {
         }
     }
 
-    public static Boolean testConnection(String ip, String username, String password) {
+    public static Boolean testConnection(String ip, int port, String username, String password) {
         try {
-            conn = new Connection(ip);
+            conn = new Connection(ip, port);
             conn.connect();
             log.info("开始Linux连接Windows：" + ip + " " + username + " " + password);
-            log.info("ssh " + username + "@" + ip);
+            log.info("ssh -o HostKeyAlgorithms=+ssh-rsa -o PubkeyAcceptedAlgorithms=+ssh-rsa -p " + port + username + "@" + ip);
             conn.authenticateWithPassword(username, password);
             sess = conn.openSession();
             log.info("Connected to " + ip);
@@ -107,14 +107,14 @@ public class FreeSshUtil {
         }
     }
 
-    public static void cmd(String ip, String username, String password, String cmd) {
+    public static void cmd(String ip, int port, String username, String password, String cmd) {
         try {
             // 建立连接
-            Connection conn = new Connection(ip);
+            Connection conn = new Connection(ip, port);
             conn.connect();
             // 利用用户名和密码进行授权
             log.info("开始Linux连接Windows：" + ip + " " + username + " " + password);
-            log.info("ssh " + username + "@" + ip);
+            log.info("ssh -o HostKeyAlgorithms=+ssh-rsa -o PubkeyAcceptedAlgorithms=+ssh-rsa -p " + port + username + "@" + ip);
             conn.authenticateWithPassword(username, password);
             // 打开会话
             Session sess = conn.openSession();
@@ -142,7 +142,7 @@ public class FreeSshUtil {
     public static void main(String[] args) {
         //        FreeSshUtil.connect("172.18.1.118", "king", "111111");
         //        FreeSshUtil.cmd("git --version");
-        FreeSshUtil.cmd("172.18.1.118", "king", "111111", "git --version");
+        FreeSshUtil.cmd("172.18.1.118", 22,"king", "111111", "git --version");
         //        // cmd("10.18.22.65", "Administrator", "111111", "cd c: &&rd 123.txt");
     }
 }

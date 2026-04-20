@@ -56,7 +56,8 @@ import top.continew.starter.extension.crud.validation.CrudValidationGroup;
 @Tag(name = "项目管理-项目配置管理 API")
 @RestController
 @RequiredArgsConstructor
-@CrudRequestMapping(value = "/project/projectConfig", api = {Api.PAGE, Api.GET, Api.CREATE, Api.UPDATE, Api.DELETE, Api.EXPORT})
+@CrudRequestMapping(value = "/project/projectConfig", api = {Api.PAGE, Api.GET, Api.CREATE, Api.UPDATE, Api.DELETE,
+    Api.EXPORT})
 public class ProjectConfigController extends BaseController<ProjectConfigService, ProjectConfigResp, ProjectConfigDetailResp, ProjectConfigQuery, ProjectConfigReq> {
     @Override
     @Operation(summary = "查询数据", description = "根据查询条件查询数据")

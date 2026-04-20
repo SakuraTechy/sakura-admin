@@ -134,7 +134,7 @@ sa-token:
   # Token 有效期（单位：秒，默认 30 天，-1 代表永不过期）
   timeout: 86400
   # Token 最低活跃频率（单位：秒，默认 -1，代表不限制，永不冻结。如果 token 超过此时间没有访问系统就会被冻结）
-  active-timeout: 1800
+  active-timeout: 86400
   # 是否打开自动续签（如果此值为 true，框架会在每次直接或间接调用 getLoginId() 时进行一次过期检查与续签操作）
   auto-renew: true
   # 是否允许同一账号多地同时登录（为 true 时允许一起登录，为 false 时新登录挤掉旧登录）
@@ -165,6 +165,8 @@ mybatis-plus:
     # MyBatis 自动映射策略
     # NONE：不启用 PARTIAL：只对非嵌套 resultMap 自动映射 FULL：对所有 resultMap 自动映射
     auto-mapping-behavior: PARTIAL
+    # 可选：设置日志实现
+    log4j-wrapped-compensate: true
   ## 全局配置
   global-config:
     banner: true

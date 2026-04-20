@@ -1,3 +1,19 @@
+/*
+ * Copyright (c) 2022-present Charles7c Authors. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package top.continew.admin.common.date;
 
 import org.apache.commons.lang3.time.DateFormatUtils;
@@ -71,11 +87,12 @@ public class DateUtil {
     /**
      * 常用的时间格式.
      */
-    private static String[] parsePatterns = { "yyyy-MM-dd", "yyyy-MM-dd HH:mm:ss", "yyyy-MM-dd HH:mm", "yyyy/MM/dd",
-            "yyyy/MM/dd HH:mm:ss", "yyyy/MM/dd HH:mm" };
+    private static String[] parsePatterns = {"yyyy-MM-dd", "yyyy-MM-dd HH:mm:ss", "yyyy-MM-dd HH:mm", "yyyy/MM/dd",
+        "yyyy/MM/dd HH:mm:ss", "yyyy/MM/dd HH:mm"};
 
     /**
      * 得到当前日期字符串.
+     * 
      * @return String 日期字符串，例如2020-07-11
      * @since 1.0
      */
@@ -85,6 +102,7 @@ public class DateUtil {
 
     /**
      * 得到当前时间字符串.
+     * 
      * @return String 时间字符串，例如 09:51:53
      * @since 1.0
      */
@@ -94,6 +112,7 @@ public class DateUtil {
 
     /**
      * 得到当前日期和时间字符串.
+     * 
      * @return String 日期和时间字符串，例如 2020-07-11 09:51:53
      * @since 1.0
      */
@@ -103,8 +122,9 @@ public class DateUtil {
 
     /**
      * 获取当前时间指定格式下的字符串.
+     * 
      * @param pattern
-     *            转化后时间展示的格式，例如"yyyy-MM-dd"，"yyyy-MM-dd HH:mm:ss"等
+     *                转化后时间展示的格式，例如"yyyy-MM-dd"，"yyyy-MM-dd HH:mm:ss"等
      * @return String 格式转换之后的时间字符串.
      * @since 1.0
      */
@@ -114,7 +134,8 @@ public class DateUtil {
 
     /**
      * 获取指定日期的字符串格式.
-     * @param date  需要格式化的时间，不能为空
+     * 
+     * @param date    需要格式化的时间，不能为空
      * @param pattern 时间格式，例如"yyyy-MM-dd"，"yyyy-MM-dd HH:mm:ss"等
      * @return String 格式转换之后的时间字符串.
      * @since 1.0
@@ -125,7 +146,8 @@ public class DateUtil {
 
     /**
      * 获取日期时间字符串，默认格式为（yyyy-MM-dd）.
-     * @param date 需要转化的日期时间
+     * 
+     * @param date    需要转化的日期时间
      * @param pattern 时间格式，例如"yyyy-MM-dd" "HH:mm:ss" "E"等
      * @return String 格式转换后的时间字符串
      * @since 1.0
@@ -142,6 +164,7 @@ public class DateUtil {
 
     /**
      * 获取当前年份字符串.
+     * 
      * @return String 当前年份字符串，例如 2020
      * @since 1.0
      */
@@ -151,6 +174,7 @@ public class DateUtil {
 
     /**
      * 获取当前月份字符串.
+     * 
      * @return String 当前月份字符串，例如 08
      * @since 1.0
      */
@@ -160,6 +184,7 @@ public class DateUtil {
 
     /**
      * 获取当前天数字符串.
+     * 
      * @return String 当前天数字符串，例如 11
      * @since 1.0
      */
@@ -169,6 +194,7 @@ public class DateUtil {
 
     /**
      * 获取当前星期字符串.
+     * 
      * @return String 当前星期字符串，例如星期二
      * @since 1.0
      */
@@ -180,6 +206,7 @@ public class DateUtil {
      * 将日期型字符串转换为日期格式.
      * 支持的日期字符串格式包括"yyyy-MM-dd","yyyy-MM-dd HH:mm:ss", "yyyy-MM-dd HH:mm",
      * "yyyy/MM/dd", "yyyy/MM/dd HH:mm:ss", "yyyy/MM/dd HH:mm"
+     * 
      * @param str
      * @return Date
      * @since 1.0
@@ -197,6 +224,7 @@ public class DateUtil {
 
     /**
      * 获取当前日期与指定日期相隔的天数.
+     * 
      * @param date 给定的日期
      * @return long 日期间隔天数，正数表示给定日期在当前日期之前，负数表示在当前日期之后
      * @since 1.0
@@ -206,8 +234,8 @@ public class DateUtil {
         date = DateUtil.parseDate(DateUtil.formatDate(date, DateUtil.DATE_FORMAT));
         // 当前日期转换为yyyy-MM-dd格式
         Date currentDate = DateUtil.parseDate(DateUtil.formatDate(new Date(), DateUtil.DATE_FORMAT));
-        long t=0;
-        if(date!=null&&currentDate!=null){
+        long t = 0;
+        if (date != null && currentDate != null) {
             t = (currentDate.getTime() - date.getTime()) / DateUtil.MILLISECONDS_PER_DAY;
         }
         return t;
@@ -215,7 +243,8 @@ public class DateUtil {
 
     /**
      * 获取当前日期指定天数之后的日期.
-     * @param num   相隔天数
+     * 
+     * @param num 相隔天数
      * @return Date 日期
      * @since 1.0
      */
@@ -227,7 +256,8 @@ public class DateUtil {
 
     /**
      * 获取当前日期指定月数之后的日期.
-     * @param num   间隔月数
+     * 
+     * @param num 间隔月数
      * @return Date 日期
      * @since 1.0
      */
@@ -239,7 +269,8 @@ public class DateUtil {
 
     /**
      * 获取当前日期指定年数之后的日期.
-     * @param num    间隔年数
+     * 
+     * @param num 间隔年数
      * @return Date 日期
      * @since 1.0
      */
@@ -251,7 +282,8 @@ public class DateUtil {
 
     /**
      * 将 Date 日期转化为 Calendar 类型日期.
-     * @param date   给定的时间，若为null，则默认为当前时间
+     * 
+     * @param date 给定的时间，若为null，则默认为当前时间
      * @return Calendar Calendar对象
      * @since 1.0
      */
@@ -267,8 +299,9 @@ public class DateUtil {
 
     /**
      * 计算两个日期之间相差天数.
-     * @param start     计算开始日期
-     * @param end       计算结束日期
+     * 
+     * @param start 计算开始日期
+     * @param end   计算结束日期
      * @return long 相隔天数
      * @since 1.0
      */
@@ -278,8 +311,8 @@ public class DateUtil {
         // 当前日期转换为yyyy-MM-dd格式
         end = DateUtil.parseDate(DateUtil.formatDate(end, DateUtil.DATE_FORMAT));
 
-        long diff=0;
-        if(start!=null&&end!=null) {
+        long diff = 0;
+        if (start != null && end != null) {
             diff = (end.getTime() - start.getTime()) / DateUtil.MILLISECONDS_PER_DAY;
         }
         return diff;
@@ -287,8 +320,9 @@ public class DateUtil {
 
     /**
      * 计算两个日期之前相隔多少周.
-     * @param start      计算开始时间
-     * @param end    计算结束时间
+     * 
+     * @param start 计算开始时间
+     * @param end   计算结束时间
      * @return long 相隔周数，向下取整
      * @since 1.0
      */
@@ -298,10 +332,11 @@ public class DateUtil {
 
     /**
      * 获取与指定日期间隔给定天数的日期.
-     * @param specifiedDay    给定的字符串格式日期，支持的日期字符串格式包括"yyyy-MM-dd","yyyy-MM-dd HH:mm:ss",
-     *            "yyyy-MM-dd HH:mm", "yyyy/MM/dd", "yyyy/MM/dd HH:mm:ss",
-     *            "yyyy/MM/dd HH:mm"
-     * @param num   间隔天数
+     * 
+     * @param specifiedDay 给定的字符串格式日期，支持的日期字符串格式包括"yyyy-MM-dd","yyyy-MM-dd HH:mm:ss",
+     *                     "yyyy-MM-dd HH:mm", "yyyy/MM/dd", "yyyy/MM/dd HH:mm:ss",
+     *                     "yyyy/MM/dd HH:mm"
+     * @param num          间隔天数
      * @return String 间隔指定天数之后的日期
      * @since 1.0
      */
@@ -319,9 +354,9 @@ public class DateUtil {
      * 计算两个日期之前间隔的小时数.
      *
      * @param date1
-     *            结束时间
+     *              结束时间
      * @param date2
-     *            开始时间
+     *              开始时间
      * @return String 相差的小时数，保留一位小数
      * @since 1.0
      */
@@ -361,7 +396,7 @@ public class DateUtil {
      * 将以秒为单位的时间转换为其他单位.
      *
      * @param seconds
-     *            秒数
+     *                秒数
      * @return String 例如 16分钟前、2小时前、3天前、4月前、5年前等
      * @since 1.0
      */
@@ -388,27 +423,27 @@ public class DateUtil {
      * getNowTimeBefore(记录时间相当于目前多久之前)
      *
      * @param seconds
-     *            秒
+     *                秒
      * @return
      * @exception @since
-     *                1.0
+     *                   1.0
      * @author rlliu
      */
     public static String getNowTimeBefore(long seconds) {
         StringBuffer buffer = new StringBuffer();
         buffer.append("上传于");
         if (seconds < 3600) {
-            buffer.append((long) Math.floor(seconds / 60.0)).append("分钟前");
+            buffer.append((long)Math.floor(seconds / 60.0)).append("分钟前");
         } else if (seconds < 86400) {
-            buffer.append((long) Math.floor(seconds / 3600.0)).append("小时前");
+            buffer.append((long)Math.floor(seconds / 3600.0)).append("小时前");
         } else if (seconds < 604800) {
-            buffer.append((long) Math.floor(seconds / 86400.0)).append("天前");
+            buffer.append((long)Math.floor(seconds / 86400.0)).append("天前");
         } else if (seconds < 2592000) {
-            buffer.append((long) Math.floor(seconds / 604800.0)).append("周前");
+            buffer.append((long)Math.floor(seconds / 604800.0)).append("周前");
         } else if (seconds < 31104000) {
-            buffer.append((long) Math.floor(seconds / 2592000.0)).append("月前");
+            buffer.append((long)Math.floor(seconds / 2592000.0)).append("月前");
         } else {
-            buffer.append((long) Math.floor(seconds / 31104000.0)).append("年前");
+            buffer.append((long)Math.floor(seconds / 31104000.0)).append("年前");
         }
         return buffer.toString();
     }
@@ -439,7 +474,7 @@ public class DateUtil {
      * @return 星期几
      */
     public static String getDayOfWeek(String dateStr) {
-        String[] weekOfDays = { "星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六" };
+        String[] weekOfDays = {"星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"};
         Date date = parseDate(dateStr);
         Calendar calendar = Calendar.getInstance();
         calendar.setTime(date);
@@ -476,12 +511,13 @@ public class DateUtil {
     /**
      * 得到UTC时间，类型为字符串，格式为"yyyy-MM-dd HH:mm"
      * 如果获取失败，返回null
+     * 
      * @return
      */
     public static String getUTCTimeStr() {
         StringBuffer UTCTimeBuffer = new StringBuffer();
         // 1、取得本地时间：
-        Calendar cal = Calendar.getInstance() ;
+        Calendar cal = Calendar.getInstance();
         // 2、取得时间偏移量：
         int zoneOffset = cal.get(Calendar.ZONE_OFFSET);
         // 3、取得夏令时差：
@@ -489,30 +525,30 @@ public class DateUtil {
         // 4、从本地时间里扣除这些差量，即可以取得UTC时间：
         cal.add(Calendar.MILLISECOND, -(zoneOffset + dstOffset));
         int year = cal.get(Calendar.YEAR);
-        int month = cal.get(Calendar.MONTH)+1;
+        int month = cal.get(Calendar.MONTH) + 1;
         int day = cal.get(Calendar.DAY_OF_MONTH);
         int hour = cal.get(Calendar.HOUR_OF_DAY);
         int minute = cal.get(Calendar.MINUTE);
-        UTCTimeBuffer.append(year).append("-").append(month).append("-").append(day) ;
-        UTCTimeBuffer.append(" ").append(hour).append(":").append(minute) ;
-        try{
+        UTCTimeBuffer.append(year).append("-").append(month).append("-").append(day);
+        UTCTimeBuffer.append(" ").append(hour).append(":").append(minute);
+        try {
             SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm");
-            sdf.parse(UTCTimeBuffer.toString()) ;
-            return UTCTimeBuffer.toString() ;
-        }catch(ParseException e)
-        {
-            e.printStackTrace() ;
+            sdf.parse(UTCTimeBuffer.toString());
+            return UTCTimeBuffer.toString();
+        } catch (ParseException e) {
+            e.printStackTrace();
         }
-        return null ;
+        return null;
     }
-    public static String timestamp2Date(String timestamp, String format){
-        if (timestamp == null || timestamp.isEmpty() || timestamp.equals("null")){
+
+    public static String timestamp2Date(String timestamp, String format) {
+        if (timestamp == null || timestamp.isEmpty() || timestamp.equals("null")) {
             return "";
         }
-        if (format == null || format.isEmpty()){
+        if (format == null || format.isEmpty()) {
             format = "yyyy-MM-dd HH:mm:ss";
         }
         SimpleDateFormat sdf = new SimpleDateFormat(format);
-        return sdf.format(new Date(Long.valueOf(timestamp+"000")));
+        return sdf.format(new Date(Long.valueOf(timestamp + "000")));
     }
 }

@@ -1,3 +1,19 @@
+/*
+ * Copyright (c) 2022-present Charles7c Authors. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package top.continew.admin.automation.controller;
 
 import java.util.List;
@@ -45,7 +61,8 @@ import top.continew.starter.web.model.R;
 @Tag(name = "自动化管理-节点配置管理 API")
 @RestController
 @RequiredArgsConstructor
-@CrudRequestMapping(value = "/automation/automationNodeConfig", api = {Api.PAGE, Api.GET, Api.CREATE, Api.UPDATE, Api.DELETE, Api.EXPORT})
+@CrudRequestMapping(value = "/automation/automationNodeConfig", api = {Api.PAGE, Api.GET, Api.CREATE, Api.UPDATE,
+    Api.DELETE, Api.EXPORT})
 public class AutomationNodeConfigController extends BaseController<AutomationNodeConfigService, AutomationNodeConfigResp, AutomationNodeConfigDetailResp, AutomationNodeConfigQuery, AutomationNodeConfigReq> {
 
     private final AutomationEnvironmentConfigService automationEnvironmentConfigService;
@@ -54,7 +71,8 @@ public class AutomationNodeConfigController extends BaseController<AutomationNod
     @Operation(summary = "查询数据", description = "根据查询条件查询数据")
     @SaCheckPermission("automation:automationNodeConfig:list")
     @GetMapping("/list")
-    public List<AutomationNodeConfigResp> list(@Validated AutomationNodeConfigQuery query, @Validated SortQuery sortQuery) {
+    public List<AutomationNodeConfigResp> list(@Validated AutomationNodeConfigQuery query,
+                                               @Validated SortQuery sortQuery) {
         return super.list(query, sortQuery);
     }
 
@@ -62,7 +80,7 @@ public class AutomationNodeConfigController extends BaseController<AutomationNod
     @Operation(summary = "新增数据", description = "新增数据")
     @SaCheckPermission("automation:automationNodeConfig:create")
     public BaseIdResp<Long> create(@Validated(CrudValidationGroup.Create.class) @RequestBody AutomationNodeConfigReq req) {
-        Object[] param = new Object[]{req.getName()};
+        Object[] param = new Object[] {req.getName()};
         CheckUtils.throwIf(baseService.isExists(null, param), "新增失败，自动化管理-节点配置 [{}] 已存在", param[0]);
         return super.create(req);
     }
@@ -70,8 +88,9 @@ public class AutomationNodeConfigController extends BaseController<AutomationNod
     @Override
     @Operation(summary = "修改数据", description = "修改数据")
     @SaCheckPermission("project:automationNodeConfig:update")
-    public void update(@Validated(CrudValidationGroup.Update.class) @RequestBody AutomationNodeConfigReq req, @PathVariable("id") Long id) {
-        Object[] param = new Object[]{req.getName()};
+    public void update(@Validated(CrudValidationGroup.Update.class) @RequestBody AutomationNodeConfigReq req,
+                       @PathVariable("id") Long id) {
+        Object[] param = new Object[] {req.getName()};
         CheckUtils.throwIf(baseService.isExists(id, param), "修改失败，自动化管理-节点配置 [{}] 已存在", param[0]);
         super.update(req, id);
     }
@@ -80,14 +99,18 @@ public class AutomationNodeConfigController extends BaseController<AutomationNod
     @SaCheckPermission("project:automationNodeConfig:create")
     @PostMapping("/addNode")
     public R addNode(@RequestBody AutomationNodeConfigDO automationNodeConfigDO) {
-        return baseService.addNode(automationNodeConfigDO) ?  R.ok("添加成功",null) : R.fail(String.valueOf(HttpStatus.BAD_REQUEST.value()),"添加失败，节点已存在或配置信息错误，请检查后重试！");
+        return baseService.addNode(automationNodeConfigDO)
+            ? R.ok("添加成功", null)
+            : R.fail(String.valueOf(HttpStatus.BAD_REQUEST.value()), "添加失败，节点已存在或配置信息错误，请检查后重试！");
     }
 
     @Operation(summary = "修改节点配置", description = "修改节点配置")
     @SaCheckPermission("project:automationNodeConfig:update")
     @PostMapping("/updateNode")
     public R updateNode(@RequestBody AutomationNodeConfigDO automationNodeConfigDO) {
-        return baseService.updateNode(automationNodeConfigDO) ?  R.ok("修改成功",null) : R.fail(String.valueOf(HttpStatus.BAD_REQUEST.value()),"修改失败，节点已存在或配置信息错误，请检查后重试！");
+        return baseService.updateNode(automationNodeConfigDO)
+            ? R.ok("修改成功", null)
+            : R.fail(String.valueOf(HttpStatus.BAD_REQUEST.value()), "修改失败，节点已存在或配置信息错误，请检查后重试！");
     }
 
     @Operation(summary = "删除数据", description = "根据ID列表删除数据")
@@ -95,20 +118,20 @@ public class AutomationNodeConfigController extends BaseController<AutomationNod
     @SaCheckPermission("project:automationNodeConfig:delete")
     @DeleteMapping("/{ids}")
     public void delete(@PathVariable List<Long> ids) {
-//        baseService.deleteByIds(ids);
+        //        baseService.deleteByIds(ids);
         AutomationNodeConfigReq req = new AutomationNodeConfigReq();
         ids.forEach(id -> {
             // 删除Jenkins远程节点
             AutomationNodeConfigDetailResp automationNodeConfigDetailResp = baseService.get(id);
-            if(automationEnvironmentConfigService.updateNodeConfig("delete", id)){
-                if(baseService.delNode(automationNodeConfigDetailResp)){
+            if (automationEnvironmentConfigService.updateNodeConfig("delete", id)) {
+                if (baseService.delNode(automationNodeConfigDetailResp)) {
                     req.setDelFlag(StatusTypeEnum.ABNORMAL);
                     super.update(req, id);
-                }else{
-                    throw new BusinessException("【"+automationNodeConfigDetailResp.getName()+"】删除失败");
+                } else {
+                    throw new BusinessException("【" + automationNodeConfigDetailResp.getName() + "】删除失败");
                 }
-            }else{
-                throw new IllegalArgumentException("删除失败，自动化环境关联节点配置信息异常："+ id);
+            } else {
+                throw new IllegalArgumentException("删除失败，自动化环境关联节点配置信息异常：" + id);
             }
         });
     }
@@ -117,18 +140,20 @@ public class AutomationNodeConfigController extends BaseController<AutomationNod
     @Parameter(name = "ids", description = "逗号分隔的ID列表", example = "1,2", in = ParameterIn.PATH)
     @SaCheckPermission("project:automationNodeConfig:export")
     @GetMapping("/export")
-    public void export(@Validated AutomationNodeConfigQuery query, @Validated SortQuery sortQuery, HttpServletResponse response) {
+    public void export(@Validated AutomationNodeConfigQuery query,
+                       @Validated SortQuery sortQuery,
+                       HttpServletResponse response) {
         try {
             String idStr = String.valueOf(Objects.requireNonNull(query.getId(), "ID string is null"));
             List<Long> ids = Arrays.stream(idStr.split(","))
-                    .map(String::trim)
-                    .filter(s -> !s.isEmpty())
-                    .map(Long::parseLong)
-                    .toList();
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .map(Long::parseLong)
+                .toList();
             if (!ids.isEmpty() && query.getName().equals("批量选择导出")) {
                 List<AutomationNodeConfigDetailResp> list = baseService.selectByIds(ids);
                 ExcelUtils.export(list, "导出数据", AutomationNodeConfigDetailResp.class, response);
-            }else{
+            } else {
                 throw new IllegalArgumentException("No valid IDs provided");
             }
         } catch (NumberFormatException e) {
@@ -143,7 +168,9 @@ public class AutomationNodeConfigController extends BaseController<AutomationNod
     @SaCheckPermission("project:automationNodeConfig:sync")
     @GetMapping("/syncAllNode/{jenkinsId}")
     public R syncAllNode(@PathVariable Long jenkinsId) {
-        return baseService.syncAllNode(jenkinsId) ?  R.ok("同步成功",null) : R.fail(String.valueOf(HttpStatus.INTERNAL_SERVER_ERROR.value()),"同步失败");
+        return baseService.syncAllNode(jenkinsId)
+            ? R.ok("同步成功", null)
+            : R.fail(String.valueOf(HttpStatus.INTERNAL_SERVER_ERROR.value()), "同步失败");
     }
 
     @Operation(summary = "同步单个节点", description = "根据ID列表同步单个节点")
@@ -151,6 +178,8 @@ public class AutomationNodeConfigController extends BaseController<AutomationNod
     @SaCheckPermission("project:automationNodeConfig:sync")
     @GetMapping("/syncNode/{ids}")
     public R syncNode(@PathVariable List<Long> ids) {
-        return baseService.syncNode(ids) ?  R.ok("同步成功",null) : R.fail(String.valueOf(HttpStatus.INTERNAL_SERVER_ERROR.value()),"同步失败");
+        return baseService.syncNode(ids)
+            ? R.ok("同步成功", null)
+            : R.fail(String.valueOf(HttpStatus.INTERNAL_SERVER_ERROR.value()), "同步失败");
     }
 }

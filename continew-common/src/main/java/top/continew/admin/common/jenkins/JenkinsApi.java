@@ -1,3 +1,19 @@
+/*
+ * Copyright (c) 2022-present Charles7c Authors. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package top.continew.admin.common.jenkins;
 
 import com.alibaba.fastjson.JSON;
@@ -21,19 +37,20 @@ public class JenkinsApi {
     /**
      * 构造方法中调用连接 Jenkins 方法
      */
-    JenkinsApi(){
+    JenkinsApi() {
         jenkinsServer = JenkinsConnect.connection();
     }
 
-    public void  getComputerNames() throws IOException {
-        Map<String, Computer> map1= jenkinsServer.getComputers();
-        for( Computer c : map1.values()) {
+    public void getComputerNames() throws IOException {
+        Map<String, Computer> map1 = jenkinsServer.getComputers();
+        for (Computer c : map1.values()) {
             System.out.println(c.getDisplayName());
-            for( Computer d : c.getComputers() ) {
+            for (Computer d : c.getComputers()) {
                 System.out.println(d.getDisplayName());
             }
         }
     }
+
     /**
      * 获取主机信息
      */
@@ -41,25 +58,25 @@ public class JenkinsApi {
         try {
             ComputerSet computerSet = jenkinsServer.getComputerSet();
             List<ComputerWithDetails> d = computerSet.getComputers();
-            System.out.println("---"+d.get(0).getComputers());
-//            for (Map.Entry<String, Computer> entry : computers.entrySet()) {
-//                String computerName = entry.getKey();
-//                Computer computer = entry.getValue();
-//
-//                System.out.println("Computer Name: " + computerName);
-//                System.out.println("Offline: " + computer.isOffline());
-//                // Access other properties of the computer object as needed
-//
-//                System.out.println("---");
-//            }
-//            Map<String, Computer> map = jenkinsServer.getComputers();
-//            System.out.println("map1111111111111:"+ map);
-//
-//            for (Computer computer : map.values()) {
-//                System.out.println("computer1111111111111:"+ computer.getDisplayName());
-//                System.out.println("computer1111111111111:"+ computer.getComputers().size());
-//                // 获取当前节点-节点名称
-////                System.out.println(computer.details().getDisplayName());
+            System.out.println("---" + d.get(0).getComputers());
+            //            for (Map.Entry<String, Computer> entry : computers.entrySet()) {
+            //                String computerName = entry.getKey();
+            //                Computer computer = entry.getValue();
+            //
+            //                System.out.println("Computer Name: " + computerName);
+            //                System.out.println("Offline: " + computer.isOffline());
+            //                // Access other properties of the computer object as needed
+            //
+            //                System.out.println("---");
+            //            }
+            //            Map<String, Computer> map = jenkinsServer.getComputers();
+            //            System.out.println("map1111111111111:"+ map);
+            //
+            //            for (Computer computer : map.values()) {
+            //                System.out.println("computer1111111111111:"+ computer.getDisplayName());
+            //                System.out.println("computer1111111111111:"+ computer.getComputers().size());
+            //                // 获取当前节点-节点名称
+            ////                System.out.println(computer.details().getDisplayName());
 ////                // 获取当前节点-执行者数量
 ////                System.out.println(computer.details().getNumExecutors());
 ////                // 获取当前节点-执行者详细信息
@@ -71,7 +88,7 @@ public class JenkinsApi {
 ////                // 获取节点的-监控数据
 ////                Map<String, Map> monitorData = computer.details().getMonitorData();
 //                //......
-//            }
+            //            }
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -153,12 +170,12 @@ public class JenkinsApi {
     /**
      * 获取 Jenkins 插件信息
      */
-    public void getPluginInfo(){
+    public void getPluginInfo() {
         try {
-            PluginManager pluginManager =jenkinsServer.getPluginManager();
+            PluginManager pluginManager = jenkinsServer.getPluginManager();
             // 获取插件列表
             List<Plugin> plugins = pluginManager.getPlugins();
-            for (Plugin plugin:plugins){
+            for (Plugin plugin : plugins) {
                 // 插件 wiki URL 地址
                 System.out.println(plugin.getUrl());
                 // 版本号
@@ -185,7 +202,7 @@ public class JenkinsApi {
         // 安全重启 Jenkins
         //jenkinsApi.safeRestart();
         // 获取节点信息
-//        jenkinsApi.getComputerNames();
+        //        jenkinsApi.getComputerNames();
         // 获取节点信息
         jenkinsApi.getComputerInfo();
         // 安全结束 Jenkins
@@ -193,9 +210,9 @@ public class JenkinsApi {
         // 关闭 Jenkins 连接
         //jenkinsApi.close();
         // 获取 Label 节点信息
-//        jenkinsApi.getLabelNodeInfo();
+        //        jenkinsApi.getLabelNodeInfo();
         // 查看 Jenkins 是否允许
-//        jenkinsApi.isRunning();
+        //        jenkinsApi.isRunning();
         // 获取 Jenkins 插件信息
         //jenkinsApi.getPluginInfo();
     }
@@ -204,7 +221,6 @@ public class JenkinsApi {
         String a = "[{\"index\":1,\"id\":\"7f032d6d0e524d4483f2e948780e670d\",\"name\":\"2\",\"description\":\"2\",\"status\":1,\"createBy\":\"刘智\",\"createTime\":\"2023-02-16 19:40:46\",\"updateBy\":\"刘智\",\"updateTime\":\"2023-02-16 19:40:46\"}]";
         List lists = JSON.parseArray(a);
         System.out.println(lists);
-
 
     }
 

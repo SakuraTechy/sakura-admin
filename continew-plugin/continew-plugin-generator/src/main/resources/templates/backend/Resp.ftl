@@ -48,7 +48,7 @@ public class ${className} extends BaseDetailResp {
     <#elseif fieldConfig.fieldName = 'status'>
     private StatusTypeEnum ${fieldConfig.fieldName};
     <#elseif fieldConfig.fieldName = 'delFlag'>
-    private StatusTypeEnum ${fieldConfig.fieldName} = StatusTypeEnum.NORMAL;
+    private StatusTypeEnum ${fieldConfig.fieldName};
     <#else>
     private ${fieldConfig.fieldType} ${fieldConfig.fieldName};
     </#if>

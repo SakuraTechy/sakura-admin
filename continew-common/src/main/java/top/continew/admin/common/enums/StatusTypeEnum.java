@@ -76,7 +76,6 @@ public enum StatusTypeEnum implements BaseEnum<Integer> {
      */
     UNUSED(9, "未使用", UiConstants.COLOR_DEFAULT);
 
-
     private final Integer value;
     private final String description;
     private final String color;

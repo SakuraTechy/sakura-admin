@@ -68,6 +68,12 @@ public class ProjectVersionConfigResp extends BaseDetailResp {
     private String description;
 
     /**
+     * 版本类型
+     */
+    @Schema(description = "版本类型")
+    private String type;
+
+    /**
      * 状态
      */
     @Schema(description = "状态")

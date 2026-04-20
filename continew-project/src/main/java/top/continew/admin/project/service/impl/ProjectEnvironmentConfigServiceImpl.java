@@ -46,7 +46,8 @@ public class ProjectEnvironmentConfigServiceImpl extends BaseServiceImpl<Project
 
     @Override
     public List<ProjectEnvironmentConfigDetailResp> selectByIds(List<Long> ids) {
-        List<ProjectEnvironmentConfigDetailResp> list = BeanUtil.copyToList(baseMapper.selectByIds(ids), ProjectEnvironmentConfigDetailResp.class);
+        List<ProjectEnvironmentConfigDetailResp> list = BeanUtil.copyToList(baseMapper
+            .selectByIds(ids), ProjectEnvironmentConfigDetailResp.class);
         list.forEach(item -> {
             String projectName = projectConfigService.get(item.getProjectId()).getName();
             item.setProjectName(projectName);

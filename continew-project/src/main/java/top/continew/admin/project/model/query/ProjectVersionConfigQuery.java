@@ -65,6 +65,13 @@ public class ProjectVersionConfigQuery implements Serializable {
     private String name;
 
     /**
+     * 版本类型
+     */
+    @Schema(description = "版本类型")
+    @Query(type = QueryType.EQ)
+    private String type;
+
+    /**
      * 状态
      */
     @Schema(description = "状态")

@@ -1,3 +1,19 @@
+/*
+ * Copyright (c) 2022-present Charles7c Authors. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package top.continew.admin.common.jenkins;
 
 import com.offbytwo.jenkins.JenkinsServer;
@@ -35,9 +51,7 @@ public class ViewApi {
     public void createView() {
         try {
             // 创建一个 xml 字符串，里面设置一个 view 描述信息
-            String xml = "<listView _class=\"hudson.model.ListView\">\n" +
-                    "<description>用于测试的视图</description>\n" +
-                    "</listView>";
+            String xml = "<listView _class=\"hudson.model.ListView\">\n" + "<description>用于测试的视图</description>\n" + "</listView>";
             // 创建 view
             jenkinsServer.createView("test-view", xml);
         } catch (IOException e) {
@@ -87,28 +101,7 @@ public class ViewApi {
         try {
             // 创建一个 xml 字符串，里面设置一个要修改的某些字段,具体xml可以到jenkins查看
             // 例如，下面xml文件是从地址：https://Jenkins-IP/jenkins/view/test-view/config.xml 获取的
-            String xml = "<hudson.model.ListView>\n" +
-                    "<name>test-view</name>\n" +
-                    "<description>用于测试的视图1111</description>\n" +
-                    "<filterExecutors>false</filterExecutors>\n" +
-                    "<filterQueue>false</filterQueue>\n" +
-                    "<properties class=\"hudson.model.View$PropertyList\"/>\n" +
-                    "<jobNames>\n" +
-                    "<comparator class=\"hudson.util.CaseInsensitiveComparator\"/>\n" +
-                    "</jobNames>\n" +
-                    "<jobFilters/>\n" +
-                    "<columns>\n" +
-                    "<hudson.views.StatusColumn/>\n" +
-                    "<hudson.views.WeatherColumn/>\n" +
-                    "<hudson.views.JobColumn/>\n" +
-                    "<hudson.views.LastSuccessColumn/>\n" +
-                    "<hudson.views.LastFailureColumn/>\n" +
-                    "<hudson.views.LastDurationColumn/>\n" +
-                    "<hudson.views.BuildButtonColumn/>\n" +
-                    "<hudson.plugins.favorite.column.FavoriteColumn plugin=\"favorite@2.3.2\"/>\n" +
-                    "</columns>\n" +
-                    "<recurse>false</recurse>\n" +
-                    "</hudson.model.ListView>";
+            String xml = "<hudson.model.ListView>\n" + "<name>test-view</name>\n" + "<description>用于测试的视图1111</description>\n" + "<filterExecutors>false</filterExecutors>\n" + "<filterQueue>false</filterQueue>\n" + "<properties class=\"hudson.model.View$PropertyList\"/>\n" + "<jobNames>\n" + "<comparator class=\"hudson.util.CaseInsensitiveComparator\"/>\n" + "</jobNames>\n" + "<jobFilters/>\n" + "<columns>\n" + "<hudson.views.StatusColumn/>\n" + "<hudson.views.WeatherColumn/>\n" + "<hudson.views.JobColumn/>\n" + "<hudson.views.LastSuccessColumn/>\n" + "<hudson.views.LastFailureColumn/>\n" + "<hudson.views.LastDurationColumn/>\n" + "<hudson.views.BuildButtonColumn/>\n" + "<hudson.plugins.favorite.column.FavoriteColumn plugin=\"favorite@2.3.2\"/>\n" + "</columns>\n" + "<recurse>false</recurse>\n" + "</hudson.model.ListView>";
             jenkinsServer.updateView("test-view", xml);
         } catch (IOException e) {
             e.printStackTrace();
@@ -126,7 +119,6 @@ public class ViewApi {
             e.printStackTrace();
         }
     }
-
 
     public static void main(String[] args) {
         ViewApi viewApi = new ViewApi();

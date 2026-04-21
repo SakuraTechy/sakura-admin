@@ -70,6 +70,56 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
         baseMapper.deleteByIds(ids);
     }
 
+    @Override
+    public Long copy(Long sourceId, AutomationUiSceneReq req) {
+        AutomationUiSceneDO source = baseMapper.selectById(sourceId);
+        CheckUtils.throwIfNull(source, "复制失败，自动化管理-UI自动化场景不存在");
+
+        AutomationUiSceneDO target = BeanUtil.copyProperties(source, AutomationUiSceneDO.class);
+        target.setId(null);
+
+        // 使用新请求参数覆盖基础信息
+        target.setSceneId(req.getSceneId());
+        target.setName(req.getName());
+        target.setDescription(req.getDescription());
+        target.setProjectId(req.getProjectId());
+        target.setProjectName(req.getProjectName());
+        target.setVersionId(req.getVersionId());
+        target.setVersionName(req.getVersionName());
+        target.setModuleId(req.getModuleId());
+        target.setModulePath(req.getModulePath());
+        target.setLevel(req.getLevel());
+        target.setStatus(req.getStatus());
+        target.setTags(req.getTags());
+        target.setCaseList(source.getCaseList());
+        target.setDelFlag(req.getDelFlag());
+
+        // 清空执行态和统计信息，避免把历史运行结果复制到新场景
+        target.setTestPlanId(null);
+        target.setReportId(null);
+        target.setDebugRecord(null);
+        target.setExecuteStatus(null);
+        target.setExecuteResult(null);
+        target.setTestRecord(null);
+        target.setBuildNumber(null);
+        target.setConsoleUrl(null);
+        target.setTestReportUrl(null);
+        target.setCaseTotal(null);
+        target.setCasePass(null);
+        target.setCaseFail(null);
+        target.setCaseSkip(null);
+        target.setPassRate(null);
+        target.setLastResult(null);
+        target.setStepTotal(null);
+        target.setStepPass(null);
+        target.setStepFail(null);
+        target.setStepSkip(null);
+        target.setUpdateIp(null);
+
+        baseMapper.insert(target);
+        return target.getId();
+    }
+
     public void addCase(CaseDO caseDO, Long id) {
         String caseId = caseDO.getId();
         if (!RegexUtil.isClassMethod(caseId)) {
@@ -459,6 +509,8 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
         automationUiSceneDO.setCaseList(caseList);
         baseMapper.updateById(automationUiSceneDO);
     }
+
+
 
     @Override
     public boolean isExists(Long id, Object... param) {

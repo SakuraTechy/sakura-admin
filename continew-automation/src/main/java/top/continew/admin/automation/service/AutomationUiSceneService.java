@@ -41,6 +41,15 @@ public interface AutomationUiSceneService extends BaseService<AutomationUiSceneR
     List<AutomationUiSceneDetailResp> selectByIds(List<Long> ids);
 
     /**
+     * 根据源场景ID，复制新测试场景
+     *
+     * @param sourceId 源场景 ID
+     * @param req      新场景参数
+     * @return 新场景 ID
+     */
+    Long copy(Long sourceId, AutomationUiSceneReq req);
+
+    /**
      * 根据 ID 删除
      *
      * @param ids ID 列表

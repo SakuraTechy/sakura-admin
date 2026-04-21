@@ -75,7 +75,7 @@ public class AutomationUiSceneController extends BaseController<AutomationUiScen
     @SaCheckPermission("automation:automationUiScene:create")
     public BaseIdResp<Long> create(@Validated(CrudValidationGroup.Create.class) @RequestBody AutomationUiSceneReq req) {
         Object[] param = new Object[] {req.getProjectId(), req.getVersionId(), req.getSceneId()};
-        CheckUtils.throwIf(baseService.isExists(null, param), "新增失败，自动化管理-UI自动化场景 [{}] 已存在", req.getName());
+        CheckUtils.throwIf(baseService.isExists(null, param), "新增失败，自动化管理-UI自动化场景 [{}] 已存在", req.getSceneId());
         return super.create(req);
     }
 
@@ -84,8 +84,18 @@ public class AutomationUiSceneController extends BaseController<AutomationUiScen
     @SaCheckPermission("automation:automationUiScene:update")
     public void update(@Validated(CrudValidationGroup.Update.class) @RequestBody AutomationUiSceneReq req, @PathVariable("id") Long id) {
         Object[] param = new Object[] {req.getProjectId(), req.getVersionId(), req.getSceneId()};
-        CheckUtils.throwIf(baseService.isExists(id, param), "修改失败，自动化管理-UI自动化场景 [{}] 已存在", req.getName());
+        CheckUtils.throwIf(baseService.isExists(id, param), "修改失败，自动化管理-UI自动化场景 [{}] 已存在", req.getSceneId());
         super.update(req, id);
+    }
+
+    @Operation(summary = "复制数据", description = "根据源场景复制数据")
+    @SaCheckPermission("automation:automationUiScene:copy")
+    @PostMapping("/{id}/copy")
+    public BaseIdResp<Long> copy(@PathVariable("id") Long id,
+                                 @Validated(CrudValidationGroup.Create.class) @RequestBody AutomationUiSceneReq req) {
+        Object[] param = new Object[] {req.getProjectId(), req.getVersionId(), req.getSceneId()};
+        CheckUtils.throwIf(baseService.isExists(null, param), "复制失败，自动化管理-UI自动化场景 [{}] 已存在", req.getSceneId());
+        return new BaseIdResp<>(baseService.copy(id, req));
     }
 
     @Operation(summary = "删除数据", description = "根据ID列表删除数据")

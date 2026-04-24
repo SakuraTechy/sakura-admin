@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS `sys_app`  (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='应用表';
 
 -- 初始化默认菜单
-INSERT INTO `sys_menu`
+INSERT IGNORE INTO `sys_menu`
 (`id`, `title`, `parent_id`, `type`, `path`, `name`, `component`, `redirect`, `icon`, `is_external`, `is_cache`, `is_hidden`, `permission`, `sort`, `status`, `create_user`, `create_time`)
 VALUES
 (7000, '能力开放', 0, 1, '/open', 'Open', 'Layout', '/open/app', 'expand', b'0', b'0', b'0', NULL, 3, 1, 1, NOW()),

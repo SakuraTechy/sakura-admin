@@ -66,6 +66,12 @@ public class AutomationProjectConfigResp extends BaseDetailResp {
     private String description;
 
     /**
+     * 脚本路径
+     */
+    @Schema(description = "脚本路径")
+    private String scriptPath;
+
+    /**
      * 状态
      */
     @Schema(description = "状态")

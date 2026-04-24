@@ -41,6 +41,8 @@ import top.continew.starter.web.model.R;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.security.Provider;
+import java.security.Security;
 
 /**
  * 启动程序
@@ -60,6 +62,8 @@ import java.net.UnknownHostException;
 @MapperScan({"top.continew.admin.system.mapper"})
 public class ContiNewAdminApplication implements ApplicationRunner {
 
+    private static final String SECURITY_DIAGNOSE_SWITCH = "sakura.security.diagnose";
+
     private final ProjectProperties projectProperties;
     private final ServerProperties serverProperties;
 
@@ -77,6 +81,7 @@ public class ContiNewAdminApplication implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) throws UnknownHostException {
+        logSecurityProviders();
         //        String hostAddress = NetUtil.getLocalhostStr();
         //        Integer port = serverProperties.getPort();
         //        String contextPath = serverProperties.getServlet().getContextPath();
@@ -96,5 +101,28 @@ public class ContiNewAdminApplication implements ApplicationRunner {
         log.info("在线文档：https://sakura.hk.cn");
         log.info("常见问题：https://sakura.hk.cn/src/zh/3.其它/1.常见问题");
         log.info("----------------------------------------------");
+    }
+
+    private void logSecurityProviders() {
+        if (!Boolean.getBoolean(SECURITY_DIAGNOSE_SWITCH)) {
+            return;
+        }
+        log.info("[Security Diagnose] switch '{}=true' enabled", SECURITY_DIAGNOSE_SWITCH);
+        log.info("[Security Diagnose] java.home={}", System.getProperty("java.home"));
+        Provider[] providers = Security.getProviders();
+        log.info("[Security Diagnose] providers count={}", providers.length);
+        for (int i = 0; i < providers.length; i++) {
+            Provider provider = providers[i];
+            String providerClass = provider.getClass().getName();
+            String providerCodeSource = provider.getClass().getProtectionDomain().getCodeSource() == null
+                ? "null"
+                : String.valueOf(provider.getClass().getProtectionDomain().getCodeSource().getLocation());
+            log.info("[Security Diagnose] provider[{}] name={}, version={}, class={}, source={}",
+                i + 1,
+                provider.getName(),
+                provider.getVersionStr(),
+                providerClass,
+                providerCodeSource);
+        }
     }
 }

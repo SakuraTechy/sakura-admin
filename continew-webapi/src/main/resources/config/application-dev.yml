@@ -37,7 +37,7 @@ spring.datasource:
 ## Liquibase 配置
 spring.liquibase:
   # 是否启用
-  enabled: false
+  enabled: true
   # 配置文件路径
   change-log: classpath:/db/changelog/db.changelog-master.yaml
 

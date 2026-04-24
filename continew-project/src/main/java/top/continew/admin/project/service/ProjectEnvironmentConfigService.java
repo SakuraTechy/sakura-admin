@@ -23,6 +23,7 @@ import top.continew.admin.project.model.query.ProjectEnvironmentConfigQuery;
 import top.continew.admin.project.model.req.ProjectEnvironmentConfigReq;
 import top.continew.admin.project.model.resp.ProjectEnvironmentConfigDetailResp;
 import top.continew.admin.project.model.resp.ProjectEnvironmentConfigResp;
+import top.continew.admin.project.model.resp.ProjectEnvironmentRuntimeStatusResp;
 
 /**
  * 项目管理-环境配置业务接口
@@ -39,6 +40,14 @@ public interface ProjectEnvironmentConfigService extends BaseService<ProjectEnvi
     List<ProjectEnvironmentConfigDetailResp> selectByIds(List<Long> ids);
 
     /**
+     * Query realtime runtime status by environment ID.
+     *
+     * @param id environment ID
+     * @return runtime status
+     */
+    ProjectEnvironmentRuntimeStatusResp getRuntimeStatus(Long id);
+
+    /**
      * 根据 ID 删除
      *
      * @param ids ID 列表
@@ -53,4 +62,31 @@ public interface ProjectEnvironmentConfigService extends BaseService<ProjectEnvi
      * @return true：存在；false：不存在
      */
     boolean isExists(Long id, Object... param);
+
+    /**
+     * 同步环境中的版本配置快照。
+     *
+     * @param type 操作类型（update/delete）
+     * @param id   版本配置 ID
+     * @return 是否存在同步更新
+     */
+    boolean updateVersionConfig(String type, Long id);
+
+    /**
+     * 同步环境中的服务器配置快照。
+     *
+     * @param type 操作类型（update/delete）
+     * @param id   服务器配置 ID
+     * @return 是否存在同步更新
+     */
+    boolean updateServerConfig(String type, Long id);
+
+    /**
+     * 同步环境中的数据库配置快照。
+     *
+     * @param type 操作类型（update/delete）
+     * @param id   数据库配置 ID
+     * @return 是否存在同步更新
+     */
+    boolean updateDataBaseConfig(String type, Long id);
 }

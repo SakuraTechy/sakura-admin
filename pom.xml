@@ -31,6 +31,7 @@
         <module>continew-extension</module>
         <module>continew-project</module>
         <module>continew-automation</module>
+        <module>continew-test</module>
     </modules>
 
     <properties>
@@ -52,6 +53,13 @@
             <dependency>
                 <groupId>top.continew</groupId>
                 <artifactId>continew-project</artifactId>
+                <version>${revision}</version>
+            </dependency>
+
+            <!-- 测试管理模块 -->
+            <dependency>
+                <groupId>top.continew</groupId>
+                <artifactId>continew-test</artifactId>
                 <version>${revision}</version>
             </dependency>
 

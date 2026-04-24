@@ -37,7 +37,7 @@ public class IdUtils {
      * @return 简化的UUID，去掉了横线
      */
     public static String randomUUID() {
-        return UUID.randomUUID().toString().replaceAll("-", "");
+        return UUID.randomUUID().toString().replace("-", "");
     }
 
     /**

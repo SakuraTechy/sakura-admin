@@ -16,14 +16,21 @@
 
 package top.continew.admin.automation.service;
 
+import java.util.Collection;
 import java.util.List;
 
+import jakarta.servlet.http.HttpServletResponse;
 import top.continew.admin.automation.model.entity.ui.CaseDO;
 import top.continew.admin.automation.model.entity.ui.StepDO;
 import top.continew.starter.extension.crud.service.BaseService;
 import top.continew.admin.automation.model.query.AutomationUiSceneQuery;
+import top.continew.admin.automation.model.req.AutomationUiSceneClearReq;
+import top.continew.admin.automation.model.req.AutomationUiSceneExecAllReq;
+import top.continew.admin.automation.model.req.AutomationUiSceneExecReq;
 import top.continew.admin.automation.model.req.AutomationUiSceneReq;
+import top.continew.admin.automation.model.req.AutomationUiSceneUploadResultReq;
 import top.continew.admin.automation.model.resp.AutomationUiSceneDetailResp;
+import top.continew.admin.automation.model.resp.AutomationUiSceneExecResp;
 import top.continew.admin.automation.model.resp.AutomationUiSceneResp;
 
 /**
@@ -119,6 +126,58 @@ public interface AutomationUiSceneService extends BaseService<AutomationUiSceneR
      * @param id     步骤ID
      */
     void dragStep(StepDO stepDO, Long id);
+
+    /**
+     * 执行 UI 自动化场景
+     *
+     * @param req 执行参数
+     * @return 执行结果
+     */
+    AutomationUiSceneExecResp exec(AutomationUiSceneExecReq req);
+
+    /**
+     * 执行查询范围内全部 UI 自动化场景
+     *
+     * @param req 执行全部参数
+     * @return 执行结果
+     */
+    AutomationUiSceneExecResp execAll(AutomationUiSceneExecAllReq req);
+
+    /**
+     * 根据 ID 集合查询场景详情
+     *
+     * @param ids ID 集合
+     * @return 场景详情
+     */
+    List<AutomationUiSceneResp> listSceneRespByIds(Collection<Long> ids);
+
+    /**
+     * 导出选中场景 XML
+     *
+     * @param ids       场景 ID 集合
+     * @param response  响应流
+     */
+    void exportXml(Collection<Long> ids, HttpServletResponse response);
+
+    /**
+     * 导出查询范围内全部场景 XML
+     *
+     * @param query     查询条件
+     * @param response  响应流
+     */
+    void exportXmlAll(AutomationUiSceneQuery query, HttpServletResponse response);
+
+    /**
+     * 清空测试场景结果
+     * @param req
+     */
+    void clearResults(AutomationUiSceneClearReq req);
+
+    /**
+     * 上传测试场景结果
+     * @param req
+     */
+    void uploadResults(AutomationUiSceneUploadResultReq req);
 
     /**
      * 根据参数条件，判断项目是否存在

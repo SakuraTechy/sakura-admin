@@ -79,11 +79,9 @@ public class AutomationProjectConfigController extends BaseController<Automation
                        @PathVariable("id") Long id) {
         Object[] param = new Object[] {req.getName(), req.getUrl()};
         CheckUtils.throwIf(baseService.isExists(id, param), "修改失败，自动化管理-项目配置 [{}] 已存在", param[1]);
-        if (automationEnvironmentConfigService.updateProjectConfig("update", id)) {
-            super.update(req, id);
-        } else {
-            throw new IllegalArgumentException("修改失败，自动化环境关联项目配置信息异常");
-        }
+        super.update(req, id);
+        automationEnvironmentConfigService.updateProjectConfig("update", id);
+        automationEnvironmentConfigService.updateJenkinsProjectConfig("update", id);
     }
 
     @Operation(summary = "删除数据", description = "根据ID列表删除数据")
@@ -94,12 +92,10 @@ public class AutomationProjectConfigController extends BaseController<Automation
         //        baseService.deleteByIds(ids);
         AutomationProjectConfigReq req = new AutomationProjectConfigReq();
         ids.forEach(id -> {
-            if (automationEnvironmentConfigService.updateProjectConfig("delete", id)) {
-                req.setDelFlag(StatusTypeEnum.ABNORMAL);
-                super.update(req, id);
-            } else {
-                throw new IllegalArgumentException("删除失败，自动化环境关联项目配置信息异常");
-            }
+            automationEnvironmentConfigService.updateProjectConfig("delete", id);
+            automationEnvironmentConfigService.updateJenkinsProjectConfig("delete", id);
+            req.setDelFlag(StatusTypeEnum.ABNORMAL);
+            super.update(req, id);
         });
     }
 

@@ -39,6 +39,7 @@ import top.continew.admin.project.model.req.ProjectVersionConfigReq;
 import top.continew.admin.project.model.resp.ProjectVersionConfigDetailResp;
 import top.continew.admin.project.model.resp.ProjectVersionConfigResp;
 import top.continew.admin.project.service.ProjectConfigService;
+import top.continew.admin.project.service.ProjectEnvironmentConfigService;
 import top.continew.admin.project.service.ProjectModuleConfigService;
 import top.continew.admin.project.service.ProjectVersionConfigService;
 
@@ -65,6 +66,7 @@ public class ProjectVersionConfigController extends BaseController<ProjectVersio
 
     private final ProjectConfigService projectConfigService;
     private final ProjectModuleConfigService projectModuleConfigService;
+    private final ProjectEnvironmentConfigService projectEnvironmentConfigService;
 
     @Override
     @Operation(summary = "查询数据", description = "根据查询条件查询数据")
@@ -104,6 +106,7 @@ public class ProjectVersionConfigController extends BaseController<ProjectVersio
         Object[] param = new Object[] {req.getProjectId(), req.getName()};
         CheckUtils.throwIf(baseService.isExists(id, param), "修改失败，项目管理-版本配置 [{}] 已存在", param[1]);
         super.update(req, id);
+        projectEnvironmentConfigService.updateVersionConfig("update", id);
     }
 
     @Operation(summary = "删除数据", description = "根据ID列表删除数据")
@@ -116,6 +119,7 @@ public class ProjectVersionConfigController extends BaseController<ProjectVersio
         ids.forEach(id -> {
             req.setDelFlag(StatusTypeEnum.ABNORMAL);
             super.update(req, id);
+            projectEnvironmentConfigService.updateVersionConfig("delete", id);
         });
     }
 

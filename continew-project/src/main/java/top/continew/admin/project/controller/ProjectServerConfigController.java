@@ -37,6 +37,7 @@ import top.continew.admin.project.model.query.ProjectServerConfigQuery;
 import top.continew.admin.project.model.req.ProjectServerConfigReq;
 import top.continew.admin.project.model.resp.ProjectServerConfigDetailResp;
 import top.continew.admin.project.model.resp.ProjectServerConfigResp;
+import top.continew.admin.project.service.ProjectEnvironmentConfigService;
 import top.continew.admin.project.service.ProjectServerConfigService;
 
 import top.continew.starter.file.excel.util.ExcelUtils;
@@ -59,6 +60,7 @@ import top.continew.starter.extension.crud.validation.CrudValidationGroup;
 @CrudRequestMapping(value = "/project/projectServerConfig", api = {Api.PAGE, Api.GET, Api.CREATE, Api.UPDATE,
     Api.DELETE, Api.EXPORT})
 public class ProjectServerConfigController extends BaseController<ProjectServerConfigService, ProjectServerConfigResp, ProjectServerConfigDetailResp, ProjectServerConfigQuery, ProjectServerConfigReq> {
+    private final ProjectEnvironmentConfigService projectEnvironmentConfigService;
 
     @Override
     @Operation(summary = "查询数据", description = "根据查询条件查询数据")
@@ -86,6 +88,7 @@ public class ProjectServerConfigController extends BaseController<ProjectServerC
         Object[] param = new Object[] {req.getProjectId(), req.getIp(), req.getPort()};
         CheckUtils.throwIf(baseService.isExists(id, param), "修改失败，该项目环境下服务器配置 [{}] 已存在", param[1]);
         super.update(req, id);
+        projectEnvironmentConfigService.updateServerConfig("update", id);
     }
 
     @Operation(summary = "删除数据", description = "根据ID列表删除数据")
@@ -98,6 +101,7 @@ public class ProjectServerConfigController extends BaseController<ProjectServerC
         ids.forEach(id -> {
             req.setDelFlag(StatusTypeEnum.ABNORMAL);
             super.update(req, id);
+            projectEnvironmentConfigService.updateServerConfig("delete", id);
         });
     }
 

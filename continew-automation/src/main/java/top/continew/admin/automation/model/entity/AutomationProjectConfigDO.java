@@ -58,6 +58,11 @@ public class AutomationProjectConfigDO extends BaseDO {
     private String description;
 
     /**
+     * 脚本路径
+     */
+    private String scriptPath;
+
+    /**
      * 状态
      */
     private StatusTypeEnum status;

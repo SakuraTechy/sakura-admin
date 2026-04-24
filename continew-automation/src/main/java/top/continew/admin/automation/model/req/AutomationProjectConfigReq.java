@@ -75,6 +75,14 @@ public class AutomationProjectConfigReq implements Serializable {
     private String description;
 
     /**
+     * 脚本路径
+     */
+    @Schema(description = "脚本路径")
+    @NotBlank(message = "脚本路径不能为空")
+    @Length(max = 500, message = "脚本路径长度不能超过 {max} 个字符")
+    private String scriptPath;
+
+    /**
      * 状态
      */
     @Schema(description = "状态")

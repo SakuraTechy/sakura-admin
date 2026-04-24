@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS `gen_field_config` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='字段配置表';
 
 -- 初始化默认菜单
-INSERT INTO `sys_menu`
+INSERT IGNORE INTO `sys_menu`
 (`id`, `title`, `parent_id`, `type`, `path`, `name`, `component`, `redirect`, `icon`, `is_external`, `is_cache`, `is_hidden`, `permission`, `sort`, `status`, `create_user`, `create_time`)
 VALUES
 (9000, '代码生成', 0, 1, '/code', 'Code', 'Layout', '/code/generator', 'code-release-managment', b'0', b'0', b'0', NULL, 4, 1, 1, NOW()),

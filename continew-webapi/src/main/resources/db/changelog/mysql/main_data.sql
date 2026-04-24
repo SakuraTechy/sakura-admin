@@ -3,7 +3,7 @@
 -- changeset charles7c:1
 -- comment 初始化表数据
 -- 初始化默认菜单
-INSERT INTO `sys_menu`
+INSERT IGNORE INTO `sys_menu`
 (`id`, `title`, `parent_id`, `type`, `path`, `name`, `component`, `redirect`, `icon`, `is_external`, `is_cache`, `is_hidden`, `permission`, `sort`, `status`, `create_user`, `create_time`)
 VALUES
 (1000, '系统管理', 0, 1, '/system', 'System', 'Layout', '/system/user', 'settings', b'0', b'0', b'0', NULL, 1, 1, 1, NOW()),
@@ -132,7 +132,7 @@ VALUES
 
 
 -- 初始化默认部门
-INSERT INTO `sys_dept`
+INSERT IGNORE INTO `sys_dept`
 (`id`, `name`, `parent_id`, `ancestors`, `description`, `sort`, `status`, `is_system`, `create_user`, `create_time`)
 VALUES
 (1, 'Xxx科技有限公司', 0, '0', '系统初始部门', 1, 1, b'1', 1, NOW()),
@@ -165,7 +165,7 @@ VALUES
 (547887852587843611, '研发一组', 547887852587843610, '0,1,547887852587843609,547887852587843610', NULL, 1, 1, b'0', 1, NOW());
 
 -- 初始化默认角色
-INSERT INTO `sys_role`
+INSERT IGNORE INTO `sys_role`
 (`id`, `name`, `code`, `data_scope`, `description`, `sort`, `is_system`, `create_user`, `create_time`)
 VALUES
 (1, '系统管理员', 'admin', 1, '系统初始角色', 1, b'1', 1, NOW()),
@@ -174,13 +174,13 @@ VALUES
 (4, '研发人员', 'developer', 4, NULL, 4, b'0', 1, NOW());
 
 -- 初始化默认用户：admin/admin123；test/test123
-INSERT INTO `sys_user`
+INSERT IGNORE INTO `sys_user`
 (`id`, `username`, `nickname`, `password`, `gender`, `email`, `phone`, `avatar`, `description`, `status`, `is_system`, `pwd_reset_time`, `dept_id`, `create_user`, `create_time`)
 VALUES
 (1, 'admin', '系统管理员', '{bcrypt}$2a$10$4jGwK2BMJ7FgVR.mgwGodey8.xR8FLoU1XSXpxJ9nZQt.pufhasSa', 1, '42190c6c5639d2ca4edb4150a35e058559ccf8270361a23745a2fd285a273c28', '5bda89a4609a65546422ea56bfe5eab4', NULL, '系统初始用户', 1, b'1', NOW(), 1, 1, NOW()),
 (2, 'test', '测试员', '{bcrypt}$2a$10$xAsoeMJ.jc/kSxhviLAg7.j2iFrhi6yYAdniNdjLiIUWU/BRZl2Ti', 2, NULL, NULL, NULL, NULL, 1, b'0', NOW(), 547887852587843593, 1, NOW());
 -- 初始化默认参数
-INSERT INTO `sys_option`
+INSERT IGNORE INTO `sys_option`
 (`id`, `category`, `name`, `code`, `value`, `default_value`, `description`)
 VALUES
 (1, 'SITE', '系统名称', 'SITE_TITLE', NULL, 'SakurA Platform', '显示在浏览器标题栏和登录界面的系统名称'),
@@ -207,7 +207,7 @@ VALUES
 (27, 'LOGIN', '是否启用验证码', 'LOGIN_CAPTCHA_ENABLED', NULL, '1', NULL);
 
 -- 初始化默认字典
-INSERT INTO `sys_dict`
+INSERT IGNORE INTO `sys_dict`
 (`id`, `name`, `code`, `description`, `is_system`, `create_user`, `create_time`)
 VALUES
 (1, '公告类型', 'notice_type', NULL, b'1', 1, NOW()),
@@ -215,7 +215,7 @@ VALUES
 (3, '终端类型', 'client_type', NULL, b'1', 1, NOW()),
 (4, '状态类型', 'status_type', NULL, b'1', 1, NOW());
 
-INSERT INTO `sys_dict_item`
+INSERT IGNORE INTO `sys_dict_item`
 (`id`, `label`, `value`, `color`, `sort`, `description`, `status`, `dict_id`, `create_user`, `create_time`)
 VALUES
 (1, '通知', '1', 'primary', 1, NULL, 1, 1, 1, NOW()),
@@ -229,14 +229,14 @@ VALUES
 (9, '禁用', '2', 'error', 2, NULL, 1, 4, 1, NOW());
 
 -- 初始化默认用户和角色关联数据
-INSERT INTO `sys_user_role`
+INSERT IGNORE INTO `sys_user_role`
 (`id`, `user_id`, `role_id`)
 VALUES
 (1, 1, 1),
 (2, 2, 3);
 
 -- 初始化默认角色和菜单关联数据
-INSERT INTO `sys_role_menu`
+INSERT IGNORE INTO `sys_role_menu`
 (`role_id`, `menu_id`)
 VALUES
 (2,	1000),
@@ -300,17 +300,17 @@ VALUES
 (2,	9011);
 
 -- 初始化默认角色和部门关联数据
-INSERT INTO `sys_role_dept` (`role_id`, `dept_id`) VALUES (3, 547887852587843593);
+INSERT IGNORE INTO `sys_role_dept` (`role_id`, `dept_id`) VALUES (3, 547887852587843593);
 
 -- 初始化默认存储
-INSERT INTO `sys_storage`
+INSERT IGNORE INTO `sys_storage`
 (`id`, `name`, `code`, `type`, `access_key`, `secret_key`, `endpoint`, `bucket_name`, `domain`, `description`, `is_default`, `sort`, `status`, `create_user`, `create_time`)
 VALUES
 (1, '开发环境', 'local_dev', 1, NULL, NULL, NULL, 'C:/continew-admin/data/file/', 'http://localhost:8000/file', '本地存储', b'1', 1, 1, 1, NOW()),
 (2, '生产环境', 'local_prod', 1, NULL, NULL, NULL, '../data/file/', 'http://api.continew.top/file', '本地存储', b'0', 2, 2, 1, NOW());
 
 -- 初始化终端数据
-INSERT INTO `sys_client`
+INSERT IGNORE INTO `sys_client`
 (`id`, `client_id`, `client_key`, `client_secret`, `auth_type`, `client_type`, `active_timeout`, `timeout`, `status`, `create_user`, `create_time`)
 VALUES
 (1, 'ef51c9a3e9046c4f2ea45142c8a8344a', 'pc', 'dd77ab1e353a027e0d60ce3b151e8642', '["ACCOUNT", "EMAIL", "PHONE", "SOCIAL"]', 'PC', 1800, 86400, 1, 1, NOW());

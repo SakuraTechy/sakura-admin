@@ -1,12 +1,12 @@
 SET @parentId = 1928023875242184704;
 -- 自动化管理-环境配置管理菜单
-INSERT INTO `sys_menu`
+INSERT IGNORE INTO `sys_menu`
     (`id`, `title`, `parent_id`, `type`, `path`, `name`, `component`, `redirect`, `icon`, `is_external`, `is_cache`, `is_hidden`, `permission`, `sort`, `status`, `create_user`, `create_time`)
 VALUES
     (@parentId, '自动化管理-环境配置管理', 1000, 2, '/automation/automationEnvironmentConfig', 'AutomationEnvironmentConfig', 'automation/automationEnvironmentConfig/index', NULL, NULL, b'0', b'0', b'0', NULL, 1, 1, 1, NOW());
 
 -- 自动化管理-环境配置管理按钮
-INSERT INTO `sys_menu`
+INSERT IGNORE INTO `sys_menu`
     (`id`, `title`, `parent_id`, `type`, `permission`, `sort`, `status`, `create_user`, `create_time`)
 VALUES
     (1928023875242184705, '列表', @parentId, 3, 'automation:automationEnvironmentConfig:list', 1, 1, 1, NOW()),

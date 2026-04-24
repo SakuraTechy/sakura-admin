@@ -1,12 +1,12 @@
 SET @parentId = 1927993812610310144;
 -- 自动化管理-浏览器配置管理菜单
-INSERT INTO `sys_menu`
+INSERT IGNORE INTO `sys_menu`
     (`id`, `title`, `parent_id`, `type`, `path`, `name`, `component`, `redirect`, `icon`, `is_external`, `is_cache`, `is_hidden`, `permission`, `sort`, `status`, `create_user`, `create_time`)
 VALUES
     (@parentId, '自动化管理-浏览器配置管理', 1000, 2, '/automation/automationBrowserConfig', 'AutomationBrowserConfig', 'automation/automationBrowserConfig/index', NULL, NULL, b'0', b'0', b'0', NULL, 1, 1, 1, NOW());
 
 -- 自动化管理-浏览器配置管理按钮
-INSERT INTO `sys_menu`
+INSERT IGNORE INTO `sys_menu`
     (`id`, `title`, `parent_id`, `type`, `permission`, `sort`, `status`, `create_user`, `create_time`)
 VALUES
     (1927993812610310145, '列表', @parentId, 3, 'automation:automationBrowserConfig:list', 1, 1, 1, NOW()),

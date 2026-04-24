@@ -23,6 +23,7 @@ import top.continew.admin.automation.model.query.AutomationEnvironmentConfigQuer
 import top.continew.admin.automation.model.req.AutomationEnvironmentConfigReq;
 import top.continew.admin.automation.model.resp.AutomationEnvironmentConfigDetailResp;
 import top.continew.admin.automation.model.resp.AutomationEnvironmentConfigResp;
+import top.continew.admin.automation.model.resp.AutomationEnvironmentRuntimeStatusResp;
 
 /**
  * 自动化管理-环境配置业务接口
@@ -37,6 +38,14 @@ public interface AutomationEnvironmentConfigService extends BaseService<Automati
      * @param ids ID 列表
      */
     List<AutomationEnvironmentConfigDetailResp> selectByIds(List<Long> ids);
+
+    /**
+     * Query realtime runtime status by environment ID.
+     *
+     * @param id environment ID
+     * @return runtime status
+     */
+    AutomationEnvironmentRuntimeStatusResp getRuntimeStatus(Long id);
 
     /**
      * 根据 ID 删除
@@ -85,4 +94,13 @@ public interface AutomationEnvironmentConfigService extends BaseService<Automati
      * @return true：成功；false：失败
      */
     boolean updateBrowserConfig(String type, Long id);
+
+    /**
+     * 更新 Jenkins 配置中关联的项目快照。
+     *
+     * @param type 操作类型（update/delete）
+     * @param id   项目配置 ID
+     * @return true：成功；false：失败
+     */
+    boolean updateJenkinsProjectConfig(String type, Long id);
 }

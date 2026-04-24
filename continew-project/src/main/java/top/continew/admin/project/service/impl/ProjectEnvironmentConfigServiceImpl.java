@@ -16,21 +16,35 @@
 
 package top.continew.admin.project.service.impl;
 
+import java.net.InetSocketAddress;
+import java.net.Socket;
 import java.util.List;
+
 import cn.hutool.core.bean.BeanUtil;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import top.continew.admin.common.enums.DisEnableStatusEnum;
+import top.continew.admin.common.enums.StatusTypeEnum;
 import top.continew.admin.project.service.ProjectConfigService;
 import top.continew.starter.extension.crud.service.BaseServiceImpl;
 import top.continew.admin.common.context.UserContextHolder;
+import top.continew.admin.project.mapper.ProjectDataBaseConfigMapper;
 import top.continew.admin.project.mapper.ProjectEnvironmentConfigMapper;
+import top.continew.admin.project.mapper.ProjectServerConfigMapper;
+import top.continew.admin.project.mapper.ProjectVersionConfigMapper;
+import top.continew.admin.project.model.entity.ProjectDataBaseConfigDO;
 import top.continew.admin.project.model.entity.ProjectEnvironmentConfigDO;
+import top.continew.admin.project.model.entity.ProjectServerConfigDO;
+import top.continew.admin.project.model.entity.ProjectVersionConfigDO;
 import top.continew.admin.project.model.query.ProjectEnvironmentConfigQuery;
 import top.continew.admin.project.model.req.ProjectEnvironmentConfigReq;
 import top.continew.admin.project.model.resp.ProjectEnvironmentConfigDetailResp;
 import top.continew.admin.project.model.resp.ProjectEnvironmentConfigResp;
+import top.continew.admin.project.model.resp.ProjectEnvironmentRuntimeStatusResp;
 import top.continew.admin.project.service.ProjectEnvironmentConfigService;
+import top.continew.starter.core.validation.CheckUtils;
 
 /**
  * 项目管理-环境配置业务实现
@@ -38,11 +52,15 @@ import top.continew.admin.project.service.ProjectEnvironmentConfigService;
  * @author hagyao520
  * @since 2025/05/15 09:47
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ProjectEnvironmentConfigServiceImpl extends BaseServiceImpl<ProjectEnvironmentConfigMapper, ProjectEnvironmentConfigDO, ProjectEnvironmentConfigResp, ProjectEnvironmentConfigDetailResp, ProjectEnvironmentConfigQuery, ProjectEnvironmentConfigReq> implements ProjectEnvironmentConfigService {
 
     private final ProjectConfigService projectConfigService;
+    private final ProjectVersionConfigMapper projectVersionConfigMapper;
+    private final ProjectServerConfigMapper projectServerConfigMapper;
+    private final ProjectDataBaseConfigMapper projectDataBaseConfigMapper;
 
     @Override
     public List<ProjectEnvironmentConfigDetailResp> selectByIds(List<Long> ids) {
@@ -58,6 +76,21 @@ public class ProjectEnvironmentConfigServiceImpl extends BaseServiceImpl<Project
     }
 
     @Override
+    public ProjectEnvironmentRuntimeStatusResp getRuntimeStatus(Long id) {
+        ProjectEnvironmentConfigDO environmentConfig = baseMapper.selectById(id);
+        CheckUtils.throwIfNull(environmentConfig, "环境配置不存在");
+
+        ProjectServerConfigDO serverConfig = resolvePrimaryServer(environmentConfig.getServerConfig());
+        CheckUtils.throwIfNull(serverConfig, "环境未配置服务器信息");
+
+        ProjectEnvironmentRuntimeStatusResp resp = new ProjectEnvironmentRuntimeStatusResp();
+        resp.setEnvironmentId(id);
+        resp.setServerIp(serverConfig.getIp());
+        resp.setOnlineStatus(checkServerOnline(serverConfig) ? StatusTypeEnum.ONLINE : StatusTypeEnum.OFFLINE);
+        return resp;
+    }
+
+    @Override
     public void deleteByIds(List<Long> ids) {
         baseMapper.deleteByIds(ids);
     }
@@ -70,5 +103,151 @@ public class ProjectEnvironmentConfigServiceImpl extends BaseServiceImpl<Project
             .eq(ProjectEnvironmentConfigDO::getDelFlag, 3)
             .ne(null != id, ProjectEnvironmentConfigDO::getId, id)
             .exists();
+    }
+
+    @Override
+    public boolean updateVersionConfig(String type, Long id) {
+        try {
+            List<ProjectEnvironmentConfigDO> environmentList = baseMapper.lambdaQuery()
+                .eq(ProjectEnvironmentConfigDO::getDelFlag, 3)
+                .list();
+            ProjectVersionConfigDO versionConfig = projectVersionConfigMapper.selectById(id);
+            for (ProjectEnvironmentConfigDO environment : environmentList) {
+                List<Object> versionConfigList = environment.getVersionConfig();
+                if (versionConfigList == null || versionConfigList.isEmpty()) {
+                    continue;
+                }
+                if ("delete".equals(type)) {
+                    versionConfigList.removeIf(item -> {
+                        ProjectVersionConfigDO candidate = BeanUtil.toBean(item, ProjectVersionConfigDO.class);
+                        return candidate != null && candidate.getId() != null && candidate.getId().equals(id);
+                    });
+                } else {
+                    if (versionConfig == null) {
+                        continue;
+                    }
+                    for (int i = 0; i < versionConfigList.size(); i++) {
+                        ProjectVersionConfigDO candidate = BeanUtil.toBean(versionConfigList.get(i), ProjectVersionConfigDO.class);
+                        if (candidate != null && candidate.getId() != null && candidate.getId().equals(id)) {
+                            versionConfigList.set(i, versionConfig);
+                            break;
+                        }
+                    }
+                }
+                environment.setVersionConfig(versionConfigList);
+                baseMapper.updateById(environment);
+            }
+            return true;
+        } catch (Exception e) {
+            log.error("同步环境版本配置失败，{}", e.getMessage(), e);
+        }
+        return false;
+    }
+
+    @Override
+    public boolean updateServerConfig(String type, Long id) {
+        try {
+            List<ProjectEnvironmentConfigDO> environmentList = baseMapper.lambdaQuery()
+                .eq(ProjectEnvironmentConfigDO::getDelFlag, 3)
+                .list();
+            ProjectServerConfigDO serverConfig = projectServerConfigMapper.selectById(id);
+            for (ProjectEnvironmentConfigDO environment : environmentList) {
+                List<Object> serverConfigList = environment.getServerConfig();
+                if (serverConfigList == null || serverConfigList.isEmpty()) {
+                    continue;
+                }
+                if ("delete".equals(type)) {
+                    serverConfigList.removeIf(item -> {
+                        ProjectServerConfigDO candidate = BeanUtil.toBean(item, ProjectServerConfigDO.class);
+                        return candidate != null && candidate.getId() != null && candidate.getId().equals(id);
+                    });
+                } else {
+                    if (serverConfig == null) {
+                        continue;
+                    }
+                    for (int i = 0; i < serverConfigList.size(); i++) {
+                        ProjectServerConfigDO candidate = BeanUtil.toBean(serverConfigList.get(i), ProjectServerConfigDO.class);
+                        if (candidate != null && candidate.getId() != null && candidate.getId().equals(id)) {
+                            serverConfigList.set(i, serverConfig);
+                            break;
+                        }
+                    }
+                }
+                environment.setServerConfig(serverConfigList);
+                baseMapper.updateById(environment);
+            }
+            return true;
+        } catch (Exception e) {
+            log.error("同步环境服务器配置失败，{}", e.getMessage(), e);
+        }
+        return false;
+    }
+
+    @Override
+    public boolean updateDataBaseConfig(String type, Long id) {
+        try {
+            List<ProjectEnvironmentConfigDO> environmentList = baseMapper.lambdaQuery()
+                .eq(ProjectEnvironmentConfigDO::getDelFlag, 3)
+                .list();
+            ProjectDataBaseConfigDO dataBaseConfig = projectDataBaseConfigMapper.selectById(id);
+            for (ProjectEnvironmentConfigDO environment : environmentList) {
+                List<Object> dataBaseConfigList = environment.getDataBaseConfig();
+                if (dataBaseConfigList == null || dataBaseConfigList.isEmpty()) {
+                    continue;
+                }
+                if ("delete".equals(type)) {
+                    dataBaseConfigList.removeIf(item -> {
+                        ProjectDataBaseConfigDO candidate = BeanUtil.toBean(item, ProjectDataBaseConfigDO.class);
+                        return candidate != null && candidate.getId() != null && candidate.getId().equals(id);
+                    });
+                } else {
+                    if (dataBaseConfig == null) {
+                        continue;
+                    }
+                    for (int i = 0; i < dataBaseConfigList.size(); i++) {
+                        ProjectDataBaseConfigDO candidate = BeanUtil.toBean(dataBaseConfigList.get(i), ProjectDataBaseConfigDO.class);
+                        if (candidate != null && candidate.getId() != null && candidate.getId().equals(id)) {
+                            dataBaseConfigList.set(i, dataBaseConfig);
+                            break;
+                        }
+                    }
+                }
+                environment.setDataBaseConfig(dataBaseConfigList);
+                baseMapper.updateById(environment);
+            }
+            return true;
+        } catch (Exception e) {
+            log.error("同步环境数据库配置失败，{}", e.getMessage(), e);
+        }
+        return false;
+    }
+
+    private ProjectServerConfigDO resolvePrimaryServer(List<?> serverConfigList) {
+        if (serverConfigList == null || serverConfigList.isEmpty()) {
+            return null;
+        }
+        return serverConfigList.stream()
+            .map(item -> BeanUtil.toBean(item, ProjectServerConfigDO.class))
+            .filter(item -> item != null && item.getStatus() == DisEnableStatusEnum.ENABLE)
+            .findFirst()
+            .orElseGet(() -> serverConfigList.stream()
+                .filter(item -> item != null)
+                .findFirst()
+                .map(item -> BeanUtil.toBean(item, ProjectServerConfigDO.class))
+                .orElse(null));
+    }
+
+    private boolean checkServerOnline(ProjectServerConfigDO serverConfig) {
+        if (serverConfig == null || serverConfig.getIp() == null || serverConfig.getIp().isBlank()) {
+            return false;
+        }
+        int port = serverConfig.getPort() == null ? 22 : serverConfig.getPort();
+        try (Socket socket = new Socket()) {
+            socket.connect(new InetSocketAddress(serverConfig.getIp(), port), 1500);
+            return true;
+        } catch (Exception e) {
+            log.debug("Check project environment server status failed, ip={}, port={}, msg={}", serverConfig.getIp(), port, e.getMessage());
+            return false;
+        }
     }
 }

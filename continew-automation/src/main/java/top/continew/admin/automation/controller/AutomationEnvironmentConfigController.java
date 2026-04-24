@@ -37,6 +37,7 @@ import top.continew.admin.automation.model.query.AutomationEnvironmentConfigQuer
 import top.continew.admin.automation.model.req.AutomationEnvironmentConfigReq;
 import top.continew.admin.automation.model.resp.AutomationEnvironmentConfigDetailResp;
 import top.continew.admin.automation.model.resp.AutomationEnvironmentConfigResp;
+import top.continew.admin.automation.model.resp.AutomationEnvironmentRuntimeStatusResp;
 import top.continew.admin.automation.service.AutomationEnvironmentConfigService;
 
 import top.continew.starter.file.excel.util.ExcelUtils;
@@ -46,6 +47,7 @@ import top.continew.starter.extension.crud.model.query.SortQuery;
 import top.continew.starter.extension.crud.model.resp.BaseIdResp;
 import top.continew.starter.extension.crud.annotation.CrudRequestMapping;
 import top.continew.starter.extension.crud.validation.CrudValidationGroup;
+import top.continew.starter.web.model.R;
 
 /**
  * 自动化管理-环境配置管理 API
@@ -126,5 +128,12 @@ public class AutomationEnvironmentConfigController extends BaseController<Automa
         } catch (Exception e) {
             baseService.export(query, sortQuery, response);
         }
+    }
+
+    @Operation(summary = "查询环境实时状态", description = "根据环境 ID 查询自动化环境实时在线与使用状态")
+    @SaCheckPermission("automation:automationEnvironmentConfig:get")
+    @GetMapping("/{id}/runtime-status")
+    public R<AutomationEnvironmentRuntimeStatusResp> getRuntimeStatus(@PathVariable("id") Long id) {
+        return R.ok(baseService.getRuntimeStatus(id));
     }
 }

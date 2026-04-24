@@ -37,6 +37,7 @@ import top.continew.admin.project.model.query.ProjectEnvironmentConfigQuery;
 import top.continew.admin.project.model.req.ProjectEnvironmentConfigReq;
 import top.continew.admin.project.model.resp.ProjectEnvironmentConfigDetailResp;
 import top.continew.admin.project.model.resp.ProjectEnvironmentConfigResp;
+import top.continew.admin.project.model.resp.ProjectEnvironmentRuntimeStatusResp;
 import top.continew.admin.project.service.ProjectEnvironmentConfigService;
 
 import top.continew.starter.core.validation.CheckUtils;
@@ -46,6 +47,7 @@ import top.continew.starter.extension.crud.model.query.SortQuery;
 import top.continew.starter.extension.crud.model.resp.BaseIdResp;
 import top.continew.starter.extension.crud.annotation.CrudRequestMapping;
 import top.continew.starter.extension.crud.validation.CrudValidationGroup;
+import top.continew.starter.web.model.R;
 
 /**
  * 项目管理-环境配置管理 API
@@ -126,5 +128,12 @@ public class ProjectEnvironmentConfigController extends BaseController<ProjectEn
         } catch (Exception e) {
             baseService.export(query, sortQuery, response);
         }
+    }
+
+    @Operation(summary = "查询环境实时状态", description = "根据环境 ID 查询产品环境实时在线状态")
+    @SaCheckPermission("project:projectEnvironmentConfig:get")
+    @GetMapping("/{id}/runtime-status")
+    public R<ProjectEnvironmentRuntimeStatusResp> getRuntimeStatus(@PathVariable("id") Long id) {
+        return R.ok(baseService.getRuntimeStatus(id));
     }
 }

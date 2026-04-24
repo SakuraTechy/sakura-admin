@@ -36,6 +36,10 @@
             <groupId>top.continew</groupId>
             <artifactId>continew-project</artifactId>
         </dependency>
+        <dependency>
+            <groupId>top.continew</groupId>
+            <artifactId>continew-test</artifactId>
+        </dependency>
 
         <!-- 系统管理模块 -->
         <dependency>

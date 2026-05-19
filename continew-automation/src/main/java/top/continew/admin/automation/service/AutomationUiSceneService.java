@@ -154,27 +154,29 @@ public interface AutomationUiSceneService extends BaseService<AutomationUiSceneR
     /**
      * 导出选中场景 XML
      *
-     * @param ids       场景 ID 集合
-     * @param response  响应流
+     * @param ids      场景 ID 集合
+     * @param response 响应流
      */
     void exportXml(Collection<Long> ids, HttpServletResponse response);
 
     /**
      * 导出查询范围内全部场景 XML
      *
-     * @param query     查询条件
-     * @param response  响应流
+     * @param query    查询条件
+     * @param response 响应流
      */
     void exportXmlAll(AutomationUiSceneQuery query, HttpServletResponse response);
 
     /**
      * 清空测试场景结果
+     * 
      * @param req
      */
     void clearResults(AutomationUiSceneClearReq req);
 
     /**
      * 上传测试场景结果
+     * 
      * @param req
      */
     void uploadResults(AutomationUiSceneUploadResultReq req);

@@ -85,14 +85,16 @@ public class AutomationEnvironmentConfigServiceImpl extends BaseServiceImpl<Auto
         resp.setNodeName(nodeConfig.getName());
 
         try {
-            JsonNode computer = JenkinsService.getJenkinsNode(jenkinsConfig.getUrl(), jenkinsConfig.getUserName(), jenkinsConfig.getPassWord(), nodeConfig.getName());
+            JsonNode computer = JenkinsService.getJenkinsNode(jenkinsConfig.getUrl(), jenkinsConfig
+                .getUserName(), jenkinsConfig.getPassWord(), nodeConfig.getName());
             boolean offline = computer.path("offline").asBoolean();
             boolean idle = computer.path("idle").asBoolean();
 
             resp.setOnlineStatus(offline ? StatusTypeEnum.OFFLINE : StatusTypeEnum.ONLINE);
             resp.setUseStatus(offline ? StatusTypeEnum.OFFLINE : idle ? StatusTypeEnum.IDLE : StatusTypeEnum.IN_USE);
         } catch (Exception e) {
-            log.warn("Query automation environment runtime status failed, environmentId={}, msg={}", id, e.getMessage());
+            log.warn("Query automation environment runtime status failed, environmentId={}, msg={}", id, e
+                .getMessage());
             resp.setOnlineStatus(StatusTypeEnum.OFFLINE);
             resp.setUseStatus(StatusTypeEnum.OFFLINE);
         } finally {
@@ -146,7 +148,7 @@ public class AutomationEnvironmentConfigServiceImpl extends BaseServiceImpl<Auto
                     }
                 }
                 automationEnvironmentConfigDO.setProjectConfig(projectConfigList);
-                baseMapper.updateById(automationEnvironmentConfigDO) ;
+                baseMapper.updateById(automationEnvironmentConfigDO);
             }
             return true;
         } catch (Exception e) {
@@ -294,7 +296,8 @@ public class AutomationEnvironmentConfigServiceImpl extends BaseServiceImpl<Auto
                 }
                 List<Object> normalizedJobList = normalizeJobListForStorage(jobList);
                 // Double-normalize via JSON round-trip to guarantee no entity objects remain.
-                normalizedJobList = JSONUtil.toList(JSONUtil.parseArray(JSONUtil.toJsonStr(normalizedJobList)), Object.class);
+                normalizedJobList = JSONUtil.toList(JSONUtil.parseArray(JSONUtil
+                    .toJsonStr(normalizedJobList)), Object.class);
                 jenkinsConfig.setJobList(normalizedJobList);
                 automationJenkinsConfigMapper.updateById(jenkinsConfig);
                 updateJenkinsConfig("update", jenkinsConfig.getId());

@@ -816,7 +816,7 @@ public class DataBaseUtil {
             //            query("com.ibm.db2.jcc.DB2Driver","jdbc:db2://172.19.1.203:50000/test","db2inst1","Ankki@2009", DB2_sql);
             //            query("com.intersys.jdbc.CacheDriver","jdbc:Cache://172.19.1.222:1972/%sys","_SYSTEM","ankki", Cache_sql);
             //            query("org.postgresql.Driver","jdbc:postgresql://172.19.1.92:25308/test","test","Ceshi123", GaussDB_sql);
-//            query("com.gbase.jdbc.Driver", "jdbc:gbase://172.19.1.165:5258/test", "root", "Ceshi123", Gbase8a_sql);
+            //            query("com.gbase.jdbc.Driver", "jdbc:gbase://172.19.1.165:5258/test", "root", "Ceshi123", Gbase8a_sql);
             //            query("com.gbasedbt.jdbc.Driver","jdbc:gbasedbt-sqli://172.19.1.146:9088/test:GBASEDBTSERVER=gbaseserver;CLIENT_LOCALE=zh_cn.utf8;SQLMODE=GBase;NEWCODESET=UTF8,zh_cn.UTF8,57372;DB_LOCALE=zh_CN.57372;","gbasedbt","Ankki@2009", Gbase8s_sql);
             //            query("com.taosdata.jdbc.rs.RestfulDriver","jdbc:TAOS-RS://172.19.1.250:6041/information_schema","root","Ceshi123", TDengine_sql);
             //                        query("org.apache.phoenix.jdbc.PhoenixDriver","jdbc:phoenix:172.19.5.224:2181","","", Hbase_sql);
@@ -828,11 +828,7 @@ public class DataBaseUtil {
             //            goBatchUpdate(con, sqls1);
             // 添加到 main 方法的测试部分
             String clickhouseSql = "SELECT * FROM bs_audit.audit_record LIMIT 10";
-            query("com.clickhouse.jdbc.ClickHouseDriver",
-                    "jdbc:clickhouse://172.19.5.45:8123/default",
-                    "root",
-                    "Ankki_cK123",
-                    clickhouseSql);
+            query("com.clickhouse.jdbc.ClickHouseDriver", "jdbc:clickhouse://172.19.5.45:8123/default", "root", "Ankki_cK123", clickhouseSql);
 
         } catch (Exception e) {
             e.printStackTrace();

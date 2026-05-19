@@ -16,7 +16,6 @@
 
 package top.continew.admin.automation.service.impl;
 
-import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.Collection;
@@ -56,7 +55,12 @@ import top.continew.admin.automation.model.req.AutomationUiSceneClearReq;
 import top.continew.admin.automation.model.req.AutomationUiSceneExecAllReq;
 import top.continew.admin.automation.model.req.AutomationUiSceneExecReq;
 import top.continew.admin.automation.model.req.AutomationUiSceneUploadResultReq;
+import top.continew.admin.automation.util.AutomationUiSceneStatusCodes;
 import top.continew.admin.automation.util.AutomationUiSceneXmlUtils;
+
+import static top.continew.admin.automation.util.AutomationUiSceneStatusCodes.RESULT_NOT_EXECUTED;
+import static top.continew.admin.automation.util.AutomationUiSceneStatusCodes.STATUS_NOT_STARTED;
+import static top.continew.admin.automation.util.AutomationUiSceneStatusCodes.STATUS_RUNNING;
 import top.continew.admin.common.regex.RegexUtil;
 import top.continew.admin.common.sort.DragSortUtil;
 import top.continew.admin.common.jenkins.JenkinsService;
@@ -92,29 +96,42 @@ import top.continew.admin.automation.service.AutomationUiSceneService;
 @Service
 @RequiredArgsConstructor
 public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSceneMapper, AutomationUiSceneDO, AutomationUiSceneResp, AutomationUiSceneDetailResp, AutomationUiSceneQuery, AutomationUiSceneReq> implements AutomationUiSceneService {
-    private static final String SCENE_STATUS_NOT_STARTED = "未开始";
-    private static final String SCENE_STATUS_RUNNING = "进行中";
-    private static final String SCENE_STATUS_COMPLETED = "已完成";
-    private static final String SCENE_RESULT_NOT_EXECUTED = "未执行";
-    private static final String SCENE_RESULT_RUNNING = "-";
-    private static final String SCENE_RESULT_PASSED = "全部通过";
-    private static final String SCENE_RESULT_FAILED = "不通过";
-    private static final String SCENE_RESULT_SKIPPED = "跳过";
-
     private final AutomationEnvironmentConfigMapper automationEnvironmentConfigMapper;
     private final AutomationProjectConfigMapper automationProjectConfigMapper;
     private final ProjectEnvironmentConfigMapper projectEnvironmentConfigMapper;
     private final ProjectConfigMapper projectConfigMapper;
     private final ProjectVersionConfigMapper projectVersionConfigMapper;
     private final JdbcTemplate jdbcTemplate;
-    private static final String DISPLAY_STATUS_NOT_STARTED = "未开始";
-    private static final String DISPLAY_STATUS_RUNNING = "进行中";
-    private static final String DISPLAY_STATUS_COMPLETED = "已完成";
-    private static final String DISPLAY_RESULT_NOT_EXECUTED = "未执行";
-    private static final String DISPLAY_RESULT_RUNNING = "-";
-    private static final String DISPLAY_RESULT_PASSED = "全部通过";
-    private static final String DISPLAY_RESULT_FAILED = "不通过";
-    private static final String DISPLAY_RESULT_SKIPPED = "跳过";
+
+    @Override
+    public void beforeCreate(AutomationUiSceneReq req) {
+        if (req == null) {
+            return;
+        }
+        if (StringUtils.isBlank(req.getExecuteStatus())) {
+            req.setExecuteStatus(STATUS_NOT_STARTED);
+        } else {
+            req.setExecuteStatus(AutomationUiSceneStatusCodes.normalizeStatus(req.getExecuteStatus()));
+        }
+        if (StringUtils.isNotBlank(req.getExecuteResult())) {
+            req.setExecuteResult(AutomationUiSceneStatusCodes.normalizeResult(req
+                .getExecuteResult(), null, null, null, null));
+        }
+    }
+
+    @Override
+    public void beforeUpdate(AutomationUiSceneReq req, Long id) {
+        if (req == null) {
+            return;
+        }
+        if (StringUtils.isNotBlank(req.getExecuteStatus())) {
+            req.setExecuteStatus(AutomationUiSceneStatusCodes.normalizeStatus(req.getExecuteStatus()));
+        }
+        if (StringUtils.isNotBlank(req.getExecuteResult())) {
+            req.setExecuteResult(AutomationUiSceneStatusCodes.normalizeResult(req
+                .getExecuteResult(), null, null, null, null));
+        }
+    }
 
     @Override
     public List<AutomationUiSceneDetailResp> selectByIds(List<Long> ids) {
@@ -280,7 +297,7 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
         CheckUtils.throwIf(caseDO.getDragNode().getId().equals(caseDO.getDropNode().getId()), "拖拽节点和目标节点不能相同");
         AutomationUiSceneDO automationUiSceneDO = baseMapper.selectById(id);
         List<CaseDO> caseList = automationUiSceneDO.getCaseList();
-        if (StringUtils.isNotEmpty(caseList)){
+        if (StringUtils.isNotEmpty(caseList)) {
             if (caseDO.getDropPosition() == -1) {
                 DragSortUtil.move(caseList, caseDO.getDragNode().getOrder() - 1, caseDO.getDropNode().getOrder() - 1);
             } else if (caseDO.getDropPosition() == 0) {
@@ -342,7 +359,7 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
             for (CaseDO caseItem : caseList) {
                 if (caseItem.getId().equals(stepDO.getPid())) {
                     List<StepDO> stepList = caseItem.getStepList();
-                    for (StepDO stepItem : stepList){
+                    for (StepDO stepItem : stepList) {
                         if (stepItem.getId().equals(stepDO.getId())) {
                             stepItem.setName(stepDO.getName());
                             stepItem.setRemark(stepDO.getRemark());
@@ -382,7 +399,7 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
                 outerLoop:
                 for (CaseDO caseItem : caseList) {
                     List<StepDO> stepList = caseItem.getStepList();
-                    for (StepDO stepItem : stepList){
+                    for (StepDO stepItem : stepList) {
                         if (stepItem.getId().equals(stepId)) {
                             stepList.remove(stepItem);
                             stepList.forEach(DragSortUtil.getIndex((item, index) -> {
@@ -414,21 +431,24 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
                 List<StepDO> stepList = caseItem.getStepList();
                 if (caseItem.getId().equals(stepDO.getDragNode().getPid())) {
                     if (StringUtils.isNotEmpty(stepList)) {
-                        if(stepDO.getDropNode().getType().equals("step")){
+                        if (stepDO.getDropNode().getType().equals("step")) {
                             if (stepDO.getDropPosition() == -1) {
-                                DragSortUtil.move(stepList, stepDO.getDragNode().getOrder() - 1, stepDO.getDropNode().getOrder() - 1);
+                                DragSortUtil.move(stepList, stepDO.getDragNode().getOrder() - 1, stepDO.getDropNode()
+                                    .getOrder() - 1);
                             } else if (stepDO.getDropPosition() == 0) {
-                                DragSortUtil.swap(stepList, stepDO.getDragNode().getOrder() - 1, stepDO.getDropNode().getOrder() - 1);
+                                DragSortUtil.swap(stepList, stepDO.getDragNode().getOrder() - 1, stepDO.getDropNode()
+                                    .getOrder() - 1);
                             } else if (stepDO.getDropPosition() == 1) {
-                                DragSortUtil.move(stepList, stepDO.getDragNode().getOrder() - 1, stepDO.getDropNode().getOrder() - 1);
+                                DragSortUtil.move(stepList, stepDO.getDragNode().getOrder() - 1, stepDO.getDropNode()
+                                    .getOrder() - 1);
                             }
                             stepList.forEach(DragSortUtil.getIndex((item, index) -> {
                                 item.setOrder(index + 1);
                             }));
                             break;
-                        } else if(stepDO.getDropNode().getType().equals("case")){
-                            for (StepDO stepItem : stepList){
-                                if(stepItem.getId().equals(stepDO.getDragNode().getId())) {
+                        } else if (stepDO.getDropNode().getType().equals("case")) {
+                            for (StepDO stepItem : stepList) {
+                                if (stepItem.getId().equals(stepDO.getDragNode().getId())) {
                                     stepList.remove(stepItem);
                                     stepNew = stepItem;
                                     break;
@@ -489,9 +509,8 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
                     Iterator<StepDO> iterator = sourceStepList.iterator();
                     while (iterator.hasNext()) {
                         StepDO stepItem = iterator.next();
-                        if (stepItem.getId().equals(stepDO.getDragNode().getId())
-                                && stepDO.getDropNode().getType() != null
-                                && stepDO.getDropNode().getType().equals("case")) {
+                        if (stepItem.getId().equals(stepDO.getDragNode().getId()) && stepDO.getDropNode()
+                            .getType() != null && stepDO.getDropNode().getType().equals("case")) {
                             iterator.remove();
                             stepNew = stepItem;
                             break;
@@ -517,11 +536,14 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
                     } else if (stepNew == null && StringUtils.isNotEmpty(sourceStepList)) {
                         // 同用例内拖拽，按位置重排
                         if (stepDO.getDropPosition() == -1) {
-                            DragSortUtil.move(sourceStepList, stepDO.getDragNode().getOrder() - 1, stepDO.getDropNode().getOrder() - 1);
+                            DragSortUtil.move(sourceStepList, stepDO.getDragNode().getOrder() - 1, stepDO.getDropNode()
+                                .getOrder() - 1);
                         } else if (stepDO.getDropPosition() == 0) {
-                            DragSortUtil.swap(sourceStepList, stepDO.getDragNode().getOrder() - 1, stepDO.getDropNode().getOrder() - 1);
+                            DragSortUtil.swap(sourceStepList, stepDO.getDragNode().getOrder() - 1, stepDO.getDropNode()
+                                .getOrder() - 1);
                         } else if (stepDO.getDropPosition() == 1) {
-                            DragSortUtil.move(sourceStepList, stepDO.getDragNode().getOrder() - 1, stepDO.getDropNode().getOrder() - 1);
+                            DragSortUtil.move(sourceStepList, stepDO.getDragNode().getOrder() - 1, stepDO.getDropNode()
+                                .getOrder() - 1);
                         }
                         sourceStepList.forEach(DragSortUtil.getIndex((item, index) -> {
                             item.setOrder(index + 1);
@@ -547,10 +569,12 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
         Long projectId = sceneList.get(0).getProjectId();
         Long versionId = sceneList.get(0).getVersionId();
         boolean sameProjectVersion = sceneList.stream()
-            .allMatch(scene -> Objects.equals(projectId, scene.getProjectId()) && Objects.equals(versionId, scene.getVersionId()));
+            .allMatch(scene -> Objects.equals(projectId, scene.getProjectId()) && Objects.equals(versionId, scene
+                .getVersionId()));
         CheckUtils.throwIf(!sameProjectVersion, "执行失败：场景必须属于同一项目和版本");
 
-        ProjectEnvironmentConfigDO projectEnvironment = projectEnvironmentConfigMapper.selectById(req.getProjectEnvironmentId());
+        ProjectEnvironmentConfigDO projectEnvironment = projectEnvironmentConfigMapper.selectById(req
+            .getProjectEnvironmentId());
         CheckUtils.throwIfNull(projectEnvironment, "执行失败：项目环境不存在");
         CheckUtils.throwIf(!Objects.equals(projectId, projectEnvironment.getProjectId()), "执行失败：项目环境与场景所属项目不一致");
 
@@ -559,15 +583,21 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
         CheckUtils.throwIfNull(projectConfig, "执行失败：项目配置不存在");
         CheckUtils.throwIfNull(versionConfig, "执行失败：版本配置不存在");
 
-        ProjectServerConfigDO serverConfig = firstBean(projectEnvironment.getServerConfig(), ProjectServerConfigDO.class);
-        ProjectDataBaseConfigDO dataBaseConfig = firstBean(projectEnvironment.getDataBaseConfig(), ProjectDataBaseConfigDO.class);
+        ProjectServerConfigDO serverConfig = firstBean(projectEnvironment
+            .getServerConfig(), ProjectServerConfigDO.class);
+        ProjectDataBaseConfigDO dataBaseConfig = firstBean(projectEnvironment
+            .getDataBaseConfig(), ProjectDataBaseConfigDO.class);
 
-        AutomationEnvironmentConfigDO automationEnvironment = automationEnvironmentConfigMapper.selectById(req.getAutomationEnvironmentId());
+        AutomationEnvironmentConfigDO automationEnvironment = automationEnvironmentConfigMapper.selectById(req
+            .getAutomationEnvironmentId());
         CheckUtils.throwIfNull(automationEnvironment, "执行失败：自动化环境不存在");
-        AutomationProjectConfigDO automationProjectConfig = resolveAutomationProjectConfig(automationEnvironment.getProjectConfig(), projectConfig);
-        AutomationJenkinsConfigDO jenkinsConfig = firstBean(automationEnvironment.getJenkinsConfig(), AutomationJenkinsConfigDO.class);
+        AutomationProjectConfigDO automationProjectConfig = resolveAutomationProjectConfig(automationEnvironment
+            .getProjectConfig(), projectConfig);
+        AutomationJenkinsConfigDO jenkinsConfig = firstBean(automationEnvironment
+            .getJenkinsConfig(), AutomationJenkinsConfigDO.class);
         AutomationNodeConfigDO nodeConfig = resolveNode(automationEnvironment.getNodeConfig());
-        AutomationBrowserConfigDO browserConfig = firstBean(automationEnvironment.getBrowserConfig(), AutomationBrowserConfigDO.class);
+        AutomationBrowserConfigDO browserConfig = firstBean(automationEnvironment
+            .getBrowserConfig(), AutomationBrowserConfigDO.class);
 
         CheckUtils.throwIfNull(serverConfig, "执行失败：项目环境服务器配置缺失");
         CheckUtils.throwIfNull(automationProjectConfig, "执行失败：自动化项目配置缺失");
@@ -592,15 +622,12 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
 
         AutomationUiSceneXmlUtils.BundleContext bundleContext;
         try {
-            bundleContext = AutomationUiSceneXmlUtils.createBundle(sceneList,
-                defaultString(projectConfig.getName()),
-                defaultString(projectConfig.getAbbreviate()),
-                defaultString(versionConfig.getName()),
-                browserConfig == null ? "" : defaultString(browserConfig.getName()),
-                defaultString(nodeConfig.getName()),
-                frontendDomain,
-                serverEth,
-                sceneWorkspaceRoot);
+            bundleContext = AutomationUiSceneXmlUtils.createBundle(sceneList, defaultString(projectConfig
+                .getName()), defaultString(projectConfig.getAbbreviate()), defaultString(versionConfig
+                    .getName()), browserConfig == null
+                        ? ""
+                        : defaultString(browserConfig.getName()), defaultString(nodeConfig
+                            .getName()), frontendDomain, serverEth, sceneWorkspaceRoot);
         } catch (Exception e) {
             throw new BusinessException("执行失败：生成场景 XML 压缩包失败：" + e.getMessage());
         }
@@ -619,10 +646,14 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
         params.put("ServerPort", String.valueOf(serverConfig.getPort()));
         params.put("ServerUserName", defaultString(serverConfig.getUserName()));
         params.put("ServerPassWord", defaultString(serverConfig.getPassWord()));
-        params.put("DataBasePort", dataBaseConfig == null || dataBaseConfig.getPort() == null ? "" : String.valueOf(dataBaseConfig.getPort()));
+        params.put("DataBasePort", dataBaseConfig == null || dataBaseConfig.getPort() == null
+            ? ""
+            : String.valueOf(dataBaseConfig.getPort()));
         params.put("DataBaseName", dataBaseConfig == null ? "" : defaultString(dataBaseConfig.getUserName()));
         params.put("DataBasePassWord", dataBaseConfig == null ? "" : defaultString(dataBaseConfig.getPassWord()));
-        params.put("Domain", StringUtils.isBlank(frontendDomain) ? defaultString(projectEnvironment.getLastDomain()) : frontendDomain);
+        params.put("Domain", StringUtils.isBlank(frontendDomain)
+            ? defaultString(projectEnvironment.getLastDomain())
+            : frontendDomain);
         params.put("Run", defaultString(nodeConfig.getName()));
         params.put("Branch", "ankki");
         params.put("jenkinsUrl", normalizeUrl(jenkinsConfig.getUrl()) + "/job/" + jobName);
@@ -636,7 +667,8 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
         params.put("testngXmlPath", bundleContext.testngXmlPath().toString());
         params.put("extentXmlPath", bundleContext.extentXmlPath().toString());
 
-        Integer buildNumber = JenkinsService.launchJob(jenkinsConfig.getUrl(), jenkinsConfig.getUserName(), jenkinsConfig.getPassWord(), jobName, params);
+        Integer buildNumber = JenkinsService.launchJob(jenkinsConfig.getUrl(), jenkinsConfig
+            .getUserName(), jenkinsConfig.getPassWord(), jobName, params);
         try {
             JenkinsService.close();
         } catch (Exception e) {
@@ -645,9 +677,10 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
         CheckUtils.throwIf(buildNumber == null || buildNumber <= 0, "执行失败：Jenkins 构建号无效");
 
         String consoleUrl = normalizeUrl(jenkinsConfig.getUrl()) + "/job/" + jobName + "/" + buildNumber + "/console";
-        String testReportUrl = normalizeUrl(jenkinsConfig.getUrl()) + "/job/" + jobName + "/" + buildNumber
-            + "/artifact/TestOutput/ExtentReport/" + date + "/" + defaultString(projectConfig.getAbbreviate()) + "/"
-            + AutomationUiSceneXmlUtils.sanitizePathSegment(defaultString(versionConfig.getName())) + "/index.html";
+        String testReportUrl = normalizeUrl(jenkinsConfig
+            .getUrl()) + "/job/" + jobName + "/" + buildNumber + "/artifact/TestOutput/ExtentReport/" + date + "/" + defaultString(projectConfig
+                .getAbbreviate()) + "/" + AutomationUiSceneXmlUtils.sanitizePathSegment(defaultString(versionConfig
+                    .getName())) + "/index.html";
 
         for (AutomationUiSceneDO scene : sceneList) {
             AutomationUiSceneDO latest = baseMapper.selectById(scene.getId());
@@ -657,7 +690,8 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
             boolean planExecute = StringUtils.isNotBlank(req.getTestPlanId());
             List<Object> history = planExecute ? latest.getTestRecord() : latest.getDebugRecord();
             List<Object> records = new ArrayList<>();
-            records.add(buildExecutingRecord(latest, buildNumber, consoleUrl, testReportUrl, executeName, req.getTestPlanId()));
+            records.add(buildExecutingRecord(latest, buildNumber, consoleUrl, testReportUrl, executeName, req
+                .getTestPlanId()));
             if (history != null && !history.isEmpty()) {
                 records.addAll(history);
             }
@@ -667,12 +701,12 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
             } else {
                 latest.setDebugRecord(records);
             }
-            latest.setExecuteStatus(DISPLAY_STATUS_RUNNING);
-            latest.setExecuteResult(DISPLAY_RESULT_NOT_EXECUTED);
+            latest.setExecuteStatus(STATUS_RUNNING);
+            latest.setExecuteResult(RESULT_NOT_EXECUTED);
             latest.setBuildNumber(buildNumber);
             latest.setConsoleUrl(consoleUrl);
             latest.setTestReportUrl(testReportUrl);
-            latest.setLastResult(DISPLAY_RESULT_NOT_EXECUTED);
+            latest.setLastResult(RESULT_NOT_EXECUTED);
             if (StringUtils.isNotBlank(req.getTestReportId())) {
                 latest.setReportId(Long.parseLong(req.getTestReportId()));
             }
@@ -779,7 +813,9 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
         AutomationUiSceneUploadResultReq.UiStatistic ui = req.getStatisticAnalysis().getUi();
         CheckUtils.throwIfNull(ui, "上传失败：UI 统计数据缺失");
 
-        List<Object> history = StringUtils.isNotBlank(req.getTestPlanId()) ? scene.getTestRecord() : scene.getDebugRecord();
+        List<Object> history = StringUtils.isNotBlank(req.getTestPlanId())
+            ? scene.getTestRecord()
+            : scene.getDebugRecord();
         List<Object> records = history == null ? new ArrayList<>() : new ArrayList<>(history);
         if (!records.isEmpty()) {
             records.remove(0);
@@ -791,8 +827,9 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
         latest.put("consoleUrl", StringUtils.defaultIfBlank(ui.getConsoleUrl(), scene.getConsoleUrl()));
         latest.put("testReportUrl", StringUtils.defaultIfBlank(ui.getTestReportUrl(), scene.getTestReportUrl()));
         latest.put("executeName", StringUtils.defaultIfBlank(ui.getExecuteName(), "-"));
-        latest.put("executeStatus", toSceneStatusDisplay(ui.getExecuteStatus()));
-        latest.put("executeResult", toSceneResultDisplay(ui.getExecuteResult(), ui.getSceneTotal(), ui.getScenePass(), ui.getSceneFail(), ui.getSceneSkip()));
+        latest.put("executeStatus", AutomationUiSceneStatusCodes.normalizeStatus(ui.getExecuteStatus()));
+        latest.put("executeResult", AutomationUiSceneStatusCodes.normalizeResult(ui.getExecuteResult(), ui
+            .getSceneTotal(), ui.getScenePass(), ui.getSceneFail(), ui.getSceneSkip()));
         latest.put("duration", StringUtils.defaultIfBlank(ui.getDuration(), "-"));
         latest.put("durationStartTime", ui.getDurationStartTime());
         latest.put("durationEndTime", ui.getDurationEndTime());
@@ -814,8 +851,9 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
             scene.setDebugRecord(updated);
         }
 
-        String executeStatus = toSceneStatusDisplay(ui.getExecuteStatus());
-        String executeResult = toSceneResultDisplay(ui.getExecuteResult(), ui.getSceneTotal(), ui.getScenePass(), ui.getSceneFail(), ui.getSceneSkip());
+        String executeStatus = AutomationUiSceneStatusCodes.normalizeStatus(ui.getExecuteStatus());
+        String executeResult = AutomationUiSceneStatusCodes.normalizeResult(ui.getExecuteResult(), ui
+            .getSceneTotal(), ui.getScenePass(), ui.getSceneFail(), ui.getSceneSkip());
         scene.setExecuteStatus(executeStatus);
         scene.setExecuteResult(executeResult);
         scene.setLastResult(executeResult);
@@ -838,7 +876,7 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
      * 导出指定场景 XML 压缩包。
      *
      * @param sceneList 场景列表
-     * @param response HTTP 响应
+     * @param response  HTTP 响应
      */
     private void writeSceneBundle(List<AutomationUiSceneDO> sceneList, HttpServletResponse response) {
         CheckUtils.throwIf(sceneList == null || sceneList.isEmpty(), "导出失败：未找到可导出场景");
@@ -847,7 +885,8 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
         Long projectId = sceneList.get(0).getProjectId();
         Long versionId = sceneList.get(0).getVersionId();
         boolean sameProjectVersion = sceneList.stream()
-            .allMatch(scene -> Objects.equals(projectId, scene.getProjectId()) && Objects.equals(versionId, scene.getVersionId()));
+            .allMatch(scene -> Objects.equals(projectId, scene.getProjectId()) && Objects.equals(versionId, scene
+                .getVersionId()));
         CheckUtils.throwIf(!sameProjectVersion, "导出失败：场景必须属于同一项目和版本");
 
         ProjectConfigDO projectConfig = projectConfigMapper.selectById(projectId);
@@ -857,17 +896,11 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
 
         AutomationUiSceneXmlUtils.BundleContext bundleContext = null;
         try {
-            bundleContext = AutomationUiSceneXmlUtils.createBundle(sceneList,
-                defaultString(projectConfig.getName()),
-                defaultString(projectConfig.getAbbreviate()),
-                defaultString(versionConfig.getName()),
-                "",
-                "",
-                "",
-                "");
-            String fileName = defaultString(projectConfig.getAbbreviate()) + "_"
-                + AutomationUiSceneXmlUtils.sanitizePathSegment(defaultString(versionConfig.getName()))
-                + "_scene_bundle.zip";
+            bundleContext = AutomationUiSceneXmlUtils.createBundle(sceneList, defaultString(projectConfig
+                .getName()), defaultString(projectConfig.getAbbreviate()), defaultString(versionConfig
+                    .getName()), "", "", "", "");
+            String fileName = defaultString(projectConfig.getAbbreviate()) + "_" + AutomationUiSceneXmlUtils
+                .sanitizePathSegment(defaultString(versionConfig.getName())) + "_scene_bundle.zip";
             response.setCharacterEncoding(StandardCharsets.UTF_8.name());
             response.setContentType("application/zip");
             response.setHeader("Content-Disposition", "attachment; filename=" + fileName);
@@ -911,73 +944,6 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
     }
 
     /**
-     * 将执行状态转换为前端展示值。
-     *
-     * @param value 原始状态
-     * @return 展示状态
-     */
-    private String toSceneStatusDisplay(String value) {
-        if (StringUtils.isBlank(value)) {
-            return DISPLAY_STATUS_COMPLETED;
-        }
-        if ("RUNNING".equalsIgnoreCase(value)) {
-            return DISPLAY_STATUS_RUNNING;
-        }
-        if ("COMPLETED".equalsIgnoreCase(value)) {
-            return DISPLAY_STATUS_COMPLETED;
-        }
-        if ("NOT_STARTED".equalsIgnoreCase(value)) {
-            return DISPLAY_STATUS_NOT_STARTED;
-        }
-        return value;
-    }
-
-    /**
-     * 将执行结果转换为前端展示值，并在结果缺失时基于统计数据兜底。
-     *
-     * @param value 原始结果
-     * @param total 场景总数
-     * @param pass 通过数
-     * @param fail 失败数
-     * @param skip 跳过数
-     * @return 展示结果
-     */
-    private String toSceneResultDisplay(String value, Integer total, Integer pass, Integer fail, Integer skip) {
-        if ("PASSED".equalsIgnoreCase(value)) {
-            return DISPLAY_RESULT_PASSED;
-        }
-        if ("FAILED".equalsIgnoreCase(value)) {
-            return DISPLAY_RESULT_FAILED;
-        }
-        if ("SKIPPED".equalsIgnoreCase(value)) {
-            return DISPLAY_RESULT_SKIPPED;
-        }
-        if ("RUNNING".equalsIgnoreCase(value)) {
-            return DISPLAY_RESULT_RUNNING;
-        }
-        if ("NOT_EXECUTED".equalsIgnoreCase(value)) {
-            return DISPLAY_RESULT_NOT_EXECUTED;
-        }
-        int totalCount = defaultNumber(total);
-        int passCount = defaultNumber(pass);
-        int failCount = defaultNumber(fail);
-        int skipCount = defaultNumber(skip);
-        if (failCount > 0) {
-            return DISPLAY_RESULT_FAILED;
-        }
-        if (passCount > 0 && passCount + skipCount >= totalCount) {
-            return DISPLAY_RESULT_PASSED;
-        }
-        if (skipCount > 0 && passCount == 0 && failCount == 0) {
-            return DISPLAY_RESULT_SKIPPED;
-        }
-        if (totalCount <= 0) {
-            return DISPLAY_RESULT_NOT_EXECUTED;
-        }
-        return StringUtils.defaultIfBlank(value, DISPLAY_RESULT_NOT_EXECUTED);
-    }
-
-    /**
      * 解析脚本落盘目录。
      *
      * @param projectConfig 自动化项目配置
@@ -992,12 +958,12 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
     /**
      * 生成执行中的历史记录快照。
      *
-     * @param scene 场景
-     * @param buildNumber Jenkins 构建号
-     * @param consoleUrl 控制台地址
+     * @param scene         场景
+     * @param buildNumber   Jenkins 构建号
+     * @param consoleUrl    控制台地址
      * @param testReportUrl 报告地址
-     * @param executeName 执行人
-     * @param testPlanId 测试计划 ID
+     * @param executeName   执行人
+     * @param testPlanId    测试计划 ID
      * @return 历史记录
      */
     private Map<String, Object> buildExecutingRecord(AutomationUiSceneDO scene,
@@ -1021,8 +987,8 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
         record.put("consoleUrl", consoleUrl);
         record.put("testReportUrl", testReportUrl);
         record.put("executeName", executeName);
-        record.put("executeStatus", DISPLAY_STATUS_RUNNING);
-        record.put("executeResult", DISPLAY_RESULT_RUNNING);
+        record.put("executeStatus", STATUS_RUNNING);
+        record.put("executeResult", RESULT_NOT_EXECUTED);
         record.put("duration", "-");
         record.put("scenePassRate", "-");
         record.put("caseTotal", caseTotal);
@@ -1049,7 +1015,8 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
             return null;
         }
         for (AutomationNodeConfigDO node : nodeList) {
-            if (node == null || node.getActive() == null || node.getActive().getOffline() == null || node.getActive().getIdle() == null) {
+            if (node == null || node.getActive() == null || node.getActive().getOffline() == null || node.getActive()
+                .getIdle() == null) {
                 continue;
             }
             boolean online = Objects.equals(5, node.getActive().getOffline().getStatus());
@@ -1146,7 +1113,8 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
         return withScriptPathFallback(candidates.get(0), projectConfig);
     }
 
-    private AutomationProjectConfigDO withScriptPathFallback(AutomationProjectConfigDO selected, ProjectConfigDO projectConfig) {
+    private AutomationProjectConfigDO withScriptPathFallback(AutomationProjectConfigDO selected,
+                                                             ProjectConfigDO projectConfig) {
         if (selected != null && StringUtils.isNotBlank(selected.getScriptPath())) {
             return selected;
         }
@@ -1221,8 +1189,6 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
         automationUiSceneDO.setCaseList(caseList);
         baseMapper.updateById(automationUiSceneDO);
     }
-
-
 
     @Override
     public boolean isExists(Long id, Object... param) {

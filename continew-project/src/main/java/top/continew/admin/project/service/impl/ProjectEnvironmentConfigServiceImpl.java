@@ -127,7 +127,8 @@ public class ProjectEnvironmentConfigServiceImpl extends BaseServiceImpl<Project
                         continue;
                     }
                     for (int i = 0; i < versionConfigList.size(); i++) {
-                        ProjectVersionConfigDO candidate = BeanUtil.toBean(versionConfigList.get(i), ProjectVersionConfigDO.class);
+                        ProjectVersionConfigDO candidate = BeanUtil.toBean(versionConfigList
+                            .get(i), ProjectVersionConfigDO.class);
                         if (candidate != null && candidate.getId() != null && candidate.getId().equals(id)) {
                             versionConfigList.set(i, versionConfig);
                             break;
@@ -166,7 +167,8 @@ public class ProjectEnvironmentConfigServiceImpl extends BaseServiceImpl<Project
                         continue;
                     }
                     for (int i = 0; i < serverConfigList.size(); i++) {
-                        ProjectServerConfigDO candidate = BeanUtil.toBean(serverConfigList.get(i), ProjectServerConfigDO.class);
+                        ProjectServerConfigDO candidate = BeanUtil.toBean(serverConfigList
+                            .get(i), ProjectServerConfigDO.class);
                         if (candidate != null && candidate.getId() != null && candidate.getId().equals(id)) {
                             serverConfigList.set(i, serverConfig);
                             break;
@@ -205,7 +207,8 @@ public class ProjectEnvironmentConfigServiceImpl extends BaseServiceImpl<Project
                         continue;
                     }
                     for (int i = 0; i < dataBaseConfigList.size(); i++) {
-                        ProjectDataBaseConfigDO candidate = BeanUtil.toBean(dataBaseConfigList.get(i), ProjectDataBaseConfigDO.class);
+                        ProjectDataBaseConfigDO candidate = BeanUtil.toBean(dataBaseConfigList
+                            .get(i), ProjectDataBaseConfigDO.class);
                         if (candidate != null && candidate.getId() != null && candidate.getId().equals(id)) {
                             dataBaseConfigList.set(i, dataBaseConfig);
                             break;
@@ -246,7 +249,8 @@ public class ProjectEnvironmentConfigServiceImpl extends BaseServiceImpl<Project
             socket.connect(new InetSocketAddress(serverConfig.getIp(), port), 1500);
             return true;
         } catch (Exception e) {
-            log.debug("Check project environment server status failed, ip={}, port={}, msg={}", serverConfig.getIp(), port, e.getMessage());
+            log.debug("Check project environment server status failed, ip={}, port={}, msg={}", serverConfig
+                .getIp(), port, e.getMessage());
             return false;
         }
     }

@@ -18,6 +18,7 @@ package top.continew.admin.common.config.exception;
 
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.text.CharSequenceUtil;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
@@ -108,10 +109,32 @@ public class GlobalExceptionHandler {
         log.error("[{}] {}", request.getMethod(), request.getRequestURI(), e);
         // @RequestBody 实体内参数类型不匹配
         if (e.getCause() instanceof InvalidFormatException invalidFormatException) {
-            return R.fail(String.valueOf(HttpStatus.BAD_REQUEST.value()), "参数 '%s' 类型不匹配"
-                .formatted(invalidFormatException.getValue()));
+            String path = formatJsonFieldPath(invalidFormatException);
+            String target = invalidFormatException.getTargetType() == null
+                ? "目标类型"
+                : invalidFormatException.getTargetType().getSimpleName();
+            return R.fail(String.valueOf(HttpStatus.BAD_REQUEST.value()), "参数「%s」无法解析为 %s（当前值：%s）"
+                .formatted(path, target, String.valueOf(invalidFormatException.getValue())));
         }
         return R.fail(String.valueOf(HttpStatus.BAD_REQUEST.value()), "参数缺失或格式不正确");
+    }
+
+    /**
+     * 将 Jackson 路径（如 memberIds[0]、plannedStartTime）格式化为可读字段路径
+     */
+    private static String formatJsonFieldPath(InvalidFormatException ex) {
+        StringBuilder sb = new StringBuilder();
+        for (JsonMappingException.Reference ref : ex.getPath()) {
+            if (ref.getFieldName() != null) {
+                if (sb.length() > 0) {
+                    sb.append('.');
+                }
+                sb.append(ref.getFieldName());
+            } else if (ref.getIndex() >= 0) {
+                sb.append('[').append(ref.getIndex()).append(']');
+            }
+        }
+        return sb.length() == 0 ? "请求体" : sb.toString();
     }
 
     /**

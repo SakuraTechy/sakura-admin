@@ -142,7 +142,7 @@ public class FreeSshUtil {
     public static void main(String[] args) {
         //        FreeSshUtil.connect("172.18.1.118", "king", "111111");
         //        FreeSshUtil.cmd("git --version");
-        FreeSshUtil.cmd("172.18.1.118", 22,"king", "111111", "git --version");
+        FreeSshUtil.cmd("172.18.1.118", 22, "king", "111111", "git --version");
         //        // cmd("10.18.22.65", "Administrator", "111111", "cd c: &&rd 123.txt");
     }
 }

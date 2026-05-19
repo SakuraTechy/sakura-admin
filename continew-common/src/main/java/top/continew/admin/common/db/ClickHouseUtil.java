@@ -1,3 +1,19 @@
+/*
+ * Copyright (c) 2022-present Charles7c Authors. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package top.continew.admin.common.db;
 
 import com.google.gson.Gson;
@@ -21,10 +37,16 @@ public class ClickHouseUtil {
     /**
      * 通过 SSH 隧道连接 ClickHouse（HTTP 协议）并执行查询
      */
-    public static List<Map<String, Object>> executeQueryViaSSH(
-            String sshHost, int sshPort, String sshUser, String sshPassword,
-            String clickhouseHost, int clickhousePort, String database,
-            String user, String password, String sql) {
+    public static List<Map<String, Object>> executeQueryViaSSH(String sshHost,
+                                                               int sshPort,
+                                                               String sshUser,
+                                                               String sshPassword,
+                                                               String clickhouseHost,
+                                                               int clickhousePort,
+                                                               String database,
+                                                               String user,
+                                                               String password,
+                                                               String sql) {
 
         Connection con = null;
         Statement sm = null;
@@ -95,8 +117,10 @@ public class ClickHouseUtil {
         } finally {
             // 4. 清理资源
             try {
-                if (sm != null) sm.close();
-                if (con != null) con.close();
+                if (sm != null)
+                    sm.close();
+                if (con != null)
+                    con.close();
             } catch (Exception e) {
                 log.error("关闭数据库连接失败", e);
             }
@@ -129,17 +153,16 @@ public class ClickHouseUtil {
         String sql = "SELECT * FROM bs_audit.audit_record LIMIT 10";
 
         try {
-            List<Map<String, Object>> results = executeQueryViaSSH(
-                    "172.19.5.45",          // SSH 主机
-                    22,                     // SSH 端口
-                    "root",                 // SSH 用户名
-                    "@nKk1^2Oe38&8!~!",    // SSH 密码
-                    "172.19.5.45",          // ClickHouse 主机
-                    8123,                   // ClickHouse HTTP 端口（改为 8123）
-                    "default",              // 数据库名
-                    "root",                 // ClickHouse 用户
-                    "Ankki_cK123",          // ClickHouse 密码
-                    sql                     // SQL 查询
+            List<Map<String, Object>> results = executeQueryViaSSH("172.19.5.45",          // SSH 主机
+                22,                     // SSH 端口
+                "root",                 // SSH 用户名
+                "@nKk1^2Oe38&8!~!",    // SSH 密码
+                "172.19.5.45",          // ClickHouse 主机
+                8123,                   // ClickHouse HTTP 端口（改为 8123）
+                "default",              // 数据库名
+                "root",                 // ClickHouse 用户
+                "Ankki_cK123",          // ClickHouse 密码
+                sql                     // SQL 查询
             );
 
             // 输出结果

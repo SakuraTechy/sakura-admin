@@ -69,15 +69,7 @@ public final class AutomationUiSceneXmlUtils {
                                              String nodeName,
                                              String domain,
                                              String serverEth) throws Exception {
-        return createBundle(scenes,
-            projectName,
-            projectAbbreviate,
-            versionName,
-            browserName,
-            nodeName,
-            domain,
-            serverEth,
-            null);
+        return createBundle(scenes, projectName, projectAbbreviate, versionName, browserName, nodeName, domain, serverEth, null);
     }
 
     public static BundleContext createBundle(List<AutomationUiSceneDO> scenes,
@@ -91,7 +83,9 @@ public final class AutomationUiSceneXmlUtils {
                                              Path workspaceRoot) throws Exception {
         String projectSegment = sanitizeSegment(projectAbbreviate);
         String versionSegment = sanitizePathSegment(versionName);
-        Path workspace = workspaceRoot == null ? Files.createTempDirectory("sakura-ui-scene-") : workspaceRoot.toAbsolutePath().normalize();
+        Path workspace = workspaceRoot == null
+            ? Files.createTempDirectory("sakura-ui-scene-")
+            : workspaceRoot.toAbsolutePath().normalize();
         Files.createDirectories(workspace);
         Path bundleRoot = workspace.resolve(projectSegment).resolve(versionSegment);
         Path testCaseDir = bundleRoot.resolve("TestCaseXml");
@@ -102,20 +96,22 @@ public final class AutomationUiSceneXmlUtils {
         Files.createDirectories(testRunDir);
 
         List<AutomationUiSceneDO> sortedScenes = new ArrayList<>(scenes);
-        sortedScenes.sort(Comparator.comparing(AutomationUiSceneDO::getSceneId, Comparator.nullsLast(String::compareTo)));
+        sortedScenes.sort(Comparator.comparing(AutomationUiSceneDO::getSceneId, Comparator
+            .nullsLast(String::compareTo)));
         for (AutomationUiSceneDO scene : sortedScenes) {
-            Files.writeString(testCaseDir.resolve(scene.getSceneId() + ".xml"),
-                buildSceneXml(scene, domain, serverEth),
-                StandardCharsets.UTF_8);
+            Files.writeString(testCaseDir.resolve(scene
+                .getSceneId() + ".xml"), buildSceneXml(scene, domain, serverEth), StandardCharsets.UTF_8);
         }
         createJavaClasses(sortedScenes, workspace, projectAbbreviate, versionName);
 
         String testngFileName = StringUtils.isBlank(nodeName) ? "TestngReport.xml" : sanitizeSegment(nodeName) + ".xml";
         Path testngPath = testReportDir.resolve(testngFileName);
-        Files.writeString(testngPath, buildTestngXml(sortedScenes, projectName, projectAbbreviate, versionName, browserName), StandardCharsets.UTF_8);
+        Files
+            .writeString(testngPath, buildTestngXml(sortedScenes, projectName, projectAbbreviate, versionName, browserName), StandardCharsets.UTF_8);
 
         Path extentPath = testRunDir.resolve("ExtentReport.xml");
-        Files.writeString(extentPath, buildExtentXml(projectSegment, versionSegment, testngFileName), StandardCharsets.UTF_8);
+        Files
+            .writeString(extentPath, buildExtentXml(projectSegment, versionSegment, testngFileName), StandardCharsets.UTF_8);
 
         return new BundleContext(workspace, bundleRoot, testCaseDir, testngPath, extentPath);
     }
@@ -135,7 +131,8 @@ public final class AutomationUiSceneXmlUtils {
         Files.createDirectories(packageDir);
 
         List<AutomationUiSceneDO> sortedScenes = new ArrayList<>(scenes);
-        sortedScenes.sort(Comparator.comparing(AutomationUiSceneDO::getSceneId, Comparator.nullsLast(String::compareTo)));
+        sortedScenes.sort(Comparator.comparing(AutomationUiSceneDO::getSceneId, Comparator
+            .nullsLast(String::compareTo)));
         for (int index = 0; index < sortedScenes.size(); index++) {
             AutomationUiSceneDO scene = sortedScenes.get(index);
             if (scene == null || StringUtils.isBlank(scene.getSceneId())) {
@@ -143,29 +140,23 @@ public final class AutomationUiSceneXmlUtils {
             }
             String className = sanitizeJavaTypeName(scene.getSceneId());
             String source = buildJavaClassSource(scene, packageName, className, index == 0);
-            Files.writeString(packageDir.resolve(className + ".java"),
-                source,
-                StandardCharsets.UTF_8,
-                StandardOpenOption.CREATE,
-                StandardOpenOption.TRUNCATE_EXISTING,
-                StandardOpenOption.WRITE);
+            Files.writeString(packageDir
+                .resolve(className + ".java"), source, StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE);
         }
     }
 
     public static void writeZip(Path sourceDir, OutputStream outputStream) throws IOException {
         try (ZipOutputStream zipOutputStream = new ZipOutputStream(outputStream, StandardCharsets.UTF_8)) {
-            Files.walk(sourceDir)
-                .filter(Files::isRegularFile)
-                .forEach(path -> {
-                    String entryName = sourceDir.relativize(path).toString().replace('\\', '/');
-                    try {
-                        zipOutputStream.putNextEntry(new ZipEntry(entryName));
-                        Files.copy(path, zipOutputStream);
-                        zipOutputStream.closeEntry();
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
-                });
+            Files.walk(sourceDir).filter(Files::isRegularFile).forEach(path -> {
+                String entryName = sourceDir.relativize(path).toString().replace('\\', '/');
+                try {
+                    zipOutputStream.putNextEntry(new ZipEntry(entryName));
+                    Files.copy(path, zipOutputStream);
+                    zipOutputStream.closeEntry();
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            });
         } catch (RuntimeException e) {
             if (e.getCause() instanceof IOException ioException) {
                 throw ioException;
@@ -179,14 +170,12 @@ public final class AutomationUiSceneXmlUtils {
             return;
         }
         try {
-            Files.walk(root)
-                .sorted(Comparator.reverseOrder())
-                .forEach(path -> {
-                    try {
-                        Files.deleteIfExists(path);
-                    } catch (IOException ignored) {
-                    }
-                });
+            Files.walk(root).sorted(Comparator.reverseOrder()).forEach(path -> {
+                try {
+                    Files.deleteIfExists(path);
+                } catch (IOException ignored) {
+                }
+            });
         } catch (IOException ignored) {
         }
     }
@@ -213,7 +202,9 @@ public final class AutomationUiSceneXmlUtils {
             appendXmlAttribute(builder, "name", defaultString(caseDO.getName()), caseContext);
             builder.append(">");
 
-            List<StepDO> stepList = caseDO.getStepList() == null ? new ArrayList<>() : new ArrayList<>(caseDO.getStepList());
+            List<StepDO> stepList = caseDO.getStepList() == null
+                ? new ArrayList<>()
+                : new ArrayList<>(caseDO.getStepList());
             stepList.sort(Comparator.comparing(StepDO::getOrder, Comparator.nullsLast(Integer::compareTo)));
             for (StepDO stepDO : stepList) {
                 if (stepDO == null) {
@@ -222,15 +213,18 @@ public final class AutomationUiSceneXmlUtils {
                 String stepContext = buildStepContext(scene, caseDO, stepDO);
                 Map<String, String> dynamicAttributes = resolveStepDynamicAttributes(stepDO, domain, serverEth);
                 Map<String, String> orderedAttributes = new LinkedHashMap<>();
-                putIfNotBlank(orderedAttributes, "type", chooseValue(stepDO.getType(), dynamicAttributes.remove("type")));
+                putIfNotBlank(orderedAttributes, "type", chooseValue(stepDO.getType(), dynamicAttributes
+                    .remove("type")));
                 orderedAttributes.put("id", stepDO.getOrder() == null ? "" : String.valueOf(stepDO.getOrder()));
                 putIfNotBlank(orderedAttributes, "name", stepDO.getName());
                 putIfNotBlank(orderedAttributes, "remark", stepDO.getRemark());
                 putIfNotBlank(orderedAttributes, "operationType", stepDO.getOperationType());
                 putIfNotBlank(orderedAttributes, "operationName", stepDO.getOperationName());
                 putIfNotBlank(orderedAttributes, "operationValue", stepDO.getOperationValue());
-                putIfNotBlank(orderedAttributes, "action", chooseValue(resolveAction(stepDO), dynamicAttributes.remove("action")));
-                putIfNotBlank(orderedAttributes, "setting", chooseValue(stepDO.getSetting(), dynamicAttributes.remove("setting")));
+                putIfNotBlank(orderedAttributes, "action", chooseValue(resolveAction(stepDO), dynamicAttributes
+                    .remove("action")));
+                putIfNotBlank(orderedAttributes, "setting", chooseValue(stepDO.getSetting(), dynamicAttributes
+                    .remove("setting")));
                 putIfNotBlank(orderedAttributes, "value", dynamicAttributes.remove("value"));
                 dynamicAttributes.forEach(orderedAttributes::putIfAbsent);
                 builder.append("\n    <step");
@@ -248,7 +242,9 @@ public final class AutomationUiSceneXmlUtils {
                                                String className,
                                                boolean primaryScene) {
         StringBuilder builder = new StringBuilder(1024);
-        builder.append("package ").append(packageName).append(";\n\n")
+        builder.append("package ")
+            .append(packageName)
+            .append(";\n\n")
             .append("import com.sakura.base.TestUnit;\n")
             .append("import com.sakura.service.RunUnitService;\n")
             .append("import com.sakura.service.WebXmlParseService;\n")
@@ -256,7 +252,9 @@ public final class AutomationUiSceneXmlUtils {
             .append("import org.testng.annotations.BeforeTest;\n")
             .append("import org.testng.annotations.Parameters;\n")
             .append("import org.testng.annotations.Test;\n\n")
-            .append("public class ").append(className).append(" {\n\n")
+            .append("public class ")
+            .append(className)
+            .append(" {\n\n")
             .append("    private static TestUnit testUnit;\n")
             .append("    private static WebXmlParseService webXmlParseService;\n")
             .append("    private static RunUnitService runService;\n\n")
@@ -274,15 +272,21 @@ public final class AutomationUiSceneXmlUtils {
                 continue;
             }
             String methodName = sanitizeJavaMethodName(caseDO.getId());
-            builder.append("    @Test(groups = {\"").append(escapeJava(caseDO.getId())).append("\"})\n")
-                .append("    public void ").append(methodName).append("() throws Exception {\n")
+            builder.append("    @Test(groups = {\"")
+                .append(escapeJava(caseDO.getId()))
+                .append("\"})\n")
+                .append("    public void ")
+                .append(methodName)
+                .append("() throws Exception {\n")
                 .append("        runService.runCase(Thread.currentThread().getStackTrace()[1].getMethodName());\n")
                 .append("    }\n\n");
         }
 
         builder.append("    @AfterTest\n")
             .append("    public void TearDown() {\n")
-            .append("        runService.setUnit(").append(primaryScene ? "true" : "\"\"").append(");\n")
+            .append("        runService.setUnit(")
+            .append(primaryScene ? "true" : "\"\"")
+            .append(");\n")
             .append("    }\n")
             .append("}\n");
         return builder.toString();
@@ -365,17 +369,14 @@ public final class AutomationUiSceneXmlUtils {
             builder.append("/>");
             builder.append("\n    <classes>");
             builder.append("\n      <class");
-            appendXmlAttribute(builder,
-                "name",
-                sanitizeJavaPackageSegment(projectAbbreviate) + "."
-                    + sanitizeJavaPackageSegment(versionName)
-                    + ".TestCases."
-                    + sanitizeJavaTypeName(defaultString(scene.getSceneId())),
-                sceneContext);
+            appendXmlAttribute(builder, "name", sanitizeJavaPackageSegment(projectAbbreviate) + "." + sanitizeJavaPackageSegment(versionName) + ".TestCases." + sanitizeJavaTypeName(defaultString(scene
+                .getSceneId())), sceneContext);
             builder.append("/>");
             builder.append("\n    </classes>");
 
-            List<CaseDO> caseList = scene.getCaseList() == null ? new ArrayList<>() : new ArrayList<>(scene.getCaseList());
+            List<CaseDO> caseList = scene.getCaseList() == null
+                ? new ArrayList<>()
+                : new ArrayList<>(scene.getCaseList());
             caseList.sort(Comparator.comparing(CaseDO::getOrder, Comparator.nullsLast(Integer::compareTo)));
             String previousCaseId = null;
             boolean dependencyStarted = false;
@@ -432,7 +433,9 @@ public final class AutomationUiSceneXmlUtils {
         return value;
     }
 
-    private static String buildExtentXml(String projectSegment, String versionSegment, String testngFileName) throws Exception {
+    private static String buildExtentXml(String projectSegment,
+                                         String versionSegment,
+                                         String testngFileName) throws Exception {
         Document document = createDocument();
         Element suite = document.createElement("suite");
         setXmlAttribute(suite, "name", "Suite", "extent suite");
@@ -445,10 +448,7 @@ public final class AutomationUiSceneXmlUtils {
         Element suiteFiles = document.createElement("suite-files");
         suite.appendChild(suiteFiles);
         Element suiteFile = document.createElement("suite-file");
-        setXmlAttribute(suiteFile,
-            "path",
-            "src/test/java/" + projectSegment + "/" + versionSegment + "/TestReportXml/" + testngFileName,
-            "extent suite-file");
+        setXmlAttribute(suiteFile, "path", "src/test/java/" + projectSegment + "/" + versionSegment + "/TestReportXml/" + testngFileName, "extent suite-file");
         suiteFiles.appendChild(suiteFile);
 
         Element listeners = document.createElement("listeners");
@@ -484,11 +484,7 @@ public final class AutomationUiSceneXmlUtils {
 
     private static void appendXmlAttribute(StringBuilder builder, String key, String value, String context) {
         validateXmlAttributeValue(key, value, context);
-        builder.append(' ')
-            .append(key)
-            .append("=\"")
-            .append(escapeXmlAttribute(value))
-            .append('"');
+        builder.append(' ').append(key).append("=\"").append(escapeXmlAttribute(value)).append('"');
     }
 
     private static String escapeXmlAttribute(String value) {
@@ -518,36 +514,31 @@ public final class AutomationUiSceneXmlUtils {
         for (int i = 0; i < value.length(); i++) {
             char current = value.charAt(i);
             if (!isValidXmlChar(current)) {
-                throw new IllegalArgumentException(context + " contains invalid XML character in attribute ["
-                    + key
-                    + "] at index "
-                    + i);
+                throw new IllegalArgumentException(context + " contains invalid XML character in attribute [" + key + "] at index " + i);
             }
         }
     }
 
     private static boolean isValidXmlChar(char value) {
-        return value == 0x9
-            || value == 0xA
-            || value == 0xD
-            || (value >= 0x20 && value <= 0xD7FF)
-            || (value >= 0xE000 && value <= 0xFFFD);
+        return value == 0x9 || value == 0xA || value == 0xD || (value >= 0x20 && value <= 0xD7FF) || (value >= 0xE000 && value <= 0xFFFD);
     }
 
     private static String buildSceneContext(AutomationUiSceneDO scene) {
-        return "scene[id=" + defaultString(scene == null ? null : scene.getSceneId()) + ", name=" + defaultString(scene == null ? null : scene.getName()) + "]";
+        return "scene[id=" + defaultString(scene == null
+            ? null
+            : scene.getSceneId()) + ", name=" + defaultString(scene == null ? null : scene.getName()) + "]";
     }
 
     private static String buildCaseContext(AutomationUiSceneDO scene, CaseDO caseDO) {
-        return buildSceneContext(scene) + " case[id=" + defaultString(caseDO == null ? null : caseDO.getId()) + ", name=" + defaultString(caseDO == null ? null : caseDO.getName()) + "]";
+        return buildSceneContext(scene) + " case[id=" + defaultString(caseDO == null
+            ? null
+            : caseDO.getId()) + ", name=" + defaultString(caseDO == null ? null : caseDO.getName()) + "]";
     }
 
     private static String buildStepContext(AutomationUiSceneDO scene, CaseDO caseDO, StepDO stepDO) {
-        return buildCaseContext(scene, caseDO) + " step[order="
-            + (stepDO == null || stepDO.getOrder() == null ? "" : stepDO.getOrder())
-            + ", name="
-            + defaultString(stepDO == null ? null : stepDO.getName())
-            + "]";
+        return buildCaseContext(scene, caseDO) + " step[order=" + (stepDO == null || stepDO.getOrder() == null
+            ? ""
+            : stepDO.getOrder()) + ", name=" + defaultString(stepDO == null ? null : stepDO.getName()) + "]";
     }
 
     private static String sanitizeSegment(String input) {
@@ -635,7 +626,9 @@ public final class AutomationUiSceneXmlUtils {
         return dynamicAttributes;
     }
 
-    private static void appendXmlAttributesInOrder(StringBuilder builder, Map<String, String> attributes, String context) {
+    private static void appendXmlAttributesInOrder(StringBuilder builder,
+                                                   Map<String, String> attributes,
+                                                   String context) {
         if (attributes == null || attributes.isEmpty()) {
             return;
         }
@@ -644,10 +637,7 @@ public final class AutomationUiSceneXmlUtils {
         }
     }
 
-    public record BundleContext(Path workspaceRoot,
-                                Path bundleRoot,
-                                Path testCaseDir,
-                                Path testngXmlPath,
+    public record BundleContext(Path workspaceRoot, Path bundleRoot, Path testCaseDir, Path testngXmlPath,
                                 Path extentXmlPath) {
         public String buildDate() {
             return LocalDate.now().format(DATE_FORMATTER);

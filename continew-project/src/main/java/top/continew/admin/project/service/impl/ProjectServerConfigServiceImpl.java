@@ -87,8 +87,8 @@ public class ProjectServerConfigServiceImpl extends BaseServiceImpl<ProjectServe
             return SSHUtil.testConnection(projectServerConfigReq.getIp(), projectServerConfigReq
                 .getPort(), projectServerConfigReq.getUserName(), projectServerConfigReq.getPassWord());
         } else if (projectServerConfigReq.getType().equals("Windows")) {
-            return FreeSshUtil.testConnection(projectServerConfigReq.getIp(), projectServerConfigReq.getPort(),projectServerConfigReq
-                .getUserName(), projectServerConfigReq.getPassWord());
+            return FreeSshUtil.testConnection(projectServerConfigReq.getIp(), projectServerConfigReq
+                .getPort(), projectServerConfigReq.getUserName(), projectServerConfigReq.getPassWord());
         }
         return false;
     }

@@ -61,6 +61,7 @@ import top.continew.starter.extension.crud.validation.CrudValidationGroup;
     Api.DELETE, Api.EXPORT})
 public class ProjectDataBaseConfigController extends BaseController<ProjectDataBaseConfigService, ProjectDataBaseConfigResp, ProjectDataBaseConfigDetailResp, ProjectDataBaseConfigQuery, ProjectDataBaseConfigReq> {
     private final ProjectEnvironmentConfigService projectEnvironmentConfigService;
+
     @Override
     @Operation(summary = "查询数据", description = "根据查询条件查询数据")
     @SaCheckPermission("automation:projectDataBaseConfig:list")

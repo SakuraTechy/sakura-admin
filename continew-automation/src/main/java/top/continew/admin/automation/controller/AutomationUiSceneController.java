@@ -19,9 +19,7 @@ package top.continew.admin.automation.controller;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 
 import cn.dev33.satoken.annotation.SaCheckPermission;
@@ -65,7 +63,7 @@ import top.continew.starter.file.excel.util.ExcelUtils;
 import top.continew.starter.web.model.R;
 
 /**
- * 自动化管理-UI 自动化场景管理 API。
+ * 自动化管理-UI 自动化场景管理 API
  *
  * @author hagyao520
  * @since 2025/06/13 11:49
@@ -73,13 +71,14 @@ import top.continew.starter.web.model.R;
 @Tag(name = "自动化管理-UI 自动化场景管理 API")
 @RestController
 @RequiredArgsConstructor
-@CrudRequestMapping(value = "/automation/automationUiScene", api = {Api.PAGE, Api.GET, Api.CREATE, Api.UPDATE, Api.DELETE, Api.EXPORT})
+@CrudRequestMapping(value = "/automation/automationUiScene", api = {Api.PAGE, Api.GET, Api.CREATE, Api.UPDATE,
+    Api.DELETE, Api.EXPORT})
 public class AutomationUiSceneController extends BaseController<AutomationUiSceneService, AutomationUiSceneResp, AutomationUiSceneDetailResp, AutomationUiSceneQuery, AutomationUiSceneReq> {
 
     /**
-     * 查询场景列表。
+     * 查询场景列表
      *
-     * @param query 查询条件
+     * @param query     查询条件
      * @param sortQuery 排序条件
      * @return 场景列表
      */
@@ -88,13 +87,11 @@ public class AutomationUiSceneController extends BaseController<AutomationUiScen
     @SaCheckPermission("automation:automationUiScene:list")
     @GetMapping("/list")
     public List<AutomationUiSceneResp> list(@Validated AutomationUiSceneQuery query, @Validated SortQuery sortQuery) {
-        List<AutomationUiSceneResp> result = super.list(query, sortQuery);
-        result.forEach(this::normalizeSceneResp);
-        return result;
+        return super.list(query, sortQuery);
     }
 
     /**
-     * 新增场景。
+     * 新增场景
      *
      * @param req 请求参数
      * @return 新增结果
@@ -109,24 +106,25 @@ public class AutomationUiSceneController extends BaseController<AutomationUiScen
     }
 
     /**
-     * 修改场景。
+     * 修改场景
      *
      * @param req 请求参数
-     * @param id 场景 ID
+     * @param id  场景 ID
      */
     @Override
     @Operation(summary = "修改数据", description = "修改数据")
     @SaCheckPermission("automation:automationUiScene:update")
-    public void update(@Validated(CrudValidationGroup.Update.class) @RequestBody AutomationUiSceneReq req, @PathVariable("id") Long id) {
+    public void update(@Validated(CrudValidationGroup.Update.class) @RequestBody AutomationUiSceneReq req,
+                       @PathVariable("id") Long id) {
         Object[] param = new Object[] {req.getProjectId(), req.getVersionId(), req.getSceneId()};
         CheckUtils.throwIf(baseService.isExists(id, param), "修改失败，自动化管理-UI自动化场景 [{}] 已存在", req.getSceneId());
         super.update(req, id);
     }
 
     /**
-     * 根据源场景复制数据。
+     * 根据源场景复制数据
      *
-     * @param id 源场景 ID
+     * @param id  源场景 ID
      * @param req 新场景参数
      * @return 新场景 ID
      */
@@ -141,7 +139,7 @@ public class AutomationUiSceneController extends BaseController<AutomationUiScen
     }
 
     /**
-     * 删除场景。
+     * 删除场景
      *
      * @param ids 场景 ID 列表
      */
@@ -158,17 +156,19 @@ public class AutomationUiSceneController extends BaseController<AutomationUiScen
     }
 
     /**
-     * 导出场景数据。
+     * 导出场景数据
      *
-     * @param query 查询条件
+     * @param query     查询条件
      * @param sortQuery 排序条件
-     * @param response HTTP 响应
+     * @param response  HTTP 响应
      */
     @Operation(summary = "导出数据", description = "根据 ID 列表导出数据")
     @Parameter(name = "ids", description = "逗号分隔的 ID 列表", example = "1,2", in = ParameterIn.PATH)
     @SaCheckPermission("automation:AutomationUiScene:export")
     @GetMapping("/export")
-    public void export(@Validated AutomationUiSceneQuery query, @Validated SortQuery sortQuery, HttpServletResponse response) {
+    public void export(@Validated AutomationUiSceneQuery query,
+                       @Validated SortQuery sortQuery,
+                       HttpServletResponse response) {
         try {
             String idStr = String.valueOf(Objects.requireNonNull(query.getId(), "ID string is null"));
             List<Long> ids = Arrays.stream(idStr.split(","))
@@ -190,9 +190,35 @@ public class AutomationUiSceneController extends BaseController<AutomationUiScen
     }
 
     /**
-     * 查询场景用例树。
+     * 导出指定场景 XML
      *
-     * @param query 查询条件
+     * @param ids      场景 ID 列表
+     * @param response HTTP 响应
+     */
+    @Operation(summary = "导出场景 XML", description = "导出选中场景 XML")
+    @SaCheckPermission("automation:automationUiScene:export")
+    @GetMapping("/exportXml/{ids}")
+    public void exportXml(@PathVariable List<Long> ids, HttpServletResponse response) {
+        baseService.exportXml(ids, response);
+    }
+
+    /**
+     * 导出当前查询范围内全部场景 XML
+     *
+     * @param query    查询条件
+     * @param response HTTP 响应
+     */
+    @Operation(summary = "导出全部场景 XML", description = "导出当前查询范围内全部场景 XML")
+    @SaCheckPermission("automation:automationUiScene:export")
+    @GetMapping("/exportXmlAll")
+    public void exportXmlAll(@Validated AutomationUiSceneQuery query, HttpServletResponse response) {
+        baseService.exportXmlAll(query, response);
+    }
+
+    /**
+     * 查询场景用例树
+     *
+     * @param query     查询条件
      * @param sortQuery 排序条件
      * @return 场景树
      */
@@ -204,113 +230,121 @@ public class AutomationUiSceneController extends BaseController<AutomationUiScen
     }
 
     /**
-     * 添加场景用例。
+     * 添加场景用例
      *
      * @param caseDO 用例参数
-     * @param id 场景 ID
+     * @param id     场景 ID
      */
     @Operation(summary = "添加场景用例", description = "添加场景用例")
     @SaCheckPermission("automation:automationUiScene:addCase")
     @PutMapping("/{id}/addCase")
-    public void addCase(@Validated(CrudValidationGroup.Update.class) @RequestBody CaseDO caseDO, @PathVariable("id") Long id) {
+    public void addCase(@Validated(CrudValidationGroup.Update.class) @RequestBody CaseDO caseDO,
+                        @PathVariable("id") Long id) {
         baseService.addCase(caseDO, id);
     }
 
     /**
-     * 修改场景用例。
+     * 修改场景用例
      *
      * @param caseDO 用例参数
-     * @param id 场景 ID
+     * @param id     场景 ID
      */
     @Operation(summary = "修改场景用例", description = "修改场景用例")
     @SaCheckPermission("automation:automationUiScene:updateCase")
     @PutMapping("/{id}/updateCase")
-    public void updateCase(@Validated(CrudValidationGroup.Update.class) @RequestBody CaseDO caseDO, @PathVariable("id") Long id) {
+    public void updateCase(@Validated(CrudValidationGroup.Update.class) @RequestBody CaseDO caseDO,
+                           @PathVariable("id") Long id) {
         baseService.updateCase(caseDO, id);
     }
 
     /**
-     * 删除场景用例。
+     * 删除场景用例
      *
      * @param caseDO 用例参数
-     * @param id 场景 ID
+     * @param id     场景 ID
      */
     @Operation(summary = "删除场景用例", description = "删除场景用例")
     @SaCheckPermission("automation:automationUiScene:deleteCase")
     @PutMapping("/{id}/deleteCase")
-    public void deleteCase(@Validated(CrudValidationGroup.Update.class) @RequestBody CaseDO caseDO, @PathVariable("id") Long id) {
+    public void deleteCase(@Validated(CrudValidationGroup.Update.class) @RequestBody CaseDO caseDO,
+                           @PathVariable("id") Long id) {
         baseService.deleteCase(caseDO, id);
     }
 
     /**
-     * 拖拽场景用例。
+     * 拖拽场景用例
      *
      * @param caseDO 用例参数
-     * @param id 场景 ID
+     * @param id     场景 ID
      */
     @Operation(summary = "拖拽场景用例", description = "拖拽场景用例")
     @SaCheckPermission("automation:automationUiScene:dragCase")
     @PutMapping("/{id}/dragCase")
-    public void dragCase(@Validated(CrudValidationGroup.Update.class) @RequestBody CaseDO caseDO, @PathVariable("id") Long id) {
+    public void dragCase(@Validated(CrudValidationGroup.Update.class) @RequestBody CaseDO caseDO,
+                         @PathVariable("id") Long id) {
         baseService.dragCase(caseDO, id);
     }
 
     /**
-     * 添加场景步骤。
+     * 添加场景步骤
      *
      * @param stepDO 步骤参数
-     * @param id 场景 ID
+     * @param id     场景 ID
      * @return 步骤 ID
      */
     @Operation(summary = "添加场景用例步骤", description = "添加场景用例步骤")
     @SaCheckPermission("automation:automationUiScene:addStep")
     @PutMapping("/{id}/addStep")
-    public R<String> addStep(@Validated(CrudValidationGroup.Update.class) @RequestBody StepDO stepDO, @PathVariable("id") Long id) {
+    public R<String> addStep(@Validated(CrudValidationGroup.Update.class) @RequestBody StepDO stepDO,
+                             @PathVariable("id") Long id) {
         String stepId = baseService.addStep(stepDO, id);
         return R.ok(stepId);
     }
 
     /**
-     * 修改场景步骤。
+     * 修改场景步骤
      *
      * @param stepDO 步骤参数
-     * @param id 场景 ID
+     * @param id     场景 ID
      */
     @Operation(summary = "修改场景用例步骤", description = "修改场景用例步骤")
     @SaCheckPermission("automation:automationUiScene:updateStep")
     @PutMapping("/{id}/updateStep")
-    public void updateStep(@Validated(CrudValidationGroup.Update.class) @RequestBody StepDO stepDO, @PathVariable("id") Long id) {
+    public void updateStep(@Validated(CrudValidationGroup.Update.class) @RequestBody StepDO stepDO,
+                           @PathVariable("id") Long id) {
         baseService.updateStep(stepDO, id);
     }
 
     /**
-     * 删除场景步骤。
+     * 删除场景步骤
      *
      * @param stepDO 步骤参数
-     * @param id 场景 ID
+     * @param id     场景 ID
      */
     @Operation(summary = "删除场景用例步骤", description = "删除场景用例步骤")
     @SaCheckPermission("automation:automationUiScene:deleteStep")
     @PutMapping("/{id}/deleteStep")
-    public void deleteStep(@Validated(CrudValidationGroup.Update.class) @RequestBody StepDO stepDO, @PathVariable("id") Long id) {
+    public void deleteStep(@Validated(CrudValidationGroup.Update.class) @RequestBody StepDO stepDO,
+                           @PathVariable("id") Long id) {
         baseService.deleteStep(stepDO, id);
     }
 
     /**
-     * 拖拽场景步骤。
+     * 拖拽场景步骤
      *
      * @param stepDO 步骤参数
-     * @param id 场景 ID
+     * @param id     场景 ID
      */
     @Operation(summary = "拖拽场景用例步骤", description = "拖拽场景用例步骤")
     @SaCheckPermission("automation:automationUiScene:dragStep")
     @PutMapping("/{id}/dragStep")
-    public void dragStep(@Validated(CrudValidationGroup.Update.class) @RequestBody StepDO stepDO, @PathVariable("id") Long id) {
+    public void dragStep(@Validated(CrudValidationGroup.Update.class) @RequestBody StepDO stepDO,
+                         @PathVariable("id") Long id) {
         baseService.dragStep(stepDO, id);
     }
 
     /**
-     * 执行指定场景。
+     * 执行指定场景
      *
      * @param req 执行参数
      * @return 执行结果
@@ -323,7 +357,7 @@ public class AutomationUiSceneController extends BaseController<AutomationUiScen
     }
 
     /**
-     * 执行当前查询范围内全部场景。
+     * 执行当前查询范围内全部场景
      *
      * @param req 执行参数
      * @return 执行结果
@@ -336,7 +370,7 @@ public class AutomationUiSceneController extends BaseController<AutomationUiScen
     }
 
     /**
-     * 根据 ID 列表查询场景。
+     * 根据 ID 列表查询场景
      *
      * @param ids 场景 ID 列表
      * @return 场景列表
@@ -346,39 +380,11 @@ public class AutomationUiSceneController extends BaseController<AutomationUiScen
     @PostMapping("/selected")
     public R<List<AutomationUiSceneResp>> selected(@RequestBody List<Long> ids) {
         Collection<Long> targetIds = ids == null ? new ArrayList<>() : ids;
-        List<AutomationUiSceneResp> sceneList = baseService.listSceneRespByIds(targetIds);
-        sceneList.forEach(this::normalizeSceneResp);
-        return R.ok(sceneList);
+        return R.ok(baseService.listSceneRespByIds(targetIds));
     }
 
     /**
-     * 导出指定场景 XML。
-     *
-     * @param ids 场景 ID 列表
-     * @param response HTTP 响应
-     */
-    @Operation(summary = "导出场景 XML", description = "导出选中场景 XML")
-    @SaCheckPermission("automation:automationUiScene:export")
-    @GetMapping("/exportXml/{ids}")
-    public void exportXml(@PathVariable List<Long> ids, HttpServletResponse response) {
-        baseService.exportXml(ids, response);
-    }
-
-    /**
-     * 导出当前查询范围内全部场景 XML。
-     *
-     * @param query 查询条件
-     * @param response HTTP 响应
-     */
-    @Operation(summary = "导出全部场景 XML", description = "导出当前查询范围内全部场景 XML")
-    @SaCheckPermission("automation:automationUiScene:export")
-    @GetMapping("/exportXmlAll")
-    public void exportXmlAll(@Validated AutomationUiSceneQuery query, HttpServletResponse response) {
-        baseService.exportXmlAll(query, response);
-    }
-
-    /**
-     * 清空执行结果。
+     * 清空执行结果
      *
      * @param req 清理参数
      */
@@ -390,7 +396,7 @@ public class AutomationUiSceneController extends BaseController<AutomationUiScen
     }
 
     /**
-     * 接收执行结果回调。
+     * 接收执行结果回调
      *
      * @param req 回调参数
      * @return 响应结果
@@ -403,90 +409,4 @@ public class AutomationUiSceneController extends BaseController<AutomationUiScen
         return R.ok();
     }
 
-    /**
-     * 归一化场景展示字段。
-     *
-     * @param scene 场景响应
-     */
-    private void normalizeSceneResp(AutomationUiSceneResp scene) {
-        if (scene == null) {
-            return;
-        }
-        scene.setExecuteStatus(toDisplayStatus(scene.getExecuteStatus()));
-        scene.setExecuteResult(toDisplayResult(scene.getExecuteResult()));
-        scene.setLastResult(toDisplayResult(scene.getLastResult()));
-        scene.setDebugRecord(normalizeRecordHistory(scene.getDebugRecord()));
-        scene.setTestRecord(normalizeRecordHistory(scene.getTestRecord()));
-    }
-
-    /**
-     * 归一化历史记录中的状态与结果。
-     *
-     * @param history 历史记录
-     * @return 归一化后的历史记录
-     */
-    private List<Object> normalizeRecordHistory(List<Object> history) {
-        if (history == null || history.isEmpty()) {
-            return history;
-        }
-        List<Object> normalized = new ArrayList<>(history.size());
-        for (Object item : history) {
-            if (item instanceof Map<?, ?> map) {
-                Map<String, Object> record = new LinkedHashMap<>();
-                for (Map.Entry<?, ?> entry : map.entrySet()) {
-                    record.put(String.valueOf(entry.getKey()), entry.getValue());
-                }
-                record.computeIfPresent("executeStatus", (key, value) -> toDisplayStatus(String.valueOf(value)));
-                record.computeIfPresent("executeResult", (key, value) -> toDisplayResult(String.valueOf(value)));
-                normalized.add(record);
-            } else {
-                normalized.add(item);
-            }
-        }
-        return normalized;
-    }
-
-    /**
-     * 转换执行状态展示值。
-     *
-     * @param value 原始状态
-     * @return 展示状态
-     */
-    private String toDisplayStatus(String value) {
-        if ("RUNNING".equalsIgnoreCase(value)) {
-            return "进行中";
-        }
-        if ("COMPLETED".equalsIgnoreCase(value)) {
-            return "已完成";
-        }
-        if ("NOT_STARTED".equalsIgnoreCase(value)) {
-            return "未开始";
-        }
-        return value;
-    }
-
-    /**
-     * 转换执行结果展示值。
-     *
-     * @param value 原始结果
-     * @return 展示结果
-     */
-    private String toDisplayResult(String value) {
-        if ("PASSED".equalsIgnoreCase(value)) {
-            return "全部通过";
-        }
-        if ("FAILED".equalsIgnoreCase(value)) {
-            return "不通过";
-        }
-        if ("SKIPPED".equalsIgnoreCase(value)) {
-            return "跳过";
-        }
-        if ("RUNNING".equalsIgnoreCase(value)) {
-            return "-";
-        }
-        if ("NOT_EXECUTED".equalsIgnoreCase(value)) {
-            return "未执行";
-        }
-        return value;
-    }
 }

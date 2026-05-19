@@ -98,6 +98,20 @@ public class AutomationUiSceneReq implements Serializable {
     private String level;
 
     /**
+     * 执行状态（字典 value：10 未开始、11 进行中、12 已完成）
+     */
+    @Schema(description = "执行状态")
+    @Length(max = 64, message = "执行状态长度不能超过 {max} 个字符")
+    private String executeStatus;
+
+    /**
+     * 执行结果（字典 value：13 未执行、14 全部通过、15 不通过、16 跳过）
+     */
+    @Schema(description = "执行结果")
+    @Length(max = 64, message = "执行结果长度不能超过 {max} 个字符")
+    private String executeResult;
+
+    /**
      * 场景状态
      */
     @Schema(description = "场景状态")

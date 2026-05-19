@@ -309,11 +309,29 @@ public class JenkinsService {
     }
 
     public static String getJenkinsJobParameters(String url, String userName, String passWord) {
-        //        return JenkinsService.getApiJson(url + "api/json?pretty=true&tree=actions[parameters[value]]",userName,passWord).jsonPath().getString("actions[0].parameters[1].value");
-        return JenkinsService
-            .getApiJson(url + "api/json?pretty=true&tree=actions[parameters[value]]", userName, passWord)
-            .jsonPath()
-            .getString("actions.find { it._class == 'hudson.model.ParametersAction' }.parameters[1].value");
+        String data = JenkinsService
+            .getApiJson(url + "api/json?pretty=true&tree=actions[parameters[value],_class]", userName, passWord)
+            .asString();
+        try {
+            JsonNode root = new ObjectMapper().readTree(data);
+            JsonNode actions = root.path("actions");
+            if (!actions.isArray()) {
+                return null;
+            }
+            for (JsonNode action : actions) {
+                if (!"hudson.model.ParametersAction".equals(action.path("_class").asText())) {
+                    continue;
+                }
+                JsonNode parameters = action.path("parameters");
+                if (parameters.isArray() && parameters.size() > 1) {
+                    return parameters.get(1).path("value").asText(null);
+                }
+                return null;
+            }
+        } catch (Exception e) {
+            log.error("解析 Jenkins 任务参数失败, url: {}", url, e);
+        }
+        return null;
     }
 
     public static Response getJenkinsNodeDetails(String url, String userName, String passWord, String node) {

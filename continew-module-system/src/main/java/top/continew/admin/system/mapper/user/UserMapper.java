@@ -25,8 +25,6 @@ import top.continew.admin.common.config.mybatis.DataPermissionMapper;
 import top.continew.admin.system.model.entity.user.UserDO;
 import top.continew.admin.system.model.resp.user.UserDetailResp;
 import top.continew.starter.extension.datapermission.annotation.DataPermission;
-import top.continew.starter.security.crypto.annotation.FieldEncrypt;
-
 import java.util.List;
 
 /**
@@ -73,7 +71,7 @@ public interface UserMapper extends DataPermissionMapper<UserDO> {
      * @return 用户信息
      */
     @Select("SELECT * FROM sys_user WHERE phone = #{phone}")
-    UserDO selectByPhone(@FieldEncrypt @Param("phone") String phone);
+    UserDO selectByPhone(@Param("phone") String phone);
 
     /**
      * 根据邮箱查询
@@ -82,7 +80,7 @@ public interface UserMapper extends DataPermissionMapper<UserDO> {
      * @return 用户信息
      */
     @Select("SELECT * FROM sys_user WHERE email = #{email}")
-    UserDO selectByEmail(@FieldEncrypt @Param("email") String email);
+    UserDO selectByEmail(@Param("email") String email);
 
     /**
      * 根据 ID 查询昵称
@@ -100,7 +98,7 @@ public interface UserMapper extends DataPermissionMapper<UserDO> {
      * @param id    ID
      * @return 用户数量
      */
-    Long selectCountByEmail(@FieldEncrypt @Param("email") String email, @Param("id") Long id);
+    Long selectCountByEmail(@Param("email") String email, @Param("id") Long id);
 
     /**
      * 根据手机号查询数量
@@ -109,5 +107,5 @@ public interface UserMapper extends DataPermissionMapper<UserDO> {
      * @param id    ID
      * @return 用户数量
      */
-    Long selectCountByPhone(@FieldEncrypt @Param("phone") String phone, @Param("id") Long id);
+    Long selectCountByPhone(@Param("phone") String phone, @Param("id") Long id);
 }

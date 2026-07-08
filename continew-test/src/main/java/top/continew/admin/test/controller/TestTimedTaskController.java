@@ -1,3 +1,19 @@
+/*
+ * Copyright (c) 2022-present Charles7c Authors. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package top.continew.admin.test.controller;
 
 import cn.dev33.satoken.annotation.SaCheckPermission;
@@ -10,7 +26,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import top.continew.admin.common.controller.BaseController;
-import top.continew.admin.common.enums.StatusTypeEnum;
 import top.continew.admin.test.model.query.TestTimedTaskQuery;
 import top.continew.admin.test.model.req.TestTimedTaskReq;
 import top.continew.admin.test.model.resp.TestTimedTaskDetailResp;
@@ -33,7 +48,8 @@ import java.util.Objects;
 @Tag(name = "测试定时任务管理 API")
 @RestController
 @RequiredArgsConstructor
-@CrudRequestMapping(value = "/test/timedTask", api = {Api.PAGE, Api.GET, Api.CREATE, Api.UPDATE, Api.DELETE, Api.EXPORT})
+@CrudRequestMapping(value = "/test/timedTask", api = {Api.PAGE, Api.GET, Api.CREATE, Api.UPDATE, Api.DELETE,
+    Api.EXPORT})
 public class TestTimedTaskController extends BaseController<TestTimedTaskService, TestTimedTaskResp, TestTimedTaskDetailResp, TestTimedTaskQuery, TestTimedTaskReq> {
 
     @Override
@@ -52,7 +68,8 @@ public class TestTimedTaskController extends BaseController<TestTimedTaskService
 
     @Override
     @SaCheckPermission("test:timedTask:update")
-    public void update(@Validated(CrudValidationGroup.Update.class) @RequestBody TestTimedTaskReq req, @PathVariable("id") Long id) {
+    public void update(@Validated(CrudValidationGroup.Update.class) @RequestBody TestTimedTaskReq req,
+                       @PathVariable("id") Long id) {
         CheckUtils.throwIf(baseService.isExists(req.getName(), req.getTestPlanId(), id), "测试定时任务名称已存在");
         super.update(req, id);
     }
@@ -68,10 +85,16 @@ public class TestTimedTaskController extends BaseController<TestTimedTaskService
     @Operation(summary = "导出测试定时任务")
     @SaCheckPermission("test:timedTask:export")
     @GetMapping("/export")
-    public void export(@Validated TestTimedTaskQuery query, @Validated SortQuery sortQuery, HttpServletResponse response) {
+    public void export(@Validated TestTimedTaskQuery query,
+                       @Validated SortQuery sortQuery,
+                       HttpServletResponse response) {
         try {
             String idStr = String.valueOf(Objects.requireNonNull(query.getId(), "ID string is null"));
-            List<Long> ids = Arrays.stream(idStr.split(",")).map(String::trim).filter(s -> !s.isEmpty()).map(Long::parseLong).toList();
+            List<Long> ids = Arrays.stream(idStr.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .map(Long::parseLong)
+                .toList();
             if (!ids.isEmpty()) {
                 ExcelUtils.export(baseService.selectByIds(ids), "测试定时任务", TestTimedTaskDetailResp.class, response);
                 return;

@@ -31,6 +31,7 @@ import java.util.Objects;
 import java.util.UUID;
 
 import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.util.ReflectUtil;
 import jakarta.servlet.http.HttpServletResponse;
@@ -40,6 +41,8 @@ import me.ahoo.cosid.IdGenerator;
 import me.ahoo.cosid.provider.DefaultIdGeneratorProvider;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 
 import org.springframework.transaction.annotation.Transactional;
 import top.continew.admin.automation.mapper.AutomationEnvironmentConfigMapper;
@@ -58,6 +61,7 @@ import top.continew.admin.automation.model.req.AutomationUiSceneUploadResultReq;
 import top.continew.admin.automation.util.AutomationUiSceneStatusCodes;
 import top.continew.admin.automation.util.AutomationUiSceneXmlUtils;
 
+import top.continew.starter.extension.crud.model.query.SortQuery;
 import static top.continew.admin.automation.util.AutomationUiSceneStatusCodes.RESULT_NOT_EXECUTED;
 import static top.continew.admin.automation.util.AutomationUiSceneStatusCodes.STATUS_NOT_STARTED;
 import static top.continew.admin.automation.util.AutomationUiSceneStatusCodes.STATUS_RUNNING;
@@ -73,6 +77,8 @@ import top.continew.admin.project.model.entity.ProjectDataBaseConfigDO;
 import top.continew.admin.project.model.entity.ProjectEnvironmentConfigDO;
 import top.continew.admin.project.model.entity.ProjectServerConfigDO;
 import top.continew.admin.project.model.entity.ProjectVersionConfigDO;
+import top.continew.starter.extension.crud.model.query.PageQuery;
+import top.continew.starter.extension.crud.model.resp.PageResp;
 import top.continew.starter.core.exception.BusinessException;
 import top.continew.starter.core.validation.CheckUtils;
 import top.continew.starter.extension.crud.service.BaseServiceImpl;
@@ -85,6 +91,8 @@ import top.continew.admin.automation.model.resp.AutomationUiSceneDetailResp;
 import top.continew.admin.automation.model.resp.AutomationUiSceneExecResp;
 import top.continew.admin.automation.model.resp.AutomationUiSceneResp;
 import top.continew.admin.automation.service.AutomationUiSceneService;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 
 /**
  * 自动化管理-UI 自动化场景管理业务实现。
@@ -120,6 +128,34 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
     }
 
     @Override
+    public void afterCreate(AutomationUiSceneReq req, AutomationUiSceneDO entity) {
+        List<Object> defaultDebugRecord = new ArrayList<>();
+        Map<String, Object> defaultRecord = new HashMap<>(16);
+        defaultRecord.put("sceneTotal", 0);
+        defaultRecord.put("scenePass", 0);
+        defaultRecord.put("sceneFail", 0);
+        defaultRecord.put("sceneSkip", 0);
+        defaultRecord.put("scenePassRate", "-");
+        defaultRecord.put("caseTotal", 0);
+        defaultRecord.put("casePass", 0);
+        defaultRecord.put("caseFail", 0);
+        defaultRecord.put("caseSkip", 0);
+        defaultRecord.put("casePassRate", "0%");
+        defaultRecord.put("stepTotal", 0);
+        defaultRecord.put("stepPass", 0);
+        defaultRecord.put("stepFail", 0);
+        defaultRecord.put("stepSkip", 0);
+        defaultRecord.put("stepPassRate", "0%");
+        defaultRecord.put("executeName", "-");
+        defaultRecord.put("executeStatus", "10");
+        defaultRecord.put("executeResult", "13");
+        defaultRecord.put("duration", "-");
+        defaultDebugRecord.add(defaultRecord);
+        entity.setDebugRecord(defaultDebugRecord);
+        baseMapper.updateById(entity);
+    }
+
+    @Override
     public void beforeUpdate(AutomationUiSceneReq req, Long id) {
         if (req == null) {
             return;
@@ -130,6 +166,130 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
         if (StringUtils.isNotBlank(req.getExecuteResult())) {
             req.setExecuteResult(AutomationUiSceneStatusCodes.normalizeResult(req
                 .getExecuteResult(), null, null, null, null));
+        }
+    }
+
+    @Override
+    protected QueryWrapper<AutomationUiSceneDO> buildQueryWrapper(AutomationUiSceneQuery query) {
+        List<Long> excludeIds = query.getExcludeIds();
+        query.setExcludeIds(null);
+        QueryWrapper<AutomationUiSceneDO> queryWrapper = super.buildQueryWrapper(query);
+        query.setExcludeIds(excludeIds);
+        queryWrapper.notIn(CollUtil.isNotEmpty(excludeIds), "id", excludeIds);
+        return queryWrapper;
+    }
+
+    @Override
+    public List<AutomationUiSceneResp> list(AutomationUiSceneQuery query, SortQuery sortQuery) {
+        String executeStatus = query.getExecuteStatus();
+        if (StringUtils.isNotBlank(query.getExecuteResultType())) {
+            query.setExecuteStatus(null);
+        }
+        List<AutomationUiSceneResp> result = super.list(query, sortQuery);
+        query.setExecuteStatus(executeStatus);
+        if (result == null || result.isEmpty()) {
+            return result;
+        }
+        result.forEach(item -> {
+            item.setCreateUserString(UserContextHolder.getNickname(item.getCreateUser()));
+            item.setUpdateUserString(UserContextHolder.getNickname(item.getUpdateUser()));
+        });
+        String testPlanId = query.getTestPlanId();
+        Integer buildNumber = query.getBuildNumber();
+        String executeResultType = query.getExecuteResultType();
+        String executeResult = query.getExecuteResult();
+        if (StringUtils.isNotBlank(executeResultType)) {
+            String recordType = "report".equalsIgnoreCase(executeResultType) ? "testRecord" : "debugRecord";
+            result = result.stream().filter(resp -> {
+                filterRecord(resp, testPlanId, buildNumber, executeResultType, executeResult, executeStatus, recordType);
+                List<Object> records = "testRecord".equals(recordType) ? resp.getTestRecord() : resp.getDebugRecord();
+                return records != null && !records.isEmpty();
+            }).collect(java.util.stream.Collectors.toList());
+        }
+        return result;
+    }
+
+    @Override
+    public PageResp<AutomationUiSceneResp> page(AutomationUiSceneQuery query, PageQuery pageQuery) {
+        String executeStatus = query.getExecuteStatus();
+        if (StringUtils.isNotBlank(query.getExecuteResultType())) {
+            query.setExecuteStatus(null);
+        }
+        IPage<AutomationUiSceneDO> pageDO = baseMapper.selectPage(new Page<>(pageQuery.getPage(), pageQuery.getSize()), buildQueryWrapper(query));
+        query.setExecuteStatus(executeStatus);
+        List<AutomationUiSceneResp> result = BeanUtil.copyToList(pageDO.getRecords(), AutomationUiSceneResp.class);
+        if (result == null || result.isEmpty()) {
+            return PageResp.build(pageQuery.getPage(), pageQuery.getSize(), result);
+        }
+        result.forEach(item -> {
+            item.setCreateUserString(UserContextHolder.getNickname(item.getCreateUser()));
+            item.setUpdateUserString(UserContextHolder.getNickname(item.getUpdateUser()));
+        });
+        String testPlanId = query.getTestPlanId();
+        Integer buildNumber = query.getBuildNumber();
+        String executeResultType = query.getExecuteResultType();
+        String executeResult = query.getExecuteResult();
+        if (StringUtils.isNotBlank(executeResultType)) {
+            String recordType = "report".equalsIgnoreCase(executeResultType) ? "testRecord" : "debugRecord";
+            result = result.stream().filter(resp -> {
+                filterRecord(resp, testPlanId, buildNumber, executeResultType, executeResult, executeStatus, recordType);
+                List<Object> records = "testRecord".equals(recordType) ? resp.getTestRecord() : resp.getDebugRecord();
+                return records != null && !records.isEmpty();
+            }).collect(java.util.stream.Collectors.toList());
+        }
+        return PageResp.build(pageQuery.getPage(), pageQuery.getSize(), result);
+    }
+
+    private void filterRecord(AutomationUiSceneResp resp,
+                              String testPlanId,
+                              Integer buildNumber,
+                              String executeResultType,
+                              String executeResult,
+                              String executeStatus,
+                              String recordType) {
+        boolean isTestRecord = "testRecord".equals(recordType);
+        List<Object> records = isTestRecord ? resp.getTestRecord() : resp.getDebugRecord();
+        if (records == null || records.isEmpty()) {
+            return;
+        }
+        List<Object> filtered = new ArrayList<>();
+        for (Object record : records) {
+            if (!(record instanceof Map<?, ?> recordMap)) {
+                continue;
+            }
+            boolean match = true;
+            if (buildNumber != null) {
+                Object recordBuildNumber = recordMap.get("buildNumber");
+                if (recordBuildNumber == null || !buildNumber.equals(recordBuildNumber)) {
+                    match = false;
+                }
+            }
+            if (match && StringUtils.isNotBlank(testPlanId)) {
+                Object recordTestPlanId = recordMap.get("testPlanId");
+                if (recordTestPlanId == null || !testPlanId.equals(String.valueOf(recordTestPlanId))) {
+                    match = false;
+                }
+            }
+            if (match && StringUtils.isNotBlank(executeResult)) {
+                Object recordExecuteResult = recordMap.get("executeResult");
+                if (recordExecuteResult == null || !executeResult.equals(String.valueOf(recordExecuteResult))) {
+                    match = false;
+                }
+            }
+            if (match && StringUtils.isNotBlank(executeStatus)) {
+                Object recordExecuteStatus = recordMap.get("executeStatus");
+                if (recordExecuteStatus == null || !executeStatus.equals(String.valueOf(recordExecuteStatus))) {
+                    match = false;
+                }
+            }
+            if (match) {
+                filtered.add(record);
+            }
+        }
+        if (isTestRecord) {
+            resp.setTestRecord(filtered.isEmpty() ? null : filtered);
+        } else {
+            resp.setDebugRecord(filtered.isEmpty() ? null : filtered);
         }
     }
 
@@ -194,6 +354,30 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
         target.setStepFail(null);
         target.setStepSkip(null);
         target.setUpdateIp(null);
+
+        List<Object> defaultDebugRecord = new ArrayList<>();
+        Map<String, Object> defaultRecord = new HashMap<>(16);
+        defaultRecord.put("sceneTotal", 0);
+        defaultRecord.put("scenePass", 0);
+        defaultRecord.put("sceneFail", 0);
+        defaultRecord.put("sceneSkip", 0);
+        defaultRecord.put("scenePassRate", "-");
+        defaultRecord.put("caseTotal", 0);
+        defaultRecord.put("casePass", 0);
+        defaultRecord.put("caseFail", 0);
+        defaultRecord.put("caseSkip", 0);
+        defaultRecord.put("casePassRate", "0%");
+        defaultRecord.put("stepTotal", 0);
+        defaultRecord.put("stepPass", 0);
+        defaultRecord.put("stepFail", 0);
+        defaultRecord.put("stepSkip", 0);
+        defaultRecord.put("stepPassRate", "0%");
+        defaultRecord.put("executeName", "-");
+        defaultRecord.put("executeStatus", "10");
+        defaultRecord.put("executeResult", "13");
+        defaultRecord.put("duration", "-");
+        defaultDebugRecord.add(defaultRecord);
+        target.setDebugRecord(defaultDebugRecord);
 
         baseMapper.insert(target);
         return target.getId();
@@ -780,6 +964,79 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    public void uploadResults(AutomationUiSceneUploadResultReq req) {
+        AutomationUiSceneDO scene = resolveSceneForUpload(req);
+        CheckUtils.throwIfNull(scene, "上传失败：场景不存在");
+
+        AutomationUiSceneUploadResultReq.UiStatistic ui = req.getStatisticAnalysis().getUi();
+        CheckUtils.throwIfNull(ui, "上传失败：UI 统计数据缺失");
+
+        List<Object> history = StringUtils.isNotBlank(req.getTestPlanId())
+            ? scene.getTestRecord()
+            : scene.getDebugRecord();
+        List<Object> records = history == null ? new ArrayList<>() : new ArrayList<>(history);
+        if (!records.isEmpty()) {
+            records.remove(0);
+        }
+
+        Map<String, Object> latest = new LinkedHashMap<>();
+        latest.put("testPlanId", req.getTestPlanId());
+        latest.put("buildNumber", ui.getBuildNumber());
+        latest.put("consoleUrl", StringUtils.defaultIfBlank(ui.getConsoleUrl(), scene.getConsoleUrl()));
+        latest.put("testReportUrl", StringUtils.defaultIfBlank(ui.getTestReportUrl(), scene.getTestReportUrl()));
+        latest.put("sceneTotal", defaultNumber(ui.getSceneTotal()));
+        latest.put("scenePass", defaultNumber(ui.getScenePass()));
+        latest.put("sceneFail", defaultNumber(ui.getSceneFail()));
+        latest.put("sceneSkip", defaultNumber(ui.getSceneSkip()));
+        latest.put("scenePassRate", StringUtils.defaultIfBlank(ui.getScenePassRate(), "-"));
+        latest.put("caseTotal", defaultNumber(ui.getCaseTotal()));
+        latest.put("casePass", defaultNumber(ui.getCasePass()));
+        latest.put("caseFail", defaultNumber(ui.getCaseFail()));
+        latest.put("caseSkip", defaultNumber(ui.getCaseSkip()));
+        latest.put("casePassRate", StringUtils.defaultIfBlank(ui.getCasePassRate(), "-"));
+        latest.put("stepTotal", defaultNumber(ui.getStepTotal()));
+        latest.put("stepPass", defaultNumber(ui.getStepPass()));
+        latest.put("stepFail", defaultNumber(ui.getStepFail()));
+        latest.put("stepSkip", defaultNumber(ui.getStepSkip()));
+        latest.put("stepPassRate", StringUtils.defaultIfBlank(ui.getStepPassRate(), "-"));
+        latest.put("executeName", StringUtils.defaultIfBlank(ui.getExecuteName(), "-"));
+        latest.put("executeStatus", AutomationUiSceneStatusCodes.normalizeStatus(ui.getExecuteStatus()));
+        latest.put("executeResult", AutomationUiSceneStatusCodes.normalizeResult(ui.getExecuteResult(), ui.getSceneTotal(), ui.getScenePass(), ui.getSceneFail(), ui.getSceneSkip()));
+        latest.put("duration", StringUtils.defaultIfBlank(ui.getDuration(), "-"));
+        latest.put("durationStartTime", ui.getDurationStartTime());
+        latest.put("durationEndTime", ui.getDurationEndTime());
+
+        List<Object> updated = new ArrayList<>();
+        updated.add(latest);
+        updated.addAll(records);
+        if (StringUtils.isNotBlank(req.getTestPlanId())) {
+            scene.setTestRecord(updated);
+        } else {
+            scene.setDebugRecord(updated);
+        }
+
+//        String executeStatus = AutomationUiSceneStatusCodes.normalizeStatus(ui.getExecuteStatus());
+//        String executeResult = AutomationUiSceneStatusCodes.normalizeResult(ui.getExecuteResult(), ui.getSceneTotal(), ui.getScenePass(), ui.getSceneFail(), ui.getSceneSkip());
+//        scene.setExecuteStatus(executeStatus);
+//        scene.setExecuteResult(executeResult);
+//        scene.setLastResult(executeResult);
+//        scene.setBuildNumber(ui.getBuildNumber());
+//        scene.setConsoleUrl(StringUtils.defaultIfBlank(ui.getConsoleUrl(), scene.getConsoleUrl()));
+//        scene.setTestReportUrl(StringUtils.defaultIfBlank(ui.getTestReportUrl(), scene.getTestReportUrl()));
+//        scene.setCaseTotal(defaultNumber(ui.getCaseTotal()));
+//        scene.setCasePass(defaultNumber(ui.getCasePass()));
+//        scene.setCaseFail(defaultNumber(ui.getCaseFail()));
+//        scene.setCaseSkip(defaultNumber(ui.getCaseSkip()));
+//        scene.setPassRate(StringUtils.defaultIfBlank(ui.getCasePassRate(), scene.getPassRate()));
+//        scene.setStepTotal(defaultNumber(ui.getStepTotal()));
+//        scene.setStepPass(defaultNumber(ui.getStepPass()));
+//        scene.setStepFail(defaultNumber(ui.getStepFail()));
+//        scene.setStepSkip(defaultNumber(ui.getStepSkip()));
+        baseMapper.updateById(scene);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
     public void clearResults(AutomationUiSceneClearReq req) {
         List<AutomationUiSceneDO> sceneList = baseMapper.selectBatchIds(req.getSceneIds());
         for (AutomationUiSceneDO scene : sceneList) {
@@ -802,74 +1059,6 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
             scene.setStepSkip(null);
             baseMapper.updateById(scene);
         }
-    }
-
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public void uploadResults(AutomationUiSceneUploadResultReq req) {
-        AutomationUiSceneDO scene = resolveSceneForUpload(req);
-        CheckUtils.throwIfNull(scene, "上传失败：场景不存在");
-
-        AutomationUiSceneUploadResultReq.UiStatistic ui = req.getStatisticAnalysis().getUi();
-        CheckUtils.throwIfNull(ui, "上传失败：UI 统计数据缺失");
-
-        List<Object> history = StringUtils.isNotBlank(req.getTestPlanId())
-            ? scene.getTestRecord()
-            : scene.getDebugRecord();
-        List<Object> records = history == null ? new ArrayList<>() : new ArrayList<>(history);
-        if (!records.isEmpty()) {
-            records.remove(0);
-        }
-
-        Map<String, Object> latest = new LinkedHashMap<>();
-        latest.put("testPlanId", req.getTestPlanId());
-        latest.put("buildNumber", ui.getBuildNumber());
-        latest.put("consoleUrl", StringUtils.defaultIfBlank(ui.getConsoleUrl(), scene.getConsoleUrl()));
-        latest.put("testReportUrl", StringUtils.defaultIfBlank(ui.getTestReportUrl(), scene.getTestReportUrl()));
-        latest.put("executeName", StringUtils.defaultIfBlank(ui.getExecuteName(), "-"));
-        latest.put("executeStatus", AutomationUiSceneStatusCodes.normalizeStatus(ui.getExecuteStatus()));
-        latest.put("executeResult", AutomationUiSceneStatusCodes.normalizeResult(ui.getExecuteResult(), ui
-            .getSceneTotal(), ui.getScenePass(), ui.getSceneFail(), ui.getSceneSkip()));
-        latest.put("duration", StringUtils.defaultIfBlank(ui.getDuration(), "-"));
-        latest.put("durationStartTime", ui.getDurationStartTime());
-        latest.put("durationEndTime", ui.getDurationEndTime());
-        latest.put("caseTotal", defaultNumber(ui.getCaseTotal()));
-        latest.put("casePass", defaultNumber(ui.getCasePass()));
-        latest.put("caseFail", defaultNumber(ui.getCaseFail()));
-        latest.put("caseSkip", defaultNumber(ui.getCaseSkip()));
-        latest.put("stepTotal", defaultNumber(ui.getStepTotal()));
-        latest.put("stepPass", defaultNumber(ui.getStepPass()));
-        latest.put("stepFail", defaultNumber(ui.getStepFail()));
-        latest.put("stepSkip", defaultNumber(ui.getStepSkip()));
-
-        List<Object> updated = new ArrayList<>();
-        updated.add(latest);
-        updated.addAll(records);
-        if (StringUtils.isNotBlank(req.getTestPlanId())) {
-            scene.setTestRecord(updated);
-        } else {
-            scene.setDebugRecord(updated);
-        }
-
-        String executeStatus = AutomationUiSceneStatusCodes.normalizeStatus(ui.getExecuteStatus());
-        String executeResult = AutomationUiSceneStatusCodes.normalizeResult(ui.getExecuteResult(), ui
-            .getSceneTotal(), ui.getScenePass(), ui.getSceneFail(), ui.getSceneSkip());
-        scene.setExecuteStatus(executeStatus);
-        scene.setExecuteResult(executeResult);
-        scene.setLastResult(executeResult);
-        scene.setBuildNumber(ui.getBuildNumber());
-        scene.setConsoleUrl(StringUtils.defaultIfBlank(ui.getConsoleUrl(), scene.getConsoleUrl()));
-        scene.setTestReportUrl(StringUtils.defaultIfBlank(ui.getTestReportUrl(), scene.getTestReportUrl()));
-        scene.setCaseTotal(defaultNumber(ui.getCaseTotal()));
-        scene.setCasePass(defaultNumber(ui.getCasePass()));
-        scene.setCaseFail(defaultNumber(ui.getCaseFail()));
-        scene.setCaseSkip(defaultNumber(ui.getCaseSkip()));
-        scene.setPassRate(StringUtils.defaultIfBlank(ui.getCasePassRate(), scene.getPassRate()));
-        scene.setStepTotal(defaultNumber(ui.getStepTotal()));
-        scene.setStepPass(defaultNumber(ui.getStepPass()));
-        scene.setStepFail(defaultNumber(ui.getStepFail()));
-        scene.setStepSkip(defaultNumber(ui.getStepSkip()));
-        baseMapper.updateById(scene);
     }
 
     /**

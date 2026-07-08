@@ -22,7 +22,6 @@ import java.util.List;
 import jakarta.servlet.http.HttpServletResponse;
 import top.continew.admin.automation.model.entity.ui.CaseDO;
 import top.continew.admin.automation.model.entity.ui.StepDO;
-import top.continew.starter.extension.crud.service.BaseService;
 import top.continew.admin.automation.model.query.AutomationUiSceneQuery;
 import top.continew.admin.automation.model.req.AutomationUiSceneClearReq;
 import top.continew.admin.automation.model.req.AutomationUiSceneExecAllReq;
@@ -32,6 +31,9 @@ import top.continew.admin.automation.model.req.AutomationUiSceneUploadResultReq;
 import top.continew.admin.automation.model.resp.AutomationUiSceneDetailResp;
 import top.continew.admin.automation.model.resp.AutomationUiSceneExecResp;
 import top.continew.admin.automation.model.resp.AutomationUiSceneResp;
+import top.continew.starter.extension.crud.model.query.PageQuery;
+import top.continew.starter.extension.crud.model.resp.PageResp;
+import top.continew.starter.extension.crud.service.BaseService;
 
 /**
  * 自动化管理-UI自动化场景业务接口
@@ -40,6 +42,9 @@ import top.continew.admin.automation.model.resp.AutomationUiSceneResp;
  * @since 2025/06/13 11:49
  */
 public interface AutomationUiSceneService extends BaseService<AutomationUiSceneResp, AutomationUiSceneDetailResp, AutomationUiSceneQuery, AutomationUiSceneReq> {
+
+    PageResp<AutomationUiSceneResp> page(AutomationUiSceneQuery query, PageQuery pageQuery);
+
     /**
      * 根据 ID 查询
      *
@@ -169,14 +174,14 @@ public interface AutomationUiSceneService extends BaseService<AutomationUiSceneR
 
     /**
      * 清空测试场景结果
-     * 
+     *
      * @param req
      */
     void clearResults(AutomationUiSceneClearReq req);
 
     /**
      * 上传测试场景结果
-     * 
+     *
      * @param req
      */
     void uploadResults(AutomationUiSceneUploadResultReq req);

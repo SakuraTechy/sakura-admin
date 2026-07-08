@@ -26,6 +26,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 import top.continew.admin.common.enums.StatusTypeEnum;
 import top.continew.starter.data.core.annotation.Query;
+import top.continew.starter.data.core.annotation.QueryIgnore;
 import top.continew.starter.data.core.enums.QueryType;
 
 import java.time.*;
@@ -104,7 +105,7 @@ public class AutomationUiSceneQuery implements Serializable {
      * 执行结果
      */
     @Schema(description = "执行结果")
-    @Query(type = QueryType.EQ)
+    @QueryIgnore
     private String executeResult;
 
     /**
@@ -137,9 +138,37 @@ public class AutomationUiSceneQuery implements Serializable {
     private List<LocalDateTime> createTime;
 
     /**
+     * 排除的场景主键 ID 列表（如测试计划已关联场景，由 Service 层转换为 id NOT IN）
+     */
+    @Schema(description = "排除的场景主键 ID 列表")
+    @QueryIgnore
+    private List<Long> excludeIds;
+
+    /**
      * 删除标志（3正常 4异常）
      */
     @Schema(description = "删除标志（3正常 4异常）")
     @Query(type = QueryType.EQ)
     private StatusTypeEnum delFlag = StatusTypeEnum.NORMAL;
+
+    /**
+     * 测试计划ID
+     */
+    @Schema(description = "测试计划ID")
+    @QueryIgnore
+    private String testPlanId;
+
+    /**
+     * 构建号
+     */
+    @Schema(description = "构建号")
+    @QueryIgnore
+    private Integer buildNumber;
+
+    /**
+     * 执行结果类型: report-计划执行, debug-调试
+     */
+    @Schema(description = "执行结果类型: report-计划执行, debug-调试")
+    @QueryIgnore
+    private String executeResultType;
 }

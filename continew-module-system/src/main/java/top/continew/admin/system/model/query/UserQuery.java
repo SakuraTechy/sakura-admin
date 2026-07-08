@@ -20,6 +20,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 import top.continew.admin.common.enums.DisEnableStatusEnum;
+import top.continew.admin.common.enums.GenderEnum;
 
 import java.io.Serial;
 import java.io.Serializable;
@@ -40,10 +41,28 @@ public class UserQuery implements Serializable {
     private static final long serialVersionUID = 1L;
 
     /**
-     * 关键词
+     * 关键词（用户名/昵称/描述）
      */
-    @Schema(description = "关键词", example = "zhangsan")
+    @Schema(description = "关键词（用户名/昵称/描述）", example = "zhangsan")
     private String description;
+
+    /**
+     * 手机号
+     */
+    @Schema(description = "手机号", example = "13811111111")
+    private String phone;
+
+    /**
+     * 邮箱
+     */
+    @Schema(description = "邮箱", example = "123456789@qq.com")
+    private String email;
+
+    /**
+     * 性别
+     */
+    @Schema(description = "性别", example = "1")
+    private GenderEnum gender;
 
     /**
      * 状态

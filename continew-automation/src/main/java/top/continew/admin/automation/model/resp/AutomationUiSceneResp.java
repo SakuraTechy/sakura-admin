@@ -21,6 +21,8 @@ import lombok.Data;
 import java.io.Serial;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import top.continew.admin.common.enums.StatusTypeEnum;
@@ -135,7 +137,15 @@ public class AutomationUiSceneResp extends BaseDetailResp {
      * 调试记录
      */
     @Schema(description = "调试记录")
+    @JsonPropertyOrder(alphabetic = false)
     private List<Object> debugRecord;
+
+    /**
+     * 测试记录
+     */
+    @Schema(description = "测试记录")
+    @JsonPropertyOrder(alphabetic = false)
+    private List<Object> testRecord;
 
     /**
      * 执行状态
@@ -148,12 +158,6 @@ public class AutomationUiSceneResp extends BaseDetailResp {
      */
     @Schema(description = "执行结果")
     private String executeResult;
-
-    /**
-     * 测试记录
-     */
-    @Schema(description = "测试记录")
-    private List<Object> testRecord;
 
     /**
      * Jenkins构建编号

@@ -62,7 +62,6 @@ import top.continew.admin.common.context.UserContextHolder;
 import top.continew.admin.common.enums.DisEnableStatusEnum;
 import top.continew.admin.common.enums.GenderEnum;
 import top.continew.admin.common.service.CommonUserService;
-import top.continew.admin.common.util.SecureUtils;
 import top.continew.admin.system.enums.OptionCategoryEnum;
 import top.continew.admin.system.mapper.user.UserMapper;
 import top.continew.admin.system.model.entity.DeptDO;
@@ -289,13 +288,13 @@ public class UserServiceImpl extends BaseServiceImpl<UserMapper, UserDO, UserRes
 
         // 查询重复用户
         userImportResp
-            .setDuplicateUserRows(countExistByField(validRowList, UserImportRowReq::getUsername, UserDO::getUsername, false));
+            .setDuplicateUserRows(countExistByField(validRowList, UserImportRowReq::getUsername, UserDO::getUsername));
         // 查询重复邮箱
         userImportResp
-            .setDuplicateEmailRows(countExistByField(validRowList, UserImportRowReq::getEmail, UserDO::getEmail, true));
+            .setDuplicateEmailRows(countExistByField(validRowList, UserImportRowReq::getEmail, UserDO::getEmail));
         // 查询重复手机
         userImportResp
-            .setDuplicatePhoneRows(countExistByField(validRowList, UserImportRowReq::getPhone, UserDO::getPhone, true));
+            .setDuplicatePhoneRows(countExistByField(validRowList, UserImportRowReq::getPhone, UserDO::getPhone));
 
         // 设置导入会话并缓存数据，有效期10分钟
         String importKey = UUID.fastUUID().toString(true);
@@ -510,6 +509,9 @@ public class UserServiceImpl extends BaseServiceImpl<UserMapper, UserDO, UserRes
     @Override
     protected QueryWrapper<UserDO> buildQueryWrapper(UserQuery query) {
         String description = query.getDescription();
+        String phone = query.getPhone();
+        String email = query.getEmail();
+        GenderEnum gender = query.getGender();
         DisEnableStatusEnum status = query.getStatus();
         List<LocalDateTime> createTimeList = query.getCreateTime();
         Long deptId = query.getDeptId();
@@ -519,11 +521,15 @@ public class UserServiceImpl extends BaseServiceImpl<UserMapper, UserDO, UserRes
         if (null != query.getRoleId()) {
             excludeUserIdList = userRoleService.listUserIdByRoleId(query.getRoleId());
         }
-        return new QueryWrapper<UserDO>().and(StrUtil.isNotBlank(description), q -> q.like("t1.username", description)
+        QueryWrapper<UserDO> queryWrapper = new QueryWrapper<UserDO>().and(StrUtil.isNotBlank(description), q -> q
+            .like("t1.username", description)
             .or()
             .like("t1.nickname", description)
             .or()
             .like("t1.description", description))
+            .like(StrUtil.isNotBlank(phone), "t1.phone", phone)
+            .like(StrUtil.isNotBlank(email), "t1.email", email)
+            .eq(null != gender, "t1.gender", gender)
             .eq(null != status, "t1.status", status)
             .between(CollUtil.isNotEmpty(createTimeList), "t1.create_time", CollUtil.getFirst(createTimeList), CollUtil
                 .getLast(createTimeList))
@@ -537,6 +543,7 @@ public class UserServiceImpl extends BaseServiceImpl<UserMapper, UserDO, UserRes
             })
             .in(CollUtil.isNotEmpty(userIdList), "t1.id", userIdList)
             .notIn(CollUtil.isNotEmpty(excludeUserIdList), "t1.id", excludeUserIdList);
+        return queryWrapper;
     }
 
     /**
@@ -610,14 +617,12 @@ public class UserServiceImpl extends BaseServiceImpl<UserMapper, UserDO, UserRes
      */
     private int countExistByField(List<UserImportRowReq> userRowList,
                                   Function<UserImportRowReq, String> rowField,
-                                  SFunction<UserDO, ?> dbField,
-                                  boolean fieldEncrypt) {
+                                  SFunction<UserDO, ?> dbField) {
         List<String> fieldValues = userRowList.stream().map(rowField).filter(Objects::nonNull).toList();
         if (fieldValues.isEmpty()) {
             return 0;
         }
-        return (int)this.count(Wrappers.<UserDO>lambdaQuery()
-            .in(dbField, fieldEncrypt ? SecureUtils.encryptFieldByAes(fieldValues) : fieldValues));
+        return (int)this.count(Wrappers.<UserDO>lambdaQuery().in(dbField, fieldValues));
     }
 
     /**
@@ -636,7 +641,7 @@ public class UserServiceImpl extends BaseServiceImpl<UserMapper, UserDO, UserRes
             return Collections.emptyList();
         }
         List<UserDO> userDOList = baseMapper.selectList(Wrappers.<UserDO>lambdaQuery()
-            .in(dbField, SecureUtils.encryptFieldByAes(fieldValues))
+            .in(dbField, fieldValues)
             .select(dbField));
         return userDOList.stream().map(dbField).filter(Objects::nonNull).toList();
     }

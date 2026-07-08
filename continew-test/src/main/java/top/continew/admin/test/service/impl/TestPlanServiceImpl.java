@@ -1,3 +1,19 @@
+/*
+ * Copyright (c) 2022-present Charles7c Authors. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package top.continew.admin.test.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
@@ -27,6 +43,7 @@ import top.continew.starter.extension.crud.service.BaseServiceImpl;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -50,10 +67,18 @@ public class TestPlanServiceImpl extends BaseServiceImpl<TestPlanMapper, TestPla
     @Override
     public void deleteByIds(List<Long> ids) {
         ids.forEach(id -> {
-            baseMapper.lambdaUpdate().eq(TestPlanDO::getId, id).set(TestPlanDO::getDelFlag, StatusTypeEnum.ABNORMAL).update();
-            testReportMapper.lambdaUpdate().eq(TestReportDO::getTestPlanId, id).set(TestReportDO::getDelFlag, StatusTypeEnum.ABNORMAL).update();
-            testTimedTaskMapper.lambdaUpdate().eq(top.continew.admin.test.model.entity.TestTimedTaskDO::getTestPlanId, id)
-                .set(top.continew.admin.test.model.entity.TestTimedTaskDO::getDelFlag, StatusTypeEnum.ABNORMAL).update();
+            baseMapper.lambdaUpdate()
+                .eq(TestPlanDO::getId, id)
+                .set(TestPlanDO::getDelFlag, StatusTypeEnum.ABNORMAL)
+                .update();
+            testReportMapper.lambdaUpdate()
+                .eq(TestReportDO::getTestPlanId, id)
+                .set(TestReportDO::getDelFlag, StatusTypeEnum.ABNORMAL)
+                .update();
+            testTimedTaskMapper.lambdaUpdate()
+                .eq(top.continew.admin.test.model.entity.TestTimedTaskDO::getTestPlanId, id)
+                .set(top.continew.admin.test.model.entity.TestTimedTaskDO::getDelFlag, StatusTypeEnum.ABNORMAL)
+                .update();
         });
     }
 
@@ -71,7 +96,9 @@ public class TestPlanServiceImpl extends BaseServiceImpl<TestPlanMapper, TestPla
     public void relateScenes(Long id, TestPlanSceneRelationReq req) {
         TestPlanDO plan = baseMapper.selectById(id);
         CheckUtils.throwIfNull(plan, "测试计划不存在");
-        LinkedHashSet<Long> merged = new LinkedHashSet<>(plan.getUiTestScene() == null ? List.of() : plan.getUiTestScene());
+        LinkedHashSet<Long> merged = new LinkedHashSet<>(plan.getUiTestScene() == null
+            ? List.of()
+            : plan.getUiTestScene());
         merged.addAll(req.getSceneIds());
         List<Long> sceneIds = new ArrayList<>(merged);
         automationUiSceneMapper.lambdaUpdate()
@@ -80,11 +107,39 @@ public class TestPlanServiceImpl extends BaseServiceImpl<TestPlanMapper, TestPla
             .update();
         List<AutomationUiSceneDO> sceneList = automationUiSceneMapper.selectBatchIds(req.getSceneIds());
         for (AutomationUiSceneDO scene : sceneList) {
-            List<Object> planIds = scene.getTestPlanId() == null ? new ArrayList<>() : new ArrayList<>(scene.getTestPlanId());
-            if (!planIds.contains(id)) {
-                planIds.add(id);
-            }
+            List<Object> planIds = scene.getTestPlanId() == null
+                ? new ArrayList<>()
+                : new ArrayList<>(scene.getTestPlanId());
+            planIds.removeIf(item -> Objects.equals(String.valueOf(item), String.valueOf(id)));
+            planIds.add(id);
             scene.setTestPlanId(planIds);
+            List<Object> testRecordList = scene.getTestRecord();
+            if (testRecordList == null) {
+                testRecordList = new ArrayList<>();
+            }
+            Map<String, Object> defaultTestRecord = new HashMap<>(16);
+            defaultTestRecord.put("testPlanId", String.valueOf(id));
+            defaultTestRecord.put("sceneTotal", 0);
+            defaultTestRecord.put("scenePass", 0);
+            defaultTestRecord.put("sceneFail", 0);
+            defaultTestRecord.put("sceneSkip", 0);
+            defaultTestRecord.put("scenePassRate", "-");
+            defaultTestRecord.put("caseTotal", 0);
+            defaultTestRecord.put("casePass", 0);
+            defaultTestRecord.put("caseFail", 0);
+            defaultTestRecord.put("caseSkip", 0);
+            defaultTestRecord.put("casePassRate", "0%");
+            defaultTestRecord.put("stepTotal", 0);
+            defaultTestRecord.put("stepPass", 0);
+            defaultTestRecord.put("stepFail", 0);
+            defaultTestRecord.put("stepSkip", 0);
+            defaultTestRecord.put("stepPassRate", "0%");
+            defaultTestRecord.put("executeName", "-");
+            defaultTestRecord.put("executeStatus", "10");
+            defaultTestRecord.put("executeResult", "13");
+            defaultTestRecord.put("duration", "-");
+            testRecordList.add(defaultTestRecord);
+            scene.setTestRecord(testRecordList);
             automationUiSceneMapper.updateById(scene);
         }
         updatePlanSceneStats(plan, sceneIds);
@@ -98,9 +153,23 @@ public class TestPlanServiceImpl extends BaseServiceImpl<TestPlanMapper, TestPla
         sceneIds.removeIf(req.getSceneIds()::contains);
         List<AutomationUiSceneDO> sceneList = automationUiSceneMapper.selectBatchIds(req.getSceneIds());
         for (AutomationUiSceneDO scene : sceneList) {
-            List<Object> planIds = scene.getTestPlanId() == null ? new ArrayList<>() : new ArrayList<>(scene.getTestPlanId());
+            List<Object> planIds = scene.getTestPlanId() == null
+                ? new ArrayList<>()
+                : new ArrayList<>(scene.getTestPlanId());
             planIds.removeIf(item -> Objects.equals(String.valueOf(item), String.valueOf(id)));
             scene.setTestPlanId(planIds);
+            List<Object> existingRecords = scene.getTestRecord();
+            if (existingRecords != null && !existingRecords.isEmpty()) {
+                existingRecords.removeIf(record -> {
+                    if (record instanceof Map) {
+                        Map<?, ?> recordMap = (Map<?, ?>) record;
+                        Object recordPlanId = recordMap.get("testPlanId");
+                        return recordPlanId != null && Objects.equals(String.valueOf(recordPlanId), String.valueOf(id));
+                    }
+                    return false;
+                });
+                scene.setTestRecord(existingRecords);
+            }
             automationUiSceneMapper.updateById(scene);
         }
         updatePlanSceneStats(plan, sceneIds);
@@ -119,7 +188,6 @@ public class TestPlanServiceImpl extends BaseServiceImpl<TestPlanMapper, TestPla
         report.setVersionName(firstScene == null ? null : firstScene.getVersionName());
         report.setTestPlanId(plan.getId());
         report.setTestPlanName(plan.getName());
-        report.setName(plan.getName() + "-执行报告");
         report.setTriggerMode("MANUAL");
         report.setExecuteMode("PLAN");
         report.setStatus("RUNNING");
@@ -144,9 +212,13 @@ public class TestPlanServiceImpl extends BaseServiceImpl<TestPlanMapper, TestPla
         AutomationUiSceneExecResp resp = automationUiSceneService.exec(execReq);
 
         if (resp != null) {
-            report.setBuildNumber(resp.getBuildNumber() == null ? null : String.valueOf(resp.getBuildNumber()));
+            String buildNumber = resp.getBuildNumber() == null ? null : String.valueOf(resp.getBuildNumber());
+            report.setBuildNumber(buildNumber);
             report.setConsoleUrl(resp.getConsoleUrl());
             report.setReportUrl(resp.getTestReportUrl());
+            report.setName(buildNumber != null
+                    ? plan.getName() + "_测试报告_" + buildNumber
+                    : plan.getName() + "_测试报告");
             testReportMapper.updateById(report);
         }
         plan.setStatus("RUNNING");
@@ -164,7 +236,9 @@ public class TestPlanServiceImpl extends BaseServiceImpl<TestPlanMapper, TestPla
     }
 
     private void updatePlanSceneStats(TestPlanDO plan, List<Long> sceneIds) {
-        List<AutomationUiSceneDO> scenes = sceneIds.isEmpty() ? List.of() : automationUiSceneMapper.selectBatchIds(sceneIds);
+        List<AutomationUiSceneDO> scenes = sceneIds.isEmpty()
+            ? List.of()
+            : automationUiSceneMapper.selectBatchIds(sceneIds);
         int sceneCount = scenes.size();
         int executedCount = 0;
         int passedCount = 0;
@@ -178,7 +252,7 @@ public class TestPlanServiceImpl extends BaseServiceImpl<TestPlanMapper, TestPla
             if (executeStatus != null && !executeStatus.isBlank()) {
                 executedCount++;
             }
-            if ("PASSED".equalsIgnoreCase(executeResult) || "全部通过".equals(executeResult)) {
+            if (top.continew.admin.automation.util.AutomationUiSceneStatusCodes.isPassedResult(executeResult)) {
                 passedCount++;
             }
         }
@@ -186,7 +260,9 @@ public class TestPlanServiceImpl extends BaseServiceImpl<TestPlanMapper, TestPla
         plan.setSceneCount(sceneCount);
         plan.setExecutedCount(executedCount);
         plan.setPassedCount(passedCount);
-        plan.setTestProgress(sceneCount == 0 ? BigDecimal.ZERO : BigDecimal.valueOf(executedCount * 100.0 / sceneCount).setScale(2, RoundingMode.HALF_UP));
+        plan.setTestProgress(sceneCount == 0
+            ? BigDecimal.ZERO
+            : BigDecimal.valueOf(executedCount * 100.0 / sceneCount).setScale(2, RoundingMode.HALF_UP));
         baseMapper.updateById(plan);
     }
 
@@ -195,9 +271,9 @@ public class TestPlanServiceImpl extends BaseServiceImpl<TestPlanMapper, TestPla
             return null;
         }
         for (Object item : scene.getTestRecord()) {
-            if (item instanceof Map<?, ?> map && Objects.equals(String.valueOf(map.get("testPlanId")), String.valueOf(planId))) {
-                @SuppressWarnings("unchecked")
-                Map<String, Object> target = (Map<String, Object>) map;
+            if (item instanceof Map<?, ?> map && Objects.equals(String.valueOf(map.get("testPlanId")), String
+                .valueOf(planId))) {
+                @SuppressWarnings("unchecked") Map<String, Object> target = (Map<String, Object>)map;
                 return target;
             }
         }

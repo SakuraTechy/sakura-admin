@@ -35,8 +35,6 @@ import top.continew.admin.system.model.resp.DeptResp;
 import top.continew.admin.system.service.DeptService;
 import top.continew.starter.file.excel.converter.ExcelBaseEnumConverter;
 import top.continew.starter.file.excel.converter.ExcelListConverter;
-import top.continew.starter.security.crypto.annotation.FieldEncrypt;
-
 import java.io.Serial;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -121,7 +119,6 @@ public class UserDetailResp extends BaseDetailResp {
      */
     @Schema(description = "手机号码", example = "13811111111")
     @ExcelProperty(value = "手机号码", order = 10)
-    @FieldEncrypt
     private String phone;
 
     /**
@@ -129,7 +126,6 @@ public class UserDetailResp extends BaseDetailResp {
      */
     @Schema(description = "邮箱", example = "123456789@qq.com")
     @ExcelProperty(value = "邮箱", order = 11)
-    @FieldEncrypt
     private String email;
 
     /**

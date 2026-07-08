@@ -1,3 +1,19 @@
+/*
+ * Copyright (c) 2022-present Charles7c Authors. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package top.continew.admin.test.service.impl;
 
 import lombok.RequiredArgsConstructor;
@@ -70,8 +86,8 @@ public class TestMetricServiceImpl implements TestMetricService {
         TestMetricResp resp = new TestMetricResp();
         resp.setProjectId(projectId);
         resp.setVersionId(versionId);
-        resp.setTestPlanCount((long) plans.size());
-        resp.setTestReportCount((long) reports.size());
+        resp.setTestPlanCount((long)plans.size());
+        resp.setTestReportCount((long)reports.size());
         resp.setTimedTaskCount(timedTaskCount);
         resp.setSceneCount(sceneCount);
         resp.setPassedSceneCount(passedSceneCount);
@@ -98,36 +114,57 @@ public class TestMetricServiceImpl implements TestMetricService {
 
     private TestMetricResp.ModuleMetric buildModuleMetric(List<ProjectModuleConfigDO> modules) {
         TestMetricResp.ModuleMetric metric = new TestMetricResp.ModuleMetric();
-        metric.setTotalCount((long) modules.size());
-        metric.setWeekAddedCount(countBetween(modules.stream().map(ProjectModuleConfigDO::getCreateTime).toList(), startOfWeek(), now()));
-        metric.setMonthAddedCount(countBetween(modules.stream().map(ProjectModuleConfigDO::getCreateTime).toList(), startOfMonth(), now()));
-        metric.setYearAddedCount(countBetween(modules.stream().map(ProjectModuleConfigDO::getCreateTime).toList(), startOfYear(), now()));
+        metric.setTotalCount((long)modules.size());
+        metric.setWeekAddedCount(countBetween(modules.stream()
+            .map(ProjectModuleConfigDO::getCreateTime)
+            .toList(), startOfWeek(), now()));
+        metric.setMonthAddedCount(countBetween(modules.stream()
+            .map(ProjectModuleConfigDO::getCreateTime)
+            .toList(), startOfMonth(), now()));
+        metric.setYearAddedCount(countBetween(modules.stream()
+            .map(ProjectModuleConfigDO::getCreateTime)
+            .toList(), startOfYear(), now()));
         return metric;
     }
 
     private TestMetricResp.SceneMetric buildSceneMetric(List<AutomationUiSceneDO> scenes) {
         TestMetricResp.SceneMetric metric = new TestMetricResp.SceneMetric();
-        metric.setTotalCount((long) scenes.size());
+        metric.setTotalCount((long)scenes.size());
         metric.setP0Count(countScenesByLevel(scenes, "P0"));
         metric.setP1Count(countScenesByLevel(scenes, "P1"));
         metric.setP2Count(countScenesByLevel(scenes, "P2"));
         metric.setP3Count(countScenesByLevel(scenes, "P3"));
-        metric.setWeekAddedCount(countBetween(scenes.stream().map(AutomationUiSceneDO::getCreateTime).toList(), startOfWeek(), now()));
-        metric.setMonthAddedCount(countBetween(scenes.stream().map(AutomationUiSceneDO::getCreateTime).toList(), startOfMonth(), now()));
-        metric.setYearAddedCount(countBetween(scenes.stream().map(AutomationUiSceneDO::getCreateTime).toList(), startOfYear(), now()));
-        metric.setExecutedCount((long) scenes.stream().filter(item -> item.getExecuteStatus() != null && !item.getExecuteStatus().isBlank()).count());
-        metric.setPassedCount((long) scenes.stream().filter(item -> isPassed(item.getExecuteResult())).count());
-        metric.setFailedCount((long) scenes.stream().filter(item -> isFailed(item.getExecuteResult())).count());
-        metric.setSkippedCount((long) scenes.stream().filter(item -> isSkipped(item.getExecuteResult())).count());
+        metric.setWeekAddedCount(countBetween(scenes.stream()
+            .map(AutomationUiSceneDO::getCreateTime)
+            .toList(), startOfWeek(), now()));
+        metric.setMonthAddedCount(countBetween(scenes.stream()
+            .map(AutomationUiSceneDO::getCreateTime)
+            .toList(), startOfMonth(), now()));
+        metric.setYearAddedCount(countBetween(scenes.stream()
+            .map(AutomationUiSceneDO::getCreateTime)
+            .toList(), startOfYear(), now()));
+        metric.setExecutedCount((long)scenes.stream()
+            .filter(item -> item.getExecuteStatus() != null && !item.getExecuteStatus().isBlank())
+            .count());
+        metric.setPassedCount((long)scenes.stream().filter(item -> isPassed(item.getExecuteResult())).count());
+        metric.setFailedCount((long)scenes.stream().filter(item -> isFailed(item.getExecuteResult())).count());
+        metric.setSkippedCount((long)scenes.stream().filter(item -> isSkipped(item.getExecuteResult())).count());
         return metric;
     }
 
-    private TestMetricResp.ExecutionMetric buildExecutionMetric(List<AutomationUiSceneDO> scenes, List<TestReportDO> reports) {
+    private TestMetricResp.ExecutionMetric buildExecutionMetric(List<AutomationUiSceneDO> scenes,
+                                                                List<TestReportDO> reports) {
         TestMetricResp.ExecutionMetric metric = new TestMetricResp.ExecutionMetric();
-        metric.setTotalReportCount((long) reports.size());
-        metric.setWeekRunCount(countBetween(reports.stream().map(TestReportDO::getCreateTime).toList(), startOfWeek(), now()));
-        metric.setMonthRunCount(countBetween(reports.stream().map(TestReportDO::getCreateTime).toList(), startOfMonth(), now()));
-        metric.setYearRunCount(countBetween(reports.stream().map(TestReportDO::getCreateTime).toList(), startOfYear(), now()));
+        metric.setTotalReportCount((long)reports.size());
+        metric.setWeekRunCount(countBetween(reports.stream()
+            .map(TestReportDO::getCreateTime)
+            .toList(), startOfWeek(), now()));
+        metric.setMonthRunCount(countBetween(reports.stream()
+            .map(TestReportDO::getCreateTime)
+            .toList(), startOfMonth(), now()));
+        metric.setYearRunCount(countBetween(reports.stream()
+            .map(TestReportDO::getCreateTime)
+            .toList(), startOfYear(), now()));
 
         long totalRunScenes = 0L;
         long defectCount = 0L;
@@ -146,12 +183,15 @@ public class TestMetricServiceImpl implements TestMetricService {
         }
 
         long sceneCount = scenes.size();
-        long executedScenes = scenes.stream().filter(item -> item.getExecuteStatus() != null && !item.getExecuteStatus().isBlank()).count();
+        long executedScenes = scenes.stream()
+            .filter(item -> item.getExecuteStatus() != null && !item.getExecuteStatus().isBlank())
+            .count();
         long passedScenes = scenes.stream().filter(item -> isPassed(item.getExecuteResult())).count();
 
         metric.setTotalRunSceneCount(totalRunScenes);
         metric.setDiscoveredDefectCount(defectCount);
-        metric.setSavedManHours(BigDecimal.valueOf(totalRunTime).divide(BigDecimal.valueOf(3_600_000L), 2, RoundingMode.HALF_UP));
+        metric.setSavedManHours(BigDecimal.valueOf(totalRunTime)
+            .divide(BigDecimal.valueOf(3_600_000L), 2, RoundingMode.HALF_UP));
         metric.setAutomationCoverageRate(percent(executedScenes, sceneCount));
         metric.setAutomationExecuteRate(percent(totalExecutedScenes, sceneCount));
         metric.setAutomationPassRate(percent(passedScenes, sceneCount));

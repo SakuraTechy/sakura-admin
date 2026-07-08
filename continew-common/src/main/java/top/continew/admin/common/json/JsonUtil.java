@@ -21,6 +21,7 @@ import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
+import com.fasterxml.jackson.databind.SerializationFeature;
 
 import java.io.File;
 import java.io.IOException;
@@ -34,7 +35,8 @@ import java.io.OutputStream;
  */
 public class JsonUtil {
     public static final String DEFAULT_FAIL = "\"Parse failed\"";
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
+            .disable(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS);
     private static final ObjectWriter OBJECT_WRITER = OBJECT_MAPPER.writerWithDefaultPrettyPrinter();
 
     public static void marshal(File file, Object value) throws Exception {

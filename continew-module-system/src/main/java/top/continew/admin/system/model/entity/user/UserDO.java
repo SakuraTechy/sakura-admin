@@ -68,14 +68,12 @@ public class UserDO extends BaseDO {
     /**
      * 邮箱
      */
-    @FieldEncrypt
     @TableField(insertStrategy = FieldStrategy.NOT_EMPTY)
     private String email;
 
     /**
      * 手机号码
      */
-    @FieldEncrypt
     @TableField(insertStrategy = FieldStrategy.NOT_EMPTY)
     private String phone;
 

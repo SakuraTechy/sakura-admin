@@ -1,5 +1,234 @@
 # Git Commit Log
 
+## 2026-05-22
+
+- `GiCellTags.vue`：仅 1 个标签时展示完整文案，多个时展示数量（Popover 悬停查看全部）；表格内居中显示。
+
+- `TestPlanSceneWorkspace.vue`：`planSceneIds` 缓存，查询/重置不再每次 `getTestPlan`；重置 `await nextTick` 后再查询，避免 GiForm 延迟 flush 导致双请求。
+- `TestPlanRelateSceneModal.vue`：重置同样 `await nextTick` 后再 `search()`，修复双请求。
+
+### fix(sakura-admin-ui): 测试计划场景页切换版本触发 listAutomationUiScene
+
+- `TestPlanSceneWorkspace.vue`：切换版本时 watch 仅刷新模块树，列表查询交给 GiForm `search-on-change`；初始化/重置期间关闭自动 search，避免 `listAutomationUiScene` 重复请求。
+
+- `TestPlanRelateSceneModal.vue`：监听 `queryForm.versionId` 切换时 `force` 刷新左侧模块树，并清空模块选中；`refreshModuleTreeLocal` 优先使用表单中的版本 ID。
+
+### fix(sakura-admin-ui): 关联场景弹窗列表接口重复请求
+
+- `TestPlanRelateSceneModal.vue`：保留 `search-on-change`（初始化期间由 `modalInitializing` 关闭）；`sceneListEnabled` + 延迟挂载表格避免 init 双请求；树节点/筛选项变更走 GiForm 自动 search。
+
+### fix(sakura-admin-ui): 测试计划场景页树重复加载与模块筛选不请求
+
+- `TestPlanSceneWorkspace.vue`：初始化期间跳过 `queryForm.versionId` watch，避免 `tree` 接口重复请求；移除 `loadModuleTree` 后多余的 `fetchTrees` 回退。
+- 点击左侧模块树时调用 `listAutomationUiScene?moduleId=...` 并按计划已关联场景 ID 交集展示，行为对齐 UI 自动化场景页。
+
+### perf(sakura-admin-ui): 关联场景弹窗复用外层已加载的模块树与 uiStore 数据
+
+- `projectContext.ts`：`loadModuleTree` 按 `projectId|versionId` 内存缓存，同上下文二次打开不再请求接口；`initUiStoreForPlan` 在项目/用户列表已存在时跳过重复 fetch。
+- `TestPlanRelateSceneModal.vue`：打开弹窗走缓存；切换项目或版本时 `force` 刷新模块树。
+
+## 2026-05-21
+
+### fix(sakura-admin-ui): 测试计划关联/取消关联后场景列表不刷新
+
+- `TestPlanSceneWorkspace.vue`：`loadScenes` 通过 `getTestPlan` 拉取最新 `uiTestScene`；`reload` 仅刷新场景表格；计划 watch 归一化 ID 比较避免误触发 `initWorkspace`；移除对全局 `uiStore.versionId` 的监听，避免关联弹窗改动 uiStore 时连带刷新左侧树。
+- `index.vue`：关联/取消关联后仅 `reload` 场景表或 `search` 列表，不再 `getTestPlan` 整对象替换 `tab.record`。
+
+### fix: 关联场景弹窗排除已关联场景
+
+- `AutomationUiSceneQuery` 新增 `excludeIds` 查询参数，标注 `@QueryIgnore` 避免框架默认映射为 `exclude_ids` 列；由 Service 转为 `id NOT IN (...)`。
+- `TestPlanRelateSceneModal.vue`：打开弹窗时 `getTestPlan` 拉取已关联 ID，列表与「关联所有」请求携带 `excludeIds` 过滤。
+
+## 2026-05-20
+
+### fix(sakura-admin-ui): 测试计划场景页显示 GiPageLayout 折叠按钮
+
+- 移除错误的 `v-model:default-collapsed=false`（该 prop 表示是否展示折叠按钮，非折叠状态），改为 `:default-collapsed="true"`。
+
+### fix(sakura-admin-ui): 测试计划场景页左侧可拖拽与底部搜索栏固定
+
+- `TestPlanSceneWorkspace.vue`：恢复 `GiPageLayout` 支持左侧宽度拖拽；树区域与底部搜索分层，搜索栏 `flex-shrink: 0` 避免被树列表遮挡。
+- `TestPlanRelateSceneModal.vue`：弹窗左侧同样固定底部搜索栏并补全高度链。
+
+### fix(sakura-admin-ui): 修复测试计划场景 Tab 内容区高度为 0 导致空白
+
+- `index.vue`：为场景 Tab 增加 `scene-tab-pane` 容器；`arco-tabs-content` 使用 `height: calc(100% - 42px)` 与 `min-height`；移除 `:has()` 与 `overflow: hidden` 导致的 0 高度。
+- `TestPlanSceneWorkspace.vue`：工作区增加 `min-height` 兜底，避免 flex 链塌陷。
+
+### fix(sakura-admin-ui): 测试计划场景执行区排版与模块树搜索
+
+- `TestPlanSceneWorkspace.vue`：改用 flex 双栏布局（`gap: 16px`）替代 `GiPageLayout`，消除左右贴边与底部大面积空白；模块树关键词搜索独立置于左侧底部。
+- `TestPlanRelateSceneModal.vue`：同步底部搜索与 `gutter` 间距；模块树加载增加 `uiStore.fetchTrees` 兜底。
+- `projectContext.ts`：版本 `type` 支持数字 `1` 与字符串 `'1'` 识别。
+
+### fix(sakura-admin-ui): 测试模块雪花 ID 精度丢失统一修复
+
+- 新增 `utils/id.ts`（`toIdString` / `toIdStringList`），`projectContext` 复用。
+- `testPlan`：执行环境 ID 改字符串提交；场景关联/移除 `sceneIds` 不再 `Number()`。
+- `testReport` / `timedTask` / `testMetric`：查询与表单 ID 改 `a-input` + 字符串提交/查询。
+- API 类型：`testPlan` sceneIds、`testReport`、`timedTask`、`testMetric` 相关 ID 字段改为 `string`。
+
+### fix(sakura-admin-ui): 测试计划场景页自动请求模块树接口与间距
+
+- 修复版本 `type` 与 `'1'` 严格比较导致 `versionId` 为空、未调用 `/project/projectModuleConfig/tree` 的问题。
+- 增加 `resolveVersionId` 兜底；打开场景 Tab 时拉取计划详情确保 `projectId` 有效。
+- 优化场景执行区上下间距与 flex 高度，减少空白。
+
+### fix(sakura-admin-ui): 测试计划场景页左侧计划切换与模块树布局
+
+- 左上角改为测试计划下拉切换；模块树本地加载并修复仅取 `data[0]` 导致树为空的问题。
+- 左侧与右侧增加 gutter 间距；关键词搜索移至模块树底部（与 UI 自动化一致）。
+- 压缩场景执行区高度，减少大面积空白。
+
+### fix(sakura-admin-ui): 测试计划场景页项目 ID 精度与模块树加载
+
+- 项目/版本 ID 统一字符串传递，修复雪花 ID `Number()` 精度丢失导致模块树与场景列表无法加载。
+- 项目下拉 `fallback-option=false` 并合并计划所属项目，消除下拉中重复的数字异常项。
+- 优化执行页/关联弹窗左侧树布局与顶部 Tab 间距（`size=medium`）。
+
+### feat(sakura-admin-ui): 测试计划 UI 自动化执行页对齐自动化模块布局
+
+- `test/testPlan/index.vue`：顶部计划 Tab 改为 `card-gutter` 间距样式；场景执行 Tab 接入 `TestPlanSceneWorkspace`；关联场景改为 `TestPlanRelateSceneModal` 大图选择弹窗。
+- `TestPlanSceneWorkspace.vue`：复刻 UI 自动化 `GiPageLayout` + 模块树 + `GiTable` 筛选与工具栏（关联测试场景、批量删除、批量执行、执行所有）。
+- `TestPlanRelateSceneModal.vue`：关联场景弹窗复刻自动化列表布局，支持模块树筛选、勾选与「关联所有」。
+
+### fix(sakura-admin-ui): 测试计划表单校验、成员昵称展示与编辑回填
+
+- `test/testPlan/index.vue`：弹窗改用 `@before-ok`，校验失败返回 `false` 阻止关闭；成员/负责人/计划时间增加自定义 validator 与提交前兜底校验。
+- 用户下拉 `value` 改为字符串 ID，避免 `Number(snowflakeId)` 精度丢失导致编辑时成员/负责人显示为空。
+- 编辑/复制时先请求 `getTestPlan` 详情再回填；列表「查看」与详情展示用户昵称（`userLabelMap`）而非纯 ID。
+
+### fix(sakura-admin-ui): 测试计划按用户 ID 补全昵称与下拉选项
+
+- `test/testPlan/index.vue`：提交仅保留 `validate()` 一处判断；`listAllUser({ userIds })` + `getUser` 兜底加载已选用户（含禁用）；列表/查看/编辑前预加载用户；下拉合并已选 ID 选项以显示昵称。
+
+### fix(sakura-admin-ui): 测试计划表单校验失败时提示必填项
+
+- `test/testPlan/index.vue`：Arco `validate()` 失败时返回 errors 对象而非 reject，改为 `if (await validate())` 判断；表单开启 `scroll-to-first-error`。
+
+## 2026-05-19
+
+### fix(sakura-admin-ui): 搜索控件宽度计算与 searchControlMinWidth 属性
+
+- 列 `min-width` 改为「标签 + 间距 + 控件」之和，避免 150px 含标签导致输入区过窄。
+- 新增 `searchControlMinWidth` / `searchLabelWidth`；默认控件 180px；用户管理、UI 场景页设为 200。
+
+### fix(sakura-admin-ui): 搜索控件 min-width 生效与收起按钮固定第 3 行
+
+- `--gi-form-search-control-min-width` 作用于 `.gi-form__search-field` 与 `.gi-form__search-cell-control`（不再设在 width:100% 的子控件上）。
+- 收起/展开放入右侧按钮栅格 `grid-row: 3`，位于重置按钮下方；`--search-rail-row-count` 与左侧行数对齐。
+
+### fix(sakura-admin-ui): 搜索区收起/展开与左侧筛选区垂直居中对齐
+
+- `GiForm`：双行搜索改为 CSS Grid；收起/展开置于字段与按钮列之间（`grid-row: 1 / -1` + `align-self: center`），查询/重置仍固定第 1、2 行。
+
+### fix(sakura-admin-ui): 搜索区创建时间范围选择器加宽
+
+- `GiForm`：`range-picker` 字段使用 `gi-form__search-field--range`，`min-width: 300px`、列 `flex-grow` 加大，避免日期时间被截断。
+- `AutomationUiScene` / `testPlan`：创建时间开启 `showTime` 与完整格式。
+
+### fix(sakura-admin-ui): 缩减搜索区左侧留白
+
+- `GiFormFieldItem`：标签列宽 80px、仅右侧 `padding-right: 4px`，标签与控件 `gap: 4px`。
+- `gi-form-search-card`：内边距 `20px` 改为 `16px`；清除表单项 content 多余 `margin-left`。
+
+### fix(sakura-admin-ui): 搜索区标签左右留白对称并右对齐贴近视图
+
+- `GiFormFieldItem`：标签列 `flex: 0 0 100px`、`padding: 0 8px`、`text-align: right`，与控件 `gap: 8px` 对齐原 plan-query-cell。
+- `testPlan/index.vue`：同步 `.plan-query-cell__label` 样式。
+
+### fix(sakura-admin-ui): 搜索区收起后恢复右侧纵向按钮栏布局
+
+- `GiForm`：双行搜索改为左侧字段区 + 右侧独立操作栏；查询/重置/收起纵向排列（与改前网格搜索一致），收起后不再把「展开」插在查询与重置之间。
+
+### fix(sakura-admin-ui): 恢复搜索区标签间距并固定查询/重置按钮行位
+
+- `GiFormFieldItem`：标签区恢复 `flex: 0 0 80px`、`padding-right: 4px`、左对齐。
+- `GiForm`：重置固定第二行；双行时收起置于首行查询下、三行及以上时收起在第三行，避免挤动重置按钮；字段与按钮列间距恢复 35px。
+
+### fix(sakura-admin-ui): 统一 GiTable 搜索区双行布局与按钮对齐
+
+- `GiForm.vue`：`search-rows` 末行支持收起/展开；行间距与按钮列对齐优化；双行模式表单项样式内聚到组件。
+- `GiFormFieldItem.vue`：搜索单元格标签右对齐。
+- `system/user/index.vue`：改用 `search-columns-per-row=3` 双行布局，移除破坏对齐的 scoped 表单样式。
+- `automationUiScene/AutomationUiScene.vue`：同步双行搜索布局，`foldable` 替代 `show(collapsed)`。
+
+### fix(sakura-admin-ui): GiForm 无收起字段或仅两行时不显示展开收起按钮
+
+- `GiForm.vue`：新增 `showFoldBtn`，仅当存在 `foldable: true` 字段且（双行布局时）超过 2 行时展示收起/展开。
+- `type.ts`：`ColumnItem` 补充 `foldable` 类型说明。
+
+### refactor(system): 用户手机号/邮箱改为明文存储
+
+- `UserDO`、`UserDetailResp`：移除 `phone`、`email` 的 `@FieldEncrypt`。
+- `UserMapper`：手机号/邮箱相关查询参数去掉 `@FieldEncrypt`。
+- `UserServiceImpl`：列表筛选改为 `t1.phone`/`t1.email` 模糊查询；导入重复校验不再 AES 加密比对。
+
+### feat(system): 用户列表支持手机号/邮箱/性别独立筛选
+
+- `UserQuery`：新增 `phone`、`email`、`gender` 查询字段。
+- `UserServiceImpl.buildQueryWrapper`：性别等值筛选；`description` 用于用户名/昵称/描述模糊 OR 查询。
+- `sakura-admin-ui`：`UserQuery` 类型补充字段；用户管理页性别下拉接入 `GenderList`。
+
+### refactor(sakura-admin-ui): 测试计划列表查询改用 GiForm
+
+- `test/testPlan/index.vue`：计划列表 `#top` 使用 `<GiForm v-model="queryForm" :columns="queryFormColumns" search />`，字段含所属项目、计划类型/名称、状态、创建人、创建时间；原 `a-card` + 自定义两行布局整段注释保留。
+
+### fix(sakura-admin-ui): 测试计划查询区恢复卡片边框与两行布局
+
+- `test/testPlan/index.vue`：`GiForm` 放入 `plan-query-card` 边框容器；拆为 `queryFormRow1Columns` / `queryFormRow2Columns` 两行，每行右侧保留「查询」「重置」按钮，样式对齐原 `plan-query-line` 布局。
+
+### feat(sakura-admin-ui): GiForm 支持双行搜索布局（searchColumnsPerRow）
+
+- `GiForm.vue`：新增 `searchColumnsPerRow`，首行「查询」、末行「重置」；`searchOnChange` 控制变更是否自动 search（默认 true）；抽取 `GiFormFieldItem`；优化默认搜索区 flex 布局。
+- `test/testPlan/index.vue`：单表单 `<GiForm search :search-columns-per-row="3" search-btn-text="查询" :search-on-change="false" />` + `queryFormColumns`，保留 `plan-query-card` 边框。
+
+### fix(sakura-admin-ui): 测试计划筛选区间距与标签对齐
+
+- `plan-query-form`：标签右对齐、列宽 100px、行间距 16px、列间距 16px、按钮列 100px，对齐原 `plan-query-line` 布局。
+- `GiForm`：`search-row` 网格使用 `gridProps.colGap`，按钮列宽度撑满。
+
+### fix(sakura-admin-ui): GiForm 双行搜索改用 flex 修复排版错位
+
+- `searchColumnsPerRow` 模式由 `a-grid` 改为 `flex` 三等分（`gi-form__search-row-fields`），避免输入框过窄、按钮与日期重叠；表单项级 `layout="horizontal"`。
+
+### fix(sakura-admin-ui): GiForm searchCell 修复双行搜索排版
+
+- 根因：外层 `layout="horizontal"` 使 form 变 flex，字段区被挤压、按钮占第三列。
+- `searchColumnsPerRow` 强制外层 `vertical`；字段用 `searchCell`（hide-label + 行内标签/控件，对齐原 `plan-query-cell`）。
+- `testPlan` 移除多余的 label-col / layout 配置。
+
+### fix(sakura-admin-ui): searchCell 标签换行修复
+
+- `GiFormFieldItem`：searchCell 样式移至子组件 scoped，标签与控件 `flex nowrap` 同行；`layout="horizontal"` + `hide-label`。
+
+### fix(sakura-admin-ui): 测试计划筛选标签去冒号、左右间距一致
+
+- `queryFormColumns` 标签去掉「：」。
+- `GiFormFieldItem` searchCell 标签 `padding: 0 8px`、`text-align: right`，与控件间距对称。
+
+### fix(sakura-admin-ui): searchCell 标签文字左右留白对称
+
+- 标签区 100px 内 `text-align: center`、`padding: 0 4px`；标签与控件 `gap: 8px`（对齐原 plan-query-cell）。
+
+### feat(sakura-admin-ui): GiForm search 模式内置边框卡片
+
+- `GiForm` 新增 `searchCard`（默认 `true`）：`search` 时自动包裹边框容器（`.gi-form-search-card`），GiTable `#top` 筛选区风格统一。
+- `testPlan` 移除外层 `plan-query-card`；`AutomationUiScene` 移除多余 divider。
+
+### fix(sakura-admin-ui): GiForm searchCard 边框不显示
+
+- 改用 `div.gi-form-search-card` 替代 `a-card bordered=false`（Arco 会清掉 border）；padding 直接写在容器上。
+
+### fix(sakura-admin-ui): GiForm searchCard 边框仍不显示
+
+- `defineOptions({ inheritAttrs: false })` + 根节点合并 `$attrs.class`；`searchCard` 默认 `true`。
+- `.gi-form-search-card` 改为非 scoped 全局样式，确保边框类命中。
+
+### fix(sakura-admin-ui): 统一 GiForm 搜索/重置按钮尺寸
+
+- 默认搜索布局 `.gi-form__search-actions` 与双行布局一致：`100px` 列宽、按钮 `width: 100%`、`size` 跟随表单；UI 自动化补充 `search-btn-text="查询"`。
+
 ## 2026-05-18
 
 ### refactor(automation): UI 场景执行状态/结果统一存字典 value

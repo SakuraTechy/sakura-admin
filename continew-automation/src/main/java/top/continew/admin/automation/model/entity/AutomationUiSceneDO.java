@@ -94,7 +94,7 @@ public class AutomationUiSceneDO extends BaseDO {
     /**
      * 场景状态
      */
-    private StatusTypeEnum status;
+    private StatusTypeEnum status = StatusTypeEnum.ENABLE;
 
     /**
      * 场景标签

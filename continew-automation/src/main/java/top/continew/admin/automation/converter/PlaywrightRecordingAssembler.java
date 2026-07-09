@@ -59,7 +59,7 @@ public class PlaywrightRecordingAssembler {
         caseDO.setRemark(recordedCase.getDescription());
         caseDO.setType(TYPE_CASE);
         caseDO.setOrder(1);
-        caseDO.setStatus(StatusTypeEnum.NORMAL);
+        caseDO.setStatus(StatusTypeEnum.ENABLE);
 
         List<StepDO> stepList = new ArrayList<>();
         List<PlaywrightRecordedStepReq> steps = recordedCase.getSteps();
@@ -88,7 +88,7 @@ public class PlaywrightRecordingAssembler {
         stepDO.setOperationName(display.operationName());
         stepDO.setOperationValue(display.operationValue());
         stepDO.setOrder(order);
-        stepDO.setStatus(StatusTypeEnum.NORMAL);
+        stepDO.setStatus(StatusTypeEnum.ENABLE);
         stepDO.setConfigList(buildConfigList(recordedCase, step, actionType, context));
         return stepDO;
     }

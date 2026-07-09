@@ -28,6 +28,7 @@ import top.continew.admin.automation.model.entity.ui.CaseDO;
 import top.continew.admin.automation.model.entity.ui.StepDO;
 import top.continew.admin.automation.model.req.recording.PlaywrightRecordedCaseReq;
 import top.continew.admin.automation.model.req.recording.PlaywrightRecordedStepReq;
+import top.continew.admin.common.enums.StatusTypeEnum;
 
 class PlaywrightRecordingAssemblerTest {
 
@@ -49,6 +50,8 @@ class PlaywrightRecordingAssemblerTest {
             .stream()
             .collect(Collectors.toMap(StepDO.Config::getParamsName, StepDO.Config::getParamsValue));
 
+        assertThat(caseDO.getStatus()).isEqualTo(StatusTypeEnum.ENABLE);
+        assertThat(stepDO.getStatus()).isEqualTo(StatusTypeEnum.ENABLE);
         assertThat(stepDO.getOperationValue()).isEqualTo("pw-click");
         assertThat(configs).containsEntry("action_type", "click")
             .containsEntry("source", "sakura-playwright")

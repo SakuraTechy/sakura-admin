@@ -48,5 +48,5 @@ public class CaseDO implements Serializable {
     private StepDO step;
     private List<StepDO> stepList;
 
-    private StatusTypeEnum status;
+    private StatusTypeEnum status = StatusTypeEnum.ENABLE;
 }

@@ -67,5 +67,5 @@ public class StepDO implements Serializable {
     private StepDO dropNode;     // 放置的目标节点
     private Integer dropPosition; // 放置位置(-1:上方, 0:内部, 1:下方)
 
-    private StatusTypeEnum status;
+    private StatusTypeEnum status = StatusTypeEnum.ENABLE;
 }

@@ -98,7 +98,7 @@ public class AutomationRecordingImportServiceImpl implements AutomationRecording
         scene.setModuleId(sceneReq.getModuleId());
         scene.setModulePath(sceneReq.getModulePath());
         scene.setLevel(sceneReq.getLevel());
-        scene.setStatus(StatusTypeEnum.NORMAL);
+        scene.setStatus(StatusTypeEnum.ENABLE);
         scene.setTags(sceneReq.getTags());
         scene.setCaseList(List.of(caseDO));
         scene.setDebugRecord(defaultDebugRecord());

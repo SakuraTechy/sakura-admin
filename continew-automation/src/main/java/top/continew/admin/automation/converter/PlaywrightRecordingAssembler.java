@@ -1,0 +1,248 @@
+/*
+ * Copyright (c) 2022-present Charles7c Authors. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package top.continew.admin.automation.converter;
+
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.RequiredArgsConstructor;
+import me.ahoo.cosid.IdGenerator;
+import me.ahoo.cosid.provider.DefaultIdGeneratorProvider;
+import org.springframework.stereotype.Component;
+import top.continew.admin.automation.model.entity.ui.CaseDO;
+import top.continew.admin.automation.model.entity.ui.StepDO;
+import top.continew.admin.automation.model.req.recording.PlaywrightRecordedCaseReq;
+import top.continew.admin.automation.model.req.recording.PlaywrightRecordedStepReq;
+import top.continew.admin.common.enums.StatusTypeEnum;
+import top.continew.starter.core.exception.BusinessException;
+
+/**
+ * Playwright 录制结构转换为 admin 场景用例结构。
+ *
+ * @author Codex
+ */
+@Component
+@RequiredArgsConstructor
+public class PlaywrightRecordingAssembler {
+
+    public static final String DEFAULT_CASE_ID = "SCENE_CASE_001";
+    public static final String SOURCE = "sakura-playwright";
+
+    private static final String TYPE_CASE = "case";
+    private static final String TYPE_STEP = "step";
+
+    private final ObjectMapper objectMapper;
+
+    public CaseDO toCase(PlaywrightRecordedCaseReq recordedCase, RecordingImportContext context) {
+        CaseDO caseDO = new CaseDO();
+        caseDO.setId(DEFAULT_CASE_ID);
+        caseDO.setName(defaultString(recordedCase.getName(), "Playwright 录制用例"));
+        caseDO.setRemark(recordedCase.getDescription());
+        caseDO.setType(TYPE_CASE);
+        caseDO.setOrder(1);
+        caseDO.setStatus(StatusTypeEnum.NORMAL);
+
+        List<StepDO> stepList = new ArrayList<>();
+        List<PlaywrightRecordedStepReq> steps = recordedCase.getSteps();
+        for (int i = 0; i < steps.size(); i++) {
+            stepList.add(toStep(recordedCase, steps.get(i), DEFAULT_CASE_ID, i + 1, context));
+        }
+        caseDO.setStepList(stepList);
+        return caseDO;
+    }
+
+    public StepDO toStep(PlaywrightRecordedCaseReq recordedCase,
+                         PlaywrightRecordedStepReq step,
+                         String caseId,
+                         int order,
+                         RecordingImportContext context) {
+        String actionType = normalizeActionType(step.getActionType());
+        PlaywrightActionMapping.ActionDisplay display = PlaywrightActionMapping.resolve(actionType);
+
+        StepDO stepDO = new StepDO();
+        stepDO.setPid(caseId);
+        stepDO.setId(nextId());
+        stepDO.setName(resolveStepName(step, display, order));
+        stepDO.setRemark(step.getDescription());
+        stepDO.setType(TYPE_STEP);
+        stepDO.setOperationType(display.operationType());
+        stepDO.setOperationName(display.operationName());
+        stepDO.setOperationValue(display.operationValue());
+        stepDO.setOrder(order);
+        stepDO.setStatus(StatusTypeEnum.NORMAL);
+        stepDO.setConfigList(buildConfigList(recordedCase, step, actionType, context));
+        return stepDO;
+    }
+
+    private List<StepDO.Config> buildConfigList(PlaywrightRecordedCaseReq recordedCase,
+                                                PlaywrightRecordedStepReq step,
+                                                String actionType,
+                                                RecordingImportContext context) {
+        List<StepDO.Config> configList = new ArrayList<>();
+        Map<String, Object> rawStep = toRawStepMap(step, context);
+
+        // 保留原始 Playwright step 作为后续执行、导出、调试回放的事实来源。
+        // admin 操作字段仅用于展示和兼容旧流程，不能替代 playwright_step。
+        addConfig(configList, "playwright_step", toJson(rawStep));
+        addConfig(configList, "action_type", actionType);
+        addConfig(configList, "source", SOURCE);
+        addConfig(configList, "recording_id", context.recordingId());
+        addConfig(configList, "original_case_id", valueToString(recordedCase.getId()));
+        addConfig(configList, "original_step_id", valueToString(step.getId()));
+        addConfig(configList, "target_selector", step.getTargetSelector());
+        addConfig(configList, "target_xpath", step.getTargetXpath());
+        if (step.getLocatorMeta() != null) {
+            // locator_meta 包含高级定位上下文，必须原样 JSON 化保存，不能只保留 CSS/XPath。
+            addConfig(configList, "locator_meta", toJson(step.getLocatorMeta()));
+        }
+        addConfig(configList, "value", valueToJsonOrString(step.getValue()));
+        addConfig(configList, "value_masked", valueToString(step.getValueMasked()));
+        addConfig(configList, "url", step.getUrl());
+        addConfig(configList, "wait_before", valueToString(step.getWaitBefore()));
+        addConfig(configList, "is_overlay", valueToString(step.getIsOverlay()));
+        addConfig(configList, "start_url", recordedCase.getStartUrl());
+        addConfig(configList, "window_size_mode", recordedCase.getWindowSizeMode());
+        addConfig(configList, "viewport_width", valueToString(recordedCase.getViewportWidth()));
+        addConfig(configList, "viewport_height", valueToString(recordedCase.getViewportHeight()));
+        if (hasText(step.getScreenshot())) {
+            addConfig(configList, "screenshot_present", "true");
+        }
+        if (step.getScreenshotFocus() != null) {
+            addConfig(configList, "screenshot_focus", toJson(step.getScreenshotFocus()));
+        }
+        if (step.getScreenshotFocusRect() != null) {
+            addConfig(configList, "screenshot_focus_rect", toJson(step.getScreenshotFocusRect()));
+        }
+        if (!PlaywrightActionMapping.isKnown(actionType)) {
+            // 未识别 action 降级为 pw-custom，但完整 step 仍保留，避免录制能力丢失。
+            addConfig(configList, "unknown_action_type", actionType);
+        }
+        return configList;
+    }
+
+    private Map<String, Object> toRawStepMap(PlaywrightRecordedStepReq step, RecordingImportContext context) {
+        Map<String, Object> raw = new LinkedHashMap<>();
+        putIfNotNull(raw, "id", step.getId());
+        putIfNotNull(raw, "step_index", step.getStepIndex());
+        putIfNotNull(raw, "action_type", step.getActionType());
+        putIfNotNull(raw, "target_selector", step.getTargetSelector());
+        putIfNotNull(raw, "target_xpath", step.getTargetXpath());
+        putIfNotNull(raw, "locator_meta", step.getLocatorMeta());
+        putIfNotNull(raw, "value", step.getValue());
+        putIfNotNull(raw, "value_masked", step.getValueMasked());
+        putIfNotNull(raw, "url", step.getUrl());
+        putIfNotNull(raw, "description", step.getDescription());
+        putIfNotNull(raw, "wait_before", step.getWaitBefore());
+        putIfNotNull(raw, "is_overlay", step.getIsOverlay());
+        if (hasText(step.getScreenshot())) {
+            if (context.keepRawScreenshotInStep()) {
+                raw.put("screenshot", step.getScreenshot());
+            } else {
+                // screenshot base64 可能非常大，MVP 只保留存在标记，避免 caseList JSON 无界增长。
+                raw.put("screenshot_present", true);
+            }
+        }
+        putIfNotNull(raw, "screenshot_focus", step.getScreenshotFocus());
+        putIfNotNull(raw, "screenshot_focus_rect", step.getScreenshotFocusRect());
+        raw.putAll(step.getExtra());
+        return raw;
+    }
+
+    private String resolveStepName(PlaywrightRecordedStepReq step,
+                                   PlaywrightActionMapping.ActionDisplay display,
+                                   int order) {
+        if (hasText(step.getDescription())) {
+            return step.getDescription().trim();
+        }
+        String actionName = display.operationName();
+        if (hasText(step.getTargetSelector())) {
+            return actionName + " " + step.getTargetSelector().trim();
+        }
+        if (hasText(step.getUrl())) {
+            return actionName + " " + step.getUrl().trim();
+        }
+        return actionName + " " + order;
+    }
+
+    private String normalizeActionType(String actionType) {
+        return hasText(actionType) ? actionType.trim() : "unknown";
+    }
+
+    private void addConfig(List<StepDO.Config> configList, String name, String value) {
+        if (!hasText(value)) {
+            return;
+        }
+        StepDO.Config config = new StepDO.Config();
+        config.setParamsName(name);
+        config.setParamsValue(value);
+        configList.add(config);
+    }
+
+    private void putIfNotNull(Map<String, Object> raw, String key, Object value) {
+        if (value != null) {
+            raw.put(key, value);
+        }
+    }
+
+    private String toJson(Object value) {
+        try {
+            return objectMapper.writeValueAsString(value);
+        } catch (JsonProcessingException e) {
+            throw new BusinessException("录制导入失败：序列化 Playwright step 失败：" + e.getMessage());
+        }
+    }
+
+    private String valueToJsonOrString(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof String text) {
+            return text;
+        }
+        return toJson(value);
+    }
+
+    private String valueToString(Object value) {
+        return value == null ? null : String.valueOf(value);
+    }
+
+    private String defaultString(String value, String defaultValue) {
+        return hasText(value) ? value.trim() : defaultValue;
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.isBlank();
+    }
+
+    private String nextId() {
+        IdGenerator idGenerator = DefaultIdGeneratorProvider.INSTANCE.getShare();
+        return String.valueOf(idGenerator.generate());
+    }
+
+    public record RecordingImportContext(String recordingId,
+                                         boolean persistScreenshots,
+                                         boolean keepRawScreenshotInStep) {
+        public RecordingImportContext {
+            Objects.requireNonNull(recordingId, "recordingId");
+        }
+    }
+}

@@ -1,0 +1,192 @@
+{
+  "code": "0",
+  "msg": "ok",
+  "success": true,
+  "timestamp": 1783578566593,
+  "data": {
+    "id": "747843461465542671",
+    "createUserString": "系统管理员",
+    "createTime": "2025-08-18 15:42:55",
+    "updateUserString": "系统管理员",
+    "updateTime": "2026-06-01 17:49:13",
+    "sceneId": "AAS_P_SMOKE_001",
+    "name": "机器码下载&证书导入场景测试",
+    "description": null,
+    "projectId": "722845236040040467",
+    "projectName": "防统方系统",
+    "versionId": "722845686030139416",
+    "versionName": "V6.5B06D011",
+    "moduleId": "722845686097248281",
+    "modulePath": "/防统方系统",
+    "level": "P0",
+    "status": 1,
+    "tags": [
+      "冒烟测试"
+    ],
+    "caseList": [
+      {
+        "id": "SCENE_CASE_001",
+        "copyId": null,
+        "name": "前置条件",
+        "remark": "<h2 id=\"aie-heading-1\">开启MySQL数据库远程连接</h2><h3 id=\"aie-heading-2\">1. 进入数据库</h3><div class=\"container-wrapper info\"><p>mysql -usroot -pAnkki_mySQL123 mysql</p></div><pre><code class=\"language-sql\">UPDATE `mysql`.`user` SET `Host` = '%' WHERE `Host` = '127.0.0.1'; \nquit;</code></pre><h3 id=\"aie-heading-3\">2. 重启mysqld</h3><pre><code class=\"language-auto\">systemctl restart mysqld</code></pre><h3 id=\"aie-heading-4\">3. 开放端口</h3><pre><code class=\"language-auto\">firewall-cmd --zone=public --add-port=23306/tcp --permanent&amp;&amp;firewall-cmd --reload\nufw allow 23306/tcp</code></pre>",
+        "cancel": null,
+        "type": "case",
+        "order": 1,
+        "sortType": null,
+        "itemOrder": null,
+        "dragNode": null,
+        "dropNode": null,
+        "dropPosition": null,
+        "stepMsg": null,
+        "step": null,
+        "stepList": [
+          {
+            "pid": "SCENE_CASE_001",
+            "id": "751396791605305445",
+            "name": "删除原来的许可证",
+            "remark": "<p>1</p>",
+            "type": "step",
+            "operationType": "浏览器操作",
+            "operationName": "打开默认网页",
+            "operationValue": "web-geturl",
+            "setting": null,
+            "configList": [
+              {
+                "paramsName": "value",
+                "paramsValue": "https: //172.19.5.33/login"
+              }
+            ],
+            "copyId": null,
+            "copyPid": null,
+            "order": 1,
+            "sortType": 1,
+            "itemOrder": 1,
+            "dragNode": null,
+            "dropNode": null,
+            "dropPosition": null,
+            "status": 1
+          }
+        ],
+        "status": 2
+      },
+      {
+        "id": "SCENE_CASE_002",
+        "copyId": null,
+        "name": "1",
+        "remark": "",
+        "cancel": null,
+        "type": "case",
+        "order": 2,
+        "sortType": null,
+        "itemOrder": null,
+        "dragNode": null,
+        "dropNode": null,
+        "dropPosition": null,
+        "stepMsg": null,
+        "step": null,
+        "stepList": [
+          {
+            "pid": "SCENE_CASE_002",
+            "id": "838006358761545745",
+            "name": "1",
+            "remark": "",
+            "type": "step",
+            "operationType": "浏览器操作",
+            "operationName": "打开默认网页",
+            "operationValue": "web-geturl",
+            "setting": null,
+            "configList": [
+              {
+                "paramsName": "value",
+                "paramsValue": "https: //172.19.5.33/login"
+              }
+            ],
+            "copyId": null,
+            "copyPid": null,
+            "order": 1,
+            "sortType": null,
+            "itemOrder": null,
+            "dragNode": null,
+            "dropNode": null,
+            "dropPosition": null,
+            "status": 1
+          }
+        ],
+        "status": 1
+      }
+    ],
+    "testPlanId": [
+      "842461050199613464"
+    ],
+    "reportId": null,
+    "debugRecord": [
+      {
+        "casePass": 0,
+        "sceneFail": 0,
+        "executeStatus": "10",
+        "casePassRate": "0%",
+        "caseSkip": 0,
+        "scenePass": 0,
+        "stepSkip": 0,
+        "caseFail": 0,
+        "duration": "-",
+        "stepFail": 0,
+        "caseTotal": 0,
+        "stepTotal": 0,
+        "stepPassRate": "0%",
+        "scenePassRate": "-",
+        "sceneSkip": 0,
+        "executeName": "-",
+        "executeResult": "13",
+        "sceneTotal": 0,
+        "stepPass": 0
+      }
+    ],
+    "executeStatus": null,
+    "executeResult": null,
+    "testRecord": [
+      {
+        "testPlanId": "842461050199613464",
+        "buildNumber": 2791,
+        "consoleUrl": "http://172.19.5.222:8080/job/Ankki.Web.UI.Automation.Test/2791/console",
+        "testReportUrl": "http://172.19.5.222:8080/job/Ankki.Web.UI.Automation.Test/2791/artifact/TestOutput/ExtentReport/2026-05-06/AAS_P/V6.5B06D011/index.html",
+        "sceneTotal": 1,
+        "scenePass": 1,
+        "sceneFail": 0,
+        "sceneSkip": 0,
+        "scenePassRate": "100%",
+        "caseTotal": 3,
+        "casePass": 3,
+        "caseFail": 0,
+        "caseSkip": 0,
+        "casePassRate": "100%",
+        "stepTotal": 38,
+        "stepPass": 35,
+        "stepFail": 0,
+        "stepSkip": 3,
+        "stepPassRate": "92.11%",
+        "executeName": "刘智",
+        "executeStatus": "12",
+        "executeResult": "14",
+        "duration": "214000",
+        "durationStartTime": "2026-04-20 20:19:41",
+        "durationEndTime": "2026-04-20 20:23:15"
+      }
+    ],
+    "buildNumber": null,
+    "consoleUrl": null,
+    "testReportUrl": null,
+    "caseTotal": null,
+    "casePass": null,
+    "caseFail": null,
+    "caseSkip": null,
+    "passRate": null,
+    "lastResult": null,
+    "stepTotal": null,
+    "stepPass": null,
+    "stepFail": null,
+    "stepSkip": null,
+    "updateIp": null,
+    "delFlag": 3
+  }
+}

@@ -36,17 +36,52 @@ public class AutomationRecordingImportReq implements Serializable {
     private static final long serialVersionUID = 1L;
 
     /**
-     * 导入模式。MVP 仅支持 createScene。
+     * 导入模式：createScene、appendCase、replaceCase、appendStep、replaceStep。
+     * replaceCaseSteps 为旧客户端兼容模式，仍表示仅替换目标用例的步骤。
      */
     @NotBlank(message = "导入模式不能为空")
     private String mode;
 
     /**
-     * 新建场景信息。
+     * 新建场景信息。createScene 模式必填。
      */
     @Valid
-    @NotNull(message = "场景信息不能为空")
     private RecordingSceneReq scene;
+
+    /**
+     * 目标场景数据库 ID。除 createScene 外的模式必填。
+     */
+    private Long targetSceneDbId;
+
+    /**
+     * 目标用例 ID。replaceCase、appendStep、replaceStep 及兼容模式必填。
+     */
+    private String targetCaseId;
+
+    /**
+     * 目标步骤 ID。replaceStep 模式必填。
+     */
+    private String targetStepId;
+
+    /**
+     * 追加位置。appendCase 模式可选：FIRST-最前面，LAST-末尾，AFTER-指定用例之后。
+     */
+    private String appendPosition;
+
+    /**
+     * 追加锚点用例 ID。appendPosition=AFTER 时必填。
+     */
+    private String appendAfterCaseId;
+
+    /**
+     * 步骤追加位置。appendStep 模式可选：FIRST-最前面，LAST-末尾，AFTER-指定步骤之后。
+     */
+    private String stepAppendPosition;
+
+    /**
+     * 步骤追加锚点 ID。stepAppendPosition=AFTER 时必填。
+     */
+    private String appendAfterStepId;
 
     /**
      * 录制生成的原始用例。

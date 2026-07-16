@@ -1,5 +1,38 @@
 # Git Commit Log
 
+## 2026-07-13
+
+### feat: 按目标用例追加和替换步骤
+
+- 新增 `appendStep` 和 `replaceStep`，步骤操作必须指定目标用例；`appendStep` 支持最前、末尾和指定步骤后插入。
+- 新增 `replaceCase` 表示替换整个用例，保留用例 ID、order 和备注等结构性信息；旧 `replaceCaseSteps` 保留为兼容模式。
+- 步骤插入或替换后统一重排目标用例内部的步骤 `id/order/pid`，避免步骤 ID 重复导致树节点定位错误。
+- 追加或替换录制时根据目标用例/步骤上下文自动恢复起始地址，产品环境地址仅作为兜底；CueCast 保存录制结束时的真实页面地址。
+
+## 具体代码改动
+
+- `AutomationRecordingImportReq` 增加 `targetStepId`、`stepAppendPosition`、`appendAfterStepId`。
+- 新增 `RecordingStepPositionResolver`，负责步骤位置解析和目标用例内步骤重排。
+- `AutomationRecordingImportServiceImpl` 新增 `replaceCase`、`appendStep`、`replaceStep` 分支。
+- `ChromeRecordingModal.vue` 增加目标用例、目标步骤、步骤追加位置选择和替换差异提示。
+- `ChromeRecordingModal.vue` 按模式计算用例初始页、锚点用例末页或目标步骤前置页。
+- `PlaywrightRecordedCaseReq` 和 `PlaywrightRecordingAssembler` 增加 `end_url` 保存。
+
+## 2026-07-13
+
+### fix: replaceCaseSteps 替换确认与差异上下文
+
+- `ChromeRecordingModal.vue`：`replaceCaseSteps` 启动录制前增加破坏性操作确认，展示旧步骤数；录制结果展示“将替换 X 个旧步骤为 Y 个新步骤”的差异信息。
+- `ChromeRecordingModal.vue`：替换时直接使用弹窗当前的用例名称，未修改则保持原名称，修改后覆盖原名称；备注继续保留。
+- `recorder-manager.js`：透传替换前步骤数，避免扩展保存链路丢失差异上下文。
+
+### fix: 录制追加后同步重排用例 ID
+
+- `AutomationRecordingImportServiceImpl`：录制追加按 `FIRST`、`LAST` 或 `AFTER` 确定插入位置后，统一重排全部用例的 `order` 和连续 `CaseDO.id`，保持 ID 序号与展示顺序一致。
+- `RecordingAppendCasePositionResolver`：根据现有用例 ID 保留基础前缀；无历史用例时使用 `SCENE_CASE_`，并集中处理用例 ID 重排。
+- ID 重排同时更新每个步骤的 `pid` 和关联的 `copyPid`，避免 case ID 变化后步骤失去父用例。
+- `RecordingAppendCasePositionResolverTest`：覆盖插入后 `SCENE_CASE_001/002/003` 连续编号、`order` 重排以及步骤父 ID 同步。
+
 ## 2026-05-22
 
 - `GiCellTags.vue`：仅 1 个标签时展示完整文案，多个时展示数量（Popover 悬停查看全部）；表格内居中显示。

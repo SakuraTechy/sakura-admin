@@ -20,6 +20,15 @@ project:
     name: Apache-2.0
     url: https://github.com/continew-org/continew-admin/blob/dev/LICENSE
 
+--- ### Playwright Runner 配置
+automation:
+  playwright-runner:
+    # Runner 在 admin 所在节点启动，生产环境必须限制 runner-root 和 node-command 的可执行范围。
+    enabled: ${SAKURA_PLAYWRIGHT_RUNNER_ENABLED:true}
+    root: ${SAKURA_PLAYWRIGHT_RUNNER_ROOT:sakura-playwright}
+    node-command: ${SAKURA_PLAYWRIGHT_NODE_COMMAND:node}
+    max-concurrent: ${SAKURA_PLAYWRIGHT_RUNNER_MAX_CONCURRENT:2}
+
 --- ### 日志配置
 ## API 请求/响应日志配置
 continew-starter.log:

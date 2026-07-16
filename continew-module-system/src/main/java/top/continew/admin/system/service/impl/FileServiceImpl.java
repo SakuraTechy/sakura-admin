@@ -80,6 +80,11 @@ public class FileServiceImpl extends BaseServiceImpl<FileMapper, FileDO, FileRes
 
     @Override
     public FileInfo upload(MultipartFile file, String path, String storageCode) {
+        return upload(file, path, storageCode, null);
+    }
+
+    @Override
+    public FileInfo upload(MultipartFile file, String path, String storageCode, String saveFilename) {
         StorageDO storage;
         if (StrUtil.isBlank(storageCode)) {
             storage = storageService.getDefaultStorage();
@@ -93,6 +98,10 @@ public class FileServiceImpl extends BaseServiceImpl<FileMapper, FileDO, FileRes
             .setHashCalculatorMd5(true)
             .putAttr(ClassUtil.getClassName(StorageDO.class, false), storage)
             .setPath(path);
+        if (StrUtil.isNotBlank(saveFilename)) {
+            uploadPretreatment.setSaveFilename(saveFilename);
+            uploadPretreatment.setSaveThFilename(FileNameUtil.mainName(saveFilename));
+        }
         // 图片文件生成缩略图
         if (FileTypeEnum.IMAGE.getExtensions().contains(FileNameUtil.extName(file.getOriginalFilename()))) {
             uploadPretreatment.thumbnail(img -> img.size(100, 100));

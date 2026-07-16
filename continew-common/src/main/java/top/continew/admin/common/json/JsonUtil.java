@@ -36,7 +36,7 @@ import java.io.OutputStream;
 public class JsonUtil {
     public static final String DEFAULT_FAIL = "\"Parse failed\"";
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
-            .disable(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS);
+        .disable(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS);
     private static final ObjectWriter OBJECT_WRITER = OBJECT_MAPPER.writerWithDefaultPrettyPrinter();
 
     public static void marshal(File file, Object value) throws Exception {

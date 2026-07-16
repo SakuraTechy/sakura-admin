@@ -19,6 +19,7 @@ package top.continew.admin.automation.model.req;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
+import top.continew.admin.automation.model.enums.AutomationUiExecutionEngineEnum;
 import top.continew.admin.common.enums.StatusTypeEnum;
 
 /**
@@ -61,6 +62,9 @@ public class AutomationUiSceneExecAllReq {
     @Schema(description = "自动化环境 ID")
     @NotNull(message = "自动化环境 ID 不能为空")
     private Long automationEnvironmentId;
+
+    @Schema(description = "执行引擎，默认保持现有 Jenkins 链路")
+    private AutomationUiExecutionEngineEnum engine = AutomationUiExecutionEngineEnum.JENKINS;
 
     @Schema(description = "执行人")
     private String executeName;

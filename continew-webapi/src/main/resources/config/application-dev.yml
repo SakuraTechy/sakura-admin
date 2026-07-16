@@ -270,9 +270,9 @@ spring.servlet:
   multipart:
     enabled: true
     # 单文件上传大小限制
-    max-file-size: 10MB
+    max-file-size: 200MB
     # 单次总上传文件大小限制
-    max-request-size: 20MB
+    max-request-size: 220MB
 ## 头像配置
 avatar:
   # 存储路径

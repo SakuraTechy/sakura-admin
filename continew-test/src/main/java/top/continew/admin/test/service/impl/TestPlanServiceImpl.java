@@ -162,7 +162,7 @@ public class TestPlanServiceImpl extends BaseServiceImpl<TestPlanMapper, TestPla
             if (existingRecords != null && !existingRecords.isEmpty()) {
                 existingRecords.removeIf(record -> {
                     if (record instanceof Map) {
-                        Map<?, ?> recordMap = (Map<?, ?>) record;
+                        Map<?, ?> recordMap = (Map<?, ?>)record;
                         Object recordPlanId = recordMap.get("testPlanId");
                         return recordPlanId != null && Objects.equals(String.valueOf(recordPlanId), String.valueOf(id));
                     }
@@ -216,9 +216,7 @@ public class TestPlanServiceImpl extends BaseServiceImpl<TestPlanMapper, TestPla
             report.setBuildNumber(buildNumber);
             report.setConsoleUrl(resp.getConsoleUrl());
             report.setReportUrl(resp.getTestReportUrl());
-            report.setName(buildNumber != null
-                    ? plan.getName() + "_测试报告_" + buildNumber
-                    : plan.getName() + "_测试报告");
+            report.setName(buildNumber != null ? plan.getName() + "_测试报告_" + buildNumber : plan.getName() + "_测试报告");
             testReportMapper.updateById(report);
         }
         plan.setStatus("RUNNING");

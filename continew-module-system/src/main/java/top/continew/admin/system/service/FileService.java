@@ -70,6 +70,17 @@ public interface FileService extends BaseService<FileResp, FileResp, FileQuery, 
     FileInfo upload(MultipartFile file, String path, String storageCode);
 
     /**
+     * 上传到指定存储并指定保存文件名
+     *
+     * @param file         文件信息
+     * @param path         文件路径
+     * @param storageCode  存储编码
+     * @param saveFilename 保存文件名
+     * @return 文件信息
+     */
+    FileInfo upload(MultipartFile file, String path, String storageCode, String saveFilename);
+
+    /**
      * 根据存储 ID 列表查询
      *
      * @param storageIds 存储 ID 列表

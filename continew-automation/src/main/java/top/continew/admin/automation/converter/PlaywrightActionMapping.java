@@ -28,8 +28,7 @@ public final class PlaywrightActionMapping {
 
     public static final String OPERATION_VALUE_CUSTOM = "pw-custom";
 
-    private static final ActionDisplay CUSTOM = new ActionDisplay("Playwright 操作", "自定义动作",
-        OPERATION_VALUE_CUSTOM);
+    private static final ActionDisplay CUSTOM = new ActionDisplay("Playwright 操作", "自定义动作", OPERATION_VALUE_CUSTOM);
 
     private static final Map<String, ActionDisplay> ACTIONS = new LinkedHashMap<>();
 

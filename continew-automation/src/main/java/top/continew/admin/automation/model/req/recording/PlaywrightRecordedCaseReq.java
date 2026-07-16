@@ -50,6 +50,9 @@ public class PlaywrightRecordedCaseReq implements Serializable {
     @JsonProperty("start_url")
     private String startUrl;
 
+    @JsonProperty("end_url")
+    private String endUrl;
+
     private String description;
 
     @JsonProperty("screenshot_mode")

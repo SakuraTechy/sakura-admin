@@ -28,11 +28,12 @@ import top.continew.admin.automation.model.entity.ui.CaseDO;
 import top.continew.admin.automation.model.entity.ui.StepDO;
 import top.continew.admin.automation.model.req.recording.PlaywrightRecordedCaseReq;
 import top.continew.admin.automation.model.req.recording.PlaywrightRecordedStepReq;
+import top.continew.admin.automation.service.AutomationRecordingScreenshotService;
 import top.continew.admin.common.enums.StatusTypeEnum;
 
 class PlaywrightRecordingAssemblerTest {
 
-    private final PlaywrightRecordingAssembler assembler = new PlaywrightRecordingAssembler(new ObjectMapper());
+    private final PlaywrightRecordingAssembler assembler = new PlaywrightRecordingAssembler(new ObjectMapper(), new NoopScreenshotService());
 
     @Test
     void shouldPreserveRequiredConfigsAndMaskRawScreenshot() {
@@ -42,8 +43,8 @@ class PlaywrightRecordingAssemblerTest {
         recordedCase.setStartUrl("https://example.com/login");
         recordedCase.setSteps(List.of(recordedStep()));
 
-        CaseDO caseDO = assembler.toCase(recordedCase, new PlaywrightRecordingAssembler
-            .RecordingImportContext("rec-001", false, false));
+        CaseDO caseDO = assembler
+            .toCase(recordedCase, new PlaywrightRecordingAssembler.RecordingImportContext("rec-001", "AAS_P", "V6.5B06D011", "REC_SCENE_001", false, false));
 
         StepDO stepDO = caseDO.getStepList().get(0);
         Map<String, String> configs = stepDO.getConfigList()
@@ -51,6 +52,7 @@ class PlaywrightRecordingAssemblerTest {
             .collect(Collectors.toMap(StepDO.Config::getParamsName, StepDO.Config::getParamsValue));
 
         assertThat(caseDO.getStatus()).isEqualTo(StatusTypeEnum.ENABLE);
+        assertThat(stepDO.getId()).isEqualTo("CASE_STEP_001");
         assertThat(stepDO.getStatus()).isEqualTo(StatusTypeEnum.ENABLE);
         assertThat(stepDO.getOperationValue()).isEqualTo("pw-click");
         assertThat(configs).containsEntry("action_type", "click")
@@ -74,8 +76,8 @@ class PlaywrightRecordingAssemblerTest {
         recordedCase.setName("未知动作");
         recordedCase.setSteps(List.of(step));
 
-        CaseDO caseDO = assembler.toCase(recordedCase, new PlaywrightRecordingAssembler
-            .RecordingImportContext("rec-002", false, false));
+        CaseDO caseDO = assembler
+            .toCase(recordedCase, new PlaywrightRecordingAssembler.RecordingImportContext("rec-002", "AAS_P", "V6.5B06D011", "REC_SCENE_002", false, false));
         StepDO stepDO = caseDO.getStepList().get(0);
         Map<String, String> configs = stepDO.getConfigList()
             .stream()
@@ -101,5 +103,24 @@ class PlaywrightRecordingAssemblerTest {
         step.setIsOverlay(0);
         step.setScreenshot("data:image/jpeg;base64,AAAA");
         return step;
+    }
+
+    private static class NoopScreenshotService implements AutomationRecordingScreenshotService {
+
+        @Override
+        public ScreenshotArtifact store(String recordingId,
+                                        String projectShortName,
+                                        String versionName,
+                                        String sceneId,
+                                        String caseId,
+                                        String stepId,
+                                        String screenshot) {
+            return null;
+        }
+
+        @Override
+        public ScreenshotResource load(String recordingId, String fileName) {
+            return null;
+        }
     }
 }

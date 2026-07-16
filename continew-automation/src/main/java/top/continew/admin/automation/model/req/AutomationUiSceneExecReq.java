@@ -20,6 +20,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
+import top.continew.admin.automation.model.enums.AutomationUiExecutionEngineEnum;
 
 import java.io.Serial;
 import java.io.Serializable;
@@ -46,6 +47,9 @@ public class AutomationUiSceneExecReq implements Serializable {
     @NotNull(message = "Automation environment ID must not be null")
     @Schema(description = "Automation environment ID", requiredMode = Schema.RequiredMode.REQUIRED)
     private Long automationEnvironmentId;
+
+    @Schema(description = "Execution engine. Default keeps the existing Jenkins flow")
+    private AutomationUiExecutionEngineEnum engine = AutomationUiExecutionEngineEnum.JENKINS;
 
     @Schema(description = "Executor name")
     private String executeName;

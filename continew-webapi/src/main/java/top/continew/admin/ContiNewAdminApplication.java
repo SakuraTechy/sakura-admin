@@ -117,12 +117,8 @@ public class ContiNewAdminApplication implements ApplicationRunner {
             String providerCodeSource = provider.getClass().getProtectionDomain().getCodeSource() == null
                 ? "null"
                 : String.valueOf(provider.getClass().getProtectionDomain().getCodeSource().getLocation());
-            log.info("[Security Diagnose] provider[{}] name={}, version={}, class={}, source={}",
-                i + 1,
-                provider.getName(),
-                provider.getVersionStr(),
-                providerClass,
-                providerCodeSource);
+            log.info("[Security Diagnose] provider[{}] name={}, version={}, class={}, source={}", i + 1, provider
+                .getName(), provider.getVersionStr(), providerClass, providerCodeSource);
         }
     }
 }

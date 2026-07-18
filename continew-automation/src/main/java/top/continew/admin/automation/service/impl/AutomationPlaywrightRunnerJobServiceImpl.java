@@ -64,7 +64,8 @@ public class AutomationPlaywrightRunnerJobServiceImpl implements AutomationPlayw
 
     private static final int MAX_OUTPUT_LINES = 200;
     private static final ZoneId PLATFORM_ZONE_ID = ZoneId.of("Asia/Shanghai");
-    private static final DateTimeFormatter PLATFORM_DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    private static final DateTimeFormatter PLATFORM_DATE_TIME_FORMATTER = DateTimeFormatter
+        .ofPattern("yyyy-MM-dd HH:mm:ss");
     private static final List<String> TERMINAL_STATUSES = List.of("passed", "failed", "cancelled");
     private static final Set<String> BROWSERS = Set.of("chromium", "firefox", "webkit");
     private static final Set<String> ARTIFACT_POLICIES = Set.of("off", "on", "retain-on-failure");
@@ -231,6 +232,8 @@ public class AutomationPlaywrightRunnerJobServiceImpl implements AutomationPlayw
         command.add("src/index.js");
         command.add("--case-id");
         command.add(caseKey);
+        addCommandOptionIfPresent(command, "--batch-id", request.getBatchId());
+        addCommandOptionIfPresent(command, "--run-id", request.getExecutionId());
         if (request.getStartStep() != null && request.getStartStep() > 0) {
             command.add("--start-step");
             command.add(String.valueOf(request.getStartStep()));
@@ -253,6 +256,8 @@ public class AutomationPlaywrightRunnerJobServiceImpl implements AutomationPlayw
     private AutomationPlaywrightRunnerJobReq normalizeRequest(AutomationPlaywrightRunnerJobReq source) {
         AutomationPlaywrightRunnerJobReq target = new AutomationPlaywrightRunnerJobReq();
         target.setCaseKey(StringUtils.trimToEmpty(source.getCaseKey()));
+        target.setBatchId(StringUtils.trimToNull(source.getBatchId()));
+        target.setExecutionId(StringUtils.trimToNull(source.getExecutionId()));
         target.setProjectEnvironmentId(source.getProjectEnvironmentId());
         target.setStartStep(source.getStartStep());
         target.setOptions(normalizeOptions(source.getOptions()));
@@ -272,10 +277,12 @@ public class AutomationPlaywrightRunnerJobServiceImpl implements AutomationPlayw
             : source.getIgnoreHttpsErrors());
         target.setTrace(StringUtils.defaultIfBlank(source.getTrace(), defaults.getTrace()));
         target.setVideo(StringUtils.defaultIfBlank(source.getVideo(), defaults.getVideo()));
-        target.setStepTimeoutMs(source.getStepTimeoutMs() == null ? defaults.getStepTimeoutMs() : source
-            .getStepTimeoutMs());
-        target.setCaseTimeoutMs(source.getCaseTimeoutMs() == null ? defaults.getCaseTimeoutMs() : source
-            .getCaseTimeoutMs());
+        target.setStepTimeoutMs(source.getStepTimeoutMs() == null
+            ? defaults.getStepTimeoutMs()
+            : source.getStepTimeoutMs());
+        target.setCaseTimeoutMs(source.getCaseTimeoutMs() == null
+            ? defaults.getCaseTimeoutMs()
+            : source.getCaseTimeoutMs());
         target.setSlowMoMs(source.getSlowMoMs() == null ? defaults.getSlowMoMs() : source.getSlowMoMs());
         target.setFinishDelayMs(source.getFinishDelayMs() == null
             ? defaults.getFinishDelayMs()
@@ -296,6 +303,12 @@ public class AutomationPlaywrightRunnerJobServiceImpl implements AutomationPlayw
     private void addCommandOption(List<String> command, String name, Object value) {
         command.add(name);
         command.add(String.valueOf(value));
+    }
+
+    private void addCommandOptionIfPresent(List<String> command, String name, String value) {
+        if (StringUtils.isNotBlank(value)) {
+            addCommandOption(command, name, value);
+        }
     }
 
     private Path resolveRunnerRoot() {

@@ -38,6 +38,12 @@ public class AutomationPlaywrightRunnerJobReq implements Serializable {
     @NotBlank(message = "Playwright Runner caseKey 不能为空")
     private String caseKey;
 
+    /** 服务端批次标识，用于把单用例结果合并回同一 debugRecord。 */
+    private String batchId;
+
+    /** 服务端预生成的稳定单用例运行标识。 */
+    private String executionId;
+
     /** 产品环境只用于生成本次执行快照，不会改写场景主数据。 */
     @NotNull(message = "Playwright Runner 产品环境不能为空")
     private Long projectEnvironmentId;

@@ -27,7 +27,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.UUID;
+import java.util.concurrent.atomic.AtomicLong;
 
 import cn.hutool.core.bean.BeanUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -40,10 +40,15 @@ import top.continew.admin.automation.converter.AutomationPlaywrightStepExtractor
 import top.continew.admin.automation.mapper.AutomationUiSceneMapper;
 import top.continew.admin.automation.model.entity.AutomationUiSceneDO;
 import top.continew.admin.automation.model.entity.ui.CaseDO;
+import top.continew.admin.automation.model.entity.ui.StepDO;
+import top.continew.admin.automation.model.req.playwright.AutomationPlaywrightBatchCaseStatusReq;
+import top.continew.admin.automation.model.req.playwright.AutomationPlaywrightBatchCreateReq;
 import top.continew.admin.automation.model.req.playwright.AutomationPlaywrightResultReq;
+import top.continew.admin.automation.model.resp.playwright.AutomationPlaywrightBatchResp;
 import top.continew.admin.automation.model.resp.playwright.AutomationPlaywrightCaseResp;
 import top.continew.admin.automation.service.AutomationPlaywrightCaseService;
 import top.continew.admin.automation.util.AutomationUiSceneStatusCodes;
+import top.continew.admin.common.context.UserContextHolder;
 import top.continew.admin.common.enums.DisEnableStatusEnum;
 import top.continew.admin.project.mapper.ProjectConfigMapper;
 import top.continew.admin.project.mapper.ProjectEnvironmentConfigMapper;
@@ -62,7 +67,12 @@ import top.continew.starter.core.exception.BusinessException;
 public class AutomationPlaywrightCaseServiceImpl implements AutomationPlaywrightCaseService {
 
     private static final ZoneId PLATFORM_ZONE_ID = ZoneId.of("Asia/Shanghai");
-    private static final DateTimeFormatter PLATFORM_DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    private static final DateTimeFormatter PLATFORM_DATE_TIME_FORMATTER = DateTimeFormatter
+        .ofPattern("yyyy-MM-dd HH:mm:ss");
+    private static final DateTimeFormatter EXECUTION_ID_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
+    private static final AtomicLong EXECUTION_ID_SEQUENCE_SECONDS = new AtomicLong();
+    private static final List<String> TERMINAL_CASE_STATUSES = List
+        .of("passed", "failed", "cancelled", "blocked", "skipped");
 
     private final AutomationUiSceneMapper automationUiSceneMapper;
     private final AutomationPlaywrightStepExtractor stepExtractor;
@@ -102,11 +112,162 @@ public class AutomationPlaywrightCaseServiceImpl implements AutomationPlaywright
         return resp;
     }
 
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public AutomationPlaywrightBatchResp createBatch(AutomationPlaywrightBatchCreateReq req) {
+        AutomationUiSceneDO scene = resolveScene(req.getSceneKey());
+        String executionType = StringUtils.trimToEmpty(req.getExecutionType()).toLowerCase();
+        if (!List.of("playwright-runner", "extension-cdp").contains(executionType)) {
+            throw new BusinessException("不支持的 Playwright 执行方式：" + executionType);
+        }
+        ProjectEnvironmentConfigDO environment = projectEnvironmentConfigMapper.selectById(req
+            .getProjectEnvironmentId());
+        if (environment == null) {
+            throw new BusinessException("批次产品环境不存在，projectEnvironmentId=" + req.getProjectEnvironmentId());
+        }
+        if (!Objects.equals(scene.getProjectId(), environment.getProjectId())) {
+            throw new BusinessException("批次产品环境与场景所属项目不一致，projectEnvironmentId=" + req.getProjectEnvironmentId());
+        }
+        if (!DisEnableStatusEnum.ENABLE.equals(environment.getStatus())) {
+            throw new BusinessException("批次产品环境未启用，projectEnvironmentId=" + req.getProjectEnvironmentId());
+        }
+        String batchId = nextExecutionId();
+        String startedAt = now();
+        String username = StringUtils.defaultString(UserContextHolder.getUsername(), "-");
+        String executeName = StringUtils.firstNonBlank(UserContextHolder.getNickname(), username, "-");
+
+        List<Object> caseResults = new ArrayList<>();
+        List<AutomationPlaywrightBatchResp.CaseExecution> responseCases = new ArrayList<>();
+        for (String caseId : req.getCaseIds()) {
+            CaseDO caseDO = findCase(scene, caseId);
+            if (caseDO == null) {
+                throw new BusinessException("批次目标用例不存在，caseId=" + caseId);
+            }
+            String executionId = nextExecutionId();
+            int stepTotal = stepAdapters(caseDO).size();
+            Map<String, Object> caseResult = new LinkedHashMap<>();
+            caseResult.put("case_key", req.getSceneKey() + ":" + caseId);
+            caseResult.put("case_id", caseId);
+            caseResult.put("case_name", caseDO.getName());
+            caseResult.put("execution_id", executionId);
+            caseResult.put("status", "waiting");
+            caseResult.put("step_total", stepTotal);
+            caseResult.put("step_pass", 0);
+            caseResult.put("step_fail", 0);
+            caseResult.put("step_skip", 0);
+            caseResult.put("steps", new ArrayList<>());
+            caseResults.add(caseResult);
+
+            AutomationPlaywrightBatchResp.CaseExecution responseCase = new AutomationPlaywrightBatchResp.CaseExecution();
+            responseCase.setCaseId(caseId);
+            responseCase.setCaseName(caseDO.getName());
+            responseCase.setExecutionId(executionId);
+            responseCase.setStatus("waiting");
+            responseCase.setStepTotal(stepTotal);
+            responseCases.add(responseCase);
+        }
+
+        Map<String, Object> record = new LinkedHashMap<>();
+        record.put("recordType", "playwright-batch");
+        record.put("batchId", batchId);
+        record.put("executionId", batchId);
+        record.put("executionType", executionType);
+        record.put("executor", executionType);
+        record.put("executeUserId", UserContextHolder.getUserId());
+        record.put("executeUsername", username);
+        record.put("executeName", executeName);
+        record.put("startedAt", startedAt);
+        record.put("executeStatus", "running");
+        record.put("executeResult", "running");
+        record.put("duration", 0);
+        record.put("projectEnvironmentId", req.getProjectEnvironmentId());
+        record.put("projectEnvironmentName", environment.getName());
+        record.put("executionConfig", req.getExecutionConfig() == null ? Map.of() : req.getExecutionConfig());
+        record.put("caseResults", caseResults);
+        recomputeBatch(record, false);
+
+        List<Object> debugRecords = scene.getDebugRecord() == null
+            ? new ArrayList<>()
+            : new ArrayList<>(scene.getDebugRecord());
+        debugRecords.add(0, record);
+        scene.setDebugRecord(debugRecords);
+        applyBatchSummaryToScene(scene, record);
+        automationUiSceneMapper.updateById(scene);
+
+        AutomationPlaywrightBatchResp response = new AutomationPlaywrightBatchResp();
+        response.setBatchId(batchId);
+        response.setExecutionType(executionType);
+        response.setExecuteName(executeName);
+        response.setStartedAt(startedAt);
+        response.setCases(responseCases);
+        return response;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void updateBatchCaseStatus(String sceneKey,
+                                      String batchId,
+                                      String caseId,
+                                      AutomationPlaywrightBatchCaseStatusReq req) {
+        AutomationUiSceneDO scene = resolveScene(sceneKey);
+        Map<String, Object> batch = requireBatch(scene, batchId);
+        Map<String, Object> caseResult = requireBatchCase(batch, caseId);
+        if (Boolean.TRUE.equals(caseResult.get("result_detailed"))) {
+            return;
+        }
+        String currentStatus = stringValue(caseResult.get("status"));
+        if (TERMINAL_CASE_STATUSES.contains(currentStatus)) {
+            return;
+        }
+        String status = StringUtils.trimToEmpty(req.getStatus()).toLowerCase();
+        if (!List.of("starting", "queued", "running", "failed", "cancelled").contains(status)) {
+            throw new BusinessException("不支持的批次用例状态：" + status);
+        }
+        caseResult.put("status", status);
+        putIfNotBlank(caseResult, "job_id", req.getJobId());
+        putIfNotBlank(caseResult, "started_at", normalizeExecutionDateTime(req.getStartedAt()));
+        putIfNotBlank(caseResult, "finished_at", normalizeExecutionDateTime(req.getFinishedAt()));
+        putIfNotBlank(caseResult, "error", req.getError());
+        if (req.getDurationMs() != null) {
+            caseResult.put("duration_ms", Math.max(0, req.getDurationMs()));
+        }
+        if (TERMINAL_CASE_STATUSES.contains(status) && StringUtils.isBlank(stringValue(caseResult
+            .get("finished_at")))) {
+            caseResult.put("finished_at", now());
+        }
+        recomputeBatch(batch, false);
+        applyBatchSummaryToScene(scene, batch);
+        automationUiSceneMapper.updateById(scene);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void cancelBatch(String sceneKey, String batchId) {
+        AutomationUiSceneDO scene = resolveScene(sceneKey);
+        Map<String, Object> batch = requireBatch(scene, batchId);
+        for (Object item : listValue(batch.get("caseResults"))) {
+            Map<String, Object> caseResult = asObjectMap(item);
+            if (TERMINAL_CASE_STATUSES.contains(stringValue(caseResult.get("status")))) {
+                continue;
+            }
+            caseResult.put("status", "cancelled");
+            caseResult.put("finished_at", now());
+            caseResult.put("error", "批次已取消");
+            replaceListItem(batch, "caseResults", item, caseResult);
+        }
+        batch.put("cancelRequested", true);
+        recomputeBatch(batch, true);
+        applyBatchSummaryToScene(scene, batch);
+        automationUiSceneMapper.updateById(scene);
+    }
+
     /**
      * Runner 仅使用这些业务标识生成本地目录，不把节点路径写回场景主数据。
      */
     private void fillArtifactPathMetadata(AutomationPlaywrightCaseResp resp, AutomationUiSceneDO scene) {
-        ProjectConfigDO project = scene.getProjectId() == null ? null : projectConfigMapper.selectById(scene.getProjectId());
+        ProjectConfigDO project = scene.getProjectId() == null
+            ? null
+            : projectConfigMapper.selectById(scene.getProjectId());
         String projectShortName = project == null
             ? StringUtils.firstNonBlank(scene.getProjectName(), "project")
             : StringUtils.firstNonBlank(project.getAbbreviate(), project.getName(), scene.getProjectName(), "project");
@@ -126,29 +287,38 @@ public class AutomationPlaywrightCaseServiceImpl implements AutomationPlaywright
             ? new ArrayList<>()
             : new ArrayList<>(scene.getDebugRecord());
         Map<String, Object> record = new LinkedHashMap<>();
-        // 每次 CDP/Runner 回传都生成独立快照，避免覆盖其他执行方式的最新记录。
-        debugRecord.add(0, record);
         Map<String, Object> rawResult = normalizeExecutionTimes(asObjectMap(req.getRaw()));
+        String batchId = stringValue(rawResult.get("batch_id"));
+        Map<String, Object> batchRecord = findBatch(scene, batchId);
         Map<String, Object> caseResult = asObjectMap(rawResult.get("case_result"));
-        List<Object> stepResults = readStepResults(rawResult, caseResult);
+        List<Object> rawStepResults = readStepResults(rawResult, caseResult);
+        List<Object> stepResults = enrichStepResults(resolved.caseDO(), rawStepResults);
         boolean passed = Boolean.TRUE.equals(req.getSuccess());
         int stepTotal = stepResults.size();
         int stepPass = countStepStatus(stepResults, "passed");
         int stepFail = countStepStatus(stepResults, "failed");
         int stepSkip = countStepStatus(stepResults, "skipped");
-        if (stepTotal == 0) {
+        if (rawStepResults.isEmpty()) {
             // 兼容旧 Runner 结果：旧协议只有步骤总数，没有逐步明细。
             Map<String, Object> detail = asObjectMap(rawResult.get("detail"));
             stepTotal = toInt(detail.get("steps"));
+            if (stepTotal <= 0) {
+                stepTotal = stepResults.size();
+            }
             stepPass = passed ? stepTotal : 0;
             stepFail = passed ? 0 : (stepTotal > 0 ? 1 : 0);
-            stepSkip = 0;
+            stepSkip = passed ? 0 : Math.max(0, stepTotal - stepFail);
         }
         String executor = String.valueOf(rawResult.getOrDefault("executor", "playwright-runner"));
         String executionType = "extension-cdp".equalsIgnoreCase(executor) ? "extension-cdp" : "playwright-runner";
         String executionId = stringValue(rawResult.get("run_id"));
+        if (executionId.isBlank() && batchRecord != null) {
+            executionId = stringValue(requireBatchCase(batchRecord, resolved.caseDO().getId()).get("execution_id"));
+            rawResult.put("run_id", executionId);
+        }
         if (executionId.isBlank()) {
-            executionId = executionType + "-" + UUID.randomUUID();
+            executionId = nextExecutionId();
+            rawResult.put("run_id", executionId);
         }
         String startedAt = normalizeExecutionDateTime(stringValue(rawResult.get("started_at")));
         String finishedAt = normalizeExecutionDateTime(stringValue(rawResult.get("finished_at")));
@@ -158,6 +328,11 @@ public class AutomationPlaywrightCaseServiceImpl implements AutomationPlaywright
         if (StringUtils.isNotBlank(finishedAt)) {
             rawResult.put("finished_at", finishedAt);
         }
+        Long detailDurationMs = calculateStepDuration(rawStepResults);
+        long wallClockDurationMs = req.getDurationMs() == null
+            ? durationBetween(startedAt, finishedAt)
+            : Math.max(0, req.getDurationMs());
+        long durationMs = detailDurationMs == null ? wallClockDurationMs : detailDurationMs;
         String resultCode = passed
             ? AutomationUiSceneStatusCodes.RESULT_PASSED
             : AutomationUiSceneStatusCodes.RESULT_FAILED;
@@ -167,20 +342,48 @@ public class AutomationPlaywrightCaseServiceImpl implements AutomationPlaywright
         caseResult.putIfAbsent("case_id", caseId);
         caseResult.putIfAbsent("case_name", caseName);
         caseResult.putIfAbsent("status", passed ? "passed" : "failed");
-        caseResult.putIfAbsent("steps", stepResults);
-        caseResult.putIfAbsent("step_total", stepTotal);
-        caseResult.putIfAbsent("step_pass", stepPass);
-        caseResult.putIfAbsent("step_fail", stepFail);
-        caseResult.putIfAbsent("step_skip", stepSkip);
+        caseResult.put("execution_id", executionId);
+        caseResult.put("steps", stepResults);
+        caseResult.put("step_total", stepTotal);
+        caseResult.put("step_pass", stepPass);
+        caseResult.put("step_fail", stepFail);
+        caseResult.put("step_skip", stepSkip);
+        caseResult.put("step_pass_rate", formatRate(stepPass, stepTotal));
+        // 列表中的用例耗时表示实际步骤执行耗时；引擎整段墙钟耗时仍保留在原始结果中用于诊断。
+        caseResult.put("duration_ms", durationMs);
+        caseResult.put("wall_clock_duration_ms", wallClockDurationMs);
+        caseResult.put("started_at", startedAt);
+        caseResult.put("finished_at", finishedAt);
+        caseResult.put("error", StringUtils.firstNonBlank(req.getError(), stringValue(caseResult.get("error")), ""));
+        caseResult.put("playwright_result", rawResult);
+        caseResult.put("artifact_urls", rawResult.get("artifacts"));
+        caseResult.put("artifact_upload_errors", rawResult.get("artifact_upload_errors"));
+        caseResult.put("result_detailed", true);
 
-        record.put("executeName", executor);
+        if (StringUtils.isNotBlank(batchId) && batchRecord != null) {
+            mergeBatchCaseResult(batchRecord, caseId, caseResult);
+            recomputeBatch(batchRecord, Boolean.TRUE.equals(batchRecord.get("cancelRequested")));
+            applyBatchSummaryToScene(scene, batchRecord);
+            automationUiSceneMapper.updateById(scene);
+            return;
+        }
+
+        // 旧客户端没有批次标识时仍保存为独立快照，不按时间猜测批次关系。
+        debugRecord.add(0, record);
+
+        String username = StringUtils.defaultString(UserContextHolder.getUsername(), "-");
+        record.put("executeUserId", UserContextHolder.getUserId());
+        record.put("executeUsername", username);
+        record.put("executeName", StringUtils.firstNonBlank(UserContextHolder.getNickname(), username, "-"));
+        record.put("executor", executor);
         record.put("executionType", executionType);
         record.put("executionId", executionId);
         record.put("startedAt", startedAt);
         record.put("finishedAt", finishedAt);
         record.put("executeStatus", "completed");
         record.put("executeResult", resultCode);
-        record.put("duration", req.getDurationMs() == null ? "-" : String.valueOf(req.getDurationMs()));
+        record.put("duration", durationMs);
+        record.put("wallClockDuration", wallClockDurationMs);
         record.put("playwrightCaseKey", caseKey);
         record.put("playwrightStatus", req.getStatus());
         record.put("playwrightError", req.getError());
@@ -224,6 +427,266 @@ public class AutomationPlaywrightCaseServiceImpl implements AutomationPlaywright
         automationUiSceneMapper.updateById(scene);
     }
 
+    private List<Object> enrichStepResults(CaseDO caseDO, List<Object> rawResults) {
+        Map<String, Map<String, Object>> resultsById = new LinkedHashMap<>();
+        Map<Integer, Map<String, Object>> resultsByIndex = new LinkedHashMap<>();
+        for (Object item : rawResults) {
+            Map<String, Object> result = asObjectMap(item);
+            String stepId = stringValue(result.getOrDefault("step_id", result.get("stepId")));
+            if (StringUtils.isNotBlank(stepId)) {
+                resultsById.put(stepId, result);
+            }
+            resultsByIndex.put(toInt(result.getOrDefault("step_index", result.get("stepIndex"))), result);
+        }
+
+        List<Object> enriched = new ArrayList<>();
+        List<StepDOAdapter> adapters = stepAdapters(caseDO);
+        for (int index = 0; index < adapters.size(); index++) {
+            StepDO sourceStep = adapters.get(index).step();
+            Map<String, Object> source = stepExtractor.extract(sourceStep, index);
+            String stepId = StringUtils.firstNonBlank(stringValue(source.get("id")), sourceStep.getId(), "");
+            int sourceIndex = source.containsKey("step_index") ? toInt(source.get("step_index")) : index;
+            Map<String, Object> result = resultsById.remove(stepId);
+            if (result == null) {
+                result = resultsByIndex.remove(sourceIndex);
+            } else {
+                resultsByIndex.remove(toInt(result.getOrDefault("step_index", sourceIndex)));
+            }
+            Map<String, Object> step = result == null ? new LinkedHashMap<>() : new LinkedHashMap<>(result);
+            step.put("step_id", stepId);
+            step.put("step_index", sourceIndex);
+            step.put("step_name", StringUtils.firstNonBlank(sourceStep.getName(), stringValue(source
+                .get("description")), "-"));
+            step.put("description", StringUtils.firstNonBlank(stringValue(step.get("description")), stringValue(source
+                .get("description")), sourceStep.getName(), "-"));
+            step.put("action_type", StringUtils.firstNonBlank(stringValue(step.get("action_type")), stringValue(source
+                .get("action_type")), "unknown"));
+            step.putIfAbsent("status", "skipped");
+            step.putIfAbsent("duration_ms", 0);
+            copySourceField(step, source, "target_selector");
+            copySourceField(step, source, "target_xpath");
+            copySourceField(step, source, "locator_meta");
+            copySourceField(step, source, "value_masked");
+            copyActualLocatorField(step, "locator_source", "actual_locator_source");
+            copyActualLocatorField(step, "locator_type", "actual_locator_type");
+            copyActualLocatorField(step, "locator_value", "actual_locator_value");
+            enriched.add(step);
+        }
+        for (Map<String, Object> remaining : resultsByIndex.values()) {
+            enriched.add(remaining);
+        }
+        return enriched;
+    }
+
+    private void copySourceField(Map<String, Object> target, Map<String, Object> source, String key) {
+        if (!target.containsKey(key) && source.containsKey(key)) {
+            target.put(key, source.get(key));
+        }
+    }
+
+    private void copyActualLocatorField(Map<String, Object> step, String sourceKey, String targetKey) {
+        String value = stringValue(step.get(sourceKey));
+        if (StringUtils.isNotBlank(value)) {
+            step.put(targetKey, value);
+        }
+    }
+
+    private void mergeBatchCaseResult(Map<String, Object> batch, String caseId, Map<String, Object> detailedResult) {
+        Map<String, Object> target = requireBatchCase(batch, caseId);
+        String stableExecutionId = stringValue(target.get("execution_id"));
+        boolean cancelled = Boolean.TRUE.equals(batch.get("cancelRequested")) && "cancelled".equals(stringValue(target
+            .get("status")));
+        target.clear();
+        target.putAll(detailedResult);
+        if (StringUtils.isBlank(stringValue(target.get("execution_id")))) {
+            target.put("execution_id", stableExecutionId);
+        }
+        if (cancelled) {
+            // 用户取消是批次业务终态；迟到的引擎失败结果仅补充步骤和诊断，不能把取消改写为失败。
+            target.put("status", "cancelled");
+            target.put("error", "批次已取消");
+        }
+    }
+
+    private Map<String, Object> requireBatch(AutomationUiSceneDO scene, String batchId) {
+        Map<String, Object> batch = findBatch(scene, batchId);
+        if (batch == null) {
+            throw new BusinessException("执行批次不存在，batchId=" + batchId);
+        }
+        return batch;
+    }
+
+    private Map<String, Object> findBatch(AutomationUiSceneDO scene, String batchId) {
+        if (StringUtils.isBlank(batchId) || scene.getDebugRecord() == null) {
+            return null;
+        }
+        for (Object item : scene.getDebugRecord()) {
+            Map<String, Object> record = mapReference(item);
+            if (record != null && batchId.equals(stringValue(record.get("batchId")))) {
+                return record;
+            }
+        }
+        return null;
+    }
+
+    private Map<String, Object> requireBatchCase(Map<String, Object> batch, String caseId) {
+        for (Object item : listValue(batch.get("caseResults"))) {
+            Map<String, Object> caseResult = mapReference(item);
+            if (caseResult != null && caseId.equals(stringValue(caseResult.get("case_id")))) {
+                return caseResult;
+            }
+        }
+        throw new BusinessException("批次目标用例不存在，caseId=" + caseId);
+    }
+
+    private void recomputeBatch(Map<String, Object> batch, boolean forceCancelled) {
+        List<Object> caseResults = listValue(batch.get("caseResults"));
+        int total = caseResults.size();
+        int completed = 0;
+        int passed = 0;
+        int failed = 0;
+        int cancelled = 0;
+        int blocked = 0;
+        int skipped = 0;
+        int stepTotal = 0;
+        int stepPass = 0;
+        int stepFail = 0;
+        int stepSkip = 0;
+        long durationMs = 0;
+        for (Object item : caseResults) {
+            Map<String, Object> result = asObjectMap(item);
+            String status = stringValue(result.get("status")).toLowerCase();
+            if (TERMINAL_CASE_STATUSES.contains(status))
+                completed++;
+            if ("passed".equals(status))
+                passed++;
+            if ("failed".equals(status))
+                failed++;
+            if ("cancelled".equals(status))
+                cancelled++;
+            if ("blocked".equals(status))
+                blocked++;
+            if ("skipped".equals(status))
+                skipped++;
+            stepTotal += toInt(result.get("step_total"));
+            stepPass += toInt(result.get("step_pass"));
+            stepFail += toInt(result.get("step_fail"));
+            stepSkip += toInt(result.get("step_skip"));
+            durationMs += Math.max(0, toLong(result.get("duration_ms")));
+        }
+        batch.put("caseTotal", total);
+        batch.put("caseCompleted", completed);
+        batch.put("casePass", passed);
+        batch.put("caseFail", failed);
+        batch.put("caseCancelled", cancelled);
+        batch.put("caseBlocked", blocked);
+        batch.put("caseSkip", skipped);
+        batch.put("casePassRate", formatRate(passed, total));
+        batch.put("scenePassRate", formatRate(passed, total));
+        batch.put("progress", total == 0 ? 0 : Math.round(completed * 10000.0 / total) / 100.0);
+        batch.put("stepTotal", stepTotal);
+        batch.put("stepPass", stepPass);
+        batch.put("stepFail", stepFail);
+        batch.put("stepSkip", stepSkip);
+        batch.put("stepPassRate", formatRate(stepPass, stepTotal));
+        // 批次业务耗时为各用例实际步骤耗时之和，调度等待单独保留为墙钟耗时。
+        batch.put("duration", durationMs);
+        boolean terminal = total > 0 && completed >= total;
+        if (!terminal && !forceCancelled) {
+            batch.put("executeStatus", "running");
+            batch.put("executeResult", "running");
+            return;
+        }
+        if (StringUtils.isBlank(stringValue(batch.get("finishedAt")))) {
+            batch.put("finishedAt", now());
+        }
+        batch.put("wallClockDuration", durationBetween(stringValue(batch.get("startedAt")), stringValue(batch
+            .get("finishedAt"))));
+        batch.put("executeStatus", forceCancelled ? "cancelled" : "completed");
+        batch.put("executeResult", failed > 0 || blocked > 0
+            ? "failed"
+            : cancelled > 0 || forceCancelled ? "cancelled" : skipped == total ? "skipped" : "passed");
+    }
+
+    private void applyBatchSummaryToScene(AutomationUiSceneDO scene, Map<String, Object> batch) {
+        boolean running = "running".equals(stringValue(batch.get("executeStatus")));
+        String result = stringValue(batch.get("executeResult"));
+        String resultCode = running
+            ? AutomationUiSceneStatusCodes.RESULT_NOT_EXECUTED
+            : "passed".equals(result)
+                ? AutomationUiSceneStatusCodes.RESULT_PASSED
+                : "skipped".equals(result) || "cancelled".equals(result)
+                    ? AutomationUiSceneStatusCodes.RESULT_SKIPPED
+                    : AutomationUiSceneStatusCodes.RESULT_FAILED;
+        scene.setExecuteStatus(running
+            ? AutomationUiSceneStatusCodes.STATUS_RUNNING
+            : AutomationUiSceneStatusCodes.STATUS_COMPLETED);
+        scene.setExecuteResult(resultCode);
+        if (!running) {
+            scene.setLastResult(resultCode);
+        }
+        scene.setCaseTotal(toInt(batch.get("caseTotal")));
+        scene.setCasePass(toInt(batch.get("casePass")));
+        scene.setCaseFail(toInt(batch.get("caseFail")));
+        scene.setCaseSkip(toInt(batch.get("caseSkip")) + toInt(batch.get("caseCancelled")));
+        scene.setPassRate(stringValue(batch.get("casePassRate")));
+        scene.setStepTotal(toInt(batch.get("stepTotal")));
+        scene.setStepPass(toInt(batch.get("stepPass")));
+        scene.setStepFail(toInt(batch.get("stepFail")));
+        scene.setStepSkip(toInt(batch.get("stepSkip")));
+    }
+
+    private long durationBetween(String startedAt, String finishedAt) {
+        if (StringUtils.isBlank(startedAt) || StringUtils.isBlank(finishedAt)) {
+            return 0;
+        }
+        try {
+            LocalDateTime start = LocalDateTime.parse(startedAt, PLATFORM_DATE_TIME_FORMATTER);
+            LocalDateTime finish = LocalDateTime.parse(finishedAt, PLATFORM_DATE_TIME_FORMATTER);
+            return Math.max(0, java.time.Duration.between(start, finish).toMillis());
+        } catch (DateTimeParseException e) {
+            return 0;
+        }
+    }
+
+    private String now() {
+        return LocalDateTime.now(PLATFORM_ZONE_ID).format(PLATFORM_DATE_TIME_FORMATTER);
+    }
+
+    /**
+     * 批次和运行编号统一为 14 位平台时间格式；同一秒创建多条记录时顺延秒值，避免编号冲突。
+     */
+    private String nextExecutionId() {
+        long epochSecond = EXECUTION_ID_SEQUENCE_SECONDS.updateAndGet(previous -> Math.max(Instant.now()
+            .getEpochSecond(), previous + 1));
+        return LocalDateTime.ofInstant(Instant.ofEpochSecond(epochSecond), PLATFORM_ZONE_ID)
+            .format(EXECUTION_ID_FORMATTER);
+    }
+
+    private void putIfNotBlank(Map<String, Object> target, String key, String value) {
+        if (StringUtils.isNotBlank(value)) {
+            target.put(key, value);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> mapReference(Object value) {
+        return value instanceof Map<?, ?> ? (Map<String, Object>)value : null;
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Object> listValue(Object value) {
+        return value instanceof List<?> ? (List<Object>)value : new ArrayList<>();
+    }
+
+    private void replaceListItem(Map<String, Object> owner, String key, Object oldValue, Object newValue) {
+        List<Object> values = listValue(owner.get(key));
+        int index = values.indexOf(oldValue);
+        if (index >= 0) {
+            values.set(index, newValue);
+        }
+    }
+
     private Map<String, Object> asObjectMap(Object value) {
         if (!(value instanceof Map<?, ?> source)) {
             return new LinkedHashMap<>();
@@ -248,12 +711,14 @@ public class AutomationPlaywrightCaseServiceImpl implements AutomationPlaywright
             // 继续兼容带偏移量和本地时间格式。
         }
         try {
-            return OffsetDateTime.parse(normalized).atZoneSameInstant(PLATFORM_ZONE_ID)
+            return OffsetDateTime.parse(normalized)
+                .atZoneSameInstant(PLATFORM_ZONE_ID)
                 .format(PLATFORM_DATE_TIME_FORMATTER);
         } catch (DateTimeParseException ignored) {
             // 继续兼容无时区的 ISO 本地时间。
         }
-        for (DateTimeFormatter formatter : List.of(DateTimeFormatter.ISO_LOCAL_DATE_TIME, PLATFORM_DATE_TIME_FORMATTER)) {
+        for (DateTimeFormatter formatter : List
+            .of(DateTimeFormatter.ISO_LOCAL_DATE_TIME, PLATFORM_DATE_TIME_FORMATTER)) {
             try {
                 return LocalDateTime.parse(normalized, formatter).format(PLATFORM_DATE_TIME_FORMATTER);
             } catch (DateTimeParseException ignored) {
@@ -315,6 +780,35 @@ public class AutomationPlaywrightCaseServiceImpl implements AutomationPlaywright
         return count;
     }
 
+    private Long calculateStepDuration(List<Object> stepResults) {
+        if (stepResults.isEmpty()) {
+            return null;
+        }
+        long durationMs = 0;
+        for (Object item : stepResults) {
+            Map<String, Object> step = asObjectMap(item);
+            Object value = step.containsKey("duration_ms") ? step.get("duration_ms") : step.get("duration");
+            if (value == null || StringUtils.isBlank(String.valueOf(value))) {
+                return null;
+            }
+            Long stepDuration = parseDuration(value);
+            if (stepDuration == null) {
+                return null;
+            }
+            durationMs += stepDuration;
+        }
+        return durationMs;
+    }
+
+    private Long parseDuration(Object value) {
+        try {
+            double duration = Double.parseDouble(String.valueOf(value));
+            return Double.isFinite(duration) && duration >= 0 ? Math.round(duration) : null;
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
     private int toInt(Object value) {
         if (value == null) {
             return 0;
@@ -326,11 +820,23 @@ public class AutomationPlaywrightCaseServiceImpl implements AutomationPlaywright
         }
     }
 
+    private long toLong(Object value) {
+        if (value == null) {
+            return 0;
+        }
+        try {
+            return Long.parseLong(String.valueOf(value));
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
+
     private String formatRate(int pass, int total) {
         if (total <= 0) {
             return "0%";
         }
-        return String.valueOf(Math.round(pass * 10000.0 / total) / 100.0) + "%";
+        double rate = Math.round(pass * 10000.0 / total) / 100.0;
+        return rate == Math.rint(rate) ? String.valueOf((long)rate) + "%" : String.valueOf(rate) + "%";
     }
 
     private ResolvedCase resolveCase(String caseKey) {
@@ -444,8 +950,8 @@ public class AutomationPlaywrightCaseServiceImpl implements AutomationPlaywright
                                          AutomationUiSceneDO scene,
                                          Long projectEnvironmentId) {
         ProjectEnvironmentConfigDO environment = projectEnvironmentConfigMapper.selectById(projectEnvironmentId);
-        String context = "sceneId=" + scene.getSceneId() + "，caseId=" + resp.getCaseId() + "，projectEnvironmentId="
-            + projectEnvironmentId;
+        String context = "sceneId=" + scene.getSceneId() + "，caseId=" + resp
+            .getCaseId() + "，projectEnvironmentId=" + projectEnvironmentId;
         if (environment == null) {
             throw new BusinessException("回放产品环境不存在，" + context);
         }
@@ -483,7 +989,9 @@ public class AutomationPlaywrightCaseServiceImpl implements AutomationPlaywright
         }
         String frontendDomain = resolveServerConfigParam(server, "前端域名");
         String frontendPort = resolveServerConfigParam(server, "前端端口");
-        String address = StringUtils.isNotBlank(frontendDomain) ? frontendDomain : StringUtils.trimToEmpty(server.getIp());
+        String address = StringUtils.isNotBlank(frontendDomain)
+            ? frontendDomain
+            : StringUtils.trimToEmpty(server.getIp());
         if (StringUtils.isBlank(address)) {
             throw new BusinessException("回放产品环境未配置可用的前端域名或服务器 IP，" + context);
         }

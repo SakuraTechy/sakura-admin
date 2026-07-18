@@ -17,6 +17,9 @@
 package top.continew.admin.automation.service;
 
 import top.continew.admin.automation.model.req.playwright.AutomationPlaywrightResultReq;
+import top.continew.admin.automation.model.req.playwright.AutomationPlaywrightBatchCaseStatusReq;
+import top.continew.admin.automation.model.req.playwright.AutomationPlaywrightBatchCreateReq;
+import top.continew.admin.automation.model.resp.playwright.AutomationPlaywrightBatchResp;
 import top.continew.admin.automation.model.resp.playwright.AutomationPlaywrightCaseResp;
 
 /**
@@ -29,6 +32,15 @@ public interface AutomationPlaywrightCaseService {
     AutomationPlaywrightCaseResp getCase(String caseKey);
 
     AutomationPlaywrightCaseResp getCase(String caseKey, Long projectEnvironmentId);
+
+    AutomationPlaywrightBatchResp createBatch(AutomationPlaywrightBatchCreateReq req);
+
+    void updateBatchCaseStatus(String sceneKey,
+                               String batchId,
+                               String caseId,
+                               AutomationPlaywrightBatchCaseStatusReq req);
+
+    void cancelBatch(String sceneKey, String batchId);
 
     void saveResult(String caseKey, AutomationPlaywrightResultReq req);
 }

@@ -25,6 +25,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -41,7 +42,9 @@ import top.continew.admin.automation.mapper.AutomationUiSceneMapper;
 import top.continew.admin.automation.model.entity.AutomationUiSceneDO;
 import top.continew.admin.automation.model.entity.ui.CaseDO;
 import top.continew.admin.automation.model.entity.ui.StepDO;
+import top.continew.admin.automation.model.req.playwright.AutomationPlaywrightBatchCreateReq;
 import top.continew.admin.automation.model.req.playwright.AutomationPlaywrightResultReq;
+import top.continew.admin.automation.model.resp.playwright.AutomationPlaywrightBatchResp;
 import top.continew.admin.automation.model.resp.playwright.AutomationPlaywrightCaseResp;
 import top.continew.admin.common.enums.DisEnableStatusEnum;
 import top.continew.admin.project.mapper.ProjectConfigMapper;
@@ -68,11 +71,7 @@ class AutomationPlaywrightCaseServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        service = new AutomationPlaywrightCaseServiceImpl(sceneMapper,
-            stepExtractor,
-            environmentMapper,
-            projectConfigMapper,
-            new AutomationPlaybackUrlRewriter());
+        service = new AutomationPlaywrightCaseServiceImpl(sceneMapper, stepExtractor, environmentMapper, projectConfigMapper, new AutomationPlaybackUrlRewriter());
         lenient().when(stepExtractor.extract(any(StepDO.class), anyInt()))
             .thenReturn(Map.of("start_url", "https://172.19.5.45/login"));
     }
@@ -83,8 +82,7 @@ class AutomationPlaywrightCaseServiceImplTest {
         ProjectEnvironmentConfigDO environment = environment(2L);
         when(environmentMapper.selectById(47L)).thenReturn(environment);
 
-        assertThatThrownBy(() -> service.getCase("100:CASE_001", 47L))
-            .hasMessageContaining("产品环境与场景所属项目不一致")
+        assertThatThrownBy(() -> service.getCase("100:CASE_001", 47L)).hasMessageContaining("产品环境与场景所属项目不一致")
             .hasMessageContaining("projectEnvironmentId=47");
     }
 
@@ -95,8 +93,7 @@ class AutomationPlaywrightCaseServiceImplTest {
         environment.setServerConfig(List.of());
         when(environmentMapper.selectById(47L)).thenReturn(environment);
 
-        assertThatThrownBy(() -> service.getCase("100:CASE_001", 47L))
-            .hasMessageContaining("未配置服务器信息")
+        assertThatThrownBy(() -> service.getCase("100:CASE_001", 47L)).hasMessageContaining("未配置服务器信息")
             .hasMessageContaining("caseId=CASE_001");
     }
 
@@ -107,8 +104,7 @@ class AutomationPlaywrightCaseServiceImplTest {
         environment.setLastDomain("https://");
         when(environmentMapper.selectById(47L)).thenReturn(environment);
 
-        assertThatThrownBy(() -> service.getCase("100:CASE_001", 47L))
-            .hasMessageContaining("产品环境前端地址无效")
+        assertThatThrownBy(() -> service.getCase("100:CASE_001", 47L)).hasMessageContaining("产品环境前端地址无效")
             .hasMessageContaining("sceneId=SCENE_001")
             .hasMessageContaining("caseId=CASE_001")
             .hasMessageContaining("projectEnvironmentId=47");
@@ -121,7 +117,8 @@ class AutomationPlaywrightCaseServiceImplTest {
         StepDO storedStep = storedScene.getCaseList().get(0).getStepList().get(0);
         String rawPlaywrightStep = "{\"action_type\":\"navigate\",\"value\":\"https://172.19.5.45/login\"}";
         String rawLocatorMeta = "{\"version\":1,\"candidates\":[{\"type\":\"css_id\",\"value\":\"#login\"}]}";
-        storedStep.setConfigList(List.of(config("playwright_step", rawPlaywrightStep), config("locator_meta", rawLocatorMeta)));
+        storedStep.setConfigList(List
+            .of(config("playwright_step", rawPlaywrightStep), config("locator_meta", rawLocatorMeta)));
         when(sceneMapper.selectById(100L)).thenReturn(storedScene);
 
         Map<String, Object> extractedStep = new LinkedHashMap<>();
@@ -199,8 +196,147 @@ class AutomationPlaywrightCaseServiceImplTest {
         verify(sceneMapper).updateById(storedScene);
     }
 
+    @Test
+    @SuppressWarnings("unchecked")
+    void shouldCreateFourteenDigitBatchAndExecutionIds() {
+        AutomationUiSceneDO storedScene = scene(1L);
+        when(sceneMapper.selectById(100L)).thenReturn(storedScene);
+        ProjectEnvironmentConfigDO environment = environment(1L);
+        environment.setName("测试环境");
+        when(environmentMapper.selectById(47L)).thenReturn(environment);
+        AutomationPlaywrightBatchCreateReq request = new AutomationPlaywrightBatchCreateReq();
+        request.setSceneKey("100");
+        request.setExecutionType("playwright-runner");
+        request.setCaseIds(List.of("CASE_001"));
+        request.setProjectEnvironmentId(47L);
+
+        AutomationPlaywrightBatchResp response = service.createBatch(request);
+
+        assertThat(response.getBatchId()).matches("\\d{14}");
+        assertThat(response.getCases()).hasSize(1);
+        assertThat(response.getCases().get(0).getExecutionId()).matches("\\d{14}").isNotEqualTo(response.getBatchId());
+        Map<String, Object> storedBatch = (Map<String, Object>)storedScene.getDebugRecord().get(0);
+        Map<String, Object> storedCase = (Map<String, Object>)((List<?>)storedBatch.get("caseResults")).get(0);
+        assertThat(storedBatch.get("batchId")).isEqualTo(response.getBatchId());
+        assertThat(storedCase.get("execution_id")).isEqualTo(response.getCases().get(0).getExecutionId());
+        verify(sceneMapper).updateById(storedScene);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void shouldMergeDetailedResultIntoBatchAndEnrichStepIdentityAndLocator() {
+        AutomationUiSceneDO storedScene = scene(1L);
+        StepDO sourceStep = storedScene.getCaseList().get(0).getStepList().get(0);
+        sourceStep.setId("STEP_001");
+        sourceStep.setName("点击登录按钮");
+        when(sceneMapper.selectById(100L)).thenReturn(storedScene);
+        when(stepExtractor.extract(any(StepDO.class), anyInt())).thenReturn(Map
+            .of("id", "STEP_001", "step_index", 0, "action_type", "click", "description", "点击按钮", "target_selector", "#login", "target_xpath", "//*[@id='login']", "locator_meta", Map
+                .of("candidates", List.of(Map.of("type", "css_id", "value", "#login")))));
+
+        Map<String, Object> pendingCase = new LinkedHashMap<>();
+        pendingCase.put("case_id", "CASE_001");
+        pendingCase.put("case_name", "登录");
+        pendingCase.put("execution_id", "RUN_001");
+        pendingCase.put("status", "running");
+        pendingCase.put("step_total", 1);
+        Map<String, Object> batch = new LinkedHashMap<>();
+        batch.put("recordType", "playwright-batch");
+        batch.put("batchId", "BATCH_001");
+        batch.put("executionId", "BATCH_001");
+        batch.put("executionType", "playwright-runner");
+        batch.put("executeName", "实际用户");
+        batch.put("startedAt", "2026-07-17 10:00:00");
+        batch.put("caseResults", List.of(pendingCase));
+        storedScene.setDebugRecord(List.of(batch));
+
+        Map<String, Object> stepResult = new LinkedHashMap<>();
+        stepResult.put("step_id", "STEP_001");
+        stepResult.put("step_index", 0);
+        stepResult.put("status", "passed");
+        stepResult.put("duration_ms", 320);
+        stepResult.put("locator_source", "meta:css_id");
+        stepResult.put("locator_type", "css_id");
+        stepResult.put("locator_value", "#login");
+        stepResult.put("matched_count", 1);
+        Map<String, Object> raw = new LinkedHashMap<>();
+        raw.put("executor", "playwright-runner");
+        raw.put("batch_id", "BATCH_001");
+        raw.put("run_id", "RUN_001");
+        raw.put("started_at", "2026-07-17T02:00:01Z");
+        raw.put("finished_at", "2026-07-17T02:00:02Z");
+        raw.put("steps", List.of(stepResult));
+        raw.put("artifacts", Map.of("report_html", "/api/report/RUN_001"));
+        AutomationPlaywrightResultReq request = new AutomationPlaywrightResultReq();
+        request.setStatus("passed");
+        request.setSuccess(true);
+        request.setDurationMs(1000L);
+        request.setRaw(raw);
+
+        service.saveResult("100:CASE_001", request);
+
+        assertThat(storedScene.getDebugRecord()).hasSize(1);
+        Map<String, Object> storedBatch = (Map<String, Object>)storedScene.getDebugRecord().get(0);
+        Map<String, Object> storedCase = (Map<String, Object>)((List<?>)storedBatch.get("caseResults")).get(0);
+        Map<String, Object> storedStep = (Map<String, Object>)((List<?>)storedCase.get("steps")).get(0);
+        assertThat(storedCase.get("execution_id")).isEqualTo("RUN_001");
+        assertThat(storedCase.get("duration_ms")).isEqualTo(320L);
+        assertThat(storedCase.get("wall_clock_duration_ms")).isEqualTo(1000L);
+        assertThat(storedCase.get("step_pass_rate")).isEqualTo("100%");
+        assertThat(storedCase.get("artifact_urls")).isEqualTo(Map.of("report_html", "/api/report/RUN_001"));
+        assertThat(storedStep.get("step_name")).isEqualTo("点击登录按钮");
+        assertThat(storedStep.get("actual_locator_source")).isEqualTo("meta:css_id");
+        assertThat(storedStep.get("actual_locator_type")).isEqualTo("css_id");
+        assertThat(storedStep.get("actual_locator_value")).isEqualTo("#login");
+        assertThat(storedBatch.get("caseCompleted")).isEqualTo(1);
+        assertThat(storedBatch.get("casePass")).isEqualTo(1);
+        assertThat(storedBatch.get("duration")).isEqualTo(320L);
+        assertThat(storedBatch.get("stepPassRate")).isEqualTo("100%");
+        assertThat(storedBatch.get("executeName")).isEqualTo("实际用户");
+        verify(sceneMapper).updateById(storedScene);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void shouldCancelOnlyUnfinishedBatchCasesAndRecomputeSummary() {
+        AutomationUiSceneDO storedScene = scene(1L);
+        when(sceneMapper.selectById(100L)).thenReturn(storedScene);
+
+        Map<String, Object> passedCase = new LinkedHashMap<>();
+        passedCase.put("case_id", "CASE_001");
+        passedCase.put("status", "passed");
+        Map<String, Object> runningCase = new LinkedHashMap<>();
+        runningCase.put("case_id", "CASE_002");
+        runningCase.put("status", "running");
+        Map<String, Object> waitingCase = new LinkedHashMap<>();
+        waitingCase.put("case_id", "CASE_003");
+        waitingCase.put("status", "waiting");
+
+        Map<String, Object> batch = new LinkedHashMap<>();
+        batch.put("recordType", "playwright-batch");
+        batch.put("batchId", "BATCH_CANCEL");
+        batch.put("startedAt", "2026-07-17 10:00:00");
+        batch.put("caseResults", new ArrayList<>(List.of(passedCase, runningCase, waitingCase)));
+        storedScene.setDebugRecord(new ArrayList<>(List.of(batch)));
+
+        service.cancelBatch("100", "BATCH_CANCEL");
+
+        List<Map<String, Object>> caseResults = (List<Map<String, Object>>)(List<?>)batch.get("caseResults");
+        assertThat(caseResults).extracting(item -> item.get("status"))
+            .containsExactly("passed", "cancelled", "cancelled");
+        assertThat(batch.get("cancelRequested")).isEqualTo(true);
+        assertThat(batch.get("caseCompleted")).isEqualTo(3);
+        assertThat(batch.get("casePass")).isEqualTo(1);
+        assertThat(batch.get("caseCancelled")).isEqualTo(2);
+        assertThat(batch.get("executeStatus")).isEqualTo("cancelled");
+        assertThat(batch.get("executeResult")).isEqualTo("cancelled");
+        verify(sceneMapper).updateById(storedScene);
+    }
+
     private AutomationUiSceneDO scene(Long projectId) {
         StepDO step = new StepDO();
+        step.setId("STEP_001");
+        step.setName("打开登录页");
         step.setOrder(1);
         CaseDO caseDO = new CaseDO();
         caseDO.setId("CASE_001");

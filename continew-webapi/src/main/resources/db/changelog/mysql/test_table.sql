@@ -104,3 +104,13 @@ CREATE TABLE IF NOT EXISTS `test_timed_task` (
     INDEX `idx_create_user` (`create_user`),
     INDEX `idx_update_user` (`update_user`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='测试定时任务表';
+
+-- changeset sakura:2002
+-- comment 测试计划级多执行引擎报告
+ALTER TABLE `test_report`
+    ADD COLUMN `report_type` varchar(64) NOT NULL DEFAULT 'SELENIUM' COMMENT '报告类型' AFTER `execute_mode`,
+    ADD INDEX `idx_report_type` (`report_type`);
+
+ALTER TABLE `test_timed_task`
+    ADD COLUMN `execution_engine` varchar(64) NOT NULL DEFAULT 'SELENIUM' COMMENT '执行引擎' AFTER `type`,
+    ADD COLUMN `execution_config` json DEFAULT NULL COMMENT '执行引擎配置' AFTER `automation_environment_id`;

@@ -138,6 +138,13 @@ captcha:
 --- ### 日志配置
 ## API 请求/响应日志配置
 continew-starter.log:
+  # 生产环境只保留操作元数据。自动化执行会产生大 JSON 和高频轮询，禁止写入请求/响应正文。
+  includes:
+    - DESCRIPTION
+    - MODULE
+    - IP_ADDRESS
+    - BROWSER
+    - OS
   access-log:
     # 是否打印访问日志（类似于 Nginx access log）
     enabled: false

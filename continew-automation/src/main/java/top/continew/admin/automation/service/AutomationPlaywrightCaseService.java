@@ -20,6 +20,7 @@ import top.continew.admin.automation.model.req.playwright.AutomationPlaywrightRe
 import top.continew.admin.automation.model.req.playwright.AutomationPlaywrightBatchCaseStatusReq;
 import top.continew.admin.automation.model.req.playwright.AutomationPlaywrightBatchCreateReq;
 import top.continew.admin.automation.model.resp.playwright.AutomationPlaywrightBatchResp;
+import top.continew.admin.automation.model.resp.playwright.AutomationPlaywrightCaseCancellationResp;
 import top.continew.admin.automation.model.resp.playwright.AutomationPlaywrightCaseResp;
 
 /**
@@ -41,6 +42,20 @@ public interface AutomationPlaywrightCaseService {
                                AutomationPlaywrightBatchCaseStatusReq req);
 
     void cancelBatch(String sceneKey, String batchId);
+
+    /**
+     * 取消批次中的单个用例，不影响同批次其余用例的调度。
+     */
+    void cancelCase(String sceneKey, String batchId, String caseId);
+
+    /**
+     * 查询执行端是否应停止当前用例。CDP 页面通过此标记协作式停止回放。
+     */
+    AutomationPlaywrightCaseCancellationResp getCaseCancellation(String sceneKey, String batchId, String caseId);
+
+    boolean isBatchTerminal(String sceneKey, String batchId);
+
+    void validateReusableBatchCase(String sceneKey, String batchId, String caseId, Long projectEnvironmentId);
 
     void saveResult(String caseKey, AutomationPlaywrightResultReq req);
 }

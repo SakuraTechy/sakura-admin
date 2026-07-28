@@ -53,6 +53,9 @@ public class AutomationRecordingImportReq implements Serializable {
      */
     private Long targetSceneDbId;
 
+    /** 非创建场景的结构写入必须携带读取时的定义版本。 */
+    private Long expectedDefinitionVersion;
+
     /**
      * 目标用例 ID。replaceCase、appendStep、replaceStep 及兼容模式必填。
      */

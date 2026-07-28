@@ -109,6 +109,11 @@ public class AutomationUiSceneDO extends BaseDO {
     private List<CaseDO> caseList;
 
     /**
+     * 场景定义版本。结构变更通过条件更新推进该值，执行状态刷新不得修改它。
+     */
+    private Long definitionVersion;
+
+    /**
      * 关联的测试计划
      */
     @TableField(typeHandler = JacksonTypeHandler.class)

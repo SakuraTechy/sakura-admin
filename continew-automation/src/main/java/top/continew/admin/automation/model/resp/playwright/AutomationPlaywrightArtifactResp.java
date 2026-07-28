@@ -30,6 +30,9 @@ import lombok.Data;
 @Schema(description = "Playwright Runner 产物上传结果")
 public class AutomationPlaywrightArtifactResp {
 
+    @Schema(description = "系统文件 ID")
+    private Long fileId;
+
     @Schema(description = "执行 ID")
     private String runId;
 
@@ -47,4 +50,10 @@ public class AutomationPlaywrightArtifactResp {
 
     @Schema(description = "文件大小")
     private Long size;
+
+    @Schema(description = "MD5 值")
+    private String md5;
+
+    @Schema(description = "存储编码")
+    private String storageCode;
 }

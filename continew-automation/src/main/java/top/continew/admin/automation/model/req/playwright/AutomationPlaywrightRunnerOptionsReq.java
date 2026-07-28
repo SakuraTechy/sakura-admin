@@ -36,9 +36,20 @@ public class AutomationPlaywrightRunnerOptionsReq implements Serializable {
     @Pattern(regexp = "chromium|firefox|webkit", message = "Runner 浏览器仅支持 chromium、firefox 或 webkit")
     private String browser = "chromium";
 
+    @Pattern(regexp = "smooth|high|ultra|8k", message = "Runner 实时画面质量配置无效")
+    private String liveFrameQuality = "smooth";
+
+    @Pattern(regexp = "isolated|reuse-auth", message = "Runner 用例会话模式配置无效")
+    private String sessionMode = "isolated";
+
     private Boolean headed = false;
 
     private Boolean ignoreHttpsErrors = true;
+
+    /**
+     * 为空时继承录制用例的 page_error_check_enabled；显式 false 也必须传递给 Runner。
+     */
+    private Boolean pageErrorCheckEnabled;
 
     @Pattern(regexp = "off|on|retain-on-failure", message = "Runner trace 策略无效")
     private String trace = "retain-on-failure";

@@ -33,6 +33,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import top.continew.admin.automation.converter.PlaywrightRecordingAssembler;
+import top.continew.admin.automation.mapper.AutomationPlaywrightJobMapper;
 import top.continew.admin.automation.mapper.AutomationUiSceneMapper;
 import top.continew.admin.automation.model.entity.AutomationUiSceneDO;
 import top.continew.admin.automation.model.entity.ui.CaseDO;
@@ -43,6 +44,7 @@ import top.continew.admin.automation.model.req.recording.RecordingSceneReq;
 import top.continew.admin.automation.model.resp.recording.AutomationRecordingImportResp;
 import top.continew.admin.automation.service.AutomationRecordingImportService;
 import top.continew.admin.automation.service.AutomationUiSceneService;
+import top.continew.admin.automation.util.AutomationUiSceneStatusCodes;
 import top.continew.admin.common.enums.StatusTypeEnum;
 import top.continew.admin.project.mapper.ProjectConfigMapper;
 import top.continew.admin.project.model.entity.ProjectConfigDO;
@@ -68,6 +70,7 @@ public class AutomationRecordingImportServiceImpl implements AutomationRecording
     private static final DateTimeFormatter RECORDING_ID_TIME = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss");
 
     private final AutomationUiSceneMapper automationUiSceneMapper;
+    private final AutomationPlaywrightJobMapper automationPlaywrightJobMapper;
     private final AutomationUiSceneService automationUiSceneService;
     private final PlaywrightRecordingAssembler playwrightRecordingAssembler;
     private final ProjectConfigMapper projectConfigMapper;
@@ -119,15 +122,16 @@ public class AutomationRecordingImportServiceImpl implements AutomationRecording
             .getAppendAfterCaseId());
         String caseIdPrefix = RecordingAppendCasePositionResolver.resolveCaseIdPrefix(caseList);
         int nextOrder = insertIndex + 1;
-        String caseId = caseIdPrefix + String.format("%03d", nextOrder);
+        String caseId = nextCaseId(scene, caseList, caseIdPrefix);
         PlaywrightRecordingAssembler.RecordingImportContext context = newContext(req, recordingId, scene
             .getProjectId(), scene.getProjectName(), scene.getVersionName(), scene.getSceneId());
         CaseDO caseDO = playwrightRecordingAssembler.toCase(recordedCase, caseId, nextOrder, context);
+        assignNewStepIds(scene, caseDO, new ArrayList<>(), mutableStepList(caseDO), null);
 
         caseList.add(insertIndex, caseDO);
-        RecordingAppendCasePositionResolver.renumberCaseIds(caseList, caseIdPrefix);
+        normalizeOrderAndPid(caseList);
         refreshSceneCounts(scene, caseList);
-        automationUiSceneMapper.updateById(scene);
+        updateDefinition(scene, req);
         return new AutomationRecordingImportResp(scene.getId(), scene.getSceneId(), caseDO
             .getId(), recordingId, recordedCase.getSteps().size(), MODE_APPEND_CASE);
     }
@@ -147,10 +151,14 @@ public class AutomationRecordingImportServiceImpl implements AutomationRecording
         CaseDO replacement = playwrightRecordingAssembler.toCase(recordedCase, targetCase.getId(), targetCase
             .getOrder(), context);
         preserveCaseIdentity(targetCase, replacement);
+        assignNewStepIds(scene, replacement, targetCase.getStepList() == null
+            ? new ArrayList<>()
+            : targetCase.getStepList(), mutableStepList(replacement), null);
         int targetIndex = caseList.indexOf(targetCase);
         caseList.set(targetIndex, replacement);
+        normalizeOrderAndPid(caseList);
         refreshSceneCounts(scene, caseList);
-        automationUiSceneMapper.updateById(scene);
+        updateDefinition(scene, req);
         return new AutomationRecordingImportResp(scene.getId(), scene.getSceneId(), replacement
             .getId(), recordingId, recordedCase.getSteps().size(), MODE_REPLACE_CASE);
     }
@@ -163,9 +171,11 @@ public class AutomationRecordingImportServiceImpl implements AutomationRecording
         PlaywrightRecordingAssembler.RecordingImportContext context = newContext(req, recordingId, scene
             .getProjectId(), scene.getProjectName(), scene.getVersionName(), scene.getSceneId());
         targetCase.setStepList(playwrightRecordingAssembler.toSteps(recordedCase, targetCase.getId(), context));
+        assignNewStepIds(scene, targetCase, new ArrayList<>(), mutableStepList(targetCase), null);
         targetCase.setName(recordedCase.getName());
+        normalizeOrderAndPid(mutableCaseList(scene));
         refreshSceneCounts(scene, mutableCaseList(scene));
-        automationUiSceneMapper.updateById(scene);
+        updateDefinition(scene, req);
         return new AutomationRecordingImportResp(scene.getId(), scene.getSceneId(), targetCase
             .getId(), recordingId, recordedCase.getSteps().size(), MODE_REPLACE_CASE_STEPS);
     }
@@ -181,10 +191,12 @@ public class AutomationRecordingImportServiceImpl implements AutomationRecording
             .getAppendAfterStepId());
         PlaywrightRecordingAssembler.RecordingImportContext context = newContext(req, recordingId, scene
             .getProjectId(), scene.getProjectName(), scene.getVersionName(), scene.getSceneId());
-        stepList.addAll(insertIndex, playwrightRecordingAssembler.toSteps(recordedCase, targetCase.getId(), context));
-        RecordingStepPositionResolver.renumberStepIds(stepList, targetCase.getId());
+        List<StepDO> additions = playwrightRecordingAssembler.toSteps(recordedCase, targetCase.getId(), context);
+        assignNewStepIds(scene, targetCase, stepList, additions, null);
+        stepList.addAll(insertIndex, additions);
+        normalizeOrderAndPid(mutableCaseList(scene));
         refreshSceneCounts(scene, mutableCaseList(scene));
-        automationUiSceneMapper.updateById(scene);
+        updateDefinition(scene, req);
         return new AutomationRecordingImportResp(scene.getId(), scene.getSceneId(), targetCase
             .getId(), recordingId, recordedCase.getSteps().size(), MODE_APPEND_STEP);
     }
@@ -203,10 +215,12 @@ public class AutomationRecordingImportServiceImpl implements AutomationRecording
         PlaywrightRecordingAssembler.RecordingImportContext context = newContext(req, recordingId, scene
             .getProjectId(), scene.getProjectName(), scene.getVersionName(), scene.getSceneId());
         stepList.remove(targetIndex);
-        stepList.addAll(targetIndex, playwrightRecordingAssembler.toSteps(recordedCase, targetCase.getId(), context));
-        RecordingStepPositionResolver.renumberStepIds(stepList, targetCase.getId());
+        List<StepDO> replacements = playwrightRecordingAssembler.toSteps(recordedCase, targetCase.getId(), context);
+        assignNewStepIds(scene, targetCase, stepList, replacements, req.getTargetStepId());
+        stepList.addAll(targetIndex, replacements);
+        normalizeOrderAndPid(mutableCaseList(scene));
         refreshSceneCounts(scene, mutableCaseList(scene));
-        automationUiSceneMapper.updateById(scene);
+        updateDefinition(scene, req);
         return new AutomationRecordingImportResp(scene.getId(), scene.getSceneId(), targetCase
             .getId(), recordingId, recordedCase.getSteps().size(), MODE_REPLACE_STEP);
     }
@@ -237,8 +251,21 @@ public class AutomationRecordingImportServiceImpl implements AutomationRecording
 
     private AutomationUiSceneDO requireTargetScene(AutomationRecordingImportReq req) {
         CheckUtils.throwIf(req.getTargetSceneDbId() == null, "录制导入失败：{} 模式 targetSceneDbId 不能为空", req.getMode());
+        CheckUtils.throwIf(req
+            .getExpectedDefinitionVersion() == null, "录制导入失败：{} 模式 expectedDefinitionVersion 不能为空", req.getMode());
+        // 先锁定，再通过实体映射读取 JSON caseList；自定义锁查询不会应用 JacksonTypeHandler。
+        CheckUtils.throwIf(automationUiSceneMapper.selectByIdForUpdate(req
+            .getTargetSceneDbId()) == null, "录制导入失败：目标场景不存在，targetSceneDbId={}", req.getTargetSceneDbId());
         AutomationUiSceneDO scene = automationUiSceneMapper.selectById(req.getTargetSceneDbId());
-        CheckUtils.throwIf(scene == null, "录制导入失败：目标场景不存在，targetSceneDbId={}", req.getTargetSceneDbId());
+        CheckUtils.throwIf(!java.util.Objects.equals(scene.getDefinitionVersion() == null
+            ? 0L
+            : scene.getDefinitionVersion(), req.getExpectedDefinitionVersion()), "场景定义已被其他操作修改，请刷新后重试");
+        if (AutomationUiSceneStatusCodes.STATUS_RUNNING.equals(AutomationUiSceneStatusCodes.normalizeStatus(scene
+            .getExecuteStatus())) || automationPlaywrightJobMapper.countActiveBySceneKeys(String.valueOf(scene
+                .getId()), scene.getSceneId()) > 0) {
+            throw new BusinessException("场景正在执行，暂不能修改用例树");
+        }
+        syncNodeIdSequences(scene);
         return scene;
     }
 
@@ -303,6 +330,117 @@ public class AutomationRecordingImportServiceImpl implements AutomationRecording
             }
         }
         scene.setStepTotal(stepTotal);
+    }
+
+    /** 录制结构变更只整理 order/pid，绝不因位置变化重写既有业务 ID。 */
+    private void normalizeOrderAndPid(List<CaseDO> caseList) {
+        for (int caseIndex = 0; caseIndex < caseList.size(); caseIndex++) {
+            CaseDO caseDO = caseList.get(caseIndex);
+            caseDO.setOrder(caseIndex + 1);
+            List<StepDO> steps = mutableStepList(caseDO);
+            for (int stepIndex = 0; stepIndex < steps.size(); stepIndex++) {
+                StepDO stepDO = steps.get(stepIndex);
+                stepDO.setOrder(stepIndex + 1);
+                stepDO.setPid(caseDO.getId());
+            }
+        }
+    }
+
+    private String nextCaseId(AutomationUiSceneDO scene, List<CaseDO> caseList, String prefix) {
+        java.util.Set<String> ids = new java.util.HashSet<>();
+        long max = 0;
+        for (CaseDO item : caseList) {
+            if (item == null || item.getId() == null)
+                continue;
+            ids.add(item.getId());
+            if (item.getId().startsWith(prefix)) {
+                String suffix = item.getId().substring(prefix.length());
+                if (suffix.matches("\\d+"))
+                    max = Math.max(max, Long.parseLong(suffix));
+            }
+        }
+        Long stored = automationUiSceneMapper.selectNodeIdSequence(scene.getId(), "CASE", prefix);
+        max = Math.max(max, stored == null ? 0L : stored);
+        do {
+            max++;
+        } while (ids.contains(prefix + String.format("%03d", max)));
+        automationUiSceneMapper.upsertNodeIdSequence(scene.getId(), "CASE", prefix, max);
+        return prefix + String.format("%03d", max);
+    }
+
+    /** append 仅为新增步骤分配 ID；replaceStep 的首步保留被替换步骤 ID。 */
+    private void assignNewStepIds(AutomationUiSceneDO scene,
+                                  CaseDO targetCase,
+                                  List<StepDO> existing,
+                                  List<StepDO> additions,
+                                  String preservedFirstId) {
+        java.util.Set<String> ids = new java.util.HashSet<>();
+        for (StepDO item : existing)
+            if (item != null && item.getId() != null)
+                ids.add(item.getId());
+        for (int index = 0; index < additions.size(); index++) {
+            StepDO step = additions.get(index);
+            if (index == 0 && preservedFirstId != null) {
+                step.setId(preservedFirstId);
+                ids.add(preservedFirstId);
+                continue;
+            }
+            String prefix = step.getId() == null ? "CASE_STEP_" : step.getId().replaceFirst("\\d+$", "");
+            if (prefix.isBlank())
+                prefix = "CASE_STEP_";
+            long next = nextStepSequence(scene.getId(), targetCase.getId(), ids, prefix);
+            while (ids.contains(prefix + String.format("%03d", next)))
+                next++;
+            step.setId(prefix + String.format("%03d", next));
+            ids.add(step.getId());
+        }
+    }
+
+    private long nextStepSequence(Long sceneId, String caseId, java.util.Set<String> ids, String prefix) {
+        long max = 0;
+        for (String id : ids) {
+            if (id != null && id.startsWith(prefix)) {
+                String suffix = id.substring(prefix.length());
+                if (suffix.matches("\\d+"))
+                    max = Math.max(max, Long.parseLong(suffix));
+            }
+        }
+        Long stored = automationUiSceneMapper.selectNodeIdSequence(sceneId, "STEP:" + caseId, prefix);
+        max = Math.max(max, stored == null ? 0L : stored);
+        return max + 1;
+    }
+
+    private void syncNodeIdSequences(AutomationUiSceneDO scene) {
+        if (scene.getCaseList() == null)
+            return;
+        for (CaseDO caseDO : scene.getCaseList()) {
+            if (caseDO == null)
+                continue;
+            syncNodeIdSequence(scene.getId(), "CASE", caseDO.getId());
+            if (caseDO.getStepList() == null)
+                continue;
+            for (StepDO step : caseDO.getStepList())
+                if (step != null)
+                    syncNodeIdSequence(scene.getId(), "STEP:" + caseDO.getId(), step.getId());
+        }
+    }
+
+    private void syncNodeIdSequence(Long sceneId, String scopeKey, String id) {
+        if (id == null)
+            return;
+        java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("^(.*?)(\\d+)$").matcher(id);
+        if (matcher.matches())
+            automationUiSceneMapper.upsertNodeIdSequence(sceneId, scopeKey, matcher.group(1), Long.parseLong(matcher
+                .group(2)));
+    }
+
+    /** 录制导入与树操作共用定义版本条件更新，禁止全实体 updateById 覆盖彼此结果。 */
+    private void updateDefinition(AutomationUiSceneDO scene, AutomationRecordingImportReq req) {
+        syncNodeIdSequences(scene);
+        int updated = automationUiSceneMapper.updateDefinition(scene.getId(), req.getExpectedDefinitionVersion(), scene
+            .getCaseList(), scene.getCaseTotal(), scene.getStepTotal());
+        CheckUtils.throwIf(updated != 1, "场景定义已被其他操作修改，请刷新后重试");
+        scene.setDefinitionVersion(req.getExpectedDefinitionVersion() + 1);
     }
 
     private void checkModePermission(String mode) {

@@ -27,15 +27,18 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import top.continew.admin.common.controller.BaseController;
 import top.continew.admin.test.model.query.TestTimedTaskQuery;
+import top.continew.admin.test.model.query.TestTimedTaskRunQuery;
 import top.continew.admin.test.model.req.TestTimedTaskReq;
 import top.continew.admin.test.model.resp.TestTimedTaskDetailResp;
 import top.continew.admin.test.model.resp.TestTimedTaskLogResp;
 import top.continew.admin.test.model.resp.TestTimedTaskResp;
+import top.continew.admin.test.model.resp.TestTimedTaskRunResp;
 import top.continew.admin.test.service.TestTimedTaskService;
 import top.continew.starter.core.validation.CheckUtils;
 import top.continew.starter.extension.crud.annotation.CrudRequestMapping;
 import top.continew.starter.extension.crud.enums.Api;
 import top.continew.starter.extension.crud.model.query.SortQuery;
+import top.continew.starter.extension.crud.model.query.PageQuery;
 import top.continew.starter.extension.crud.model.resp.BaseIdResp;
 import top.continew.starter.extension.crud.model.resp.PageResp;
 import top.continew.starter.extension.crud.validation.CrudValidationGroup;
@@ -114,6 +117,15 @@ public class TestTimedTaskController extends BaseController<TestTimedTaskService
     @PostMapping("/{id}/trigger")
     public void trigger(@PathVariable Long id) {
         baseService.trigger(id);
+    }
+
+    @Operation(summary = "分页查询业务执行记录")
+    @SaCheckPermission("test:timedTask:list")
+    @GetMapping("/{id}/runs")
+    public PageResp<TestTimedTaskRunResp> pageRuns(@PathVariable Long id,
+                                                   @Validated TestTimedTaskRunQuery query,
+                                                   @Validated PageQuery pageQuery) {
+        return baseService.pageRuns(id, query, pageQuery);
     }
 
     @SaCheckPermission("test:timedTask:list")

@@ -147,7 +147,7 @@ logging:
     top.continew.admin: DEBUG
     top.continew.starter: DEBUG
   file:
-    path: ./logs
+    path: ./sakura-admin/logs
 
 --- ### 跨域配置
 continew-starter.web.cors:

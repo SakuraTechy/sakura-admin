@@ -38,6 +38,9 @@ public class TestTimedTaskQuery implements Serializable {
     @Query(type = QueryType.EQ)
     private Long testPlanId;
 
+    /** 通过测试计划关联过滤，不直接映射 test_timed_task 字段。 */
+    private Long projectId;
+
     @Query(type = QueryType.LIKE)
     private String name;
 

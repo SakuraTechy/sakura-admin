@@ -23,6 +23,8 @@ import top.continew.admin.common.model.resp.BaseDetailResp;
 
 import java.io.Serial;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
@@ -34,17 +36,25 @@ public class TestTimedTaskResp extends BaseDetailResp {
 
     private Long testPlanId;
     private String testPlanName;
+    private Long projectId;
+    private String projectName;
     private Long scheduleJobId;
     private String type;
+    private String executionEngine;
     private String name;
     private String description;
     private String cronExpression;
     private String misfirePolicy;
     private Integer allowConcurrent;
     private Long projectEnvironmentId;
+    private String projectEnvironmentName;
     private Long automationEnvironmentId;
+    private String automationEnvironmentName;
+    private Map<String, Object> executionConfig;
     private String executeName;
     private String executeEmail;
+    private List<String> notificationEmails;
     private LocalDateTime nextExecuteTime;
     private String status;
+    private TestTimedTaskRunSummaryResp lastRun;
 }

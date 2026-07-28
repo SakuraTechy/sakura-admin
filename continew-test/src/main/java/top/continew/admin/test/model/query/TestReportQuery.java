@@ -51,6 +51,9 @@ public class TestReportQuery implements Serializable {
     private String executeMode;
 
     @Query(type = QueryType.EQ)
+    private String reportType;
+
+    @Query(type = QueryType.EQ)
     private String status;
 
     @Query(type = QueryType.EQ)

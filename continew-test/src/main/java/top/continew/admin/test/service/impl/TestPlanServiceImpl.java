@@ -17,33 +17,40 @@
 package top.continew.admin.test.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
+import cn.dev33.satoken.stp.StpUtil;
 import lombok.RequiredArgsConstructor;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 import top.continew.admin.automation.mapper.AutomationUiSceneMapper;
 import top.continew.admin.automation.model.entity.AutomationUiSceneDO;
 import top.continew.admin.automation.model.req.AutomationUiSceneExecReq;
 import top.continew.admin.automation.model.resp.AutomationUiSceneExecResp;
 import top.continew.admin.automation.service.AutomationUiSceneService;
+import top.continew.admin.automation.service.AutomationUiExecutionRecordService;
 import top.continew.admin.common.enums.StatusTypeEnum;
 import top.continew.admin.test.mapper.TestPlanMapper;
 import top.continew.admin.test.mapper.TestReportMapper;
 import top.continew.admin.test.mapper.TestTimedTaskMapper;
 import top.continew.admin.test.model.entity.TestPlanDO;
 import top.continew.admin.test.model.entity.TestReportDO;
+import top.continew.admin.test.model.enums.TestExecutionEngineEnum;
 import top.continew.admin.test.model.query.TestPlanQuery;
 import top.continew.admin.test.model.req.TestPlanExecuteReq;
 import top.continew.admin.test.model.req.TestPlanReq;
 import top.continew.admin.test.model.req.TestPlanSceneRelationReq;
 import top.continew.admin.test.model.resp.TestPlanDetailResp;
 import top.continew.admin.test.model.resp.TestPlanResp;
+import top.continew.admin.test.model.resp.TestPlanExecuteResp;
 import top.continew.admin.test.service.TestPlanService;
+import top.continew.starter.core.exception.BusinessException;
 import top.continew.starter.core.validation.CheckUtils;
 import top.continew.starter.extension.crud.service.BaseServiceImpl;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -55,9 +62,11 @@ import java.util.Objects;
 public class TestPlanServiceImpl extends BaseServiceImpl<TestPlanMapper, TestPlanDO, TestPlanResp, TestPlanDetailResp, TestPlanQuery, TestPlanReq> implements TestPlanService {
 
     private final AutomationUiSceneMapper automationUiSceneMapper;
+    private final AutomationUiExecutionRecordService executionRecordService;
     private final AutomationUiSceneService automationUiSceneService;
     private final TestReportMapper testReportMapper;
     private final TestTimedTaskMapper testTimedTaskMapper;
+    private final TestPlanExecutionDispatchService executionDispatchService;
 
     @Override
     public List<TestPlanDetailResp> selectByIds(List<Long> ids) {
@@ -113,34 +122,7 @@ public class TestPlanServiceImpl extends BaseServiceImpl<TestPlanMapper, TestPla
             planIds.removeIf(item -> Objects.equals(String.valueOf(item), String.valueOf(id)));
             planIds.add(id);
             scene.setTestPlanId(planIds);
-            List<Object> testRecordList = scene.getTestRecord();
-            if (testRecordList == null) {
-                testRecordList = new ArrayList<>();
-            }
-            Map<String, Object> defaultTestRecord = new HashMap<>(16);
-            defaultTestRecord.put("testPlanId", String.valueOf(id));
-            defaultTestRecord.put("sceneTotal", 0);
-            defaultTestRecord.put("scenePass", 0);
-            defaultTestRecord.put("sceneFail", 0);
-            defaultTestRecord.put("sceneSkip", 0);
-            defaultTestRecord.put("scenePassRate", "-");
-            defaultTestRecord.put("caseTotal", 0);
-            defaultTestRecord.put("casePass", 0);
-            defaultTestRecord.put("caseFail", 0);
-            defaultTestRecord.put("caseSkip", 0);
-            defaultTestRecord.put("casePassRate", "0%");
-            defaultTestRecord.put("stepTotal", 0);
-            defaultTestRecord.put("stepPass", 0);
-            defaultTestRecord.put("stepFail", 0);
-            defaultTestRecord.put("stepSkip", 0);
-            defaultTestRecord.put("stepPassRate", "0%");
-            defaultTestRecord.put("executeName", "-");
-            defaultTestRecord.put("executeStatus", "10");
-            defaultTestRecord.put("executeResult", "13");
-            defaultTestRecord.put("duration", "-");
-            testRecordList.add(defaultTestRecord);
-            scene.setTestRecord(testRecordList);
-            automationUiSceneMapper.updateById(scene);
+            automationUiSceneMapper.updateTestPlanIds(scene.getId(), planIds);
         }
         updatePlanSceneStats(plan, sceneIds);
     }
@@ -158,79 +140,194 @@ public class TestPlanServiceImpl extends BaseServiceImpl<TestPlanMapper, TestPla
                 : new ArrayList<>(scene.getTestPlanId());
             planIds.removeIf(item -> Objects.equals(String.valueOf(item), String.valueOf(id)));
             scene.setTestPlanId(planIds);
-            List<Object> existingRecords = scene.getTestRecord();
-            if (existingRecords != null && !existingRecords.isEmpty()) {
-                existingRecords.removeIf(record -> {
-                    if (record instanceof Map) {
-                        Map<?, ?> recordMap = (Map<?, ?>)record;
-                        Object recordPlanId = recordMap.get("testPlanId");
-                        return recordPlanId != null && Objects.equals(String.valueOf(recordPlanId), String.valueOf(id));
-                    }
-                    return false;
-                });
-                scene.setTestRecord(existingRecords);
-            }
-            automationUiSceneMapper.updateById(scene);
+            automationUiSceneMapper.updateTestPlanIds(scene.getId(), planIds);
+            executionRecordService.removeTestPlanRecords(scene.getId(), String.valueOf(id));
         }
         updatePlanSceneStats(plan, sceneIds);
     }
 
     @Override
-    public AutomationUiSceneExecResp execute(Long id, TestPlanExecuteReq req) {
+    public TestPlanExecuteResp execute(Long id, TestPlanExecuteReq req) {
         TestPlanDO plan = baseMapper.selectById(id);
         CheckUtils.throwIfNull(plan, "测试计划不存在");
         CheckUtils.throwIf(plan.getUiTestScene() == null || plan.getUiTestScene().isEmpty(), "测试计划未关联 UI 场景");
+        List<Long> executionSceneIds = resolveExecutionSceneIds(plan, req.getSceneIds());
+
+        TestExecutionEngineEnum engine = req.getExecutionEngine() == null
+            ? TestExecutionEngineEnum.SELENIUM
+            : req.getExecutionEngine();
+        CheckUtils.throwIfNull(req.getProjectEnvironmentId(), "项目环境 ID 不能为空");
+        if (TestExecutionEngineEnum.SELENIUM.equals(engine)) {
+            CheckUtils.throwIfNull(req.getAutomationEnvironmentId(), "Selenium 执行的自动化环境 ID 不能为空");
+        }
 
         TestReportDO report = new TestReportDO();
-        AutomationUiSceneDO firstScene = automationUiSceneMapper.selectById(plan.getUiTestScene().get(0));
+        AutomationUiSceneDO firstScene = automationUiSceneMapper.selectById(executionSceneIds.get(0));
         report.setProjectId(plan.getProjectId());
         report.setProjectName(plan.getProjectName());
         report.setVersionName(firstScene == null ? null : firstScene.getVersionName());
         report.setTestPlanId(plan.getId());
         report.setTestPlanName(plan.getName());
-        report.setTriggerMode("MANUAL");
+        report.setTriggerMode(StringUtils.defaultIfBlank(req.getTriggerMode(), "MANUAL"));
         report.setExecuteMode("PLAN");
+        report.setReportType(engine.name());
         report.setStatus("RUNNING");
+        report.setName(StringUtils.abbreviate(plan.getName() + "_" + reportTypeLabel(engine) + "_" + LocalDateTime.now()
+            .format(DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS")), 128));
         report.setProjectConfig(plan.getProjectConfig());
         report.setAutomationConfig(plan.getAutomationConfig());
-        report.setRuntimeEnvironment(buildRuntimeEnvironment(req));
+        report.setRuntimeEnvironment(buildRuntimeEnvironment(req, engine, executionSceneIds));
+        report.setRunTime(0L);
         testReportMapper.insert(report);
 
         automationUiSceneMapper.lambdaUpdate()
-            .in(AutomationUiSceneDO::getId, plan.getUiTestScene())
+            .in(AutomationUiSceneDO::getId, executionSceneIds)
             .set(AutomationUiSceneDO::getReportId, report.getId())
             .update();
 
+        plan.setStatus("RUNNING");
+        baseMapper.updateById(plan);
+        try {
+            return switch (engine) {
+                case SELENIUM -> executeSelenium(plan, report, req, executionSceneIds);
+                case PLAYWRIGHT_RUNNER, CHROME_DEVTOOLS_PROTOCOL ->
+                    executePlaywrightPlan(plan, report, req, engine, executionSceneIds);
+            };
+        } catch (RuntimeException e) {
+            report.setStatus("FAILED");
+            Map<String, Object> runtime = new LinkedHashMap<>(report.getRuntimeEnvironment());
+            runtime.put("dispatchError", e.getMessage());
+            report.setRuntimeEnvironment(runtime);
+            testReportMapper.updateById(report);
+            plan.setStatus("COMPLETED");
+            baseMapper.updateById(plan);
+            throw e;
+        }
+    }
+
+    @Override
+    public void cancelExecution(Long id, Long reportId) {
+        TestReportDO report = testReportMapper.selectById(reportId);
+        CheckUtils.throwIfNull(report, "测试报告不存在");
+        CheckUtils.throwIf(!Objects.equals(report.getTestPlanId(), id), "测试报告不属于当前测试计划");
+        CheckUtils.throwIf(TestExecutionEngineEnum.SELENIUM.name()
+            .equalsIgnoreCase(report.getReportType()), "Selenium/Jenkins 执行请在 Jenkins 中取消");
+        // 报告聚合状态可能先于 Runner 进程进入终态，取消请求仍需下发到调度器和进程树。
+        executionDispatchService.cancel(String.valueOf(id), String.valueOf(reportId));
+    }
+
+    private TestPlanExecuteResp executeSelenium(TestPlanDO plan,
+                                                TestReportDO report,
+                                                TestPlanExecuteReq req,
+                                                List<Long> executionSceneIds) {
         AutomationUiSceneExecReq execReq = new AutomationUiSceneExecReq();
-        execReq.setSceneIds(plan.getUiTestScene());
+        execReq.setSceneIds(executionSceneIds);
         execReq.setProjectEnvironmentId(req.getProjectEnvironmentId());
         execReq.setAutomationEnvironmentId(req.getAutomationEnvironmentId());
         execReq.setExecuteName(req.getExecuteName());
         execReq.setExecuteEmail(req.getExecuteEmail());
         execReq.setTestPlanId(String.valueOf(plan.getId()));
         execReq.setTestReportId(String.valueOf(report.getId()));
-        AutomationUiSceneExecResp resp = automationUiSceneService.exec(execReq);
-
-        if (resp != null) {
-            String buildNumber = resp.getBuildNumber() == null ? null : String.valueOf(resp.getBuildNumber());
+        AutomationUiSceneExecResp seleniumResp = automationUiSceneService.exec(execReq);
+        if (seleniumResp != null) {
+            String buildNumber = seleniumResp.getBuildNumber() == null
+                ? null
+                : String.valueOf(seleniumResp.getBuildNumber());
             report.setBuildNumber(buildNumber);
-            report.setConsoleUrl(resp.getConsoleUrl());
-            report.setReportUrl(resp.getTestReportUrl());
-            report.setName(buildNumber != null ? plan.getName() + "_测试报告_" + buildNumber : plan.getName() + "_测试报告");
+            report.setConsoleUrl(seleniumResp.getConsoleUrl());
+            report.setReportUrl(seleniumResp.getTestReportUrl());
+            report.setName(buildNumber != null
+                ? StringUtils.abbreviate(plan.getName() + "_Selenium自动化报告_" + buildNumber, 128)
+                : report.getName());
             testReportMapper.updateById(report);
         }
-        plan.setStatus("RUNNING");
-        baseMapper.updateById(plan);
+        TestPlanExecuteResp resp = baseExecuteResp(report, TestExecutionEngineEnum.SELENIUM);
+        if (seleniumResp != null) {
+            resp.setBuildNumber(seleniumResp.getBuildNumber());
+            resp.setConsoleUrl(seleniumResp.getConsoleUrl());
+            resp.setTestReportUrl(seleniumResp.getTestReportUrl());
+        }
         return resp;
     }
 
-    private Map<String, Object> buildRuntimeEnvironment(TestPlanExecuteReq req) {
+    private TestPlanExecuteResp executePlaywrightPlan(TestPlanDO plan,
+                                                      TestReportDO report,
+                                                      TestPlanExecuteReq req,
+                                                      TestExecutionEngineEnum engine,
+                                                      List<Long> executionSceneIds) {
+        List<TestPlanExecuteResp.SceneExecution> manifest = executionDispatchService
+            .initialize(plan, executionSceneIds, String.valueOf(report.getId()), engine, req);
+        if (TestExecutionEngineEnum.PLAYWRIGHT_RUNNER.equals(engine)) {
+            executionDispatchService.dispatchRunner(plan, String.valueOf(report.getId()), req, manifest, StpUtil
+                .getTokenValue());
+        }
+        TestPlanExecuteResp resp = baseExecuteResp(report, engine);
+        resp.setSceneExecutions(manifest);
+        if (manifest.stream().allMatch(item -> item.getCaseIds() == null || item.getCaseIds().isEmpty())) {
+            resp.setStatus("FAILED");
+        }
+        return resp;
+    }
+
+    private TestPlanExecuteResp baseExecuteResp(TestReportDO report, TestExecutionEngineEnum engine) {
+        TestPlanExecuteResp resp = new TestPlanExecuteResp();
+        resp.setTestReportId(String.valueOf(report.getId()));
+        resp.setReportType(engine.name());
+        resp.setDispatchMode(engine.getDispatchMode());
+        resp.setStatus("RUNNING");
+        return resp;
+    }
+
+    private Map<String, Object> buildRuntimeEnvironment(TestPlanExecuteReq req,
+                                                        TestExecutionEngineEnum engine,
+                                                        List<Long> executionSceneIds) {
         Map<String, Object> runtimeEnvironment = new LinkedHashMap<>();
         runtimeEnvironment.put("projectEnvironmentId", req.getProjectEnvironmentId());
         runtimeEnvironment.put("automationEnvironmentId", req.getAutomationEnvironmentId());
+        runtimeEnvironment.put("executionEngine", engine.name());
+        runtimeEnvironment.put("runnerOptions", req.getRunnerOptions());
+        runtimeEnvironment.put("cdpOptions", req.getCdpOptions());
         runtimeEnvironment.put("executeName", req.getExecuteName());
         runtimeEnvironment.put("executeEmail", req.getExecuteEmail());
+        runtimeEnvironment.put("executionSceneIds", executionSceneIds);
+        runtimeEnvironment.put("startedAtEpochMs", System.currentTimeMillis());
         return runtimeEnvironment;
+    }
+
+    /**
+     * 请求子集只决定本次执行范围，顺序始终以计划关联顺序为准。
+     */
+    private List<Long> resolveExecutionSceneIds(TestPlanDO plan, List<Long> requestedSceneIds) {
+        List<Long> planSceneIds = plan.getUiTestScene() == null ? List.of() : plan.getUiTestScene();
+        List<Long> executionSceneIds;
+        if (requestedSceneIds == null) {
+            executionSceneIds = new ArrayList<>(planSceneIds);
+        } else {
+            ensureCondition(requestedSceneIds.isEmpty(), "执行场景不能为空");
+            ensureCondition(requestedSceneIds.stream().anyMatch(Objects::isNull), "执行场景 ID 不能为空");
+            LinkedHashSet<Long> requestedSet = new LinkedHashSet<>(requestedSceneIds);
+            ensureCondition(requestedSet.size() != requestedSceneIds.size(), "执行场景不能重复");
+            ensureCondition(!planSceneIds.containsAll(requestedSet), "执行场景不属于当前测试计划");
+            executionSceneIds = planSceneIds.stream().filter(requestedSet::contains).toList();
+        }
+        ensureCondition(executionSceneIds.isEmpty(), "测试计划没有可执行的关联场景");
+        List<AutomationUiSceneDO> existingScenes = automationUiSceneMapper.selectBatchIds(executionSceneIds);
+        ensureCondition(existingScenes.size() != executionSceneIds.size(), "测试计划关联场景不存在，请刷新后重试");
+        return executionSceneIds;
+    }
+
+    private void ensureCondition(boolean condition, String message) {
+        if (condition) {
+            throw new BusinessException(message);
+        }
+    }
+
+    private String reportTypeLabel(TestExecutionEngineEnum engine) {
+        return switch (engine) {
+            case SELENIUM -> "Selenium自动化报告";
+            case PLAYWRIGHT_RUNNER -> "PlaywrightRunner自动化报告";
+            case CHROME_DEVTOOLS_PROTOCOL -> "ChromeDevToolsProtocol自动化报告";
+        };
     }
 
     private void updatePlanSceneStats(TestPlanDO plan, List<Long> sceneIds) {

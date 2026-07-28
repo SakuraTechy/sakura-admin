@@ -55,6 +55,7 @@ VALUES
 (5101, '生成中', 'RUNNING', 'primary', 1, NULL, 1, 51, 1, NOW()),
 (5102, '通过', 'PASSED', 'success', 2, NULL, 1, 51, 1, NOW()),
 (5103, '未通过', 'FAILED', 'error', 3, NULL, 1, 51, 1, NOW()),
+(5104, '已取消', 'CANCELLED', 'warning', 4, NULL, 1, 51, 1, NOW()),
 (5201, '手动', 'MANUAL', 'primary', 1, NULL, 1, 52, 1, NOW()),
 (5202, '定时', 'SCHEDULE', 'warning', 2, NULL, 1, 52, 1, NOW()),
 (5301, '调试执行', 'DEBUG', 'primary', 1, NULL, 1, 53, 1, NOW()),

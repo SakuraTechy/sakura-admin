@@ -30,6 +30,8 @@ public class CaseDO implements Serializable {
     private static final long serialVersionUID = 1L;
 
     private String id;
+    /** 兼容接口也必须携带读取时的场景定义版本。 */
+    private Long expectedDefinitionVersion;
     private String copyId;
     private String name;
     private String remark;

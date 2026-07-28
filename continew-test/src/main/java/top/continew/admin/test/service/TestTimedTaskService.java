@@ -17,16 +17,22 @@
 package top.continew.admin.test.service;
 
 import top.continew.admin.test.model.query.TestTimedTaskQuery;
+import top.continew.admin.test.model.query.TestTimedTaskRunQuery;
 import top.continew.admin.test.model.req.TestTimedTaskReq;
 import top.continew.admin.test.model.resp.TestTimedTaskDetailResp;
 import top.continew.admin.test.model.resp.TestTimedTaskLogResp;
 import top.continew.admin.test.model.resp.TestTimedTaskResp;
+import top.continew.admin.test.model.resp.TestTimedTaskRunResp;
+import top.continew.starter.extension.crud.model.query.PageQuery;
 import top.continew.starter.extension.crud.model.resp.PageResp;
 import top.continew.starter.extension.crud.service.BaseService;
 
 import java.util.List;
 
 public interface TestTimedTaskService extends BaseService<TestTimedTaskResp, TestTimedTaskDetailResp, TestTimedTaskQuery, TestTimedTaskReq> {
+
+    @Override
+    PageResp<TestTimedTaskResp> page(TestTimedTaskQuery query, PageQuery pageQuery);
 
     List<TestTimedTaskDetailResp> selectByIds(List<Long> ids);
 
@@ -39,4 +45,6 @@ public interface TestTimedTaskService extends BaseService<TestTimedTaskResp, Tes
     void trigger(Long id);
 
     PageResp<TestTimedTaskLogResp> pageLogs(Long id, Integer page, Integer size);
+
+    PageResp<TestTimedTaskRunResp> pageRuns(Long id, TestTimedTaskRunQuery query, PageQuery pageQuery);
 }

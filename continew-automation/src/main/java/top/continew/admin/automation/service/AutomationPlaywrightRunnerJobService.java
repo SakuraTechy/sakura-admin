@@ -26,7 +26,34 @@ public interface AutomationPlaywrightRunnerJobService {
 
     AutomationPlaywrightRunnerJobResp create(AutomationPlaywrightRunnerJobReq req);
 
+    /**
+     * 计划调度使用已捕获的用户令牌；无人值守任务为空时回退到服务令牌配置。
+     */
+    AutomationPlaywrightRunnerJobResp create(AutomationPlaywrightRunnerJobReq req, String token);
+
     AutomationPlaywrightRunnerJobResp get(String jobId);
 
+    /**
+     * 查询任务状态，并且只返回指定序号之后的新日志。
+     */
+    AutomationPlaywrightRunnerJobResp get(String jobId, Long afterSequence);
+
     AutomationPlaywrightRunnerJobResp cancel(String jobId);
+
+    void cancelBatch(String batchId);
+
+    /**
+     * 仅终止指定批次中的一个 Runner 进程。
+     */
+    void cancelCase(String sceneKey, String batchId, String caseId);
+
+    void acceptLiveFrame(String jobId, byte[] frame);
+
+    LiveFrame getLiveFrame(String jobId);
+
+    /**
+     * 实时画面帧只存在任务内存中，不进入场景主数据。
+     */
+    record LiveFrame(long sequence, byte[] content) {
+    }
 }

@@ -12,7 +12,7 @@
     <!-- 应用名 -->
     <springProperty name="APP_NAME" source="spring.application.name" scope="context"/>
     <!-- 保存路径 -->
-    <property name="LOG_PATH" value="${LOG_PATH:-./logs}"/>
+    <springProperty name="LOG_PATH" source="logging.file.path" scope="context" defaultValue="./logs"/>
     <!-- 字符集 -->
     <property name="LOG_CHARSET" value="utf-8"/>
     <!-- 格式化输出：%d 表示日期；%thread 表示线程名；%-5level：级别从左显示 5 个字符宽度；%msg：日志消息；%n 是换行符 -->
@@ -22,6 +22,7 @@
     <property name="FILE_LOG_PATTERN" value="%d{yyyy-MM-dd HH:mm:ss} %-5level [%thread] %logger{50} - %msg%n"/>
     <!-- 单个日志文件大小上限 -->
     <property name="FILE_MAX_SIZE" value="20MB"/>
+    <property name="FILE_MAX_HISTORY" value="180"/>
 
     <!-- 输出日志到控制台 -->
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
@@ -73,6 +74,7 @@
         <!-- 如果配置的日志等级，和 application.yml 中的日志等级配置重叠，application.yml 配置优先级高 -->
         <root level="INFO">
             <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="ASYNC_FILE"/>
         </root>
     </springProfile>
 
@@ -83,6 +85,5 @@
             <appender-ref ref="ASYNC_FILE"/>
         </root>
         <!-- 日志保留天数（根据国家法律，网络运行状态、网络安全事件、个人敏感信息操作等相关记录，留存的日志不少于六个月，并且进行网络多机备份。） -->
-        <property name="FILE_MAX_HISTORY" value="180"/>
     </springProfile>
 </configuration>

@@ -20,6 +20,7 @@ import lombok.Data;
 
 import java.io.Serial;
 import java.io.Serializable;
+import java.util.Map;
 
 @Data
 public class TestTimedTaskExecutePayload implements Serializable {
@@ -31,6 +32,10 @@ public class TestTimedTaskExecutePayload implements Serializable {
     private Long testPlanId;
     private Long projectEnvironmentId;
     private Long automationEnvironmentId;
+    private String executionEngine;
+    private Map<String, Object> executionConfig;
+    /** SCHEDULE 为周期触发，MANUAL 为任务页立即执行。 */
+    private String triggerMode;
     private String executeName;
     private String executeEmail;
 }

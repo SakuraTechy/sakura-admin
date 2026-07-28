@@ -159,6 +159,13 @@ public class AutomationUiSceneQuery implements Serializable {
     private String testPlanId;
 
     /**
+     * 正式测试报告 ID；用于隔离同一计划的多次执行。
+     */
+    @Schema(description = "测试报告ID")
+    @QueryIgnore
+    private String testReportId;
+
+    /**
      * 构建号
      */
     @Schema(description = "构建号")
@@ -171,4 +178,11 @@ public class AutomationUiSceneQuery implements Serializable {
     @Schema(description = "执行结果类型: report-计划执行, debug-调试")
     @QueryIgnore
     private String executeResultType;
+
+    /**
+     * 仅场景用例树等定义接口启用；普通列表必须避免读取 case_list。
+     */
+    @Schema(hidden = true)
+    @QueryIgnore
+    private Boolean includeDefinition;
 }

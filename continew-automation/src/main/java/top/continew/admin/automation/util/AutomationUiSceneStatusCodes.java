@@ -22,34 +22,40 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * UI 场景执行状态/结果字典 value（与 sys_dict_item status_type 10-16 一致，库内仅存此类值）。
+ * UI 场景执行状态/结果字典 value（与 sys_dict_item status_type 10-17 一致，库内仅存此类值）。
  */
 public final class AutomationUiSceneStatusCodes {
 
     public static final String STATUS_NOT_STARTED = "10";
     public static final String STATUS_RUNNING = "11";
     public static final String STATUS_COMPLETED = "12";
+    // 当前 status_type 字典使用 17 同时表达“执行已取消”和“结果已取消”。
+    public static final String STATUS_CANCELLED = "17";
 
     public static final String RESULT_NOT_EXECUTED = "13";
     public static final String RESULT_PASSED = "14";
     public static final String RESULT_FAILED = "15";
     public static final String RESULT_SKIPPED = "16";
+    public static final String RESULT_CANCELLED = "17";
 
-    private static final Set<String> STATUS_VALUES = Set.of(STATUS_NOT_STARTED, STATUS_RUNNING, STATUS_COMPLETED);
+    private static final Set<String> STATUS_VALUES = Set
+        .of(STATUS_NOT_STARTED, STATUS_RUNNING, STATUS_COMPLETED, STATUS_CANCELLED);
     private static final Set<String> RESULT_VALUES = Set
-        .of(RESULT_NOT_EXECUTED, RESULT_PASSED, RESULT_FAILED, RESULT_SKIPPED);
+        .of(RESULT_NOT_EXECUTED, RESULT_PASSED, RESULT_FAILED, RESULT_SKIPPED, RESULT_CANCELLED);
 
     private static final Map<String, String> STATUS_LEGACY = Map.ofEntries(Map
         .entry("NOT_STARTED", STATUS_NOT_STARTED), Map.entry("RUNNING", STATUS_RUNNING), Map
-            .entry("COMPLETED", STATUS_COMPLETED), Map.entry("未开始", STATUS_NOT_STARTED), Map
-                .entry("进行中", STATUS_RUNNING), Map.entry("已完成", STATUS_COMPLETED));
+            .entry("COMPLETED", STATUS_COMPLETED), Map.entry("CANCELLED", STATUS_CANCELLED), Map
+                .entry("未开始", STATUS_NOT_STARTED), Map.entry("进行中", STATUS_RUNNING), Map
+                    .entry("已完成", STATUS_COMPLETED), Map.entry("已取消", STATUS_CANCELLED));
 
     private static final Map<String, String> RESULT_LEGACY = Map.ofEntries(Map
         .entry("NOT_EXECUTED", RESULT_NOT_EXECUTED), Map.entry("PASSED", RESULT_PASSED), Map
             .entry("FAILED", RESULT_FAILED), Map.entry("SKIPPED", RESULT_SKIPPED), Map
-                .entry("未执行", RESULT_NOT_EXECUTED), Map.entry("全部通过", RESULT_PASSED), Map
-                    .entry("不通过", RESULT_FAILED), Map.entry("跳过", RESULT_SKIPPED), Map
-                        .entry("-", RESULT_NOT_EXECUTED), Map.entry("RUNNING", RESULT_NOT_EXECUTED));
+                .entry("CANCELLED", RESULT_CANCELLED), Map.entry("未执行", RESULT_NOT_EXECUTED), Map
+                    .entry("全部通过", RESULT_PASSED), Map.entry("不通过", RESULT_FAILED), Map.entry("跳过", RESULT_SKIPPED), Map
+                        .entry("已取消", RESULT_CANCELLED), Map.entry("-", RESULT_NOT_EXECUTED), Map
+                            .entry("RUNNING", RESULT_NOT_EXECUTED));
 
     private AutomationUiSceneStatusCodes() {
     }

@@ -25,7 +25,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
-import top.continew.admin.automation.model.resp.AutomationUiSceneExecResp;
 import top.continew.admin.common.controller.BaseController;
 import top.continew.admin.test.model.query.TestPlanQuery;
 import top.continew.admin.test.model.req.TestPlanExecuteReq;
@@ -33,6 +32,7 @@ import top.continew.admin.test.model.req.TestPlanReq;
 import top.continew.admin.test.model.req.TestPlanSceneRelationReq;
 import top.continew.admin.test.model.resp.TestPlanDetailResp;
 import top.continew.admin.test.model.resp.TestPlanResp;
+import top.continew.admin.test.model.resp.TestPlanExecuteResp;
 import top.continew.admin.test.service.TestPlanService;
 import top.continew.starter.core.validation.CheckUtils;
 import top.continew.starter.extension.crud.annotation.CrudRequestMapping;
@@ -120,7 +120,17 @@ public class TestPlanController extends BaseController<TestPlanService, TestPlan
     @Operation(summary = "执行测试计划")
     @SaCheckPermission("test:testPlan:execute")
     @PostMapping("/{id}/execute")
-    public R<AutomationUiSceneExecResp> execute(@PathVariable Long id, @Validated @RequestBody TestPlanExecuteReq req) {
+    public R<TestPlanExecuteResp> execute(@PathVariable Long id, @Validated @RequestBody TestPlanExecuteReq req) {
+        // 对外执行接口始终属于手动触发，避免客户端伪造定时任务来源。
+        req.setTriggerMode("MANUAL");
         return R.ok(baseService.execute(id, req));
+    }
+
+    @Operation(summary = "取消测试计划执行")
+    @SaCheckPermission("test:testPlan:execute")
+    @PostMapping("/{id}/executions/{reportId}/cancel")
+    public R<Void> cancelExecution(@PathVariable Long id, @PathVariable Long reportId) {
+        baseService.cancelExecution(id, reportId);
+        return R.ok();
     }
 }

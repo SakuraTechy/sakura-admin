@@ -40,6 +40,7 @@ public class TestReportResp extends BaseDetailResp {
     private String description;
     private String triggerMode;
     private String executeMode;
+    private String reportType;
     private Long runTime;
     private String buildNumber;
     private String consoleUrl;

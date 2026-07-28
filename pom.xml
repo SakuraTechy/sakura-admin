@@ -37,6 +37,8 @@
     <properties>
         <!-- 项目版本号 -->
         <revision>3.6.0-SNAPSHOT</revision>
+        <!-- 默认保持现有快速构建行为；CI 或本地验证使用 -DrunTests=true。 -->
+        <skipTests>true</skipTests>
     </properties>
 
     <!-- 全局依赖版本管理 -->
@@ -138,7 +140,7 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
                     <!-- 跳过单元测试 -->
-                    <skip>true</skip>
+                    <skip>${skipTests}</skip>
                 </configuration>
             </plugin>
             <!-- 代码格式化插件 -->
@@ -194,6 +196,19 @@
     </build>
 
     <profiles>
+        <!-- 执行本轮存储治理改造的真实单元测试：mvn -DrunTests=true test -->
+        <profile>
+            <id>run-tests</id>
+            <activation>
+                <property>
+                    <name>runTests</name>
+                    <value>true</value>
+                </property>
+            </activation>
+            <properties>
+                <skipTests>false</skipTests>
+            </properties>
+        </profile>
         <!-- Sonar 代码质量分析 -->
         <profile>
             <id>sonar</id>

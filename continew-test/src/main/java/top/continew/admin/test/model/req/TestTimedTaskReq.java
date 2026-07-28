@@ -18,13 +18,19 @@ package top.continew.admin.test.model.req;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.Data;
 import org.hibernate.validator.constraints.Length;
 import top.continew.admin.common.enums.StatusTypeEnum;
+import top.continew.admin.test.model.enums.TestExecutionEngineEnum;
 
 import java.io.Serial;
 import java.io.Serializable;
+import java.util.List;
+import java.util.Map;
 
 @Data
 @Schema(description = "创建或修改测试定时任务参数")
@@ -38,6 +44,7 @@ public class TestTimedTaskReq implements Serializable {
 
     private String testPlanName;
     private String type;
+    private TestExecutionEngineEnum executionEngine = TestExecutionEngineEnum.SELENIUM;
 
     @NotBlank(message = "任务名称不能为空")
     @Length(max = 128, message = "任务名称长度不能超过 {max}")
@@ -51,12 +58,16 @@ public class TestTimedTaskReq implements Serializable {
 
     private String misfirePolicy;
     private Integer allowConcurrent;
-    @NotNull(message = "项目环境ID不能为空")
     private Long projectEnvironmentId;
-    @NotNull(message = "自动化环境ID不能为空")
     private Long automationEnvironmentId;
+    private Map<String, Object> executionConfig;
     private String executeName;
     private String executeEmail;
+
+    @NotEmpty(message = "通知邮箱不能为空")
+    @Size(max = 20, message = "通知邮箱不能超过 {max} 个")
+    private List<@Email(message = "通知邮箱格式不正确") String> notificationEmails;
+
     private String status;
     private StatusTypeEnum delFlag = StatusTypeEnum.NORMAL;
 }

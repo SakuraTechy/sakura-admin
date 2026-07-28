@@ -63,7 +63,7 @@ public class AutomationPlaywrightCaseController {
         return R.ok(automationPlaywrightCaseService.getCase(sceneKey + ":" + caseId, projectEnvironmentId));
     }
 
-    @Operation(summary = "回传 Playwright 执行结果", description = "写入场景 debugRecord、用例统计和步骤明细")
+    @Operation(summary = "回传 Playwright 执行结果", description = "写入规范化执行事实表，并合并用例统计和步骤明细")
     @SaCheckPermission(value = {"automation:automationUiScene:update",
         "automation:automationUiScene:execute"}, mode = SaMode.OR)
     @PostMapping("/{caseKey}/results")

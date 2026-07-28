@@ -49,6 +49,9 @@ public class AutomationUiSceneUploadResultReq implements Serializable {
     @Schema(description = "Test plan ID")
     private String testPlanId;
 
+    @Schema(description = "Test report ID")
+    private String testReportId;
+
     @Schema(description = "Scene status")
     private String status;
 

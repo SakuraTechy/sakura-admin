@@ -23,8 +23,11 @@ import java.util.List;
 import java.util.Objects;
 
 import cn.dev33.satoken.annotation.SaCheckPermission;
-import cn.dev33.satoken.annotation.SaIgnore;
+import cn.dev33.satoken.annotation.SaMode;
+import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.lang.tree.Tree;
+import cn.hutool.json.JSONArray;
+import cn.hutool.json.JSONUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
@@ -47,10 +50,18 @@ import top.continew.admin.automation.model.req.AutomationUiSceneExecAllReq;
 import top.continew.admin.automation.model.req.AutomationUiSceneExecReq;
 import top.continew.admin.automation.model.req.AutomationUiSceneReq;
 import top.continew.admin.automation.model.req.AutomationUiSceneUploadResultReq;
+import top.continew.admin.automation.model.req.AutomationUiTreeCopyReq;
+import top.continew.admin.automation.model.req.AutomationUiTreeDeleteReq;
+import top.continew.admin.automation.model.req.AutomationUiTreeMoveReq;
 import top.continew.admin.automation.model.resp.AutomationUiSceneDetailResp;
 import top.continew.admin.automation.model.resp.AutomationUiSceneExecResp;
 import top.continew.admin.automation.model.resp.AutomationUiSceneResp;
+import top.continew.admin.automation.model.resp.AutomationUiSceneRevisionResp;
+import top.continew.admin.automation.model.resp.AutomationUiTreeMutationResp;
+import top.continew.admin.automation.service.AutomationUiCaseTreeService;
+import top.continew.admin.automation.service.AutomationUiSceneDefinitionScanService;
 import top.continew.admin.automation.service.AutomationUiSceneService;
+import top.continew.admin.automation.model.resp.AutomationUiSceneDefinitionScanResp;
 import top.continew.admin.common.controller.BaseController;
 import top.continew.admin.common.enums.StatusTypeEnum;
 import top.continew.starter.core.validation.CheckUtils;
@@ -75,6 +86,97 @@ import top.continew.starter.web.model.R;
     Api.DELETE, Api.EXPORT})
 public class AutomationUiSceneController extends BaseController<AutomationUiSceneService, AutomationUiSceneResp, AutomationUiSceneDetailResp, AutomationUiSceneQuery, AutomationUiSceneReq> {
 
+    private final AutomationUiCaseTreeService caseTreeService;
+    private final AutomationUiSceneDefinitionScanService definitionScanService;
+
+    @Operation(summary = "只读扫描场景定义", description = "统计历史 caseList 异常，不执行修复或写库")
+    @SaCheckPermission("automation:automationUiScene:get")
+    @GetMapping("/definition/scan")
+    public AutomationUiSceneDefinitionScanResp scanDefinition() {
+        return definitionScanService.scan();
+    }
+
+    @Override
+    @Operation(summary = "查询详情", description = "展示 DTO 会脱敏录制步骤中声明为 value_masked 的值")
+    @SaCheckPermission("automation:automationUiScene:get")
+    @GetMapping("/{id}")
+    public AutomationUiSceneDetailResp get(@PathVariable("id") Long id) {
+        AutomationUiSceneDetailResp detail = super.get(id);
+        detail.setCaseList(maskDisplayCaseList(detail.getCaseList()));
+        return detail;
+    }
+
+    /** 普通管理端只得到脱敏副本；Runner 继续从专用受控服务读取原始定义。 */
+    @SuppressWarnings("unchecked")
+    private List<Object> maskDisplayCaseList(List<Object> caseList) {
+        if (caseList == null || caseList.isEmpty())
+            return caseList;
+        JSONArray cases = JSONUtil.parseArray(JSONUtil.toJsonStr(caseList));
+        for (Object caseObject : cases) {
+            if (!(caseObject instanceof cn.hutool.json.JSONObject caseJson))
+                continue;
+            normalizeDisplayStatus(caseJson);
+            JSONArray steps = caseJson.getJSONArray("stepList");
+            if (steps == null)
+                continue;
+            for (Object stepObject : steps) {
+                if (!(stepObject instanceof cn.hutool.json.JSONObject stepJson))
+                    continue;
+                normalizeDisplayStatus(stepJson);
+                JSONArray configs = stepJson.getJSONArray("configList");
+                if (!isMasked(configs))
+                    continue;
+                stepJson.set("operationValue", "******");
+                for (Object configObject : configs) {
+                    if (!(configObject instanceof cn.hutool.json.JSONObject config))
+                        continue;
+                    String name = config.getStr("paramsName");
+                    if ("value".equals(name) || "operationValue".equals(name))
+                        config.set("paramsValue", "******");
+                    if ("playwright_step".equals(name)) {
+                        MaskedPlaywrightStep maskedStep = maskPlaywrightStep(config.getStr("paramsValue"));
+                        config.set("paramsValue", maskedStep.value());
+                        if (maskedStep.rawMasked())
+                            stepJson.set("rawMasked", true);
+                    }
+                }
+            }
+        }
+        return (List<Object>)(List<?>)JSONUtil.toList(cases, Object.class);
+    }
+
+    private void normalizeDisplayStatus(cn.hutool.json.JSONObject node) {
+        Object raw = node.get("status");
+        String status = raw instanceof cn.hutool.json.JSONObject statusObject
+            ? statusObject.getStr("value", statusObject.getStr("code", statusObject.getStr("name")))
+            : node.getStr("status");
+        if ("ENABLE".equalsIgnoreCase(status) || "启用".equals(status))
+            node.set("status", 1);
+        else if ("DISABLE".equalsIgnoreCase(status) || "禁用".equals(status))
+            node.set("status", 2);
+    }
+
+    private boolean isMasked(JSONArray configs) {
+        if (configs == null)
+            return false;
+        return configs.stream()
+            .filter(cn.hutool.json.JSONObject.class::isInstance)
+            .map(cn.hutool.json.JSONObject.class::cast)
+            .anyMatch(config -> "value_masked".equals(config.getStr("paramsName")) && "1".equals(config
+                .getStr("paramsValue")));
+    }
+
+    private MaskedPlaywrightStep maskPlaywrightStep(String raw) {
+        if (!JSONUtil.isTypeJSON(raw))
+            return new MaskedPlaywrightStep("******", true);
+        cn.hutool.json.JSONObject json = JSONUtil.parseObj(raw);
+        json.set("value", "******");
+        return new MaskedPlaywrightStep(json.toString(), false);
+    }
+
+    private record MaskedPlaywrightStep(String value, boolean rawMasked) {
+    }
+
     /**
      * 查询场景列表
      *
@@ -87,6 +189,8 @@ public class AutomationUiSceneController extends BaseController<AutomationUiScen
     @SaCheckPermission("automation:automationUiScene:list")
     @GetMapping("/list")
     public List<AutomationUiSceneResp> list(@Validated AutomationUiSceneQuery query, @Validated SortQuery sortQuery) {
+        // includeDefinition 只供服务端构建场景树使用，普通列表请求不得借此读取未脱敏定义。
+        query.setIncludeDefinition(false);
         return super.list(query, sortQuery);
     }
 
@@ -226,7 +330,52 @@ public class AutomationUiSceneController extends BaseController<AutomationUiScen
     @SaCheckPermission("automation:automationUiScene:getCase")
     @GetMapping("/getCaseTree")
     public List<Tree<Long>> getCaseTree(AutomationUiSceneQuery query, SortQuery sortQuery) {
+        query.setIncludeDefinition(true);
         return baseService.tree(query, sortQuery, true);
+    }
+
+    @Operation(summary = "复制场景树节点", description = "只接收节点引用，服务端完成深复制")
+    @PostMapping("/{sceneDbId}/caseTree/copy")
+    public R<AutomationUiTreeMutationResp> copyCaseTree(@PathVariable Long sceneDbId,
+                                                        @Validated @RequestBody AutomationUiTreeCopyReq req) {
+        checkTreePermission(req.getSource().getType(), "addCase", "addStep");
+        return R.ok(caseTreeService.copy(sceneDbId, req));
+    }
+
+    @Operation(summary = "移动场景树节点", description = "用稳定业务 ID 调整用例或步骤顺序")
+    @PutMapping("/{sceneDbId}/caseTree/move")
+    public R<AutomationUiTreeMutationResp> moveCaseTree(@PathVariable Long sceneDbId,
+                                                        @Validated @RequestBody AutomationUiTreeMoveReq req) {
+        checkTreePermission(req.getSource().getType(), "dragCase", "dragStep");
+        return R.ok(caseTreeService.move(sceneDbId, req));
+    }
+
+    @Operation(summary = "删除场景树节点", description = "原子删除用例或步骤，步骤以 caseId 和 stepId 复合定位")
+    @PutMapping("/{sceneDbId}/caseTree/delete")
+    public R<AutomationUiTreeMutationResp> deleteCaseTree(@PathVariable Long sceneDbId,
+                                                          @Validated @RequestBody AutomationUiTreeDeleteReq req) {
+        boolean deleteCase = req.getNodes()
+            .stream()
+            .anyMatch(node -> node
+                .getType() == top.continew.admin.automation.model.enums.AutomationUiTreeNodeType.CASE);
+        boolean deleteStep = req.getNodes()
+            .stream()
+            .anyMatch(node -> node
+                .getType() == top.continew.admin.automation.model.enums.AutomationUiTreeNodeType.STEP);
+        if (deleteCase)
+            StpUtil.checkPermission("automation:automationUiScene:deleteCase");
+        if (deleteStep)
+            StpUtil.checkPermission("automation:automationUiScene:deleteStep");
+        return R.ok(caseTreeService.delete(sceneDbId, req));
+    }
+
+    private void checkTreePermission(top.continew.admin.automation.model.enums.AutomationUiTreeNodeType type,
+                                     String casePermission,
+                                     String stepPermission) {
+        StpUtil
+            .checkPermission("automation:automationUiScene:" + (type == top.continew.admin.automation.model.enums.AutomationUiTreeNodeType.CASE
+                ? casePermission
+                : stepPermission));
     }
 
     /**
@@ -238,9 +387,9 @@ public class AutomationUiSceneController extends BaseController<AutomationUiScen
     @Operation(summary = "添加场景用例", description = "添加场景用例")
     @SaCheckPermission("automation:automationUiScene:addCase")
     @PutMapping("/{id}/addCase")
-    public void addCase(@Validated(CrudValidationGroup.Update.class) @RequestBody CaseDO caseDO,
-                        @PathVariable("id") Long id) {
-        baseService.addCase(caseDO, id);
+    public R<String> addCase(@Validated(CrudValidationGroup.Update.class) @RequestBody CaseDO caseDO,
+                             @PathVariable("id") Long id) {
+        return R.ok(baseService.addCase(caseDO, id));
     }
 
     /**
@@ -383,6 +532,14 @@ public class AutomationUiSceneController extends BaseController<AutomationUiScen
         return R.ok(baseService.listSceneRespByIds(targetIds));
     }
 
+    @Operation(summary = "查询选中场景版本", description = "只返回 ID 和修改时间，供执行历史增量刷新")
+    @SaCheckPermission("automation:automationUiScene:list")
+    @PostMapping("/selected/revisions")
+    public R<List<AutomationUiSceneRevisionResp>> selectedRevisions(@RequestBody List<Long> ids) {
+        Collection<Long> targetIds = ids == null ? List.of() : ids;
+        return R.ok(baseService.listSceneRevisions(targetIds));
+    }
+
     /**
      * 清空执行结果
      *
@@ -401,8 +558,9 @@ public class AutomationUiSceneController extends BaseController<AutomationUiScen
      * @param req 回调参数
      * @return 响应结果
      */
-    @SaIgnore
     @Operation(summary = "上传执行结果", description = "接收 UI 自动化场景执行结果回调")
+    @SaCheckPermission(value = {"automation:automationUiScene:update",
+        "automation:automationUiScene:execute"}, mode = SaMode.OR)
     @PutMapping("/uploadResults")
     public R<Void> uploadResults(@Validated @RequestBody AutomationUiSceneUploadResultReq req) {
         baseService.uploadResults(req);

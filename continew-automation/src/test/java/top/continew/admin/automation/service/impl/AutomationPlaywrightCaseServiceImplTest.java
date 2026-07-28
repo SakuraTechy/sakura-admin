@@ -24,6 +24,7 @@ import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.nullable;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -43,9 +44,12 @@ import top.continew.admin.automation.model.entity.AutomationUiSceneDO;
 import top.continew.admin.automation.model.entity.ui.CaseDO;
 import top.continew.admin.automation.model.entity.ui.StepDO;
 import top.continew.admin.automation.model.req.playwright.AutomationPlaywrightBatchCreateReq;
+import top.continew.admin.automation.model.req.playwright.AutomationPlaywrightBatchCaseStatusReq;
 import top.continew.admin.automation.model.req.playwright.AutomationPlaywrightResultReq;
 import top.continew.admin.automation.model.resp.playwright.AutomationPlaywrightBatchResp;
 import top.continew.admin.automation.model.resp.playwright.AutomationPlaywrightCaseResp;
+import top.continew.admin.automation.service.AutomationPlaywrightSessionStateService;
+import top.continew.admin.automation.service.AutomationUiExecutionRecordService;
 import top.continew.admin.common.enums.DisEnableStatusEnum;
 import top.continew.admin.project.mapper.ProjectConfigMapper;
 import top.continew.admin.project.mapper.ProjectEnvironmentConfigMapper;
@@ -67,13 +71,65 @@ class AutomationPlaywrightCaseServiceImplTest {
     @Mock
     private ProjectConfigMapper projectConfigMapper;
 
+    @Mock
+    private AutomationPlaywrightSessionStateService sessionStateService;
+
+    @Mock
+    private AutomationUiExecutionRecordService executionRecordService;
+
     private AutomationPlaywrightCaseServiceImpl service;
 
     @BeforeEach
     void setUp() {
-        service = new AutomationPlaywrightCaseServiceImpl(sceneMapper, stepExtractor, environmentMapper, projectConfigMapper, new AutomationPlaybackUrlRewriter());
+        service = new AutomationPlaywrightCaseServiceImpl(sceneMapper, stepExtractor, environmentMapper, projectConfigMapper, new AutomationPlaybackUrlRewriter(), List
+            .of(), sessionStateService, executionRecordService);
         lenient().when(stepExtractor.extract(any(StepDO.class), anyInt()))
             .thenReturn(Map.of("start_url", "https://172.19.5.45/login"));
+        // 这些旧单测通过内存 mock 模拟规范化执行表，生产代码不会再写 scene JSON。
+        lenient().doAnswer(invocation -> {
+            AutomationUiSceneDO scene = invocation.getArgument(0);
+            Map<String, Object> record = invocation.getArgument(1);
+            boolean testRecord = record.get("testPlanId") != null;
+            List<Object> records = testRecord ? scene.getTestRecord() : scene.getDebugRecord();
+            if (records == null) {
+                records = new ArrayList<>();
+                if (testRecord) {
+                    scene.setTestRecord(records);
+                } else {
+                    scene.setDebugRecord(records);
+                }
+            } else if (!(records instanceof ArrayList<?>)) {
+                records = new ArrayList<>(records);
+                if (testRecord) {
+                    scene.setTestRecord(records);
+                } else {
+                    scene.setDebugRecord(records);
+                }
+            }
+            String batchId = String.valueOf(record.get("batchId"));
+            records.removeIf(item -> item instanceof Map<?, ?> map && batchId.equals(String.valueOf(map
+                .get("batchId"))));
+            records.add(0, record);
+            sceneMapper.updateById(scene);
+            return null;
+        })
+            .when(executionRecordService)
+            .saveRecord(any(AutomationUiSceneDO.class), any(Map.class), nullable(String.class));
+        lenient().when(executionRecordService.findBatch(any(Long.class), any(String.class))).thenAnswer(invocation -> {
+            AutomationUiSceneDO scene = sceneMapper.selectById(100L);
+            String batchId = invocation.getArgument(1);
+            for (List<Object> records : java.util.Arrays.asList(scene.getDebugRecord(), scene.getTestRecord())) {
+                if (records == null) {
+                    continue;
+                }
+                for (Object item : records) {
+                    if (item instanceof Map<?, ?> map && batchId.equals(String.valueOf(map.get("batchId")))) {
+                        return (Map<String, Object>)item;
+                    }
+                }
+            }
+            return null;
+        });
     }
 
     @Test
@@ -198,6 +254,52 @@ class AutomationPlaywrightCaseServiceImplTest {
 
     @Test
     @SuppressWarnings("unchecked")
+    void shouldCorrelateStepResultsByIndexBeforeDuplicateStepId() {
+        AutomationUiSceneDO storedScene = scene(1L);
+        StepDO secondStep = new StepDO();
+        secondStep.setId("STEP_002");
+        secondStep.setName("提交");
+        secondStep.setOrder(2);
+        storedScene.getCaseList()
+            .get(0)
+            .setStepList(List.of(storedScene.getCaseList().get(0).getStepList().get(0), secondStep));
+        when(sceneMapper.selectById(100L)).thenReturn(storedScene);
+        when(stepExtractor.extract(any(StepDO.class), anyInt())).thenAnswer(invocation -> {
+            int index = invocation.getArgument(1);
+            return Map
+                .of("id", "DUPLICATE_STEP_ID", "step_index", index, "action_type", "click", "description", "源步骤-" + index);
+        });
+
+        Map<String, Object> firstResult = new LinkedHashMap<>();
+        firstResult.put("step_index", 0);
+        firstResult.put("step_id", "DUPLICATE_STEP_ID");
+        firstResult.put("status", "passed");
+        Map<String, Object> secondResult = new LinkedHashMap<>();
+        secondResult.put("step_index", 1);
+        secondResult.put("step_id", "DUPLICATE_STEP_ID__1");
+        secondResult.put("status", "failed");
+        Map<String, Object> raw = new LinkedHashMap<>();
+        raw.put("steps", List.of(secondResult, firstResult));
+
+        AutomationPlaywrightResultReq request = new AutomationPlaywrightResultReq();
+        request.setStatus("failed");
+        request.setSuccess(false);
+        request.setDurationMs(100L);
+        request.setRaw(raw);
+
+        service.saveResult("100:CASE_001", request);
+
+        Map<String, Object> record = (Map<String, Object>)storedScene.getDebugRecord().get(0);
+        List<Map<String, Object>> stepResults = (List<Map<String, Object>>)record.get("stepResults");
+        assertThat(stepResults).extracting(item -> item.get("step_index")).containsExactly(0, 1);
+        assertThat(stepResults).extracting(item -> item.get("status")).containsExactly("passed", "failed");
+        assertThat(stepResults).extracting(item -> item.get("step_id"))
+            .containsExactly("DUPLICATE_STEP_ID", "DUPLICATE_STEP_ID__1");
+        assertThat(stepResults.get(1).get("source_step_id")).isEqualTo("DUPLICATE_STEP_ID");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
     void shouldCreateFourteenDigitBatchAndExecutionIds() {
         AutomationUiSceneDO storedScene = scene(1L);
         when(sceneMapper.selectById(100L)).thenReturn(storedScene);
@@ -214,12 +316,87 @@ class AutomationPlaywrightCaseServiceImplTest {
 
         assertThat(response.getBatchId()).matches("\\d{14}");
         assertThat(response.getCases()).hasSize(1);
+        assertThat(response.getCases().get(0).getStatus()).isEqualTo("queued");
         assertThat(response.getCases().get(0).getExecutionId()).matches("\\d{14}").isNotEqualTo(response.getBatchId());
         Map<String, Object> storedBatch = (Map<String, Object>)storedScene.getDebugRecord().get(0);
         Map<String, Object> storedCase = (Map<String, Object>)((List<?>)storedBatch.get("caseResults")).get(0);
         assertThat(storedBatch.get("batchId")).isEqualTo(response.getBatchId());
+        assertThat(storedBatch.get("executeStatus")).isEqualTo("running");
+        assertThat(storedBatch.get("executeResult")).isEqualTo("pending");
         assertThat(storedCase.get("execution_id")).isEqualTo(response.getCases().get(0).getExecutionId());
+        assertThat(storedCase.get("executeStatus")).isEqualTo("queued");
+        assertThat(storedCase.get("executeResult")).isEqualTo("not_executed");
         verify(sceneMapper).updateById(storedScene);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void shouldStorePlanBatchAndDetailedResultInTestRecord() {
+        AutomationUiSceneDO storedScene = scene(1L);
+        storedScene.setTestPlanId(List.<Object>of("PLAN_001"));
+        Map<String, Object> otherPlanRecord = new LinkedHashMap<>();
+        otherPlanRecord.put("testPlanId", "PLAN_002");
+        otherPlanRecord.put("executionId", "OTHER_PLAN_EXECUTION");
+        storedScene.setTestRecord(new ArrayList<>(List.of(otherPlanRecord)));
+        when(sceneMapper.selectById(100L)).thenReturn(storedScene);
+        ProjectEnvironmentConfigDO environment = environment(1L);
+        environment.setName("测试环境");
+        when(environmentMapper.selectById(47L)).thenReturn(environment);
+        AutomationPlaywrightBatchCreateReq request = new AutomationPlaywrightBatchCreateReq();
+        request.setSceneKey("100");
+        request.setExecutionType("playwright-runner");
+        request.setCaseIds(List.of("CASE_001"));
+        request.setProjectEnvironmentId(47L);
+        request.setTestPlanId("PLAN_001");
+
+        AutomationPlaywrightBatchResp response = service.createBatch(request);
+
+        assertThat(storedScene.getDebugRecord()).isNull();
+        assertThat(storedScene.getTestRecord()).hasSize(2);
+        Map<String, Object> storedBatch = (Map<String, Object>)storedScene.getTestRecord().get(0);
+        assertThat(storedBatch.get("testPlanId")).isEqualTo("PLAN_001");
+        assertThat(storedScene.getTestRecord().get(1)).isSameAs(otherPlanRecord);
+
+        Map<String, Object> raw = new LinkedHashMap<>();
+        raw.put("executor", "playwright-runner");
+        raw.put("batch_id", response.getBatchId());
+        raw.put("run_id", response.getCases().get(0).getExecutionId());
+        raw.put("started_at", "2026-07-19T02:00:01Z");
+        raw.put("finished_at", "2026-07-19T02:00:02Z");
+        raw.put("steps", List.of(Map.of("step_index", 0, "status", "passed", "duration_ms", 320)));
+        AutomationPlaywrightResultReq result = new AutomationPlaywrightResultReq();
+        result.setStatus("passed");
+        result.setSuccess(true);
+        result.setDurationMs(1000L);
+        result.setRaw(raw);
+
+        service.saveResult("100:CASE_001", result);
+
+        assertThat(storedScene.getDebugRecord()).isNull();
+        assertThat(storedScene.getTestRecord()).hasSize(2);
+        assertThat(otherPlanRecord.get("executionId")).isEqualTo("OTHER_PLAN_EXECUTION");
+        Map<String, Object> mergedCase = (Map<String, Object>)((List<?>)storedBatch.get("caseResults")).get(0);
+        assertThat(mergedCase.get("status")).isEqualTo("passed");
+        assertThat(mergedCase.get("result_detailed")).isEqualTo(true);
+        assertThat(mergedCase.get("step_pass")).isEqualTo(1);
+    }
+
+    @Test
+    void shouldRejectPlanBatchWhenSceneIsNotRelated() {
+        AutomationUiSceneDO storedScene = scene(1L);
+        storedScene.setTestPlanId(List.<Object>of("PLAN_002"));
+        when(sceneMapper.selectById(100L)).thenReturn(storedScene);
+        AutomationPlaywrightBatchCreateReq request = new AutomationPlaywrightBatchCreateReq();
+        request.setSceneKey("100");
+        request.setExecutionType("extension-cdp");
+        request.setCaseIds(List.of("CASE_001"));
+        request.setProjectEnvironmentId(47L);
+        request.setTestPlanId("PLAN_001");
+
+        assertThatThrownBy(() -> service.createBatch(request)).hasMessageContaining("测试计划未关联当前场景")
+            .hasMessageContaining("testPlanId=PLAN_001");
+        verify(environmentMapper, never()).selectById(47L);
+        verify(sceneMapper, never()).updateById(storedScene);
     }
 
     @Test
@@ -238,6 +415,7 @@ class AutomationPlaywrightCaseServiceImplTest {
         pendingCase.put("case_id", "CASE_001");
         pendingCase.put("case_name", "登录");
         pendingCase.put("execution_id", "RUN_001");
+        pendingCase.put("job_id", "JOB_001");
         pendingCase.put("status", "running");
         pendingCase.put("step_total", 1);
         Map<String, Object> batch = new LinkedHashMap<>();
@@ -266,7 +444,11 @@ class AutomationPlaywrightCaseServiceImplTest {
         raw.put("started_at", "2026-07-17T02:00:01Z");
         raw.put("finished_at", "2026-07-17T02:00:02Z");
         raw.put("steps", List.of(stepResult));
-        raw.put("artifacts", Map.of("report_html", "/api/report/RUN_001"));
+        raw.put("execution_logs", List.of(Map.of("timestamp", "2026-07-17T02:00:00Z", "message", "Runner 任务开始"), Map
+            .of("timestamp", "2026-07-17T02:00:01.200Z", "message", "[runner] passed")));
+        raw.put("screenshot_base64", "data:image/png;base64,AAAA");
+        raw.put("artifacts", Map.of("report_html", "/api/report/RUN_001", "trace", "D:\\runner\\RUN_001\\trace.zip"));
+        raw.put("artifact_file_ids", Map.of("report_html", "10001"));
         AutomationPlaywrightResultReq request = new AutomationPlaywrightResultReq();
         request.setStatus("passed");
         request.setSuccess(true);
@@ -280,17 +462,24 @@ class AutomationPlaywrightCaseServiceImplTest {
         Map<String, Object> storedCase = (Map<String, Object>)((List<?>)storedBatch.get("caseResults")).get(0);
         Map<String, Object> storedStep = (Map<String, Object>)((List<?>)storedCase.get("steps")).get(0);
         assertThat(storedCase.get("execution_id")).isEqualTo("RUN_001");
-        assertThat(storedCase.get("duration_ms")).isEqualTo(320L);
+        assertThat(storedCase.get("job_id")).isEqualTo("JOB_001");
+        assertThat(storedCase.get("duration_ms")).isEqualTo(1000L);
+        assertThat(storedCase.get("step_duration_ms")).isEqualTo(320L);
         assertThat(storedCase.get("wall_clock_duration_ms")).isEqualTo(1000L);
         assertThat(storedCase.get("step_pass_rate")).isEqualTo("100%");
         assertThat(storedCase.get("artifact_urls")).isEqualTo(Map.of("report_html", "/api/report/RUN_001"));
+        assertThat(storedCase.get("artifact_file_ids")).isEqualTo(Map.of("report_html", "10001"));
+        Map<String, Object> storedRawResult = (Map<String, Object>)storedCase.get("playwright_result");
+        assertThat(storedRawResult).doesNotContainKey("screenshot_base64");
+        assertThat(storedRawResult)
+            .doesNotContainKeys("steps", "artifacts", "artifact_file_ids", "artifact_upload_errors");
         assertThat(storedStep.get("step_name")).isEqualTo("点击登录按钮");
         assertThat(storedStep.get("actual_locator_source")).isEqualTo("meta:css_id");
         assertThat(storedStep.get("actual_locator_type")).isEqualTo("css_id");
         assertThat(storedStep.get("actual_locator_value")).isEqualTo("#login");
         assertThat(storedBatch.get("caseCompleted")).isEqualTo(1);
         assertThat(storedBatch.get("casePass")).isEqualTo(1);
-        assertThat(storedBatch.get("duration")).isEqualTo(320L);
+        assertThat(storedBatch.get("duration")).isEqualTo(1000L);
         assertThat(storedBatch.get("stepPassRate")).isEqualTo("100%");
         assertThat(storedBatch.get("executeName")).isEqualTo("实际用户");
         verify(sceneMapper).updateById(storedScene);
@@ -330,6 +519,138 @@ class AutomationPlaywrightCaseServiceImplTest {
         assertThat(batch.get("caseCancelled")).isEqualTo(2);
         assertThat(batch.get("executeStatus")).isEqualTo("cancelled");
         assertThat(batch.get("executeResult")).isEqualTo("cancelled");
+        verify(sceneMapper).updateById(storedScene);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void shouldCancelOnlyRequestedCaseAndKeepOtherCasesRunnable() {
+        AutomationUiSceneDO storedScene = scene(1L);
+        when(sceneMapper.selectById(100L)).thenReturn(storedScene);
+        Map<String, Object> runningCase = new LinkedHashMap<>();
+        runningCase.put("case_id", "CASE_001");
+        runningCase.put("status", "running");
+        Map<String, Object> waitingCase = new LinkedHashMap<>();
+        waitingCase.put("case_id", "CASE_002");
+        waitingCase.put("status", "waiting");
+        Map<String, Object> batch = new LinkedHashMap<>();
+        batch.put("recordType", "playwright-batch");
+        batch.put("batchId", "BATCH_CASE_CANCEL");
+        batch.put("startedAt", "2026-07-24 10:00:00");
+        batch.put("caseResults", new ArrayList<>(List.of(runningCase, waitingCase)));
+        storedScene.setDebugRecord(new ArrayList<>(List.of(batch)));
+
+        service.cancelCase("100", "BATCH_CASE_CANCEL", "CASE_001");
+
+        List<Map<String, Object>> caseResults = (List<Map<String, Object>>)(List<?>)batch.get("caseResults");
+        assertThat(caseResults).extracting(item -> item.get("status")).containsExactly("cancelled", "waiting");
+        assertThat(caseResults.get(0).get("caseCancelRequested")).isEqualTo(true);
+        assertThat(batch.get("cancelRequested")).isNull();
+        assertThat(batch.get("executeStatus")).isEqualTo("running");
+        assertThat(service.getCaseCancellation("100", "BATCH_CASE_CANCEL", "CASE_001").isCaseCancelRequested())
+            .isTrue();
+        verify(sceneMapper).updateById(storedScene);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void shouldFinishBatchAsCancelledWhenLastRunningCaseWasCancelled() {
+        AutomationUiSceneDO storedScene = scene(1L);
+        when(sceneMapper.selectById(100L)).thenReturn(storedScene);
+        Map<String, Object> passedCase = new LinkedHashMap<>();
+        passedCase.put("case_id", "CASE_001");
+        passedCase.put("status", "passed");
+        Map<String, Object> runningCase = new LinkedHashMap<>();
+        runningCase.put("case_id", "CASE_002");
+        runningCase.put("status", "running");
+        Map<String, Object> batch = new LinkedHashMap<>();
+        batch.put("recordType", "playwright-batch");
+        batch.put("batchId", "BATCH_LAST_CASE_CANCEL");
+        batch.put("startedAt", "2026-07-25 10:00:00");
+        batch.put("caseResults", new ArrayList<>(List.of(passedCase, runningCase)));
+        storedScene.setDebugRecord(new ArrayList<>(List.of(batch)));
+
+        service.cancelCase("100", "BATCH_LAST_CASE_CANCEL", "CASE_002");
+
+        List<Map<String, Object>> caseResults = (List<Map<String, Object>>)(List<?>)batch.get("caseResults");
+        assertThat(caseResults).extracting(item -> item.get("status")).containsExactly("passed", "cancelled");
+        assertThat(caseResults).extracting(item -> item.get("executeStatus")).containsExactly("completed", "cancelled");
+        assertThat(caseResults).extracting(item -> item.get("executeResult")).containsExactly("passed", "cancelled");
+        assertThat(batch.get("executeStatus")).isEqualTo("cancelled");
+        assertThat(batch.get("executeResult")).isEqualTo("cancelled");
+        assertThat(batch.get("casePass")).isEqualTo(1);
+        assertThat(batch.get("caseCancelled")).isEqualTo(1);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void shouldAllowRunnerCommitFailureToOverrideDetailedPassedResult() {
+        AutomationUiSceneDO storedScene = scene(1L);
+        when(sceneMapper.selectById(100L)).thenReturn(storedScene);
+        Map<String, Object> passedCase = new LinkedHashMap<>();
+        passedCase.put("case_id", "CASE_001");
+        passedCase.put("status", "passed");
+        passedCase.put("result_detailed", true);
+        Map<String, Object> batch = new LinkedHashMap<>();
+        batch.put("recordType", "playwright-batch");
+        batch.put("batchId", "BATCH_COMMIT_FAILED");
+        batch.put("startedAt", "2026-07-17 10:00:00");
+        batch.put("caseResults", new ArrayList<>(List.of(passedCase)));
+        storedScene.setDebugRecord(new ArrayList<>(List.of(batch)));
+        AutomationPlaywrightBatchCaseStatusReq request = new AutomationPlaywrightBatchCaseStatusReq();
+        request.setStatus("failed");
+        request.setError("提交 Playwright 批次登录态失败");
+
+        service.updateBatchCaseStatus("100", "BATCH_COMMIT_FAILED", "CASE_001", request);
+
+        Map<String, Object> storedCase = (Map<String, Object>)((List<?>)batch.get("caseResults")).get(0);
+        assertThat(storedCase.get("status")).isEqualTo("failed");
+        assertThat(storedCase.get("result_detailed")).isEqualTo(true);
+        assertThat(storedCase.get("error")).isEqualTo("提交 Playwright 批次登录态失败");
+        verify(sessionStateService).cleanupBatch("BATCH_COMMIT_FAILED");
+    }
+
+    @Test
+    void shouldRejectReusableStateFromAnotherEnvironment() {
+        AutomationUiSceneDO storedScene = scene(1L);
+        when(sceneMapper.selectById(100L)).thenReturn(storedScene);
+        Map<String, Object> waitingCase = new LinkedHashMap<>();
+        waitingCase.put("case_id", "CASE_001");
+        waitingCase.put("status", "starting");
+        Map<String, Object> batch = new LinkedHashMap<>();
+        batch.put("recordType", "playwright-batch");
+        batch.put("batchId", "BATCH_ENV_47");
+        batch.put("projectEnvironmentId", 47L);
+        batch.put("caseResults", new ArrayList<>(List.of(waitingCase)));
+        storedScene.setDebugRecord(new ArrayList<>(List.of(batch)));
+
+        assertThatThrownBy(() -> service.validateReusableBatchCase("100", "BATCH_ENV_47", "CASE_001", 48L))
+            .hasMessageContaining("产品环境不匹配");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void shouldCancelPlanBatchInTestRecord() {
+        AutomationUiSceneDO storedScene = scene(1L);
+        when(sceneMapper.selectById(100L)).thenReturn(storedScene);
+
+        Map<String, Object> runningCase = new LinkedHashMap<>();
+        runningCase.put("case_id", "CASE_001");
+        runningCase.put("status", "running");
+        Map<String, Object> batch = new LinkedHashMap<>();
+        batch.put("recordType", "playwright-batch");
+        batch.put("batchId", "PLAN_BATCH_CANCEL");
+        batch.put("testPlanId", "PLAN_001");
+        batch.put("startedAt", "2026-07-19 10:00:00");
+        batch.put("caseResults", new ArrayList<>(List.of(runningCase)));
+        storedScene.setTestRecord(new ArrayList<>(List.of(batch)));
+
+        service.cancelBatch("100", "PLAN_BATCH_CANCEL");
+
+        List<Map<String, Object>> caseResults = (List<Map<String, Object>>)(List<?>)batch.get("caseResults");
+        assertThat(storedScene.getDebugRecord()).isNull();
+        assertThat(caseResults.get(0).get("status")).isEqualTo("cancelled");
+        assertThat(batch.get("executeStatus")).isEqualTo("cancelled");
         verify(sceneMapper).updateById(storedScene);
     }
 

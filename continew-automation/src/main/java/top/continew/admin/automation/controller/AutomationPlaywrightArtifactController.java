@@ -16,15 +16,11 @@
 
 package top.continew.admin.automation.controller;
 
-import java.io.IOException;
-import java.nio.file.Files;
-
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import cn.dev33.satoken.annotation.SaMode;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
-import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.CacheControl;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -63,25 +59,41 @@ public class AutomationPlaywrightArtifactController {
                                                       @RequestParam MultipartFile file) {
         Artifact artifact = automationPlaywrightArtifactService.store(runId, artifactType, file);
         return R.ok(AutomationPlaywrightArtifactResp.builder()
+            .fileId(artifact.fileId())
             .runId(artifact.runId())
             .artifactType(artifact.artifactType())
             .fileName(artifact.fileName())
             .url(artifact.url())
             .contentType(artifact.contentType())
             .size(artifact.size())
+            .md5(artifact.md5())
+            .storageCode(artifact.storageCode())
             .build());
     }
 
     @Operation(summary = "读取 Playwright Runner 产物")
     @SaCheckPermission("automation:automationUiScene:get")
-    @GetMapping("/{runId}/{fileName}")
-    public ResponseEntity<InputStreamResource> get(@PathVariable String runId,
-                                                   @PathVariable String fileName) throws IOException {
-        ArtifactResource resource = automationPlaywrightArtifactService.load(runId, fileName);
+    @GetMapping("/files/{fileId}")
+    public ResponseEntity<byte[]> getByFileId(@PathVariable Long fileId) {
+        ArtifactResource resource = automationPlaywrightArtifactService.loadByFileId(fileId);
         return ResponseEntity.ok()
             .cacheControl(CacheControl.noCache())
-            .contentLength(Files.size(resource.path()))
+            .header("Content-Disposition", "inline; filename=\"" + resource.fileName() + "\"")
+            .contentLength(resource.content().length)
             .contentType(MediaType.parseMediaType(resource.contentType()))
-            .body(new InputStreamResource(Files.newInputStream(resource.path())));
+            .body(resource.content());
+    }
+
+    @Operation(summary = "读取历史 Playwright Runner 产物")
+    @SaCheckPermission("automation:automationUiScene:get")
+    @GetMapping("/{runId}/{fileName}")
+    public ResponseEntity<byte[]> getLegacy(@PathVariable String runId, @PathVariable String fileName) {
+        ArtifactResource resource = automationPlaywrightArtifactService.loadLegacy(runId, fileName);
+        return ResponseEntity.ok()
+            .cacheControl(CacheControl.noCache())
+            .header("Content-Disposition", "inline; filename=\"" + resource.fileName() + "\"")
+            .contentLength(resource.content().length)
+            .contentType(MediaType.parseMediaType(resource.contentType()))
+            .body(resource.content());
     }
 }

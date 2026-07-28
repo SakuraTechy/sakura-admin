@@ -46,7 +46,20 @@ public class AutomationPlaywrightStepExtractor {
         String rawStep = configs.get("playwright_step");
         if (rawStep != null && !rawStep.isBlank()) {
             Map<String, Object> step = parseMap(rawStep);
-            // case 级配置仍挂在 StepDO.configList 中，补到响应顶层供两种执行器读取；原始 step 内容不改写。
+            Object originalStepId = step.get("id");
+            if (originalStepId != null && !String.valueOf(originalStepId).equals(stepDO.getId())) {
+                step.putIfAbsent("original_step_id", originalStepId);
+            }
+            // admin 是主数据源，执行步骤使用唯一 StepDO.id；原始录制 ID 仅用于追溯且不会回写 playwright_step。
+            if (stepDO.getId() != null && !stepDO.getId().isBlank()) {
+                step.put("id", stepDO.getId());
+            }
+            step.putIfAbsent("step_index", index);
+            Object description = step.get("description");
+            if (description == null || description.toString().isBlank()) {
+                step.put("description", stepDO.getName());
+            }
+            // case 级配置仍挂在 StepDO.configList 中，补到响应顶层供两种执行器读取。
             copyIfAbsent(step, configs, "start_url");
             copyIfAbsent(step, configs, "end_url");
             copyIfAbsent(step, configs, "screenshot_mode");

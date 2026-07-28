@@ -4,4 +4,184 @@
     <select id="getAutomationUiSceneById" resultType="top.continew.admin.automation.model.entity.AutomationUiSceneDO">
         SELECT * FROM automation_ui_scene WHERE id = #{id}
     </select>
+
+    <select id="selectByIdForUpdate" resultType="top.continew.admin.automation.model.entity.AutomationUiSceneDO">
+        SELECT * FROM automation_ui_scene WHERE id = #{id} FOR UPDATE
+    </select>
+
+    <update id="updateDefinition">
+        UPDATE automation_ui_scene
+        SET case_list = #{caseList,typeHandler=com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler},
+            case_total = #{caseTotal},
+            step_total = #{stepTotal},
+            definition_version = definition_version + 1,
+            update_time = CURRENT_TIMESTAMP(3)
+        WHERE id = #{id}
+          AND definition_version = #{expectedVersion}
+    </update>
+
+    <update id="initializeEmptyDefinition">
+        UPDATE automation_ui_scene
+        SET case_list = JSON_ARRAY(),
+            case_total = 0,
+            step_total = 0
+        WHERE id = #{id}
+          AND case_list IS NULL
+    </update>
+
+    <select id="selectNodeIdSequence" resultType="java.lang.Long">
+        SELECT `last_value`
+        FROM `automation_ui_scene_node_id_sequence`
+        WHERE `scene_id` = #{sceneId}
+          AND `scope_key` = #{scopeKey}
+          AND `id_prefix` = #{idPrefix}
+    </select>
+
+    <insert id="upsertNodeIdSequence">
+        INSERT INTO `automation_ui_scene_node_id_sequence` (
+            `scene_id`, `scope_key`, `id_prefix`, `last_value`, `create_time`, `update_time`
+        ) VALUES (
+            #{sceneId}, #{scopeKey}, #{idPrefix}, #{lastValue}, CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)
+        )
+        ON DUPLICATE KEY UPDATE
+            `last_value` = GREATEST(`last_value`, VALUES(`last_value`)),
+            `update_time` = CURRENT_TIMESTAMP(3)
+    </insert>
+
+    <select id="selectLegacyHistoryBatch" resultType="top.continew.admin.automation.model.entity.AutomationUiSceneDO">
+        SELECT *
+        FROM automation_ui_scene
+        WHERE id &gt; #{afterId}
+          AND (debug_record IS NOT NULL OR test_record IS NOT NULL)
+        ORDER BY id
+        LIMIT #{limit}
+    </select>
+
+    <select id="selectRevisions"
+            resultType="top.continew.admin.automation.model.resp.AutomationUiSceneRevisionResp">
+        SELECT s.id,
+               COALESCE(es.update_time, s.update_time) AS update_time,
+               COALESCE(es.execution_revision, 0) AS execution_revision
+        FROM automation_ui_scene s
+        LEFT JOIN automation_ui_scene_execution_state es ON es.scene_id = s.id
+        WHERE s.id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+        ORDER BY s.id
+    </select>
+
+    <update id="updateExecutionState">
+        UPDATE automation_ui_scene
+        <set>
+            <if test="testPlanId != null">
+                test_plan_id = #{testPlanId,typeHandler=com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler},
+            </if>
+            <if test="reportId != null">report_id = #{reportId},</if>
+            <if test="debugRecord != null">
+                debug_record = #{debugRecord,typeHandler=com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler},
+            </if>
+            <if test="executeStatus != null">execute_status = #{executeStatus},</if>
+            <if test="executeResult != null">execute_result = #{executeResult},</if>
+            <if test="testRecord != null">
+                test_record = #{testRecord,typeHandler=com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler},
+            </if>
+            <if test="buildNumber != null">build_number = #{buildNumber},</if>
+            <if test="consoleUrl != null">console_url = #{consoleUrl},</if>
+            <if test="testReportUrl != null">test_report_url = #{testReportUrl},</if>
+            <if test="caseTotal != null">case_total = #{caseTotal},</if>
+            <if test="casePass != null">case_pass = #{casePass},</if>
+            <if test="caseFail != null">case_fail = #{caseFail},</if>
+            <if test="caseSkip != null">case_skip = #{caseSkip},</if>
+            <if test="passRate != null">pass_rate = #{passRate},</if>
+            <if test="lastResult != null">last_result = #{lastResult},</if>
+            <if test="stepTotal != null">step_total = #{stepTotal},</if>
+            <if test="stepPass != null">step_pass = #{stepPass},</if>
+            <if test="stepFail != null">step_fail = #{stepFail},</if>
+            <if test="stepSkip != null">step_skip = #{stepSkip},</if>
+            update_time = CURRENT_TIMESTAMP
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <insert id="upsertExecutionState">
+        INSERT INTO automation_ui_scene_execution_state (
+            scene_id, execution_revision, execute_status, execute_result,
+            case_total, case_pass, case_fail, case_skip, pass_rate, last_result,
+            step_total, step_pass, step_fail, step_skip, version, create_time, update_time
+        ) VALUES (
+            #{id}, 1, #{executeStatus}, #{executeResult},
+            #{caseTotal}, #{casePass}, #{caseFail}, #{caseSkip}, #{passRate}, #{lastResult},
+            #{stepTotal}, #{stepPass}, #{stepFail}, #{stepSkip}, 0,
+            CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)
+        )
+        ON DUPLICATE KEY UPDATE
+            execution_revision = execution_revision + 1,
+            execute_status = VALUES(execute_status),
+            execute_result = VALUES(execute_result),
+            case_total = VALUES(case_total),
+            case_pass = VALUES(case_pass),
+            case_fail = VALUES(case_fail),
+            case_skip = VALUES(case_skip),
+            pass_rate = VALUES(pass_rate),
+            last_result = VALUES(last_result),
+            step_total = VALUES(step_total),
+            step_pass = VALUES(step_pass),
+            step_fail = VALUES(step_fail),
+            step_skip = VALUES(step_skip),
+            version = version + 1,
+            update_time = CURRENT_TIMESTAMP(3)
+    </insert>
+
+    <update id="clearExecutionState">
+        UPDATE automation_ui_scene
+        SET report_id = NULL,
+            debug_record = NULL,
+            execute_status = NULL,
+            execute_result = NULL,
+            test_record = NULL,
+            build_number = NULL,
+            console_url = NULL,
+            test_report_url = NULL,
+            case_total = NULL,
+            case_pass = NULL,
+            case_fail = NULL,
+            case_skip = NULL,
+            pass_rate = NULL,
+            last_result = NULL,
+            step_total = NULL,
+            step_pass = NULL,
+            step_fail = NULL,
+            step_skip = NULL,
+            update_time = CURRENT_TIMESTAMP
+        WHERE id = #{id}
+    </update>
+
+    <update id="clearExecutionStateRecord">
+        UPDATE automation_ui_scene_execution_state
+        SET latest_execution_id = NULL,
+            execution_revision = execution_revision + 1,
+            execute_status = NULL,
+            execute_result = NULL,
+            case_total = NULL,
+            case_pass = NULL,
+            case_fail = NULL,
+            case_skip = NULL,
+            pass_rate = NULL,
+            last_result = NULL,
+            step_total = NULL,
+            step_pass = NULL,
+            step_fail = NULL,
+            step_skip = NULL,
+            version = version + 1,
+            update_time = CURRENT_TIMESTAMP(3)
+        WHERE scene_id = #{id}
+    </update>
+
+    <update id="updateTestPlanIds">
+        UPDATE automation_ui_scene
+        SET test_plan_id = #{testPlanIds,typeHandler=com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler},
+            update_time = CURRENT_TIMESTAMP(3)
+        WHERE id = #{id}
+    </update>
 </mapper>

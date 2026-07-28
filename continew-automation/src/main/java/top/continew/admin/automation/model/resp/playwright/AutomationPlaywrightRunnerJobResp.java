@@ -50,4 +50,8 @@ public class AutomationPlaywrightRunnerJobResp implements Serializable {
     private String artifactDir;
 
     private List<String> outputTail;
+
+    private List<AutomationPlaywrightRunnerLogResp> logs;
+
+    private boolean liveAvailable;
 }

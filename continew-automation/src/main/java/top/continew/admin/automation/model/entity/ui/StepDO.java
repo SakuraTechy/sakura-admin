@@ -31,6 +31,9 @@ public class StepDO implements Serializable {
 
     private String pid;
 
+    /** 兼容接口也必须携带读取时的场景定义版本。 */
+    private Long expectedDefinitionVersion;
+
     private String id;
 
     private String name;

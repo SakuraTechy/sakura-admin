@@ -17,9 +17,16 @@
 package top.continew.admin.test.mapper;
 
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Select;
 import top.continew.admin.test.model.entity.TestTimedTaskDO;
 import top.continew.starter.data.mp.base.BaseMapper;
 
 @Mapper
 public interface TestTimedTaskMapper extends BaseMapper<TestTimedTaskDO> {
+
+    /**
+     * 锁定任务行，保证同一任务的重叠判断和运行记录创建是原子的。
+     */
+    @Select("SELECT * FROM test_timed_task WHERE id = #{id} FOR UPDATE")
+    TestTimedTaskDO selectByIdForUpdate(Long id);
 }

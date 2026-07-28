@@ -16,11 +16,15 @@
 
 package top.continew.admin.test.model.req;
 
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.Valid;
 import lombok.Data;
+import top.continew.admin.automation.model.req.playwright.AutomationPlaywrightRunnerOptionsReq;
+import top.continew.admin.test.model.enums.TestExecutionEngineEnum;
 
 import java.io.Serial;
 import java.io.Serializable;
+import java.util.List;
+import java.util.Map;
 
 @Data
 public class TestPlanExecuteReq implements Serializable {
@@ -28,12 +32,26 @@ public class TestPlanExecuteReq implements Serializable {
     @Serial
     private static final long serialVersionUID = 1L;
 
-    @NotNull(message = "项目环境ID不能为空")
     private Long projectEnvironmentId;
 
-    @NotNull(message = "自动化环境ID不能为空")
     private Long automationEnvironmentId;
+
+    /** 未传时保持原 Selenium/Jenkins 执行链路。 */
+    private TestExecutionEngineEnum executionEngine = TestExecutionEngineEnum.SELENIUM;
+
+    @Valid
+    private AutomationPlaywrightRunnerOptionsReq runnerOptions = new AutomationPlaywrightRunnerOptionsReq();
+
+    private Map<String, Object> cdpOptions;
+
+    /** 仅由定时任务写入 SCHEDULE；普通接口默认 MANUAL。 */
+    private String triggerMode = "MANUAL";
 
     private String executeName;
     private String executeEmail;
+
+    /**
+     * 执行范围。缺省表示计划全部关联场景；传值时必须是计划关联场景的非空子集。
+     */
+    private List<Long> sceneIds;
 }

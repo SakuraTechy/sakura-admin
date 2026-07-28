@@ -18,16 +18,17 @@ package top.continew.admin.automation.service.impl;
 
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.sql.Timestamp;
 import java.util.Collection;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 
 import cn.hutool.core.bean.BeanUtil;
@@ -35,6 +36,7 @@ import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.util.ReflectUtil;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.annotation.Resource;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -65,7 +67,6 @@ import static top.continew.admin.automation.util.AutomationUiSceneStatusCodes.RE
 import static top.continew.admin.automation.util.AutomationUiSceneStatusCodes.STATUS_NOT_STARTED;
 import static top.continew.admin.automation.util.AutomationUiSceneStatusCodes.STATUS_RUNNING;
 import top.continew.admin.common.regex.RegexUtil;
-import top.continew.admin.common.sort.DragSortUtil;
 import top.continew.admin.common.jenkins.JenkinsService;
 import top.continew.admin.common.util.StringUtils;
 import top.continew.admin.project.mapper.ProjectConfigMapper;
@@ -89,7 +90,11 @@ import top.continew.admin.automation.model.req.AutomationUiSceneReq;
 import top.continew.admin.automation.model.resp.AutomationUiSceneDetailResp;
 import top.continew.admin.automation.model.resp.AutomationUiSceneExecResp;
 import top.continew.admin.automation.model.resp.AutomationUiSceneResp;
+import top.continew.admin.automation.model.resp.AutomationUiSceneRevisionResp;
 import top.continew.admin.automation.service.AutomationUiSceneService;
+import top.continew.admin.automation.service.AutomationUiExecutionRecordService;
+import top.continew.admin.automation.support.AutomationStoragePressureGuard;
+import top.continew.admin.automation.service.AutomationPlanReportProgressService;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 
@@ -111,6 +116,13 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
     private final ProjectConfigMapper projectConfigMapper;
     private final ProjectVersionConfigMapper projectVersionConfigMapper;
     private final JdbcTemplate jdbcTemplate;
+    private final List<AutomationPlanReportProgressService> planReportProgressServices;
+    private final AutomationUiExecutionRecordService executionRecordService;
+    /** 所有场景树结构写入统一委托，兼容接口不再保留独立排序算法。 */
+    private final top.continew.admin.automation.service.AutomationUiCaseTreeService caseTreeService;
+
+    @Resource
+    private AutomationStoragePressureGuard storagePressureGuard;
 
     @Override
     public void beforeCreate(AutomationUiSceneReq req) {
@@ -130,30 +142,11 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
 
     @Override
     public void afterCreate(AutomationUiSceneReq req, AutomationUiSceneDO entity) {
-        List<Object> defaultDebugRecord = new ArrayList<>();
-        Map<String, Object> defaultRecord = new HashMap<>(16);
-        defaultRecord.put("sceneTotal", 0);
-        defaultRecord.put("scenePass", 0);
-        defaultRecord.put("sceneFail", 0);
-        defaultRecord.put("sceneSkip", 0);
-        defaultRecord.put("scenePassRate", "-");
-        defaultRecord.put("caseTotal", 0);
-        defaultRecord.put("casePass", 0);
-        defaultRecord.put("caseFail", 0);
-        defaultRecord.put("caseSkip", 0);
-        defaultRecord.put("casePassRate", "0%");
-        defaultRecord.put("stepTotal", 0);
-        defaultRecord.put("stepPass", 0);
-        defaultRecord.put("stepFail", 0);
-        defaultRecord.put("stepSkip", 0);
-        defaultRecord.put("stepPassRate", "0%");
-        defaultRecord.put("executeName", "-");
-        defaultRecord.put("executeStatus", "10");
-        defaultRecord.put("executeResult", "13");
-        defaultRecord.put("duration", "-");
-        defaultDebugRecord.add(defaultRecord);
-        entity.setDebugRecord(defaultDebugRecord);
-        baseMapper.updateById(entity);
+        // 空场景也持久化为 []，否则首次新增用例会被误判为历史定义损坏。
+        baseMapper.initializeEmptyDefinition(entity.getId());
+        entity.setCaseList(new ArrayList<>());
+        entity.setCaseTotal(0);
+        entity.setStepTotal(0);
     }
 
     @Override
@@ -177,15 +170,18 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
         QueryWrapper<AutomationUiSceneDO> queryWrapper = super.buildQueryWrapper(query);
         query.setExcludeIds(excludeIds);
         queryWrapper.notIn(CollUtil.isNotEmpty(excludeIds), "id", excludeIds);
+        Set<String> excludedColumns = Boolean.TRUE.equals(query.getIncludeDefinition())
+            ? Set.of("debug_record", "test_record")
+            : Set.of("case_list", "debug_record", "test_record");
+        queryWrapper.select(AutomationUiSceneDO.class, field -> !excludedColumns.contains(field.getColumn()));
         return queryWrapper;
     }
 
     @Override
     public List<AutomationUiSceneResp> list(AutomationUiSceneQuery query, SortQuery sortQuery) {
         String executeStatus = query.getExecuteStatus();
-        if (StringUtils.isNotBlank(query.getExecuteResultType())) {
-            query.setExecuteStatus(null);
-        }
+        // 最新状态已迁到窄表，不能再用场景表中的兼容旧值过滤。
+        query.setExecuteStatus(null);
         List<AutomationUiSceneResp> result = super.list(query, sortQuery);
         query.setExecuteStatus(executeStatus);
         if (result == null || result.isEmpty()) {
@@ -194,56 +190,83 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
         result.forEach(item -> {
             item.setCreateUserString(UserContextHolder.getNickname(item.getCreateUser()));
             item.setUpdateUserString(UserContextHolder.getNickname(item.getUpdateUser()));
+            hydrateExecutionData(item, shouldSelectExecutionRecords(query) ? 100 : 1);
         });
         String testPlanId = query.getTestPlanId();
+        String testReportId = query.getTestReportId();
         Integer buildNumber = query.getBuildNumber();
         String executeResultType = query.getExecuteResultType();
         String executeResult = query.getExecuteResult();
-        if (StringUtils.isNotBlank(executeResultType)) {
+        if (shouldSelectExecutionRecords(query)) {
             String recordType = "report".equalsIgnoreCase(executeResultType) ? "testRecord" : "debugRecord";
-            result = result.stream().filter(resp -> {
-                filterRecord(resp, testPlanId, buildNumber, executeResultType, executeResult, executeStatus, recordType);
-                List<Object> records = "testRecord".equals(recordType) ? resp.getTestRecord() : resp.getDebugRecord();
-                return records != null && !records.isEmpty();
-            }).collect(java.util.stream.Collectors.toList());
+            result
+                .forEach(resp -> filterRecord(resp, testPlanId, testReportId, buildNumber, executeResultType, executeResult, executeStatus, recordType));
+            if (requiresExecutionRecordMatch(query)) {
+                result = result.stream().filter(resp -> {
+                    List<Object> records = "testRecord".equals(recordType)
+                        ? resp.getTestRecord()
+                        : resp.getDebugRecord();
+                    return records != null && !records.isEmpty();
+                }).collect(java.util.stream.Collectors.toList());
+            }
+        } else if (StringUtils.isNotBlank(executeStatus)) {
+            String expectedStatus = AutomationUiSceneStatusCodes.normalizeStatus(executeStatus);
+            result = result.stream()
+                .filter(item -> expectedStatus.equals(AutomationUiSceneStatusCodes.normalizeStatus(item
+                    .getExecuteStatus())))
+                .collect(java.util.stream.Collectors.toList());
         }
         return result;
     }
 
     @Override
     public PageResp<AutomationUiSceneResp> page(AutomationUiSceneQuery query, PageQuery pageQuery) {
-        String executeStatus = query.getExecuteStatus();
-        if (StringUtils.isNotBlank(query.getExecuteResultType())) {
-            query.setExecuteStatus(null);
+        // 分页接口不需要 caseList，禁止外部 query 参数绕过详情接口的展示脱敏。
+        query.setIncludeDefinition(false);
+        // 只有明确按执行结果筛选时才先过滤再分页；executeResultType 仅表示展示哪类记录，不能隐藏未执行场景。
+        if (requiresExecutionRecordMatch(query)) {
+            List<AutomationUiSceneResp> filteredList = this.list(query, pageQuery);
+            return PageResp.build(pageQuery.getPage(), pageQuery.getSize(), filteredList);
         }
         IPage<AutomationUiSceneDO> pageDO = baseMapper.selectPage(new Page<>(pageQuery.getPage(), pageQuery
             .getSize()), buildQueryWrapper(query));
-        query.setExecuteStatus(executeStatus);
-        List<AutomationUiSceneResp> result = BeanUtil.copyToList(pageDO.getRecords(), AutomationUiSceneResp.class);
-        if (result == null || result.isEmpty()) {
-            return PageResp.build(pageQuery.getPage(), pageQuery.getSize(), result);
-        }
-        result.forEach(item -> {
+        PageResp<AutomationUiSceneResp> pageResp = PageResp.build(pageDO, AutomationUiSceneResp.class);
+        pageResp.getList().forEach(item -> {
             item.setCreateUserString(UserContextHolder.getNickname(item.getCreateUser()));
             item.setUpdateUserString(UserContextHolder.getNickname(item.getUpdateUser()));
+            hydrateExecutionData(item, shouldSelectExecutionRecords(query) ? 100 : 1);
+            if (shouldSelectExecutionRecords(query)) {
+                String recordType = "report".equalsIgnoreCase(query.getExecuteResultType())
+                    ? "testRecord"
+                    : "debugRecord";
+                filterRecord(item, query.getTestPlanId(), query.getTestReportId(), query.getBuildNumber(), query
+                    .getExecuteResultType(), query.getExecuteResult(), query.getExecuteStatus(), recordType);
+            }
         });
-        String testPlanId = query.getTestPlanId();
-        Integer buildNumber = query.getBuildNumber();
-        String executeResultType = query.getExecuteResultType();
-        String executeResult = query.getExecuteResult();
-        if (StringUtils.isNotBlank(executeResultType)) {
-            String recordType = "report".equalsIgnoreCase(executeResultType) ? "testRecord" : "debugRecord";
-            result = result.stream().filter(resp -> {
-                filterRecord(resp, testPlanId, buildNumber, executeResultType, executeResult, executeStatus, recordType);
-                List<Object> records = "testRecord".equals(recordType) ? resp.getTestRecord() : resp.getDebugRecord();
-                return records != null && !records.isEmpty();
-            }).collect(java.util.stream.Collectors.toList());
-        }
-        return PageResp.build(pageQuery.getPage(), pageQuery.getSize(), result);
+        return pageResp;
+    }
+
+    static boolean shouldSelectExecutionRecords(AutomationUiSceneQuery query) {
+        return query != null && StringUtils.isNotBlank(query.getExecuteResultType()) && (StringUtils.isNotBlank(query
+            .getTestPlanId()) || requiresExecutionRecordMatch(query));
+    }
+
+    static boolean requiresExecutionRecordMatch(AutomationUiSceneQuery query) {
+        return query != null && (StringUtils.isNotBlank(query.getExecuteStatus()) || (StringUtils.isNotBlank(query
+            .getExecuteResultType()) && (StringUtils.isNotBlank(query.getTestReportId()) || query
+                .getBuildNumber() != null || StringUtils.isNotBlank(query.getExecuteResult()))));
+    }
+
+    @Override
+    public AutomationUiSceneDetailResp get(Long id) {
+        AutomationUiSceneDetailResp detail = super.get(id);
+        hydrateExecutionData(detail, 100);
+        return detail;
     }
 
     private void filterRecord(AutomationUiSceneResp resp,
                               String testPlanId,
+                              String testReportId,
                               Integer buildNumber,
                               String executeResultType,
                               String executeResult,
@@ -272,15 +295,31 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
                     match = false;
                 }
             }
+            if (match && StringUtils.isNotBlank(testReportId)) {
+                Object recordTestReportId = recordMap.get("testReportId");
+                if (recordTestReportId == null || !testReportId.equals(String.valueOf(recordTestReportId))) {
+                    match = false;
+                }
+            }
             if (match && StringUtils.isNotBlank(executeResult)) {
                 Object recordExecuteResult = recordMap.get("executeResult");
-                if (recordExecuteResult == null || !executeResult.equals(String.valueOf(recordExecuteResult))) {
+                String expectedResult = AutomationUiSceneStatusCodes
+                    .normalizeResult(executeResult, null, null, null, null);
+                String actualResult = recordExecuteResult == null
+                    ? null
+                    : AutomationUiSceneStatusCodes.normalizeResult(String
+                        .valueOf(recordExecuteResult), null, null, null, null);
+                if (!expectedResult.equals(actualResult)) {
                     match = false;
                 }
             }
             if (match && StringUtils.isNotBlank(executeStatus)) {
                 Object recordExecuteStatus = recordMap.get("executeStatus");
-                if (recordExecuteStatus == null || !executeStatus.equals(String.valueOf(recordExecuteStatus))) {
+                String expectedStatus = AutomationUiSceneStatusCodes.normalizeStatus(executeStatus);
+                String actualStatus = recordExecuteStatus == null
+                    ? null
+                    : AutomationUiSceneStatusCodes.normalizeStatus(String.valueOf(recordExecuteStatus));
+                if (!expectedStatus.equals(actualStatus)) {
                     match = false;
                 }
             }
@@ -302,12 +341,18 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
         list.forEach(item -> {
             item.setCreateUserString(UserContextHolder.getNickname(item.getCreateUser()));
             item.setUpdateUserString(UserContextHolder.getNickname(item.getUpdateUser()));
+            hydrateExecutionData(item, 100);
         });
         return list;
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void deleteByIds(List<Long> ids) {
+        if (CollUtil.isEmpty(ids)) {
+            return;
+        }
+        ids.stream().filter(Objects::nonNull).distinct().forEach(executionRecordService::deleteScene);
         baseMapper.deleteByIds(ids);
     }
 
@@ -332,26 +377,33 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
         target.setLevel(req.getLevel());
         target.setStatus(req.getStatus());
         target.setTags(req.getTags());
-        target.setCaseList(source.getCaseList());
+        List<CaseDO> copiedCases = source.getCaseList() == null ? new ArrayList<>() : source.getCaseList();
+        target.setCaseList(copiedCases);
+        target.setDefinitionVersion(0L);
         target.setDelFlag(req.getDelFlag());
 
         // 复制后清理执行态与统计字段，避免历史数据污染新场景
         target.setTestPlanId(null);
         target.setReportId(null);
         target.setDebugRecord(null);
-        target.setExecuteStatus(null);
-        target.setExecuteResult(null);
+        target.setExecuteStatus(STATUS_NOT_STARTED);
+        target.setExecuteResult(RESULT_NOT_EXECUTED);
         target.setTestRecord(null);
         target.setBuildNumber(null);
         target.setConsoleUrl(null);
         target.setTestReportUrl(null);
-        target.setCaseTotal(null);
+        target.setCaseTotal(copiedCases.size());
         target.setCasePass(null);
         target.setCaseFail(null);
         target.setCaseSkip(null);
         target.setPassRate(null);
         target.setLastResult(null);
-        target.setStepTotal(null);
+        target.setStepTotal(copiedCases.stream()
+            .filter(Objects::nonNull)
+            .map(CaseDO::getStepList)
+            .filter(Objects::nonNull)
+            .mapToInt(List::size)
+            .sum());
         target.setStepPass(null);
         target.setStepFail(null);
         target.setStepSkip(null);
@@ -385,156 +437,26 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
         return target.getId();
     }
 
-    public void addCase(CaseDO caseDO, Long id) {
-        String caseId = caseDO.getId();
-        if (!RegexUtil.isClassMethod(caseId)) {
-            throw ReflectUtil.newInstance(BusinessException.class, new Object[] {"用例 ID 格式不合法"});
-        }
-        AutomationUiSceneDO automationUiSceneDO = baseMapper.selectById(id);
-        List<CaseDO> caseList = automationUiSceneDO.getCaseList();
-        if (StringUtils.isEmpty(caseList)) {
-            caseList = new ArrayList<>();
-            caseDO.setOrder(1);
-            caseList.add(caseDO);
-        } else {
-            caseList.forEach(item -> {
-                if (item.getId().equals(caseId)) {
-                    throw ReflectUtil.newInstance(BusinessException.class, new Object[] {"用例 ID 已存在，请勿重复添加"});
-                }
-            });
-            caseDO.setOrder(caseList.size() + 1);
-            caseList.add(caseDO);
-            if (caseDO.getSortType() != null) {
-                if (caseDO.getSortType() == 1) {
-                    DragSortUtil.swap(caseList, caseDO.getOrder() - 1, caseDO.getItemOrder() - 1);
-                } else if (caseDO.getSortType() == 2) {
-                    DragSortUtil.move(caseList, caseDO.getOrder() - 1, caseDO.getItemOrder() - 1);
-                }
-            }
-        }
-        caseList.forEach(DragSortUtil.getIndex((item, index) -> {
-            item.setOrder(index + 1);
-            item.setId(caseId + String.format("%03d", item.getOrder()));
-        }));
-        automationUiSceneDO.setCaseList(caseList);
-        baseMapper.updateById(automationUiSceneDO);
+    public String addCase(CaseDO caseDO, Long id) {
+        return caseTreeService.addCase(id, caseDO).getSelectedNode().getCaseId();
     }
 
     public void updateCase(CaseDO caseDO, Long id) {
-        String caseId = caseDO.getId();
-        if (!RegexUtil.isClassMethod(caseId)) {
-            throw ReflectUtil.newInstance(BusinessException.class, new Object[] {"用例 ID 格式不合法"});
-        }
-        AutomationUiSceneDO automationUiSceneDO = baseMapper.selectById(id);
-        List<CaseDO> caseList = automationUiSceneDO.getCaseList();
-        if (StringUtils.isNotEmpty(caseList)) {
-            for (CaseDO item : caseList) {
-                if (item.getId().equals(caseId + String.format("%03d", caseDO.getOrder()))) {
-                    item.setName(caseDO.getName());
-                    item.setRemark(caseDO.getRemark());
-                    item.setStatus(caseDO.getStatus());
-                    break;
-                }
-            }
-            if (caseDO.getSortType() != null) {
-                if (caseDO.getSortType() == 1) {
-                    DragSortUtil.swap(caseList, caseDO.getOrder() - 1, caseDO.getItemOrder() - 1);
-                } else if (caseDO.getSortType() == 2) {
-                    DragSortUtil.move(caseList, caseDO.getOrder() - 1, caseDO.getItemOrder() - 1);
-                }
-            }
-            caseList.forEach(DragSortUtil.getIndex((item, index) -> {
-                item.setOrder(index + 1);
-                item.setId(caseId + String.format("%03d", item.getOrder()));
-            }));
-            automationUiSceneDO.setCaseList(caseList);
-            baseMapper.updateById(automationUiSceneDO);
-        }
+        caseTreeService.updateCase(id, caseDO);
     }
 
     public void deleteCase(CaseDO caseDO, Long id) {
-        AutomationUiSceneDO automationUiSceneDO = baseMapper.selectById(id);
-        List<CaseDO> caseList = automationUiSceneDO.getCaseList();
-        if (StringUtils.isNotEmpty(caseList)) {
-            String[] ids = caseDO.getId().split(",");
-            String caseIdToDelete = "";
-            for (String caseId : ids) {
-                caseIdToDelete = caseId;
-                caseList.removeIf(item -> item.getId().equals(caseId));
-            }
-            // 删除后保留基础前缀（去掉末尾数字序号）
-            String baseId = caseIdToDelete.replaceAll("\\d+$", "");
-            // 重新按顺序生成连续用例 ID
-            caseList.forEach(DragSortUtil.getIndex((item, index) -> {
-                item.setOrder(index + 1);
-                item.setId(baseId + String.format("%03d", item.getOrder()));
-            }));
-            automationUiSceneDO.setCaseList(caseList);
-            baseMapper.updateById(automationUiSceneDO);
-        }
+        caseTreeService.deleteLegacyCase(id, caseDO);
     }
 
     @Transactional(rollbackFor = Exception.class)
     public void dragCase(CaseDO caseDO, Long id) {
-        // 拖拽时必须同时提供拖拽节点和目标节点
-        if (caseDO.getDragNode() == null || caseDO.getDropNode() == null) {
-            CheckUtils.throwIf(true, "dragNode 或 dropNode 不能为空");
-        }
-        CheckUtils.throwIf(caseDO.getDragNode().getId().equals(caseDO.getDropNode().getId()), "拖拽节点和目标节点不能相同");
-        AutomationUiSceneDO automationUiSceneDO = baseMapper.selectById(id);
-        List<CaseDO> caseList = automationUiSceneDO.getCaseList();
-        if (StringUtils.isNotEmpty(caseList)) {
-            if (caseDO.getDropPosition() == -1) {
-                DragSortUtil.move(caseList, caseDO.getDragNode().getOrder() - 1, caseDO.getDropNode().getOrder() - 1);
-            } else if (caseDO.getDropPosition() == 0) {
-                DragSortUtil.swap(caseList, caseDO.getDragNode().getOrder() - 1, caseDO.getDropNode().getOrder() - 1);
-            } else if (caseDO.getDropPosition() == 1) {
-                DragSortUtil.move(caseList, caseDO.getDragNode().getOrder() - 1, caseDO.getDropNode().getOrder() - 1);
-            }
-            String baseId = caseDO.getDragNode().getId().replaceAll("\\d+$", "");
-            caseList.forEach(DragSortUtil.getIndex((item, index) -> {
-                item.setOrder(index + 1);
-                item.setId(baseId + String.format("%03d", item.getOrder()));
-            }));
-            automationUiSceneDO.setCaseList(caseList);
-            baseMapper.updateById(automationUiSceneDO);
-        }
+        caseTreeService.moveLegacyCase(id, caseDO);
     }
 
     public String addStep(StepDO stepDO, Long id) {
-        AutomationUiSceneDO automationUiSceneDO = baseMapper.selectById(id);
-        List<CaseDO> caseList = automationUiSceneDO.getCaseList();
-        if (StringUtils.isNotEmpty(caseList)) {
-            for (CaseDO caseItem : caseList) {
-                if (caseItem.getId().equals(stepDO.getPid())) {
-                    List<StepDO> stepList = caseItem.getStepList();
-                    if (StringUtils.isEmpty(stepList)) {
-                        stepList = new ArrayList<>();
-                        stepDO.setOrder(1);
-                    } else {
-                        stepDO.setOrder(stepList.size() + 1);
-                    }
-                    String stepId = resolveStepId(stepDO.getId(), stepList, stepDO.getOrder());
-                    stepDO.setId(stepId);
-                    stepList.add(stepDO);
-                    if (stepDO.getSortType() != null) {
-                        if (stepDO.getSortType() == 1) {
-                            DragSortUtil.swap(stepList, stepDO.getOrder() - 1, stepDO.getItemOrder() - 1);
-                        } else if (stepDO.getSortType() == 2) {
-                            DragSortUtil.move(stepList, stepDO.getOrder() - 1, stepDO.getItemOrder() - 1);
-                        }
-                    }
-                    stepList.forEach(DragSortUtil.getIndex((item, index) -> {
-                        item.setOrder(index + 1);
-                    }));
-                    caseItem.setStepList(stepList);
-                    break;
-                }
-            }
-            automationUiSceneDO.setCaseList(caseList);
-            baseMapper.updateById(automationUiSceneDO);
-        }
-        return stepDO.getId();
+        // 前端必须使用服务端实际分配的步骤 ID 恢复选中，不能返回请求中的 CASE_STEP_ 前缀。
+        return caseTreeService.addStep(id, stepDO).getSelectedNode().getStepId();
     }
 
     private String resolveStepId(String candidate, List<StepDO> stepList, int order) {
@@ -576,214 +498,28 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
     }
 
     public void updateStep(StepDO stepDO, Long id) {
-        AutomationUiSceneDO automationUiSceneDO = baseMapper.selectById(id);
-        List<CaseDO> caseList = automationUiSceneDO.getCaseList();
-        if (StringUtils.isNotEmpty(caseList)) {
-            for (CaseDO caseItem : caseList) {
-                if (caseItem.getId().equals(stepDO.getPid())) {
-                    List<StepDO> stepList = caseItem.getStepList();
-                    for (StepDO stepItem : stepList) {
-                        if (stepItem.getId().equals(stepDO.getId())) {
-                            stepItem.setName(stepDO.getName());
-                            stepItem.setRemark(stepDO.getRemark());
-                            stepItem.setOperationType(stepDO.getOperationType());
-                            stepItem.setOperationName(stepDO.getOperationName());
-                            stepItem.setOperationValue(stepDO.getOperationValue());
-                            stepItem.setConfigList(stepDO.getConfigList());
-                            stepItem.setStatus(stepDO.getStatus());
-                            break;
-                        }
-                    }
-                    if (stepDO.getSortType() != null) {
-                        if (stepDO.getSortType() == 1) {
-                            DragSortUtil.swap(stepList, stepDO.getOrder() - 1, stepDO.getItemOrder() - 1);
-                        } else if (stepDO.getSortType() == 2) {
-                            DragSortUtil.move(stepList, stepDO.getOrder() - 1, stepDO.getItemOrder() - 1);
-                        }
-                    }
-                    stepList.forEach(DragSortUtil.getIndex((item, index) -> {
-                        item.setOrder(index + 1);
-                    }));
-                    caseItem.setStepList(stepList);
-                    break;
-                }
-            }
-            automationUiSceneDO.setCaseList(caseList);
-            baseMapper.updateById(automationUiSceneDO);
-        }
+        caseTreeService.updateStep(id, stepDO);
     }
 
     public void deleteStep(StepDO stepDO, Long id) {
-        AutomationUiSceneDO automationUiSceneDO = baseMapper.selectById(id);
-        List<CaseDO> caseList = automationUiSceneDO.getCaseList();
-        if (StringUtils.isNotEmpty(caseList)) {
-            String[] ids = stepDO.getId().split(",");
-            for (String stepId : ids) {
-                outerLoop:
-                for (CaseDO caseItem : caseList) {
-                    List<StepDO> stepList = caseItem.getStepList();
-                    for (StepDO stepItem : stepList) {
-                        if (stepItem.getId().equals(stepId)) {
-                            stepList.remove(stepItem);
-                            stepList.forEach(DragSortUtil.getIndex((item, index) -> {
-                                item.setOrder(index + 1);
-                            }));
-                            caseItem.setStepList(stepList);
-                            break outerLoop;
-                        }
-                    }
-                }
-                automationUiSceneDO.setCaseList(caseList);
-                baseMapper.updateById(automationUiSceneDO);
-            }
-        }
+        caseTreeService.deleteLegacyStep(id, stepDO);
     }
 
     @Transactional(rollbackFor = Exception.class)
     public void dragStep1(StepDO stepDO, Long id) {
-        // 拖拽时必须同时提供拖拽节点和目标节点
-        if (stepDO.getDragNode() == null || stepDO.getDropNode() == null) {
-            CheckUtils.throwIf(true, "dragNode 或 dropNode 不能为空");
-        }
-        CheckUtils.throwIf(stepDO.getDragNode().getId().equals(stepDO.getDropNode().getId()), "拖拽节点和目标节点不能相同");
-        AutomationUiSceneDO automationUiSceneDO = baseMapper.selectById(id);
-        List<CaseDO> caseList = automationUiSceneDO.getCaseList();
-        StepDO stepNew = new StepDO();
-        if (StringUtils.isNotEmpty(caseList)) {
-            for (CaseDO caseItem : caseList) {
-                List<StepDO> stepList = caseItem.getStepList();
-                if (caseItem.getId().equals(stepDO.getDragNode().getPid())) {
-                    if (StringUtils.isNotEmpty(stepList)) {
-                        if (stepDO.getDropNode().getType().equals("step")) {
-                            if (stepDO.getDropPosition() == -1) {
-                                DragSortUtil.move(stepList, stepDO.getDragNode().getOrder() - 1, stepDO.getDropNode()
-                                    .getOrder() - 1);
-                            } else if (stepDO.getDropPosition() == 0) {
-                                DragSortUtil.swap(stepList, stepDO.getDragNode().getOrder() - 1, stepDO.getDropNode()
-                                    .getOrder() - 1);
-                            } else if (stepDO.getDropPosition() == 1) {
-                                DragSortUtil.move(stepList, stepDO.getDragNode().getOrder() - 1, stepDO.getDropNode()
-                                    .getOrder() - 1);
-                            }
-                            stepList.forEach(DragSortUtil.getIndex((item, index) -> {
-                                item.setOrder(index + 1);
-                            }));
-                            break;
-                        } else if (stepDO.getDropNode().getType().equals("case")) {
-                            for (StepDO stepItem : stepList) {
-                                if (stepItem.getId().equals(stepDO.getDragNode().getId())) {
-                                    stepList.remove(stepItem);
-                                    stepNew = stepItem;
-                                    break;
-                                }
-                            }
-                            stepList.forEach(DragSortUtil.getIndex((item, index) -> {
-                                item.setOrder(index + 1);
-                            }));
-                            continue;
-                        }
-                    }
-                }
-                if (caseItem.getId().equals(stepDO.getDropNode().getId())) {
-                    stepNew.setPid(stepDO.getDropNode().getId());
-                    stepNew.setOrder(stepList.size() + 1);
-                    stepList.add(stepNew);
-                }
-                caseItem.setStepList(stepList);
-                break;
-            }
-            automationUiSceneDO.setCaseList(caseList);
-            baseMapper.updateById(automationUiSceneDO);
-        }
+        caseTreeService.moveLegacyStep(id, stepDO);
     }
 
     public void dragStep(StepDO stepDO, Long id) {
-        // 拖拽时必须同时提供拖拽节点和目标节点
-        if (stepDO.getDragNode() == null || stepDO.getDropNode() == null) {
-            CheckUtils.throwIf(true, "dragNode 或 dropNode 不能为空");
-        }
-        CheckUtils.throwIf(stepDO.getDragNode().getId().equals(stepDO.getDropNode().getId()), "拖拽节点和目标节点不能相同");
-        AutomationUiSceneDO automationUiSceneDO = baseMapper.selectById(id);
-        // 场景不存在时直接返回
-        if (automationUiSceneDO == null) {
-            return;
-        }
-        List<CaseDO> caseList = automationUiSceneDO.getCaseList();
-        if (StringUtils.isNotEmpty(caseList)) {
-            StepDO stepNew = null;
-            CaseDO sourceCase = null;
-            CaseDO targetCase = null;
-
-            // 先定位源用例与目标用例
-            for (CaseDO caseItem : caseList) {
-                if (caseItem.getId().equals(stepDO.getDragNode().getPid())) {
-                    sourceCase = caseItem;
-                }
-                if (caseItem.getId().equals(stepDO.getDropNode().getId())) {
-                    targetCase = caseItem;
-                }
-            }
-
-            // 处理源步骤列表
-            if (sourceCase != null) {
-                List<StepDO> sourceStepList = sourceCase.getStepList();
-                if (StringUtils.isNotEmpty(sourceStepList)) {
-                    // 使用迭代器删除，避免 ConcurrentModificationException
-                    Iterator<StepDO> iterator = sourceStepList.iterator();
-                    while (iterator.hasNext()) {
-                        StepDO stepItem = iterator.next();
-                        if (stepItem.getId().equals(stepDO.getDragNode().getId()) && stepDO.getDropNode()
-                            .getType() != null && stepDO.getDropNode().getType().equals("case")) {
-                            iterator.remove();
-                            stepNew = stepItem;
-                            break;
-                        }
-                    }
-
-                    if (stepNew != null && targetCase != null) {
-                        // 跨用例移动后，重排源用例步骤序号
-                        sourceStepList.forEach(DragSortUtil.getIndex((item, index) -> {
-                            item.setOrder(index + 1);
-                        }));
-                        sourceCase.setStepList(sourceStepList);
-
-                        // 追加到目标用例末尾
-                        List<StepDO> targetStepList = targetCase.getStepList();
-                        if (targetStepList == null) {
-                            targetStepList = new ArrayList<>();
-                        }
-                        stepNew.setPid(stepDO.getDropNode().getId());
-                        stepNew.setOrder(targetStepList.size() + 1);
-                        targetStepList.add(stepNew);
-                        targetCase.setStepList(targetStepList);
-                    } else if (stepNew == null && StringUtils.isNotEmpty(sourceStepList)) {
-                        // 同用例内拖拽，按位置重排
-                        if (stepDO.getDropPosition() == -1) {
-                            DragSortUtil.move(sourceStepList, stepDO.getDragNode().getOrder() - 1, stepDO.getDropNode()
-                                .getOrder() - 1);
-                        } else if (stepDO.getDropPosition() == 0) {
-                            DragSortUtil.swap(sourceStepList, stepDO.getDragNode().getOrder() - 1, stepDO.getDropNode()
-                                .getOrder() - 1);
-                        } else if (stepDO.getDropPosition() == 1) {
-                            DragSortUtil.move(sourceStepList, stepDO.getDragNode().getOrder() - 1, stepDO.getDropNode()
-                                .getOrder() - 1);
-                        }
-                        sourceStepList.forEach(DragSortUtil.getIndex((item, index) -> {
-                            item.setOrder(index + 1);
-                        }));
-                        sourceCase.setStepList(sourceStepList);
-                    }
-                }
-            }
-
-            automationUiSceneDO.setCaseList(caseList);
-            baseMapper.updateById(automationUiSceneDO);
-        }
+        caseTreeService.moveLegacyStep(id, stepDO);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public AutomationUiSceneExecResp exec(AutomationUiSceneExecReq req) {
+        if (storagePressureGuard != null) {
+            storagePressureGuard.assertExecutionAllowed();
+        }
         AutomationUiExecutionEngineEnum engine = resolveExecutionEngine(req.getEngine());
         // 默认仍走 Jenkins；Playwright 测试计划调度器接入前，显式阻断避免误触发旧链路。
         CheckUtils.throwIf(AutomationUiExecutionEngineEnum.PLAYWRIGHT
@@ -915,20 +651,8 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
             if (latest == null) {
                 continue;
             }
-            boolean planExecute = StringUtils.isNotBlank(req.getTestPlanId());
-            List<Object> history = planExecute ? latest.getTestRecord() : latest.getDebugRecord();
-            List<Object> records = new ArrayList<>();
-            records.add(buildExecutingRecord(latest, buildNumber, consoleUrl, testReportUrl, executeName, req
-                .getTestPlanId()));
-            if (history != null && !history.isEmpty()) {
-                records.addAll(history);
-            }
-            if (planExecute) {
-                latest.setTestRecord(records);
-                latest.setTestPlanId(List.of(req.getTestPlanId()));
-            } else {
-                latest.setDebugRecord(records);
-            }
+            Map<String, Object> executionRecord = buildExecutingRecord(latest, buildNumber, consoleUrl, testReportUrl, executeName, req
+                .getTestPlanId(), req.getTestReportId());
             latest.setExecuteStatus(STATUS_RUNNING);
             latest.setExecuteResult(RESULT_NOT_EXECUTED);
             latest.setBuildNumber(buildNumber);
@@ -938,11 +662,11 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
             if (StringUtils.isNotBlank(req.getTestReportId())) {
                 latest.setReportId(Long.parseLong(req.getTestReportId()));
             }
-            baseMapper.updateById(latest);
+            executionRecordService.saveRecord(latest, executionRecord, null);
         }
 
         AutomationUiSceneExecResp resp = new AutomationUiSceneExecResp();
-        resp.setTestReportId(testReportId);
+        resp.setTestReportId(StringUtils.isBlank(req.getTestReportId()) ? testReportId : req.getTestReportId());
         resp.setBuildNumber(buildNumber);
         resp.setConsoleUrl(consoleUrl);
         resp.setTestReportUrl(testReportUrl);
@@ -991,7 +715,72 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
         }
         List<AutomationUiSceneDO> sceneList = baseMapper.selectBatchIds(ids);
         sceneList.sort(Comparator.comparing(AutomationUiSceneDO::getSceneId, Comparator.nullsLast(String::compareTo)));
-        return BeanUtil.copyToList(sceneList, AutomationUiSceneResp.class);
+        List<AutomationUiSceneResp> result = BeanUtil.copyToList(sceneList, AutomationUiSceneResp.class);
+        result.forEach(item -> hydrateExecutionData(item, 100));
+        return result;
+    }
+
+    private void hydrateExecutionData(AutomationUiSceneResp item, int historyLimit) {
+        if (item == null || item.getId() == null) {
+            return;
+        }
+        item.setDebugRecord(executionRecordService.listRecords(item.getId(), false, historyLimit));
+        item.setTestRecord(executionRecordService.listRecords(item.getId(), true, historyLimit));
+        jdbcTemplate
+            .query("SELECT execution_revision, execute_status, execute_result, case_total, case_pass, case_fail, case_skip," + " pass_rate, last_result, step_total, step_pass, step_fail, step_skip, update_time" + " FROM automation_ui_scene_execution_state WHERE scene_id = ?", rs -> {
+                if (!rs.next())
+                    return;
+                item.setExecutionRevision(rs.getLong("execution_revision"));
+                item.setExecuteStatus(rs.getString("execute_status"));
+                item.setExecuteResult(rs.getString("execute_result"));
+                item.setCaseTotal((Integer)rs.getObject("case_total"));
+                item.setCasePass((Integer)rs.getObject("case_pass"));
+                item.setCaseFail((Integer)rs.getObject("case_fail"));
+                item.setCaseSkip((Integer)rs.getObject("case_skip"));
+                item.setPassRate(rs.getString("pass_rate"));
+                item.setLastResult(rs.getString("last_result"));
+                item.setStepTotal((Integer)rs.getObject("step_total"));
+                item.setStepPass((Integer)rs.getObject("step_pass"));
+                item.setStepFail((Integer)rs.getObject("step_fail"));
+                item.setStepSkip((Integer)rs.getObject("step_skip"));
+                Timestamp timestamp = rs.getTimestamp("update_time");
+                if (timestamp != null)
+                    item.setUpdateTime(timestamp.toLocalDateTime());
+            }, item.getId());
+    }
+
+    private void hydrateExecutionData(AutomationUiSceneDetailResp item, int historyLimit) {
+        if (item == null || item.getId() == null) {
+            return;
+        }
+        item.setDebugRecord(executionRecordService.listRecords(item.getId(), false, historyLimit));
+        item.setTestRecord(executionRecordService.listRecords(item.getId(), true, historyLimit));
+        jdbcTemplate
+            .query("SELECT execution_revision, execute_status, execute_result, case_total, case_pass, case_fail, case_skip," + " pass_rate, last_result, step_total, step_pass, step_fail, step_skip" + " FROM automation_ui_scene_execution_state WHERE scene_id = ?", rs -> {
+                if (!rs.next())
+                    return;
+                item.setExecutionRevision(rs.getLong("execution_revision"));
+                item.setExecuteStatus(rs.getString("execute_status"));
+                item.setExecuteResult(rs.getString("execute_result"));
+                item.setCaseTotal((Integer)rs.getObject("case_total"));
+                item.setCasePass((Integer)rs.getObject("case_pass"));
+                item.setCaseFail((Integer)rs.getObject("case_fail"));
+                item.setCaseSkip((Integer)rs.getObject("case_skip"));
+                item.setPassRate(rs.getString("pass_rate"));
+                item.setLastResult(rs.getString("last_result"));
+                item.setStepTotal((Integer)rs.getObject("step_total"));
+                item.setStepPass((Integer)rs.getObject("step_pass"));
+                item.setStepFail((Integer)rs.getObject("step_fail"));
+                item.setStepSkip((Integer)rs.getObject("step_skip"));
+            }, item.getId());
+    }
+
+    @Override
+    public List<AutomationUiSceneRevisionResp> listSceneRevisions(Collection<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return List.of();
+        }
+        return baseMapper.selectRevisions(ids);
     }
 
     @Override
@@ -1020,14 +809,17 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
         AutomationUiSceneUploadResultReq.UiStatistic ui = req.getStatisticAnalysis().getUi();
         CheckUtils.throwIfNull(ui, "上传失败：UI 统计数据缺失");
 
-        List<Object> history = StringUtils.isNotBlank(req.getTestPlanId())
-            ? scene.getTestRecord()
-            : scene.getDebugRecord();
-        List<Object> records = history == null ? new ArrayList<>() : new ArrayList<>(history);
-        removeExecutingJenkinsRecord(records, ui.getBuildNumber());
+        Map<String, Object> executingRecord = executionRecordService.findBatch(scene.getId(), String.valueOf(ui
+            .getBuildNumber()));
 
         Map<String, Object> latest = new LinkedHashMap<>();
-        latest.put("testPlanId", req.getTestPlanId());
+        String resolvedTestPlanId = StringUtils.defaultIfBlank(req.getTestPlanId(), executingRecord == null
+            ? null
+            : String.valueOf(executingRecord.get("testPlanId")));
+        latest.put("testPlanId", resolvedTestPlanId);
+        latest.put("testReportId", StringUtils.defaultIfBlank(req.getTestReportId(), executingRecord == null
+            ? null
+            : String.valueOf(executingRecord.get("testReportId"))));
         latest.put("buildNumber", ui.getBuildNumber());
         latest.put("executionType", "jenkins");
         latest.put("executionId", String.valueOf(ui.getBuildNumber()));
@@ -1062,33 +854,31 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
         latest.put("durationStartTime", ui.getDurationStartTime());
         latest.put("durationEndTime", ui.getDurationEndTime());
 
-        List<Object> updated = new ArrayList<>();
-        updated.add(latest);
-        updated.addAll(records);
-        if (StringUtils.isNotBlank(req.getTestPlanId())) {
-            scene.setTestRecord(updated);
-        } else {
-            scene.setDebugRecord(updated);
+        String executeStatus = AutomationUiSceneStatusCodes.normalizeStatus(ui.getExecuteStatus());
+        String executeResult = AutomationUiSceneStatusCodes.normalizeResult(ui.getExecuteResult(), ui
+            .getSceneTotal(), ui.getScenePass(), ui.getSceneFail(), ui.getSceneSkip());
+        scene.setExecuteStatus(executeStatus);
+        scene.setExecuteResult(executeResult);
+        scene.setLastResult(executeResult);
+        scene.setBuildNumber(ui.getBuildNumber());
+        scene.setConsoleUrl(consoleUrl);
+        scene.setTestReportUrl(testReportUrl);
+        scene.setCaseTotal(defaultNumber(ui.getCaseTotal()));
+        scene.setCasePass(defaultNumber(ui.getCasePass()));
+        scene.setCaseFail(defaultNumber(ui.getCaseFail()));
+        scene.setCaseSkip(defaultNumber(ui.getCaseSkip()));
+        scene.setPassRate(StringUtils.defaultIfBlank(ui.getCasePassRate(), scene.getPassRate()));
+        scene.setStepTotal(defaultNumber(ui.getStepTotal()));
+        scene.setStepPass(defaultNumber(ui.getStepPass()));
+        scene.setStepFail(defaultNumber(ui.getStepFail()));
+        scene.setStepSkip(defaultNumber(ui.getStepSkip()));
+        executionRecordService.saveRecord(scene, latest, null);
+        Object reportIdValue = latest.get("testReportId");
+        String testReportId = reportIdValue == null ? "" : String.valueOf(reportIdValue);
+        if (StringUtils.isNotBlank(resolvedTestPlanId) && StringUtils
+            .isNotBlank(testReportId) && planReportProgressServices != null) {
+            planReportProgressServices.forEach(service -> service.onProgressChanged(resolvedTestPlanId, testReportId));
         }
-
-        //        String executeStatus = AutomationUiSceneStatusCodes.normalizeStatus(ui.getExecuteStatus());
-        //        String executeResult = AutomationUiSceneStatusCodes.normalizeResult(ui.getExecuteResult(), ui.getSceneTotal(), ui.getScenePass(), ui.getSceneFail(), ui.getSceneSkip());
-        //        scene.setExecuteStatus(executeStatus);
-        //        scene.setExecuteResult(executeResult);
-        //        scene.setLastResult(executeResult);
-        //        scene.setBuildNumber(ui.getBuildNumber());
-        //        scene.setConsoleUrl(StringUtils.defaultIfBlank(ui.getConsoleUrl(), scene.getConsoleUrl()));
-        //        scene.setTestReportUrl(StringUtils.defaultIfBlank(ui.getTestReportUrl(), scene.getTestReportUrl()));
-        //        scene.setCaseTotal(defaultNumber(ui.getCaseTotal()));
-        //        scene.setCasePass(defaultNumber(ui.getCasePass()));
-        //        scene.setCaseFail(defaultNumber(ui.getCaseFail()));
-        //        scene.setCaseSkip(defaultNumber(ui.getCaseSkip()));
-        //        scene.setPassRate(StringUtils.defaultIfBlank(ui.getCasePassRate(), scene.getPassRate()));
-        //        scene.setStepTotal(defaultNumber(ui.getStepTotal()));
-        //        scene.setStepPass(defaultNumber(ui.getStepPass()));
-        //        scene.setStepFail(defaultNumber(ui.getStepFail()));
-        //        scene.setStepSkip(defaultNumber(ui.getStepSkip()));
-        baseMapper.updateById(scene);
     }
 
     @Override
@@ -1113,7 +903,8 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
             scene.setStepPass(null);
             scene.setStepFail(null);
             scene.setStepSkip(null);
-            baseMapper.updateById(scene);
+            baseMapper.clearExecutionState(scene.getId());
+            executionRecordService.clearScene(scene.getId());
         }
     }
 
@@ -1209,6 +1000,7 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
      * @param testReportUrl 报告地址
      * @param executeName   执行人
      * @param testPlanId    测试计划 ID
+     * @param testReportId  测试报告 ID
      * @return 历史记录
      */
     private Map<String, Object> buildExecutingRecord(AutomationUiSceneDO scene,
@@ -1216,7 +1008,8 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
                                                      String consoleUrl,
                                                      String testReportUrl,
                                                      String executeName,
-                                                     String testPlanId) {
+                                                     String testPlanId,
+                                                     String testReportId) {
         Map<String, Object> record = new HashMap<>(16);
         int caseTotal = scene.getCaseList() == null ? 0 : scene.getCaseList().size();
         int stepTotal = 0;
@@ -1228,7 +1021,9 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
             }
         }
         record.put("testPlanId", testPlanId);
+        record.put("testReportId", testReportId);
         record.put("buildNumber", buildNumber);
+        record.put("batchId", String.valueOf(buildNumber));
         record.put("executionType", "jenkins");
         record.put("executionId", String.valueOf(buildNumber));
         record.put("startedAt", java.time.OffsetDateTime.now().toString());
@@ -1251,34 +1046,6 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
         record.put("stepFail", 0);
         record.put("stepSkip", 0);
         return record;
-    }
-
-    /**
-     * 删除本次 Jenkins 构建对应的执行中快照。
-     *
-     * <p>CDP/Runner 可能在 Jenkins 构建期间插入新记录，因此不能再直接删除历史首条。</p>
-     *
-     * @param records     执行历史
-     * @param buildNumber Jenkins 构建号
-     */
-    private void removeExecutingJenkinsRecord(List<Object> records, Integer buildNumber) {
-        if (buildNumber == null) {
-            return;
-        }
-        String expectedBuildNumber = String.valueOf(buildNumber);
-        for (int i = 0; i < records.size(); i++) {
-            if (!(records.get(i) instanceof Map<?, ?> record)) {
-                continue;
-            }
-            String recordBuildNumber = String.valueOf(record.get("buildNumber"));
-            String executionType = String.valueOf(record.get("executionType"));
-            boolean jenkinsRecord = "jenkins".equalsIgnoreCase(executionType) || record
-                .get("consoleUrl") != null || record.get("testReportUrl") != null;
-            if (jenkinsRecord && expectedBuildNumber.equals(recordBuildNumber)) {
-                records.remove(i);
-                return;
-            }
-        }
     }
 
     private String joinSceneIds(List<AutomationUiSceneDO> sceneList) {
@@ -1434,38 +1201,11 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
     }
 
     public void addStep1(CaseDO caseDO, Long id) {
-        AutomationUiSceneDO automationUiSceneDO = baseMapper.selectById(id);
-        List<CaseDO> caseList = automationUiSceneDO.getCaseList();
-        if (StringUtils.isNotEmpty(caseList)) {
-            for (CaseDO caseItem : caseList) {
-                if (caseItem.getId().equals(caseDO.getId())) {
-                    StepDO stepDO = caseDO.getStep();
-                    List<StepDO> stepList = caseItem.getStepList();
-                    if (StringUtils.isEmpty(stepList)) {
-                        stepList = new ArrayList<>();
-                        stepDO.setOrder(1);
-                    } else {
-                        stepDO.setOrder(stepList.size() + 1);
-                    }
-                    stepDO.setId(resolveStepId(stepDO.getId(), stepList, stepDO.getOrder()));
-                    stepList.add(stepDO);
-                    if (caseDO.getSortType() != null) {
-                        if (caseDO.getSortType() == 1) {
-                            DragSortUtil.swap(stepList, caseDO.getOrder() - 1, caseDO.getItemOrder() - 1);
-                        } else if (caseDO.getSortType() == 2) {
-                            DragSortUtil.move(stepList, caseDO.getOrder() - 1, caseDO.getItemOrder() - 1);
-                        }
-                        stepList.forEach(DragSortUtil.getIndex((item, index) -> {
-                            item.setOrder(index + 1);
-                        }));
-                    }
-                    caseItem.setStepList(stepList);
-                    break;
-                }
-            }
-        }
-        automationUiSceneDO.setCaseList(caseList);
-        baseMapper.updateById(automationUiSceneDO);
+        CheckUtils.throwIf(caseDO.getStep() == null, "step 不能为空");
+        StepDO step = caseDO.getStep();
+        step.setPid(caseDO.getId());
+        step.setExpectedDefinitionVersion(caseDO.getExpectedDefinitionVersion());
+        caseTreeService.addStep(id, step);
     }
 
     @Override

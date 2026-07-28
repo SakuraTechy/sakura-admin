@@ -22,27 +22,54 @@ project:
 
 --- ### Playwright Runner 配置
 automation:
+  storage-pressure:
+    enabled: ${SAKURA_AUTOMATION_STORAGE_PRESSURE_ENABLED:true}
+    # MySQL 分容器部署时，把数据盘只读挂载到 admin，并在这里配置挂载路径。
+    monitored-paths: ${SAKURA_AUTOMATION_STORAGE_MONITORED_PATHS:}
+    min-free-bytes: ${SAKURA_AUTOMATION_STORAGE_MIN_FREE_BYTES:5368709120}
+    max-used-percent: ${SAKURA_AUTOMATION_STORAGE_MAX_USED_PERCENT:90}
+    max-database-bytes: ${SAKURA_AUTOMATION_MAX_DATABASE_BYTES:0}
+    cache-seconds: ${SAKURA_AUTOMATION_STORAGE_CHECK_CACHE_SECONDS:30}
+  execution-migration:
+    batch-size: ${SAKURA_AUTOMATION_EXECUTION_MIGRATION_BATCH_SIZE:20}
+  storage-cleanup:
+    # 由 SnailJob 的 CleanupAutomationStorage 任务按批次执行；0 表示暂不清理。
+    sys-log-retention-days: ${SAKURA_SYS_LOG_RETENTION_DAYS:30}
+    sys-log-failure-retention-days: ${SAKURA_SYS_LOG_FAILURE_RETENTION_DAYS:90}
+    job-retention-days: ${SAKURA_AUTOMATION_JOB_RETENTION_DAYS:30}
+    execution-retention-days: ${SAKURA_AUTOMATION_EXECUTION_RETENTION_DAYS:90}
   playwright-runner:
     # Runner 在 admin 所在节点启动，生产环境必须限制 runner-root 和 node-command 的可执行范围。
     enabled: ${SAKURA_PLAYWRIGHT_RUNNER_ENABLED:true}
     root: ${SAKURA_PLAYWRIGHT_RUNNER_ROOT:sakura-playwright}
     node-command: ${SAKURA_PLAYWRIGHT_NODE_COMMAND:node}
     max-concurrent: ${SAKURA_PLAYWRIGHT_RUNNER_MAX_CONCURRENT:2}
+    runtime-retention-minutes: ${SAKURA_PLAYWRIGHT_RUNTIME_RETENTION_MINUTES:30}
+    max-terminal-runtime-count: ${SAKURA_PLAYWRIGHT_MAX_TERMINAL_RUNTIME_COUNT:100}
+    lost-heartbeat-seconds: ${SAKURA_PLAYWRIGHT_LOST_HEARTBEAT_SECONDS:90}
+    executor-node: ${SAKURA_PLAYWRIGHT_EXECUTOR_NODE:local}
+    # 登录态只保存在 Runner 节点临时目录，不进入 artifact、场景 JSON 或前端请求。
+    session-state-dir: ${SAKURA_PLAYWRIGHT_SESSION_STATE_DIR:}
+    session-state-retention-hours: ${SAKURA_PLAYWRIGHT_SESSION_STATE_RETENTION_HOURS:24}
+    # 无人值守计划调度专用令牌；不允许由前端请求上传。
+    service-token: ${SAKURA_PLAYWRIGHT_RUNNER_SERVICE_TOKEN:}
+  playwright-artifact:
+    unified-storage-enabled: ${SAKURA_PLAYWRIGHT_UNIFIED_STORAGE_ENABLED:true}
+    legacy-read-enabled: ${SAKURA_PLAYWRIGHT_LEGACY_ARTIFACT_READ_ENABLED:true}
+    # 留空时使用系统默认存储；生产环境建议配置对象存储或共享存储编码。
+    storage-code: ${SAKURA_PLAYWRIGHT_ARTIFACT_STORAGE_CODE:}
+    path-prefix: ${SAKURA_PLAYWRIGHT_ARTIFACT_PATH_PREFIX:automation/playwright}
 
 --- ### 日志配置
 ## API 请求/响应日志配置
 continew-starter.log:
-  # 记录信息
+  # 默认只记录审计元数据；请求/响应正文可能包含场景 JSON、文件内容或敏感信息。
   includes:
     - DESCRIPTION
     - MODULE
-    - REQUEST_HEADERS
-    - REQUEST_BODY
     - IP_ADDRESS
     - BROWSER
     - OS
-    - RESPONSE_HEADERS
-    - RESPONSE_BODY
 ## 项目日志配置
 logging:
   config: classpath:logback-spring.xml

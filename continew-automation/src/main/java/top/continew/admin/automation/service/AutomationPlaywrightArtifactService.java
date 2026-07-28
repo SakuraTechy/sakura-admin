@@ -16,8 +16,6 @@
 
 package top.continew.admin.automation.service;
 
-import java.nio.file.Path;
-
 import org.springframework.web.multipart.MultipartFile;
 
 /**
@@ -29,11 +27,20 @@ public interface AutomationPlaywrightArtifactService {
 
     Artifact store(String runId, String artifactType, MultipartFile file);
 
-    ArtifactResource load(String runId, String fileName);
+    /**
+     * 读取新链路中由系统文件管理持久化的 Playwright artifact。
+     */
+    ArtifactResource loadByFileId(Long fileId);
 
-    record Artifact(String runId, String artifactType, String fileName, String url, String contentType, long size) {
+    /**
+     * 读取历史 uploads 目录中的 artifact。新文件不再写入该目录。
+     */
+    ArtifactResource loadLegacy(String runId, String fileName);
+
+    record Artifact(Long fileId, String runId, String artifactType, String fileName, String url, String contentType,
+                    long size, String md5, String storageCode) {
     }
 
-    record ArtifactResource(Path path, String contentType) {
+    record ArtifactResource(byte[] content, String contentType, String fileName) {
     }
 }

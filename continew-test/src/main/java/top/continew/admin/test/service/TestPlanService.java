@@ -16,13 +16,13 @@
 
 package top.continew.admin.test.service;
 
-import top.continew.admin.automation.model.resp.AutomationUiSceneExecResp;
 import top.continew.admin.test.model.query.TestPlanQuery;
 import top.continew.admin.test.model.req.TestPlanExecuteReq;
 import top.continew.admin.test.model.req.TestPlanReq;
 import top.continew.admin.test.model.req.TestPlanSceneRelationReq;
 import top.continew.admin.test.model.resp.TestPlanDetailResp;
 import top.continew.admin.test.model.resp.TestPlanResp;
+import top.continew.admin.test.model.resp.TestPlanExecuteResp;
 import top.continew.starter.extension.crud.service.BaseService;
 
 import java.util.List;
@@ -39,5 +39,7 @@ public interface TestPlanService extends BaseService<TestPlanResp, TestPlanDetai
 
     void removeScenes(Long id, TestPlanSceneRelationReq req);
 
-    AutomationUiSceneExecResp execute(Long id, TestPlanExecuteReq req);
+    TestPlanExecuteResp execute(Long id, TestPlanExecuteReq req);
+
+    void cancelExecution(Long id, Long reportId);
 }

@@ -51,6 +51,7 @@ public class TestReportReq implements Serializable {
 
     private String triggerMode;
     private String executeMode;
+    private String reportType;
     private Map<String, Object> projectConfig;
     private Map<String, Object> automationConfig;
     private Map<String, Object> runtimeEnvironment;

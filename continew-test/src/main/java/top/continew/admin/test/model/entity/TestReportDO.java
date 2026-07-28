@@ -45,6 +45,7 @@ public class TestReportDO extends BaseDO {
     private String description;
     private String triggerMode;
     private String executeMode;
+    private String reportType;
 
     @TableField(typeHandler = JacksonTypeHandler.class)
     private Map<String, Object> projectConfig;

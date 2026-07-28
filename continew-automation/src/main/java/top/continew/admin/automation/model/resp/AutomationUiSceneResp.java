@@ -121,6 +121,9 @@ public class AutomationUiSceneResp extends BaseDetailResp {
     @Schema(description = "场景用例信息")
     private List<Object> caseList;
 
+    @Schema(description = "场景定义版本")
+    private Long definitionVersion;
+
     /**
      * 关联的测试计划
      */
@@ -248,6 +251,12 @@ public class AutomationUiSceneResp extends BaseDetailResp {
      */
     @Schema(description = "修改时间")
     private LocalDateTime updateTime;
+
+    /**
+     * 执行状态窄表的单调版本号。
+     */
+    @Schema(description = "执行版本号")
+    private Long executionRevision;
 
     /**
      * 修改人IP

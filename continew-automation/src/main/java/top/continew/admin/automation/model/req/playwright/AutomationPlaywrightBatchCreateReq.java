@@ -47,6 +47,18 @@ public class AutomationPlaywrightBatchCreateReq implements Serializable {
     @NotNull(message = "产品环境不能为空")
     private Long projectEnvironmentId;
 
+    /** 计划异步调度时显式透传执行人，避免后台线程丢失用户上下文。 */
+    private String executeName;
+
+    /** 计划异步调度时显式透传执行邮箱。 */
+    private String executeEmail;
+
+    /** 测试计划 ID；存在时批次结果写入对应计划的 testRecord。 */
+    private String testPlanId;
+
+    /** 正式报告 ID；存在时必须同时携带测试计划 ID。 */
+    private String testReportId;
+
     /** 执行配置快照，仅用于历史诊断，不回写场景主数据。 */
     private Map<String, Object> executionConfig;
 }

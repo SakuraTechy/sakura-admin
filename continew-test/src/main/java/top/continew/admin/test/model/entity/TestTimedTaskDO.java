@@ -16,20 +16,23 @@
 
 package top.continew.admin.test.model.entity;
 
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
 import lombok.Data;
 import top.continew.admin.common.enums.StatusTypeEnum;
 import top.continew.admin.common.model.entity.BaseDO;
 
-import com.baomidou.mybatisplus.annotation.TableName;
-
 import java.io.Serial;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
 
 /**
  * 测试定时任务实体。
  */
 @Data
-@TableName("test_timed_task")
+@TableName(value = "test_timed_task", autoResultMap = true)
 public class TestTimedTaskDO extends BaseDO {
 
     @Serial
@@ -39,6 +42,7 @@ public class TestTimedTaskDO extends BaseDO {
     private String testPlanName;
     private Long scheduleJobId;
     private String type;
+    private String executionEngine;
     private String name;
     private String description;
     private String cronExpression;
@@ -46,8 +50,16 @@ public class TestTimedTaskDO extends BaseDO {
     private Integer allowConcurrent;
     private Long projectEnvironmentId;
     private Long automationEnvironmentId;
+
+    @TableField(typeHandler = JacksonTypeHandler.class)
+    private Map<String, Object> executionConfig;
+
     private String executeName;
     private String executeEmail;
+
+    @TableField(typeHandler = JacksonTypeHandler.class)
+    private List<String> notificationEmails;
+
     private LocalDateTime nextExecuteTime;
     private String status;
     private StatusTypeEnum delFlag = StatusTypeEnum.NORMAL;

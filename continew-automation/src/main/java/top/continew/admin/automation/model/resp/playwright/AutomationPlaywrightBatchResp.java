@@ -37,6 +37,8 @@ public class AutomationPlaywrightBatchResp implements Serializable {
 
     private String executeName;
 
+    private String executeEmail;
+
     private String startedAt;
 
     private List<CaseExecution> cases;

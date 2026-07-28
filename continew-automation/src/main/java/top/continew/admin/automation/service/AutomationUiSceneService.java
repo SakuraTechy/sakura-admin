@@ -31,6 +31,7 @@ import top.continew.admin.automation.model.req.AutomationUiSceneUploadResultReq;
 import top.continew.admin.automation.model.resp.AutomationUiSceneDetailResp;
 import top.continew.admin.automation.model.resp.AutomationUiSceneExecResp;
 import top.continew.admin.automation.model.resp.AutomationUiSceneResp;
+import top.continew.admin.automation.model.resp.AutomationUiSceneRevisionResp;
 import top.continew.starter.extension.crud.model.query.PageQuery;
 import top.continew.starter.extension.crud.model.resp.PageResp;
 import top.continew.starter.extension.crud.service.BaseService;
@@ -74,7 +75,7 @@ public interface AutomationUiSceneService extends BaseService<AutomationUiSceneR
      * @param caseDO 场景用例
      * @param id     场景ID
      */
-    void addCase(CaseDO caseDO, Long id);
+    String addCase(CaseDO caseDO, Long id);
 
     /**
      * 根据 场景ID 修改用例
@@ -155,6 +156,11 @@ public interface AutomationUiSceneService extends BaseService<AutomationUiSceneR
      * @return 场景详情
      */
     List<AutomationUiSceneResp> listSceneRespByIds(Collection<Long> ids);
+
+    /**
+     * 查询场景轻量版本，用于轮询时判断是否需要重新加载大 JSON。
+     */
+    List<AutomationUiSceneRevisionResp> listSceneRevisions(Collection<Long> ids);
 
     /**
      * 导出选中场景 XML

@@ -30,6 +30,7 @@ import top.continew.admin.test.model.req.TestReportUploadReq;
 import top.continew.admin.test.model.resp.TestReportDetailResp;
 import top.continew.admin.test.model.resp.TestReportResp;
 import top.continew.admin.test.service.TestReportService;
+import top.continew.admin.test.service.TestTimedTaskRunService;
 import top.continew.starter.extension.crud.service.BaseServiceImpl;
 
 import java.util.List;
@@ -39,6 +40,7 @@ import java.util.List;
 public class TestReportServiceImpl extends BaseServiceImpl<TestReportMapper, TestReportDO, TestReportResp, TestReportDetailResp, TestReportQuery, TestReportReq> implements TestReportService {
 
     private final TestPlanMapper testPlanMapper;
+    private final TestTimedTaskRunService timedTaskRunService;
 
     @Override
     public List<TestReportDetailResp> selectByIds(List<Long> ids) {
@@ -80,11 +82,14 @@ public class TestReportServiceImpl extends BaseServiceImpl<TestReportMapper, Tes
         report.setVideoUrl(req.getVideoUrl());
         report.setStatisticAnalysis(req.getStatisticAnalysis());
         baseMapper.updateById(report);
+        timedTaskRunService.completeByReport(report);
 
         if (report.getTestPlanId() != null) {
             TestPlanDO plan = testPlanMapper.selectById(report.getTestPlanId());
             if (plan != null) {
-                plan.setStatus("PASSED".equalsIgnoreCase(req.getStatus()) ? "COMPLETED" : "RUNNING");
+                boolean terminal = "PASSED".equalsIgnoreCase(req.getStatus()) || "FAILED".equalsIgnoreCase(req
+                    .getStatus());
+                plan.setStatus(terminal ? "COMPLETED" : "RUNNING");
                 testPlanMapper.updateById(plan);
             }
         }

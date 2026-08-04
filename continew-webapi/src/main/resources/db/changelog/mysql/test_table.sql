@@ -106,11 +106,42 @@ CREATE TABLE IF NOT EXISTS `test_timed_task` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='测试定时任务表';
 
 -- changeset sakura:2002
--- comment 测试计划级多执行引擎报告
+-- validCheckSum: 1:any
+-- comment 兼容已执行或部分执行的旧版聚合 changeset，具体 DDL 拆分到下方幂等 changeset。
+SELECT 1;
+
+-- changeset sakura:2002-test-report-report-type-column
+-- preconditions onFail:MARK_RAN onError:HALT
+-- precondition-sql-check expectedResult:0 SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'test_report' AND column_name = 'report_type'
+-- comment 测试报告增加执行引擎类型；字段已存在时跳过，兼容存量数据库。
 ALTER TABLE `test_report`
-    ADD COLUMN `report_type` varchar(64) NOT NULL DEFAULT 'SELENIUM' COMMENT '报告类型' AFTER `execute_mode`,
+    ADD COLUMN `report_type` varchar(64) NOT NULL DEFAULT 'SELENIUM' COMMENT '报告类型' AFTER `execute_mode`;
+
+-- rollback ALTER TABLE `test_report` DROP COLUMN `report_type`;
+
+-- changeset sakura:2002-test-report-report-type-index
+-- preconditions onFail:MARK_RAN onError:HALT
+-- precondition-sql-check expectedResult:0 SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = 'test_report' AND index_name = 'idx_report_type'
+-- comment 测试报告类型索引；索引已存在时跳过。
+ALTER TABLE `test_report`
     ADD INDEX `idx_report_type` (`report_type`);
 
+-- rollback ALTER TABLE `test_report` DROP INDEX `idx_report_type`;
+
+-- changeset sakura:2002-test-timed-task-execution-engine-column
+-- preconditions onFail:MARK_RAN onError:HALT
+-- precondition-sql-check expectedResult:0 SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'test_timed_task' AND column_name = 'execution_engine'
+-- comment 定时任务增加执行引擎；字段已存在时跳过。
 ALTER TABLE `test_timed_task`
-    ADD COLUMN `execution_engine` varchar(64) NOT NULL DEFAULT 'SELENIUM' COMMENT '执行引擎' AFTER `type`,
+    ADD COLUMN `execution_engine` varchar(64) NOT NULL DEFAULT 'SELENIUM' COMMENT '执行引擎' AFTER `type`;
+
+-- rollback ALTER TABLE `test_timed_task` DROP COLUMN `execution_engine`;
+
+-- changeset sakura:2002-test-timed-task-execution-config-column
+-- preconditions onFail:MARK_RAN onError:HALT
+-- precondition-sql-check expectedResult:0 SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'test_timed_task' AND column_name = 'execution_config'
+-- comment 定时任务增加执行配置；字段已存在时跳过。
+ALTER TABLE `test_timed_task`
     ADD COLUMN `execution_config` json DEFAULT NULL COMMENT '执行引擎配置' AFTER `automation_environment_id`;
+
+-- rollback ALTER TABLE `test_timed_task` DROP COLUMN `execution_config`;

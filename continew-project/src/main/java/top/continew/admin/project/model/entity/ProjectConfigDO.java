@@ -101,4 +101,7 @@ public class ProjectConfigDO extends BaseDO {
      * 删除标志（3正常 4异常）
      */
     private StatusTypeEnum delFlag = StatusTypeEnum.NORMAL;
+
+    /** UI 自动化操作目录 v2 灰度开关；历史项目默认开启，关闭时前端走旧表单。 */
+    private Boolean automationOperationCatalogV2 = Boolean.TRUE;
 }

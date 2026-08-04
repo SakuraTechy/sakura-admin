@@ -32,9 +32,12 @@ import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import top.continew.admin.automation.converter.AutomationOperationStepAssembler;
+import top.continew.admin.automation.converter.AutomationOperationStepReverseAdapter;
 import top.continew.admin.automation.mapper.AutomationPlaywrightJobMapper;
 import top.continew.admin.automation.mapper.AutomationUiSceneMapper;
 import top.continew.admin.automation.model.entity.AutomationUiSceneDO;
@@ -54,12 +57,21 @@ class AutomationUiCaseTreeServiceImplTest {
     private AutomationUiSceneMapper sceneMapper;
     @Mock
     private AutomationPlaywrightJobMapper playwrightJobMapper;
+    @Mock
+    private AutomationOperationStepAssembler operationStepAssembler;
+    @Mock
+    private AutomationOperationStepReverseAdapter operationStepReverseAdapter;
+    @Mock
+    private ObjectMapper objectMapper;
 
     private AutomationUiCaseTreeServiceImpl service;
 
     @BeforeEach
     void setUp() {
-        service = new AutomationUiCaseTreeServiceImpl(sceneMapper, playwrightJobMapper);
+        lenient().when(operationStepAssembler.assembleManualStep(org.mockito.ArgumentMatchers.any(StepDO.class)))
+            .thenAnswer(invocation -> invocation.getArgument(0));
+        service = new AutomationUiCaseTreeServiceImpl(sceneMapper, playwrightJobMapper, operationStepAssembler,
+            operationStepReverseAdapter, objectMapper);
     }
 
     @Test
@@ -121,6 +133,31 @@ class AutomationUiCaseTreeServiceImplTest {
     }
 
     @Test
+    void shouldReplaceInfrastructurePlaywrightStepWhenEditingStep() {
+        CaseDO parent = caseDO("CASE_001", 1);
+        StepDO existing = step("STEP_001", parent.getId(), 1);
+        existing.setOperationValue("database_sql");
+        existing.setConfigList(new ArrayList<>(List
+            .of(config("action_type", "database_sql"), config("playwright_step", "{\"action_type\":\"database_sql\",\"sql\":\"SELECT old_column\"}"), config("sql", "SELECT old_column"))));
+        parent.setStepList(new ArrayList<>(List.of(existing)));
+        AutomationUiSceneDO scene = scene(parent);
+        prepareMutation(scene);
+
+        StepDO request = step(existing.getId(), parent.getId(), 1);
+        request.setExpectedDefinitionVersion(0L);
+        request.setOperationValue("database_sql");
+        request.setConfigList(new ArrayList<>(List
+            .of(config("action_type", "database_sql"), config("playwright_step", "{\"action_type\":\"database_sql\",\"sql\":\"SELECT new_column\"}"), config("sql", "SELECT new_column"))));
+        service.updateStep(scene.getId(), request);
+
+        ArgumentCaptor<List<CaseDO>> cases = caseListCaptor();
+        verify(sceneMapper).updateDefinition(anyLong(), anyLong(), cases.capture(), anyInt(), anyInt());
+        StepDO saved = cases.getValue().get(0).getStepList().get(0);
+        assertThat(configValue(saved, "playwright_step")).contains("SELECT new_column");
+        assertThat(configValue(saved, "sql")).isEqualTo("SELECT new_column");
+    }
+
+    @Test
     void shouldRejectMutationWhileJenkinsSceneIsRunning() {
         AutomationUiSceneDO scene = scene(caseDO("CASE_001", 1), caseDO("CASE_002", 2));
         scene.setExecuteStatus("11");
@@ -161,6 +198,36 @@ class AutomationUiCaseTreeServiceImplTest {
         ArgumentCaptor<List<CaseDO>> cases = caseListCaptor();
         verify(sceneMapper).updateDefinition(anyLong(), anyLong(), cases.capture(), anyInt(), anyInt());
         assertThat(cases.getValue()).extracting(CaseDO::getId).containsExactly("CASE_001");
+    }
+
+    @Test
+    void shouldAssembleManualStepsWhenAddingCase() {
+        AutomationUiSceneDO scene = scene();
+        prepareMutation(scene);
+        CaseDO request = caseDO("CASE_", 1);
+        StepDO manualStep = step("CASE_STEP_001", request.getId(), 1);
+        manualStep.setConfigList(new ArrayList<>(List.of(config("method_code", "click.element"))));
+        request.setStepList(new ArrayList<>(List.of(manualStep)));
+        request.setExpectedDefinitionVersion(0L);
+
+        service.addCase(scene.getId(), request);
+
+        verify(operationStepAssembler).assembleManualStep(org.mockito.ArgumentMatchers.any(StepDO.class));
+    }
+
+    @Test
+    void shouldAllocateChildStepIdsBeforeAssemblingNewCase() {
+        AutomationUiSceneDO scene = scene();
+        prepareMutation(scene);
+        CaseDO request = caseDO("CASE_", 1);
+        request.setStepList(new ArrayList<>(List.of(step("CASE_STEP_", request.getId(), 1))));
+        request.setExpectedDefinitionVersion(0L);
+
+        service.addCase(scene.getId(), request);
+
+        ArgumentCaptor<List<CaseDO>> cases = caseListCaptor();
+        verify(sceneMapper).updateDefinition(anyLong(), anyLong(), cases.capture(), anyInt(), anyInt());
+        assertThat(cases.getValue().get(0).getStepList().get(0).getId()).isEqualTo("CASE_STEP_001");
     }
 
     @Test

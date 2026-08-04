@@ -66,6 +66,9 @@ public class ProjectServerConfigDetailResp extends BaseDetailResp {
     @ExcelProperty(value = "所属项目", order = 2)
     private String projectName;
 
+    @Schema(description = "基础设施步骤绑定键")
+    private String bindingKey;
+
     /**
      * 服务器类型
      */

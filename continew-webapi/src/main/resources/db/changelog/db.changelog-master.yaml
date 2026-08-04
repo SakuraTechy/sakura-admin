@@ -2,6 +2,8 @@ databaseChangeLog:
   - include:
       file: db/changelog/mysql/main_table.sql
   - include:
+      file: db/changelog/mysql/automation_ui_scene.sql
+  - include:
       file: db/changelog/mysql/main_column.sql
   - include:
       file: db/changelog/mysql/main_data.sql
@@ -17,6 +19,10 @@ databaseChangeLog:
       file: db/changelog/mysql/automation_ui_execution_v2.sql
   - include:
       file: db/changelog/mysql/automation_ui_scene_definition_version.sql
+  - include:
+      file: db/changelog/mysql/automation_infrastructure_task.sql
+  - include:
+      file: db/changelog/mysql/automation_operation_catalog_v2.sql
   - include:
       file: db/changelog/mysql/plugin/plugin_schedule.sql
   - include:

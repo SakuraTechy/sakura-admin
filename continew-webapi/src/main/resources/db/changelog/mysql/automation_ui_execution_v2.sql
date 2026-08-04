@@ -1,6 +1,7 @@
 -- liquibase formatted sql
 
 -- changeset codex:automation-ui-execution-v2-20260726
+-- validCheckSum: 1:any
 -- comment UI 自动化执行事实与场景最新状态拆分；执行回调不得再更新 automation_ui_scene 大 JSON
 
 CREATE TABLE IF NOT EXISTS `automation_ui_scene_definition_revision` (
@@ -176,6 +177,11 @@ CREATE TABLE IF NOT EXISTS `automation_ui_execution_artifact` (
     KEY `idx_automation_ui_execution_artifact_expire` (`expires_at`, `storage_status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='UI 自动化执行产物引用';
 
--- 仅增加清理扫描索引，不在 changeset 中执行大批量删除或 OPTIMIZE。
+-- changeset codex:automation-playwright-job-retention-index-20260729
+-- preconditions onFail:MARK_RAN onError:HALT
+-- precondition-sql-check expectedResult:0 SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = 'automation_playwright_job' AND index_name = 'idx_automation_playwright_job_retention'
+-- comment 仅增加清理扫描索引，不在 changeset 中执行大批量删除或 OPTIMIZE；索引已存在时跳过。
 ALTER TABLE `automation_playwright_job`
     ADD INDEX `idx_automation_playwright_job_retention` (`status`, `finished_at`);
+
+-- rollback ALTER TABLE `automation_playwright_job` DROP INDEX `idx_automation_playwright_job_retention`;

@@ -46,6 +46,9 @@ public class ProjectDataBaseConfigDO extends BaseDO {
      */
     private Long projectId;
 
+    /** 环境中引用数据库的稳定逻辑键，基础设施步骤只保存该键。 */
+    private String bindingKey;
+
     /**
      * 数据库类型
      */

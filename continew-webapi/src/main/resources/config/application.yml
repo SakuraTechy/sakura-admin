@@ -30,8 +30,6 @@ automation:
     max-used-percent: ${SAKURA_AUTOMATION_STORAGE_MAX_USED_PERCENT:90}
     max-database-bytes: ${SAKURA_AUTOMATION_MAX_DATABASE_BYTES:0}
     cache-seconds: ${SAKURA_AUTOMATION_STORAGE_CHECK_CACHE_SECONDS:30}
-  execution-migration:
-    batch-size: ${SAKURA_AUTOMATION_EXECUTION_MIGRATION_BATCH_SIZE:20}
   storage-cleanup:
     # 由 SnailJob 的 CleanupAutomationStorage 任务按批次执行；0 表示暂不清理。
     sys-log-retention-days: ${SAKURA_SYS_LOG_RETENTION_DAYS:30}
@@ -59,6 +57,14 @@ automation:
     # 留空时使用系统默认存储；生产环境建议配置对象存储或共享存储编码。
     storage-code: ${SAKURA_PLAYWRIGHT_ARTIFACT_STORAGE_CODE:}
     path-prefix: ${SAKURA_PLAYWRIGHT_ARTIFACT_PATH_PREFIX:automation/playwright}
+  # 基础设施执行 Agent 配置。Token 由 install-agent.ps1 生成；同一安装账号可从
+  # C:\ProgramData\Sakura\execution-agent\conf\agent-token.operator.clixml 读取后临时填入，严禁提交该值。
+  execution-agent:
+    base-url: http://127.0.0.1:19091
+    token: 'XUl/G49hcAzJlovKHZJUah/2YnQ8WH2XMW55JrWTODSyHvR2kJ8hZcU8msL8REvX'
+  # 执行迁移任务配置
+  execution-migration:
+    batch-size: ${SAKURA_AUTOMATION_EXECUTION_MIGRATION_BATCH_SIZE:20}
 
 --- ### 日志配置
 ## API 请求/响应日志配置

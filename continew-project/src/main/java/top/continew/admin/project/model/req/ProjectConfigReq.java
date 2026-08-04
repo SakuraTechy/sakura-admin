@@ -84,4 +84,7 @@ public class ProjectConfigReq implements Serializable {
      */
     @Schema(description = "删除标志")
     private StatusTypeEnum delFlag = StatusTypeEnum.NORMAL;
+
+    @Schema(description = "UI 自动化操作目录 v2 灰度开关")
+    private Boolean automationOperationCatalogV2 = Boolean.TRUE;
 }

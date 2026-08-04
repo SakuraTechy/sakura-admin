@@ -23,9 +23,12 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import top.continew.admin.automation.converter.AutomationOperationStepAssembler;
+import top.continew.admin.automation.converter.AutomationOperationStepReverseAdapter;
 import top.continew.admin.automation.mapper.AutomationPlaywrightJobMapper;
 import top.continew.admin.automation.mapper.AutomationUiSceneMapper;
 import top.continew.admin.automation.model.entity.AutomationUiSceneDO;
@@ -52,6 +55,8 @@ public class AutomationUiCaseTreeServiceImpl implements AutomationUiCaseTreeServ
     private static final String DEFAULT_CASE_PREFIX = "CASE_";
     private static final String DEFAULT_STEP_PREFIX = "CASE_STEP_";
     private static final String CASE_SEQUENCE_SCOPE = "CASE";
+    private static final Set<String> INFRASTRUCTURE_ACTION_TYPES = Set
+        .of("server_command", "database_sql", "database_native", "infra-server-command", "infra-database-sql", "infra-database-native");
     private static final Map<String, String> ERROR_MESSAGES = Map.ofEntries(Map
         .entry("SCENE_NOT_FOUND", "场景不存在或已被删除"), Map.entry("TREE_NODE_CONFLICT", "节点 ID 已存在，请更换后重试"), Map
             .entry("TREE_SOURCE_NOT_FOUND", "源节点不存在，请刷新后重试"), Map.entry("TREE_TARGET_NOT_FOUND", "目标节点不存在，请刷新后重试"), Map
@@ -64,6 +69,9 @@ public class AutomationUiCaseTreeServiceImpl implements AutomationUiCaseTreeServ
 
     private final AutomationUiSceneMapper sceneMapper;
     private final AutomationPlaywrightJobMapper playwrightJobMapper;
+    private final AutomationOperationStepAssembler operationStepAssembler;
+    private final AutomationOperationStepReverseAdapter operationStepReverseAdapter;
+    private final ObjectMapper objectMapper;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -78,7 +86,9 @@ public class AutomationUiCaseTreeServiceImpl implements AutomationUiCaseTreeServ
                 throw error("TREE_NODE_CONFLICT");
             }
             added.setType("case");
+            allocateInitialStepIds(scene.getId(), added);
             rewriteStepParents(added);
+            assembleManualSteps(added);
             scene.getCaseList().add(insertionIndex(request.getOrder(), scene.getCaseList().size(), "用例"), added);
             return result(true, caseRef(added.getId()));
         });
@@ -111,6 +121,8 @@ public class AutomationUiCaseTreeServiceImpl implements AutomationUiCaseTreeServ
             }
             added.setType("step");
             added.setPid(parent.getId());
+            // 先分配稳定 StepDO.id，再生成执行快照，避免 raw step 内残留 CASE_STEP_ 占位 ID。
+            added = operationStepAssembler.assembleManualStep(added);
             parent.getStepList().add(insertionIndex(request.getOrder(), parent.getStepList().size(), "步骤"), added);
             return result(true, stepRef(parent.getId(), added.getId()));
         });
@@ -125,17 +137,22 @@ public class AutomationUiCaseTreeServiceImpl implements AutomationUiCaseTreeServ
             ref.setCaseId(request.getPid());
             ref.setStepId(request.getId());
             StepDO target = requireStep(scene.getCaseList(), ref, "TREE_SOURCE_NOT_FOUND").step();
+            StepDO editRequest = reverseLegacyStepForExplicitEdit(request);
+            StepDO assembledRequest = operationStepAssembler.assembleManualStep(editRequest);
             boolean maskedValue = isMasked(target.getConfigList());
             String existingOperationValue = target.getOperationValue();
-            target.setName(request.getName());
-            target.setRemark(request.getRemark());
-            target.setOperationType(request.getOperationType());
-            target.setOperationName(request.getOperationName());
+            target.setName(assembledRequest.getName());
+            target.setRemark(assembledRequest.getRemark());
+            target.setOperationType(assembledRequest.getOperationType());
+            target.setOperationName(assembledRequest.getOperationName());
             // 展示接口返回的是掩码，编辑时必须保留数据库中的真实操作值。
-            target.setOperationValue(maskedValue ? existingOperationValue : request.getOperationValue());
-            target.setStatus(request.getStatus());
-            target.setConfigList(mergeProtectedConfigs(target.getConfigList(), request.getConfigList()));
-            return result(true, stepRef(request.getPid(), request.getId()));
+            target.setOperationValue(maskedValue ? existingOperationValue : assembledRequest.getOperationValue());
+            target.setStatus(assembledRequest.getStatus());
+            boolean replaceCanonicalStep = hasConfig(assembledRequest, "method_code") || "admin-manual"
+                .equals(configValue(assembledRequest, "source")) || isInfrastructureStep(assembledRequest);
+            target.setConfigList(mergeProtectedConfigs(target.getConfigList(), assembledRequest
+                .getConfigList(), replaceCanonicalStep));
+            return result(true, stepRef(assembledRequest.getPid(), assembledRequest.getId()));
         });
     }
 
@@ -595,8 +612,49 @@ public class AutomationUiCaseTreeServiceImpl implements AutomationUiCaseTreeServ
         return copy;
     }
 
+    /**
+     * 仅在用户明确保存编辑时把旧 operationValue/raw step 投影为目录配置；读取场景不会隐式回写。
+     * 原始录制 step 另存为 original_playwright_step，避免正向组装后丢失执行事实。
+     */
+    private StepDO reverseLegacyStepForExplicitEdit(StepDO request) {
+        StepDO copy = copyStep(request);
+        if (copy == null || hasConfig(copy, "method_code")) {
+            return copy;
+        }
+        AutomationOperationStepReverseAdapter.ReverseResult result = operationStepReverseAdapter.adapt(copy);
+        if (result == null || !result.recognized()) {
+            return copy;
+        }
+        List<StepDO.Config> configs = copy.getConfigList() == null ? new ArrayList<>() : copy.getConfigList();
+        putConfig(configs, "method_code", result.methodCode());
+        if (result.methodVersion() != null) {
+            putConfig(configs, "method_version", String.valueOf(result.methodVersion()));
+        }
+        try {
+            putConfig(configs, "method_config", objectMapper.writeValueAsString(result.methodConfig()));
+        } catch (Exception e) {
+            throw new BusinessException("METHOD_CONFIG_INVALID：历史步骤配置无法序列化");
+        }
+        String raw = configValue(copy, "playwright_step");
+        if (raw != null && !raw.isBlank() && configValue(copy, "original_playwright_step") == null) {
+            putConfig(configs, "original_playwright_step", raw);
+        }
+        copy.setConfigList(configs);
+        return copy;
+    }
+
+    private void putConfig(List<StepDO.Config> configs, String name, String value) {
+        configs.removeIf(config -> config != null && Objects.equals(name, config.getParamsName()));
+        StepDO.Config config = new StepDO.Config();
+        config.setParamsName(name);
+        config.setParamsValue(value);
+        configs.add(config);
+    }
+
     /** 普通编辑表单可能只回传掩码值；保留数据库中的录制事实，避免敏感值和执行元数据被覆盖。 */
-    private List<StepDO.Config> mergeProtectedConfigs(List<StepDO.Config> existing, List<StepDO.Config> requested) {
+    private List<StepDO.Config> mergeProtectedConfigs(List<StepDO.Config> existing,
+                                                      List<StepDO.Config> requested,
+                                                      boolean replaceCanonicalStep) {
         if (existing == null || existing.isEmpty())
             return requested == null ? new ArrayList<>() : requested;
         boolean maskedValue = isMasked(existing);
@@ -609,7 +667,8 @@ public class AutomationUiCaseTreeServiceImpl implements AutomationUiCaseTreeServ
                 merged.add(item);
             }
         for (StepDO.Config config : existing)
-            if (config != null && isProtectedRecordingConfig(config.getParamsName(), maskedValue)) {
+            if (config != null && isProtectedRecordingConfig(config
+                .getParamsName(), maskedValue, replaceCanonicalStep)) {
                 merged.removeIf(item -> Objects.equals(item.getParamsName(), config.getParamsName()));
                 StepDO.Config item = new StepDO.Config();
                 item.setParamsName(config.getParamsName());
@@ -625,11 +684,76 @@ public class AutomationUiCaseTreeServiceImpl implements AutomationUiCaseTreeServ
                 .getParamsValue()));
     }
 
-    private boolean isProtectedRecordingConfig(String name, boolean maskedValue) {
+    private boolean isInfrastructureStep(StepDO step) {
+        if (step == null) {
+            return false;
+        }
+        if (isInfrastructureAction(step.getOperationValue())) {
+            return true;
+        }
+        List<StepDO.Config> configs = step.getConfigList();
+        return configs != null && configs.stream()
+            .anyMatch(config -> config != null && "action_type".equals(config
+                .getParamsName()) && isInfrastructureAction(config.getParamsValue()));
+    }
+
+    private boolean isInfrastructureAction(String value) {
+        return value != null && INFRASTRUCTURE_ACTION_TYPES.contains(value.trim().toLowerCase());
+    }
+
+    private boolean isProtectedRecordingConfig(String name, boolean maskedValue, boolean replaceCanonicalStep) {
         if (name == null)
             return false;
+        // 手工目录和基础设施步骤由后端重新生成；录制步骤则必须保持原始执行事实。
+        if (replaceCanonicalStep && "playwright_step".equals(name)) {
+            return false;
+        }
         return IMMUTABLE_RECORDING_CONFIGS.contains(name) || name.startsWith("original_") || name
             .startsWith("screenshot_") || maskedValue && ("value".equals(name) || "operationValue".equals(name));
+    }
+
+    private boolean hasConfig(StepDO step, String name) {
+        return configValue(step, name) != null;
+    }
+
+    private String configValue(StepDO step, String name) {
+        if (step == null || step.getConfigList() == null) {
+            return null;
+        }
+        return step.getConfigList()
+            .stream()
+            .filter(config -> config != null && Objects.equals(name, config.getParamsName()))
+            .map(StepDO.Config::getParamsValue)
+            .findFirst()
+            .orElse(null);
+    }
+
+    private void assembleManualSteps(CaseDO caseDO) {
+        if (caseDO.getStepList() == null || caseDO.getStepList().isEmpty()) {
+            return;
+        }
+        List<StepDO> assembled = new ArrayList<>();
+        for (StepDO step : caseDO.getStepList()) {
+            assembled.add(operationStepAssembler.assembleManualStep(step));
+        }
+        caseDO.setStepList(assembled);
+    }
+
+    private void allocateInitialStepIds(Long sceneId, CaseDO caseDO) {
+        if (caseDO.getStepList() == null || caseDO.getStepList().isEmpty()) {
+            return;
+        }
+        Set<String> usedIds = new HashSet<>();
+        for (StepDO step : caseDO.getStepList()) {
+            String requestedId = step.getId() == null ? "" : step.getId().trim();
+            if (requestedId.isEmpty() || requestedId.endsWith("_")) {
+                String prefix = requestedId.isEmpty() ? DEFAULT_STEP_PREFIX : requestedId;
+                step.setId(nextId(sceneId, stepSequenceScope(caseDO.getId()), usedIds, prefix));
+            } else if (!usedIds.add(requestedId)) {
+                throw error("TREE_NODE_CONFLICT");
+            }
+            usedIds.add(step.getId());
+        }
     }
 
     private void rewriteStepParents(CaseDO caseDO) {

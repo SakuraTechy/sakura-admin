@@ -138,4 +138,8 @@ public class ProjectConfigDetailResp extends BaseDetailResp {
     @Schema(description = "删除标志（3正常 4异常）")
     @ExcelProperty(value = "删除标志（3正常 4异常）", converter = ExcelBaseEnumConverter.class, order = 13)
     private StatusTypeEnum delFlag;
+
+    @Schema(description = "UI 自动化操作目录 v2 灰度开关")
+    @ExcelProperty(value = "UI 自动化操作目录 v2 灰度开关", order = 14)
+    private Boolean automationOperationCatalogV2;
 }

@@ -1,16 +1,8 @@
 -- liquibase formatted sql
 
 -- changeset sakura:2003
--- comment 测试计划定时任务通知与业务执行记录
-ALTER TABLE `test_timed_task`
-    ADD COLUMN `notification_emails` json DEFAULT NULL COMMENT '执行结果通知邮箱' AFTER `execute_email`;
-
-UPDATE `test_timed_task`
-SET `notification_emails` = JSON_ARRAY(`execute_email`)
-WHERE (`notification_emails` IS NULL OR JSON_LENGTH(`notification_emails`) = 0)
-  AND `execute_email` IS NOT NULL
-  AND TRIM(`execute_email`) <> '';
-
+-- validCheckSum: 1:any
+-- comment 测试计划定时任务业务执行记录；列变更和数据回填拆分到独立幂等 changeset。
 CREATE TABLE IF NOT EXISTS `test_timed_task_run` (
     `id` bigint NOT NULL AUTO_INCREMENT COMMENT 'ID',
     `timed_task_id` bigint NOT NULL COMMENT '测试定时任务ID',
@@ -40,3 +32,20 @@ CREATE TABLE IF NOT EXISTS `test_timed_task_run` (
     INDEX `idx_test_report_id` (`test_report_id`),
     INDEX `idx_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='测试定时任务业务执行记录表';
+
+-- changeset sakura:2003-test-timed-task-notification-emails-column
+-- preconditions onFail:MARK_RAN onError:HALT
+-- precondition-sql-check expectedResult:0 SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'test_timed_task' AND column_name = 'notification_emails'
+-- comment 通知邮箱列已由人工 SQL 或旧版本创建时直接标记完成，避免重复加列。
+ALTER TABLE `test_timed_task`
+    ADD COLUMN `notification_emails` json DEFAULT NULL COMMENT '执行结果通知邮箱' AFTER `execute_email`;
+
+-- rollback ALTER TABLE `test_timed_task` DROP COLUMN `notification_emails`;
+
+-- changeset sakura:2003-test-timed-task-notification-emails-backfill
+-- comment 从旧单邮箱字段幂等回填通知邮箱数组。
+UPDATE `test_timed_task`
+SET `notification_emails` = JSON_ARRAY(`execute_email`)
+WHERE (`notification_emails` IS NULL OR JSON_LENGTH(`notification_emails`) = 0)
+  AND `execute_email` IS NOT NULL
+  AND TRIM(`execute_email`) <> '';

@@ -51,6 +51,10 @@ public class ProjectDataBaseConfigReq implements Serializable {
     @NotNull(message = "所属项目不能为空")
     private Long projectId;
 
+    @Schema(description = "基础设施步骤绑定键")
+    @Length(max = 128, message = "基础设施步骤绑定键长度不能超过 {max} 个字符")
+    private String bindingKey;
+
     /**
      * 数据库类型
      */

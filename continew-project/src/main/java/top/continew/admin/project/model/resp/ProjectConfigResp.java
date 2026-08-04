@@ -118,4 +118,7 @@ public class ProjectConfigResp extends BaseDetailResp {
      */
     @Schema(description = "删除标志（3正常 4异常）")
     private StatusTypeEnum delFlag;
+
+    @Schema(description = "UI 自动化操作目录 v2 灰度开关")
+    private Boolean automationOperationCatalogV2;
 }

@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -55,6 +56,13 @@ import top.continew.admin.common.util.StringUtils;
  * UI 场景 XML 与执行产物生成工具。
  */
 public final class AutomationUiSceneXmlUtils {
+
+    /**
+     * 仅供 Admin/Playwright/CueCast 使用的配置不能透传到旧 Selenium XML。
+     * 旧链路仍通过 operationValue 和 legacy configList 执行。
+     */
+    private static final Set<String> NON_LEGACY_XML_CONFIGS = Set
+        .of("playwright_step", "locator_meta", "method_code", "method_version", "method_config", "action_type", "source", "schema_version", "catalog_version", "canonical_digest", "target_ref", "value_ref", "value_masked", "original_case_id", "original_step_id", "recording_id", "screenshot", "screenshot_url", "screenshot_file_id", "screenshot_path", "screenshot_present");
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
@@ -615,6 +623,9 @@ public final class AutomationUiSceneXmlUtils {
         }
         for (StepDO.Config config : stepDO.getConfigList()) {
             if (config == null || StringUtils.isBlank(config.getParamsName())) {
+                continue;
+            }
+            if (NON_LEGACY_XML_CONFIGS.contains(config.getParamsName())) {
                 continue;
             }
             String value = resolveConfigValue(stepDO, config, domain, serverEth);

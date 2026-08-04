@@ -1,0 +1,158 @@
+{
+  "catalog_version": "2026-07-30.1",
+  "types": [
+    {
+      "type_code": "browser",
+      "label": "浏览器操作1",
+      "sort": 1,
+      "methods": [
+        {"method_code":"browser.navigate.default","method_version":1,"label":"打开默认网页","legacy_action":"web-geturl","action_type":"navigate","form_schema":[{"name":"url","label":"默认地址","component":"input","required":false}],"capabilities":{"selenium":"implemented","playwright":"implemented","cuecast":"implemented"}},
+        {"method_code":"browser.navigate.explicit","method_version":1,"label":"打开指定网页","legacy_action":"web-geturls","action_type":"navigate","form_schema":[{"name":"url","label":"网页地址","component":"input","required":true}],"capabilities":{"selenium":"implemented","playwright":"implemented","cuecast":"implemented"}},
+        {"method_code":"browser.page.close","method_version":1,"label":"关闭当前标签页","legacy_action":"web-close","action_type":"close_page","form_schema":[],"capabilities":{"selenium":"implemented","playwright":"implemented","cuecast":"implemented"}},
+        {"method_code":"browser.page.close-all","method_version":1,"label":"关闭全部标签页","legacy_action":"web-quit","action_type":"close_all_pages","form_schema":[],"capabilities":{"selenium":"implemented","playwright":"implemented","cuecast":"implemented"}},
+        {"method_code":"browser.page.reload","method_version":1,"label":"页面刷新","legacy_action":"web-refresh","action_type":"reload","form_schema":[],"capabilities":{"selenium":"implemented","playwright":"implemented","cuecast":"implemented"}},
+        {"method_code":"browser.captcha.ocr","method_version":1,"label":"获取图片验证码","legacy_action":"web-getcode","action_type":"captcha_ocr","form_schema":[{"name":"target_ref","label":"验证码图片元素","component":"locator","required":true},{"name":"variable_name","label":"验证码变量名","component":"input","required":true}],"capabilities":{"selenium":"implemented","playwright":"implemented","cuecast":"implemented"},"requirements":{"project_environment_required":true,"agent_types":["ocr"],"features":["screenshot","ocr"],"permissions":["automation:automationUiScene:execute-infrastructure"]}},
+        {"method_code":"browser.page.latest","method_version":1,"label":"切换当前最新窗口","legacy_action":"switch-window","action_type":"switch_page","form_schema":[],"capabilities":{"selenium":"implemented","playwright":"implemented","cuecast":"implemented"}},
+        {"method_code":"browser.page.index","method_version":1,"label":"切换指定窗口","legacy_action":"switch-windows","action_type":"switch_page","form_schema":[{"name":"index","label":"窗口序号","component":"number","required":true}],"capabilities":{"selenium":"implemented","playwright":"implemented","cuecast":"implemented"}},
+        {"method_code":"browser.frame.switch","method_version":1,"label":"切换Iframe控件","legacy_action":"switch-Iframe","action_type":"frame_switch","form_schema":[{"name":"target_ref","label":"Iframe定位","component":"locator","required":true}],"capabilities":{"selenium":"implemented","playwright":"implemented","cuecast":"implemented"}},
+        {"method_code":"browser.frame.parent","method_version":1,"label":"返回上一级Iframe控件","legacy_action":"return-Iframe","action_type":"frame_parent","form_schema":[],"capabilities":{"selenium":"implemented","playwright":"implemented","cuecast":"implemented"}},
+        {"method_code":"browser.frame.main","method_version":1,"label":"返回最上级Iframe控件","legacy_action":"quit-Iframe","action_type":"frame_main","form_schema":[],"capabilities":{"selenium":"implemented","playwright":"implemented","cuecast":"implemented"}},
+        {"method_code":"browser.evaluate","method_version":1,"label":"Web端执行js脚本操作","legacy_action":"javascript-executor","action_type":"evaluate","form_schema":[{"name":"script","label":"脚本","component":"code","required":true}],"capabilities":{"selenium":"implemented","playwright":"implemented","cuecast":"implemented"}}
+      ]
+    },
+    {
+      "type_code": "click",
+      "label": "点击操作",
+      "sort": 2,
+      "methods": [
+        {"method_code":"click.element","method_version":1,"label":"元素点击","legacy_action":"web-click","action_type":"click","form_schema":[{"name":"target_ref","label":"目标元素","component":"locator","required":true}],"capabilities":{"selenium":"implemented","playwright":"implemented","cuecast":"implemented"}},
+        {"method_code":"click.select","method_version":1,"label":"选项框点击","legacy_action":"select-click","action_type":"select_option","form_schema":[{"name":"target_ref","label":"选项框","component":"locator","required":true},{"name":"option","label":"选项值","component":"input","required":true}],"capabilities":{"selenium":"implemented","playwright":"implemented","cuecast":"implemented"}},
+        {"method_code":"click.combobox","method_version":1,"label":"选项框搜索点击","legacy_action":"input-click","action_type":"combo_select","form_schema":[{"name":"target_ref","label":"选项框","component":"locator","required":true},{"name":"option","label":"选项值","component":"input","required":true}],"capabilities":{"selenium":"implemented","playwright":"implemented","cuecast":"implemented"}}
+      ]
+    },
+    {
+      "type_code": "dialog",
+      "label": "弹窗操作",
+      "sort": 3,
+      "methods": [
+        {"method_code":"dialog.accept","method_version":1,"label":"点击浏览器弹框确定键","legacy_action":"click-ok","action_type":"dialog_accept","form_schema":[],"capabilities":{"selenium":"implemented","playwright":"implemented","cuecast":"implemented"}},
+        {"method_code":"dialog.dismiss","method_version":1,"label":"点击浏览器弹框取消键","legacy_action":"click-cancel","action_type":"dialog_dismiss","form_schema":[],"capabilities":{"selenium":"implemented","playwright":"implemented","cuecast":"implemented"}},
+        {"method_code":"dialog.prompt","method_version":1,"label":"浏览器文本弹框的文本输入","legacy_action":"click-text","action_type":"dialog_prompt","form_schema":[{"name":"value","label":"输入内容","component":"input","required":true}],"capabilities":{"selenium":"implemented","playwright":"implemented","cuecast":"implemented"}}
+      ]
+    },
+    {
+      "type_code": "input",
+      "label": "输入操作",
+      "sort": 4,
+      "methods": [
+        {"method_code":"input.text","method_version":1,"label":"输入文本","legacy_action":"web-input","action_type":"input","form_schema":[{"name":"target_ref","label":"目标元素","component":"locator","required":true},{"name":"value","label":"输入内容","component":"textarea","required":true}],"capabilities":{"selenium":"implemented","playwright":"implemented","cuecast":"implemented"}},
+        {"method_code":"input.date","method_version":1,"label":"输入时间","legacy_action":"web-inputdate","action_type":"input_date","form_schema":[{"name":"target_ref","label":"目标元素","component":"locator","required":true},{"name":"format","label":"时间格式","component":"input","required":true}],"capabilities":{"selenium":"implemented","playwright":"implemented","cuecast":"implemented"}},
+        {"method_code":"input.file.explicit","method_version":1,"label":"Web端上传文件操作，指定文件目录","legacy_action":"web-inputfile","action_type":"file_upload","form_schema":[{"name":"target_ref","label":"文件控件","component":"locator","required":true},{"name":"file_ref","label":"文件","component":"file_ref","required":true}],"capabilities":{"selenium":"implemented","playwright":"implemented","cuecast":"implemented"},"requirements":{"project_environment_required":true,"features":["file_workspace"]}},
+        {"method_code":"input.file.workspace","method_version":1,"label":"Web端上传文件操作，默认当前工作目录","legacy_action":"web-inputfiles","action_type":"file_upload","form_schema":[{"name":"target_ref","label":"文件控件","component":"locator","required":true},{"name":"file_ref","label":"工作目录文件","component":"file_ref","required":true}],"capabilities":{"selenium":"implemented","playwright":"implemented","cuecast":"implemented"},"requirements":{"project_environment_required":true,"features":["file_workspace"]}},
+        {"method_code":"input.certificate","method_version":1,"label":"Web端上传证书操作","legacy_action":"web-inputzs","action_type":"certificate_upload","form_schema":[{"name":"target_ref","label":"文件控件","component":"locator","required":true},{"name":"certificate_ref","label":"证书引用","component":"file_ref","required":true}],"capabilities":{"selenium":"implemented","playwright":"implemented","cuecast":"implemented"},"requirements":{"project_environment_required":true,"features":["file_workspace","certificate_workspace"]}},
+        {"method_code":"input.clear","method_version":1,"label":"输入框清空","legacy_action":"web-inputclear","action_type":"clear","form_schema":[{"name":"target_ref","label":"目标元素","component":"locator","required":true}],"capabilities":{"selenium":"implemented","playwright":"implemented","cuecast":"implemented"}}
+      ]
+    },
+    {
+      "type_code": "assertion",
+      "label": "检查操作",
+      "sort": 5,
+      "methods": [
+        {"method_code":"assertion.text","method_version":1,"label":"检查Web界面元素的文本值","legacy_action":"web-check","action_type":"assert_text","form_schema":[{"name":"target_ref","label":"目标元素","component":"locator","required":true},{"name":"expect","label":"期望文本","component":"textarea","required":true}],"capabilities":{"selenium":"implemented","playwright":"implemented","cuecast":"implemented"}},
+        {"method_code":"assertion.text.not","method_version":1,"label":"不检查Web界面元素的文本值","legacy_action":"web-notcheck","action_type":"assert_text_not","form_schema":[{"name":"target_ref","label":"目标元素","component":"locator","required":true},{"name":"expect","label":"不应包含","component":"textarea","required":true}],"capabilities":{"selenium":"implemented","playwright":"implemented","cuecast":"implemented"}},
+        {"method_code":"assertion.attribute","method_version":1,"label":"检查Web界面元素的属性值","legacy_action":"web-checkvalue","action_type":"assert_attribute","form_schema":[{"name":"target_ref","label":"目标元素","component":"locator","required":true},{"name":"attribute","label":"属性名","component":"input","required":true},{"name":"expect","label":"期望值","component":"input","required":true}],"capabilities":{"selenium":"implemented","playwright":"implemented","cuecast":"implemented"}},
+        {"method_code":"assertion.script","method_version":1,"label":"检查Web界面调用JS返回的值","legacy_action":"web-checkjs","action_type":"assert_script","form_schema":[{"name":"script","label":"脚本","component":"code","required":true},{"name":"expect","label":"期望值","component":"input","required":true}],"capabilities":{"selenium":"implemented","playwright":"implemented","cuecast":"implemented"}},
+        {"method_code":"assertion.database-value","method_version":1,"label":"检查从数据库中查询出的结果中的值","legacy_action":"web-checklist","action_type":"assert_database_value","form_schema":[{"name":"variable_name","label":"查询结果变量名","component":"input","required":true},{"name":"expect","label":"期望值","component":"input","required":true}],"capabilities":{"selenium":"implemented","playwright":"implemented","cuecast":"implemented"}},
+        {"method_code":"assertion.variable-list","method_version":1,"label":"检查Web本地缓存的list中的元素","legacy_action":"web-checksetlist","aliases":["web-checkset"],"action_type":"assert_variable_list","form_schema":[{"name":"value","label":"变量名","component":"input","required":true},{"name":"expect","label":"期望值","component":"input","required":true}],"capabilities":{"selenium":"implemented","playwright":"implemented","cuecast":"implemented"}},
+        {"method_code":"assertion.variable-list.not","method_version":1,"label":"不检查Web本地缓存的list中的元素","legacy_action":"web-notchecksetlist","aliases":["web-notchecklists"],"action_type":"assert_variable_list_not","form_schema":[{"name":"value","label":"变量名","component":"input","required":true},{"name":"expect","label":"不应包含","component":"input","required":true}],"capabilities":{"selenium":"implemented","playwright":"implemented","cuecast":"implemented"}},
+        {"method_code":"assertion.text.regex","method_version":1,"label":"模糊检查Web界面元素的内容","legacy_action":"web-fuzzycheck","action_type":"assert_text_regex","form_schema":[{"name":"target_ref","label":"目标元素","component":"locator","required":true},{"name":"regex","label":"正则表达式","component":"input","required":true}],"capabilities":{"selenium":"implemented","playwright":"implemented","cuecast":"implemented"}}
+      ]
+    },
+    {
+      "type_code": "wait",
+      "label": "等待操作",
+      "sort": 6,
+      "methods": [
+        {"method_code":"wait.fixed","method_version":1,"label":"强制等待","legacy_action":"wait-forced","action_type":"wait","form_schema":[{"name":"duration_ms","label":"等待毫秒数","component":"number","required":true}],"capabilities":{"selenium":"implemented","playwright":"implemented","cuecast":"implemented"}},
+        {"method_code":"wait.implicit","method_version":1,"label":"隐式等待","legacy_action":"web-implicit","action_type":"implicit_wait","form_schema":[{"name":"duration_ms","label":"等待毫秒数","component":"number","required":true}],"capabilities":{"selenium":"implemented","playwright":"implemented","cuecast":"implemented"}}
+      ]
+    },
+    {
+      "type_code": "global",
+      "label": "全局变量操作",
+      "sort": 7,
+      "methods": [
+        {"method_code":"global.variable.set","method_version":1,"label":"设置值到全局","legacy_action":"web-set","action_type":"global_variable_set","form_schema":[{"name":"variable_name","label":"变量名","component":"input","required":true},{"name":"source_type","label":"取值来源","component":"select","required":true,"options":[{"label":"固定文本","value":"literal"},{"label":"页面元素","value":"locator"},{"label":"页面脚本","value":"script"}]},{"name":"value","label":"固定值/脚本内容","component":"textarea","required":false},{"name":"target_ref","label":"目标元素","component":"locator","required":false},{"name":"read_mode","label":"元素读取方式","component":"select","required":false,"options":[{"label":"文本","value":"text"},{"label":"输入值","value":"value"}]},{"name":"regex","label":"提取正则","component":"input","required":false},{"name":"regex_group","label":"正则分组","component":"input","required":false},{"name":"replace_from","label":"替换内容","component":"input","required":false},{"name":"replace_to","label":"替换为","component":"input","required":false}],"capabilities":{"selenium":"implemented","playwright":"implemented","cuecast":"implemented"}},
+        {"method_code":"global.variable.date","method_version":1,"label":"获取日期设置值到全局","legacy_action":"web-setdate","action_type":"global_variable_date","form_schema":[{"name":"variable_name","label":"变量名","component":"input","required":true},{"name":"date_mode","label":"日期模式","component":"select","required":true,"options":[{"label":"当前日期时间","value":"current_datetime"},{"label":"当前时间戳","value":"timestamp"},{"label":"自定义日期时间","value":"custom_datetime"}]},{"name":"format","label":"日期格式","component":"input","required":false},{"name":"datetime","label":"自定义日期时间","component":"input","required":false},{"name":"offset_seconds","label":"偏移秒数","component":"number","required":false},{"name":"timestamp_unit","label":"时间戳单位","component":"select","required":false,"options":[{"label":"毫秒","value":"milliseconds"},{"label":"秒","value":"seconds"}]}],"capabilities":{"selenium":"implemented","playwright":"implemented","cuecast":"implemented"}},
+        {"method_code":"global.system.info","method_version":1,"label":"获取系统信息设置值到全局","legacy_action":"web-setsysinfo","action_type":"global_variable_system_info","form_schema":[{"name":"variable_name","label":"变量名","component":"input","required":true},{"name":"info_type","label":"系统信息项","component":"select","required":true,"options":[{"label":"主机IP","value":"host_ip"},{"label":"主机名","value":"host_name"},{"label":"操作系统","value":"os_name"},{"label":"操作系统版本","value":"os_version"},{"label":"系统架构","value":"os_arch"},{"label":"当前日期","value":"system_date"},{"label":"当前用户","value":"current_user"},{"label":"用户目录","value":"user_home"},{"label":"工作目录","value":"working_directory"}]}],"capabilities":{"selenium":"implemented","playwright":"implemented","cuecast":"implemented"}},
+        {"method_code":"global.available-ip","method_version":1,"label":"获取可用IP设置值到全局","legacy_action":"web-setusableip","action_type":"global_variable_available_ip","form_schema":[{"name":"variable_name","label":"变量名","component":"input","required":true},{"name":"ip_prefix","label":"IP前缀","component":"input","required":true},{"name":"start","label":"起始主机号","component":"number","required":true,"min":1,"max":254},{"name":"end","label":"结束主机号","component":"number","required":true,"min":1,"max":254},{"name":"timeout_ms","label":"单地址超时（毫秒）","component":"number","required":false,"min":100,"max":10000}],"capabilities":{"selenium":"implemented","playwright":"implemented","cuecast":"implemented"}},
+        {"method_code":"global.runtime-property","method_version":1,"label":"获取配置文件信息","legacy_action":"web-setproperties","action_type":"global_variable_property","form_schema":[{"name":"variable_name","label":"变量名","component":"input","required":true},{"name":"profile","label":"属性分组","component":"select","required":false,"options":[{"label":"应用配置","value":"app"},{"label":"数据库配置","value":"jdbc"}]},{"name":"property_key","label":"属性名","component":"input","required":true}],"capabilities":{"selenium":"implemented","playwright":"implemented","cuecast":"implemented"},"requirements":{"project_environment_required":true,"agent_types":["runner-host"],"features":["runtime_property"],"permissions":["automation:automationUiScene:execute-infrastructure"]}},
+        {"method_code":"global.calculation","method_version":1,"label":"获取计算公式设置值到全局","legacy_action":"web-setcalculationformula","action_type":"global_variable_formula","form_schema":[{"name":"variable_name","label":"变量名","component":"input","required":true},{"name":"expression","label":"计算公式","component":"input","required":true},{"name":"scale","label":"小数位数","component":"number","required":false,"min":0,"max":20},{"name":"keep_trailing_zeros","label":"保留末尾零","component":"select","required":false,"options":[{"label":"是","value":"true"},{"label":"否","value":"false"}]}],"capabilities":{"selenium":"implemented","playwright":"implemented","cuecast":"implemented"}}
+      ]
+    },
+    {
+      "type_code": "windows",
+      "label": "Windows系统操作",
+      "sort": 8,
+      "methods": [
+        {"method_code":"windows.key.normal","method_version":1,"label":"模拟键盘普通按键","legacy_action":"windows-keybg","action_type":"key","form_schema":[{"name":"key","label":"按键","component":"input","required":true}],"capabilities":{"selenium":"implemented","playwright":"implemented","cuecast":"implemented"}},
+        {"method_code":"windows.key.combo","method_version":1,"label":"模拟键盘组合按键","legacy_action":"windows-keybc","action_type":"key","form_schema":[{"name":"modifier","label":"组合键","component":"input","required":true},{"name":"key","label":"按键","component":"input","required":true}],"capabilities":{"selenium":"implemented","playwright":"implemented","cuecast":"implemented"}},
+        {"method_code":"windows.key.special","method_version":1,"label":"模拟键盘特殊组合按键","legacy_action":"windows-skeybc","action_type":"key","form_schema":[{"name":"modifier","label":"组合键","component":"input","required":true},{"name":"key","label":"按键","component":"input","required":true}],"capabilities":{"selenium":"implemented","playwright":"implemented","cuecast":"implemented"}},
+        {"method_code":"windows.key.multi","method_version":1,"label":"模拟键盘多重特殊组合按键","legacy_action":"windows-skeybcm","action_type":"key","form_schema":[{"name":"modifiers","label":"组合键","component":"input","required":true},{"name":"key","label":"按键","component":"input","required":true}],"capabilities":{"selenium":"implemented","playwright":"implemented","cuecast":"implemented"}},
+        {"method_code":"windows.command","method_version":1,"label":"模拟执行CMD命令","legacy_action":"windows-cmd","action_type":"host_command","form_schema":[{"name":"command","label":"命令","component":"textarea","required":true}],"capabilities":{"selenium":"implemented","playwright":"implemented","cuecast":"implemented"},"requirements":{"project_environment_required":true,"agent_types":["runner-host"],"features":["host_command"],"permissions":["automation:automationUiScene:execute-infrastructure"]}}
+      ]
+    },
+    {
+      "type_code": "mouse",
+      "label": "鼠标操作",
+      "sort": 9,
+      "methods": [
+        {"method_code":"mouse.screen.move","method_version":1,"label":"移动鼠标到指定位置1","legacy_action":"mouse-move","action_type":"host_pointer_move","form_schema":[{"name":"x","label":"X坐标","component":"number","required":true},{"name":"y","label":"Y坐标","component":"number","required":true}],"capabilities":{"selenium":"implemented","playwright":"implemented","cuecast":"implemented"},"requirements":{"project_environment_required":true,"agent_types":["desktop"],"features":["interactive_desktop"],"permissions":["automation:automationUiScene:execute-infrastructure"]}},
+        {"method_code":"mouse.offset.move","method_version":1,"label":"移动鼠标到指定位置2","legacy_action":"move-byoffset","action_type":"pointer_move","form_schema":[{"name":"x","label":"X偏移","component":"number","required":true},{"name":"y","label":"Y偏移","component":"number","required":true}],"capabilities":{"selenium":"implemented","playwright":"implemented","cuecast":"implemented"}},
+        {"method_code":"mouse.element.move","method_version":1,"label":"移动鼠标到指定元素中间","legacy_action":"move-toelement","action_type":"hover","form_schema":[{"name":"target_ref","label":"目标元素","component":"locator","required":true}],"capabilities":{"selenium":"implemented","playwright":"implemented","cuecast":"implemented"}}
+      ]
+    },
+    {
+      "type_code": "file",
+      "label": "文件目录操作",
+      "sort": 10,
+      "methods": [
+        {"method_code":"file.lookup.explicit","method_version":1,"label":"获取本地目录文件，指定文件目录","legacy_action":"get-file","action_type":"host_file_lookup","form_schema":[{"name":"path","label":"目录","component":"file_ref","required":true},{"name":"variable_name","label":"变量名","component":"input","required":true}],"capabilities":{"selenium":"implemented","playwright":"implemented","cuecast":"implemented"},"requirements":{"project_environment_required":true,"agent_types":["runner-host"],"features":["host_file"],"permissions":["automation:automationUiScene:execute-infrastructure"]}},
+        {"method_code":"file.lookup.workspace","method_version":1,"label":"获取本地目录文件，默认当前工作目录","legacy_action":"get-files","action_type":"host_file_lookup","form_schema":[{"name":"path","label":"工作目录","component":"file_ref","required":true},{"name":"variable_name","label":"变量名","component":"input","required":true}],"capabilities":{"selenium":"implemented","playwright":"implemented","cuecast":"implemented"},"requirements":{"project_environment_required":true,"agent_types":["runner-host"],"features":["host_file"],"permissions":["automation:automationUiScene:execute-infrastructure"]}},
+        {"method_code":"file.delete.explicit","method_version":1,"label":"删除本地文件或目录，指定文件目录","legacy_action":"delete-file","action_type":"host_file_delete","form_schema":[{"name":"path","label":"路径","component":"file_ref","required":true}],"capabilities":{"selenium":"implemented","playwright":"implemented","cuecast":"implemented"},"requirements":{"project_environment_required":true,"agent_types":["runner-host"],"features":["host_file_delete"],"permissions":["automation:automationUiScene:execute-infrastructure"]}},
+        {"method_code":"file.delete.workspace","method_version":1,"label":"删除本地文件或目录，默认当前工作目录","legacy_action":"delete-files","action_type":"host_file_delete","form_schema":[{"name":"path","label":"工作目录路径","component":"file_ref","required":true}],"capabilities":{"selenium":"implemented","playwright":"implemented","cuecast":"implemented"},"requirements":{"project_environment_required":true,"agent_types":["runner-host"],"features":["host_file_delete"],"permissions":["automation:automationUiScene:execute-infrastructure"]}}
+      ]
+    },
+    {
+      "type_code": "server",
+      "label": "服务器操作",
+      "sort": 11,
+      "methods": [
+        {"method_code":"server.shell","method_version":1,"label":"连接Linux执行shell命令","legacy_action":"exe-shell","action_type":"server_command","form_schema":[{"name":"target_ref","label":"服务器","component":"target_ref","required":true},{"name":"command","label":"Shell命令","component":"textarea","required":true}],"capabilities":{"selenium":"implemented","playwright":"implemented","cuecast":"implemented"}},
+        {"method_code":"server.sftp.explicit","method_version":1,"label":"上传本地文件到服务器，指定文件目录","legacy_action":"free-sftp","action_type":"server_file_upload","form_schema":[{"name":"target_ref","label":"服务器","component":"target_ref","required":true},{"name":"file_ref","label":"本地文件","component":"file_ref","required":true},{"name":"remote_path","label":"远程目录","component":"input","required":true}],"capabilities":{"selenium":"implemented","playwright":"implemented","cuecast":"implemented"},"requirements":{"project_environment_required":true,"agent_types":["server"],"features":["sftp"],"permissions":["automation:automationUiScene:execute-infrastructure"]}},
+        {"method_code":"server.sftp.workspace","method_version":1,"label":"上传本地文件到服务器，默认当前工作目录","legacy_action":"free-sftps","action_type":"server_file_upload","form_schema":[{"name":"target_ref","label":"服务器","component":"target_ref","required":true},{"name":"file_ref","label":"工作目录文件","component":"file_ref","required":true},{"name":"remote_path","label":"远程目录","component":"input","required":true}],"capabilities":{"selenium":"implemented","playwright":"implemented","cuecast":"implemented"},"requirements":{"project_environment_required":true,"agent_types":["server"],"features":["sftp"],"permissions":["automation:automationUiScene:execute-infrastructure"]}}
+      ]
+    },
+    {
+      "type_code": "database",
+      "label": "数据库操作",
+      "sort": 12,
+      "methods": [
+        {"method_code":"database.insert","method_version":1,"label":"数据库插入","legacy_action":"db-insertw","action_type":"database_sql","form_schema":[{"name":"target_ref","label":"数据库","component":"target_ref","required":true},{"name":"sql","label":"SQL","component":"code","required":true}],"capabilities":{"selenium":"implemented","playwright":"implemented","cuecast":"implemented"}},
+        {"method_code":"database.delete","method_version":1,"label":"数据库删除","legacy_action":"db-deletew","action_type":"database_sql","form_schema":[{"name":"target_ref","label":"数据库","component":"target_ref","required":true},{"name":"sql","label":"SQL","component":"code","required":true}],"capabilities":{"selenium":"implemented","playwright":"implemented","cuecast":"implemented"}},
+        {"method_code":"database.update","method_version":1,"label":"数据库更新","legacy_action":"db-updatew","action_type":"database_sql","form_schema":[{"name":"target_ref","label":"数据库","component":"target_ref","required":true},{"name":"sql","label":"SQL","component":"code","required":true}],"capabilities":{"selenium":"implemented","playwright":"implemented","cuecast":"implemented"}},
+        {"method_code":"database.query","method_version":1,"label":"数据库查询","legacy_action":"db-queryw","action_type":"database_sql","form_schema":[{"name":"target_ref","label":"数据库","component":"target_ref","required":true},{"name":"sql","label":"SQL","component":"code","required":true}],"capabilities":{"selenium":"implemented","playwright":"implemented","cuecast":"implemented"}},
+        {"method_code":"database.query.bind","method_version":1,"label":"数据库查询，获取结果设置变量","legacy_action":"db-queryws","action_type":"database_sql","form_schema":[{"name":"target_ref","label":"数据库","component":"target_ref","required":true},{"name":"sql","label":"SQL","component":"code","required":true},{"name":"variable_name","label":"变量名","component":"input","required":true}],"capabilities":{"selenium":"implemented","playwright":"implemented","cuecast":"implemented"}},
+        {"method_code":"database.procedure","method_version":1,"label":"数据库存储过程","legacy_action":"db-procedurew","action_type":"database_sql","form_schema":[{"name":"target_ref","label":"数据库","component":"target_ref","required":true},{"name":"sql","label":"存储过程","component":"code","required":true}],"capabilities":{"selenium":"implemented","playwright":"implemented","cuecast":"implemented"}}
+      ]
+    },
+    {
+      "type_code": "scroll",
+      "label": "滚动操作",
+      "sort": 13,
+      "methods": [
+        {"method_code":"scroll.element","method_version":1,"label":"滚动到指定元素","legacy_action":"scroll-element","action_type":"scroll_to_element","form_schema":[{"name":"target_ref","label":"目标元素","component":"locator","required":true}],"capabilities":{"selenium":"implemented","playwright":"implemented","cuecast":"implemented"}}
+      ]
+    }
+  ]
+}

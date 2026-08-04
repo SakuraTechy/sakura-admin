@@ -47,6 +47,9 @@ public class ProjectServerConfigDO extends BaseDO {
      */
     private Long projectId;
 
+    /** 环境中引用服务器的稳定逻辑键，基础设施步骤只保存该键。 */
+    private String bindingKey;
+
     /**
      * 服务器类型
      */

@@ -17,17 +17,23 @@
 package top.continew.admin.automation.converter;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
+import top.continew.admin.automation.model.catalog.AutomationOperationCatalog;
 import top.continew.admin.automation.model.entity.ui.StepDO;
+import top.continew.admin.automation.service.AutomationOperationCatalogService;
 
 class AutomationPlaywrightStepExtractorTest {
 
-    private final AutomationPlaywrightStepExtractor extractor = new AutomationPlaywrightStepExtractor(new ObjectMapper());
+    private final AutomationOperationCatalogService catalogService = mock(AutomationOperationCatalogService.class);
+    private final AutomationPlaywrightStepExtractor extractor = new AutomationPlaywrightStepExtractor(new ObjectMapper(), catalogService);
 
     @Test
     void shouldEnrichRawStepWithAdminSequenceAndNameWithoutChangingStoredJson() {
@@ -60,6 +66,45 @@ class AutomationPlaywrightStepExtractorTest {
             .containsEntry("original_step_id", 1)
             .containsEntry("step_index", 4);
         assertThat(stepDO.getConfigList().get(0).getParamsValue()).isEqualTo(rawStep);
+    }
+
+    @Test
+    void shouldRestoreLegacyStepThroughOperationCatalogWhenRawStepIsMissing() {
+        AutomationOperationCatalog.OperationMethod method = new AutomationOperationCatalog.OperationMethod();
+        method.setActionType("navigate");
+        when(catalogService.findMethod("web-geturls")).thenReturn(Optional.of(method));
+        StepDO stepDO = new StepDO();
+        stepDO.setId("STEP_003");
+        stepDO.setName("打开登录页");
+        stepDO.setOperationValue("web-geturls");
+        stepDO.setConfigList(List.of(config("value", "https://example.test/login")));
+
+        Map<String, Object> extracted = extractor.extract(stepDO, 2);
+
+        assertThat(extracted).containsEntry("action_type", "navigate")
+            .containsEntry("url", "https://example.test/login")
+            .containsEntry("value", "https://example.test/login")
+            .containsEntry("step_index", 2);
+    }
+
+    @Test
+    void shouldRebuildHistoricalManualStepInsteadOfExecutingStaleRawSnapshot() {
+        AutomationOperationCatalog.OperationMethod method = new AutomationOperationCatalog.OperationMethod();
+        method.setActionType("navigate");
+        when(catalogService.findMethod("web-geturls")).thenReturn(Optional.of(method));
+        StepDO stepDO = new StepDO();
+        stepDO.setId("STEP_004");
+        stepDO.setName("打开新地址");
+        stepDO.setOperationValue("web-geturls");
+        stepDO.setConfigList(List.of(config("source", "admin-manual"),
+            config("playwright_step", "{\"action_type\":\"navigate\",\"url\":\"https://stale.example\"}"),
+            config("value", "https://current.example")));
+
+        Map<String, Object> extracted = extractor.extract(stepDO, 3);
+
+        assertThat(extracted).containsEntry("action_type", "navigate")
+            .containsEntry("url", "https://current.example")
+            .doesNotContainValue("https://stale.example");
     }
 
     private StepDO.Config config(String name, String value) {

@@ -56,6 +56,9 @@ public class ProjectDataBaseConfigResp extends BaseDetailResp {
     private Long projectId;
     private String projectName;
 
+    @Schema(description = "基础设施步骤绑定键")
+    private String bindingKey;
+
     /**
      * 数据库类型
      */

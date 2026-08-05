@@ -41,6 +41,9 @@ public class TestPlanQuery implements Serializable {
     @Query(type = QueryType.EQ)
     private Long projectId;
 
+    @Query(type = QueryType.EQ)
+    private Long versionId;
+
     @Query(type = QueryType.LIKE)
     private String name;
 

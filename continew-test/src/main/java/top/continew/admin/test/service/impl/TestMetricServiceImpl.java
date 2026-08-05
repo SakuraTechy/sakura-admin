@@ -17,263 +17,254 @@
 package top.continew.admin.test.service.impl;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
-import top.continew.admin.automation.mapper.AutomationUiSceneMapper;
-import top.continew.admin.automation.model.entity.AutomationUiSceneDO;
-import top.continew.admin.project.mapper.ProjectModuleConfigMapper;
-import top.continew.admin.project.model.entity.ProjectModuleConfigDO;
-import top.continew.admin.test.mapper.TestPlanMapper;
-import top.continew.admin.test.mapper.TestReportMapper;
-import top.continew.admin.test.mapper.TestTimedTaskMapper;
-import top.continew.admin.test.model.entity.TestPlanDO;
-import top.continew.admin.test.model.entity.TestReportDO;
 import top.continew.admin.test.model.query.TestMetricQuery;
+import top.continew.admin.test.model.query.TestMetricScopeQuery;
 import top.continew.admin.test.model.resp.TestMetricResp;
+import top.continew.admin.test.model.resp.TestMetricSummaryResp;
+import top.continew.admin.test.service.TestMetricQueryService;
 import top.continew.admin.test.service.TestMetricService;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * 旧版测试度量接口适配器，兼容一个发布周期。
+ */
 @Service
 @RequiredArgsConstructor
 public class TestMetricServiceImpl implements TestMetricService {
 
-    private final TestPlanMapper testPlanMapper;
-    private final TestReportMapper testReportMapper;
-    private final TestTimedTaskMapper testTimedTaskMapper;
-    private final AutomationUiSceneMapper automationUiSceneMapper;
-    private final ProjectModuleConfigMapper projectModuleConfigMapper;
+    private final TestMetricQueryService testMetricQueryService;
+    private final JdbcTemplate jdbcTemplate;
 
     @Override
     public TestMetricResp getOverview(TestMetricQuery query) {
         Long projectId = resolveProjectId(query);
         Long versionId = resolveVersionId(query);
-        List<TestPlanDO> plans = testPlanMapper.lambdaQuery()
-            .eq(projectId != null, TestPlanDO::getProjectId, projectId)
-            .list();
-        List<Long> planIds = plans.stream().map(TestPlanDO::getId).toList();
+        if (projectId == null) {
+            return emptyResponse();
+        }
 
-        List<TestReportDO> reports = testReportMapper.lambdaQuery()
-            .eq(projectId != null, TestReportDO::getProjectId, projectId)
-            .list();
-
-        List<AutomationUiSceneDO> scenes = automationUiSceneMapper.lambdaQuery()
-            .eq(projectId != null, AutomationUiSceneDO::getProjectId, projectId)
-            .eq(versionId != null, AutomationUiSceneDO::getVersionId, versionId)
-            .list();
-
-        List<ProjectModuleConfigDO> modules = projectModuleConfigMapper.lambdaQuery()
-            .eq(projectId != null, ProjectModuleConfigDO::getProjectId, projectId)
-            .eq(versionId != null, ProjectModuleConfigDO::getVersionId, versionId)
-            .list();
-
-        long timedTaskCount = planIds.isEmpty()
-            ? 0L
-            : testTimedTaskMapper.lambdaQuery()
-                .in(top.continew.admin.test.model.entity.TestTimedTaskDO::getTestPlanId, planIds)
-                .count();
-
-        long sceneCount = scenes.size();
-        long passedSceneCount = scenes.stream().filter(item -> isPassed(item.getExecuteResult())).count();
+        TestMetricSummaryResp summary = summary(projectId, versionId, LocalDate.now().minusDays(29));
+        TestMetricSummaryResp week = summary(projectId, versionId, LocalDate.now().with(DayOfWeek.MONDAY));
+        TestMetricSummaryResp month = summary(projectId, versionId, LocalDate.now().withDayOfMonth(1));
+        TestMetricSummaryResp year = summary(projectId, versionId, LocalDate.now().withDayOfYear(1));
+        Map<String, Object> inventory = inventory(projectId, versionId);
 
         TestMetricResp resp = new TestMetricResp();
         resp.setProjectId(projectId);
         resp.setVersionId(versionId);
-        resp.setTestPlanCount((long)plans.size());
-        resp.setTestReportCount((long)reports.size());
-        resp.setTimedTaskCount(timedTaskCount);
-        resp.setSceneCount(sceneCount);
-        resp.setPassedSceneCount(passedSceneCount);
-        resp.setAutomationPassRate(percent(passedSceneCount, sceneCount));
-        resp.setModuleMetric(buildModuleMetric(modules));
-        resp.setSceneMetric(buildSceneMetric(scenes));
-        resp.setExecutionMetric(buildExecutionMetric(scenes, reports));
+        resp.setTestPlanCount(count("test_plan", projectId, versionId));
+        resp.setTestReportCount(count("test_report", projectId, versionId));
+        resp.setTimedTaskCount(countTimedTasks(projectId, versionId));
+        resp.setSceneCount(summary.getEligibleSceneCount());
+        resp.setPassedSceneCount(summary.getPassCount());
+        resp.setAutomationPassRate(summary.getPassRate().getRate());
+        resp.setModuleMetric(moduleMetric(projectId, versionId));
+        resp.setSceneMetric(sceneMetric(summary, inventory));
+        resp.setExecutionMetric(executionMetric(resp.getTestReportCount(), summary, week, month, year));
+        return resp;
+    }
+
+    private TestMetricSummaryResp summary(Long projectId, Long versionId, LocalDate startDate) {
+        TestMetricScopeQuery query = new TestMetricScopeQuery();
+        query.setProjectId(projectId);
+        query.setVersionId(versionId);
+        query.setStartDate(startDate);
+        query.setEndDate(LocalDate.now());
+        return testMetricQueryService.getSummary(query);
+    }
+
+    private TestMetricResp.ModuleMetric moduleMetric(Long projectId, Long versionId) {
+        StringBuilder sql = new StringBuilder("SELECT COUNT(*) total_count, ")
+            .append("COALESCE(SUM(create_time >= ?), 0) week_added_count, ")
+            .append("COALESCE(SUM(create_time >= ?), 0) month_added_count, ")
+            .append("COALESCE(SUM(create_time >= ?), 0) year_added_count ")
+            .append("FROM project_module_config WHERE project_id = ? AND del_flag = 3");
+        List<Object> args = new ArrayList<>();
+        args.add(java.sql.Timestamp.valueOf(LocalDate.now().with(DayOfWeek.MONDAY).atStartOfDay()));
+        args.add(java.sql.Timestamp.valueOf(LocalDate.now().withDayOfMonth(1).atStartOfDay()));
+        args.add(java.sql.Timestamp.valueOf(LocalDate.now().withDayOfYear(1).atStartOfDay()));
+        args.add(projectId);
+        if (versionId != null) {
+            sql.append(" AND version_id = ?");
+            args.add(versionId);
+        }
+        return jdbcTemplate.queryForObject(sql.toString(), (rs, rowNum) -> {
+            TestMetricResp.ModuleMetric metric = new TestMetricResp.ModuleMetric();
+            metric.setTotalCount(rs.getLong("total_count"));
+            metric.setWeekAddedCount(rs.getLong("week_added_count"));
+            metric.setMonthAddedCount(rs.getLong("month_added_count"));
+            metric.setYearAddedCount(rs.getLong("year_added_count"));
+            return metric;
+        }, args.toArray());
+    }
+
+    private Map<String, Object> inventory(Long projectId, Long versionId) {
+        StringBuilder sql = new StringBuilder("SELECT ").append("COALESCE(SUM(UPPER(level) = 'P0'), 0) p0_count, ")
+            .append("COALESCE(SUM(UPPER(level) = 'P1'), 0) p1_count, ")
+            .append("COALESCE(SUM(UPPER(level) = 'P2'), 0) p2_count, ")
+            .append("COALESCE(SUM(UPPER(level) = 'P3'), 0) p3_count, ")
+            .append("COALESCE(SUM(create_time >= ?), 0) week_added_count, ")
+            .append("COALESCE(SUM(create_time >= ?), 0) month_added_count, ")
+            .append("COALESCE(SUM(create_time >= ?), 0) year_added_count ")
+            .append("FROM automation_ui_scene WHERE project_id = ? AND status = 1 AND del_flag = 3");
+        List<Object> args = new ArrayList<>();
+        args.add(java.sql.Timestamp.valueOf(LocalDate.now().with(DayOfWeek.MONDAY).atStartOfDay()));
+        args.add(java.sql.Timestamp.valueOf(LocalDate.now().withDayOfMonth(1).atStartOfDay()));
+        args.add(java.sql.Timestamp.valueOf(LocalDate.now().withDayOfYear(1).atStartOfDay()));
+        args.add(projectId);
+        if (versionId != null) {
+            sql.append(" AND version_id = ?");
+            args.add(versionId);
+        }
+        return jdbcTemplate.queryForMap(sql.toString(), args.toArray());
+    }
+
+    private TestMetricResp.SceneMetric sceneMetric(TestMetricSummaryResp summary, Map<String, Object> inventory) {
+        TestMetricResp.SceneMetric metric = new TestMetricResp.SceneMetric();
+        metric.setTotalCount(summary.getEligibleSceneCount());
+        metric.setP0Count(number(inventory.get("p0_count")));
+        metric.setP1Count(number(inventory.get("p1_count")));
+        metric.setP2Count(number(inventory.get("p2_count")));
+        metric.setP3Count(number(inventory.get("p3_count")));
+        metric.setWeekAddedCount(number(inventory.get("week_added_count")));
+        metric.setMonthAddedCount(number(inventory.get("month_added_count")));
+        metric.setYearAddedCount(number(inventory.get("year_added_count")));
+        metric.setExecutedCount(summary.getExecutedSceneCount());
+        metric.setPassedCount(summary.getPassCount());
+        metric.setFailedCount(summary.getFailCount());
+        metric.setSkippedCount(summary.getSkipCount());
+        return metric;
+    }
+
+    private TestMetricResp.ExecutionMetric executionMetric(Long reportCount,
+                                                           TestMetricSummaryResp summary,
+                                                           TestMetricSummaryResp week,
+                                                           TestMetricSummaryResp month,
+                                                           TestMetricSummaryResp year) {
+        TestMetricResp.ExecutionMetric metric = new TestMetricResp.ExecutionMetric();
+        metric.setTotalReportCount(reportCount);
+        metric.setWeekRunCount(week.getRunCount());
+        metric.setMonthRunCount(month.getRunCount());
+        metric.setYearRunCount(year.getRunCount());
+        metric.setTotalRunSceneCount(summary.getSceneExecutionCount());
+        metric.setDiscoveredDefectCount(0L);
+        metric.setSavedManHours(zeroRate());
+        metric.setAutomationCoverageRate(summary.getExecutionCoverage().getRate());
+        metric.setAutomationExecuteRate(summary.getExecutionCoverage().getRate());
+        metric.setAutomationPassRate(summary.getPassRate().getRate());
+        metric.setDefectRate(zeroRate());
+        return metric;
+    }
+
+    private Long count(String table, Long projectId, Long versionId) {
+        if (!"test_plan".equals(table) && !"test_report".equals(table)) {
+            throw new IllegalArgumentException("Unsupported table");
+        }
+        StringBuilder sql = new StringBuilder("SELECT COUNT(*) FROM ").append(table)
+            .append(" WHERE project_id = ? AND del_flag <> 4");
+        List<Object> args = new ArrayList<>();
+        args.add(projectId);
+        if (versionId != null) {
+            sql.append(" AND version_id = ?");
+            args.add(versionId);
+        }
+        Long count = jdbcTemplate.queryForObject(sql.toString(), Long.class, args.toArray());
+        return count == null ? 0L : count;
+    }
+
+    private Long countTimedTasks(Long projectId, Long versionId) {
+        StringBuilder sql = new StringBuilder("SELECT COUNT(*) FROM test_timed_task t ")
+            .append("JOIN test_plan p ON p.id = t.test_plan_id ")
+            .append("WHERE p.project_id = ? AND p.del_flag <> 4 AND t.del_flag <> 4");
+        List<Object> args = new ArrayList<>();
+        args.add(projectId);
+        if (versionId != null) {
+            sql.append(" AND p.version_id = ?");
+            args.add(versionId);
+        }
+        Long count = jdbcTemplate.queryForObject(sql.toString(), Long.class, args.toArray());
+        return count == null ? 0L : count;
+    }
+
+    private TestMetricResp emptyResponse() {
+        TestMetricResp resp = new TestMetricResp();
+        resp.setTestPlanCount(0L);
+        resp.setTestReportCount(0L);
+        resp.setTimedTaskCount(0L);
+        resp.setSceneCount(0L);
+        resp.setPassedSceneCount(0L);
+        resp.setAutomationPassRate(zeroRate());
+
+        TestMetricResp.ModuleMetric moduleMetric = new TestMetricResp.ModuleMetric();
+        moduleMetric.setTotalCount(0L);
+        moduleMetric.setWeekAddedCount(0L);
+        moduleMetric.setMonthAddedCount(0L);
+        moduleMetric.setYearAddedCount(0L);
+        resp.setModuleMetric(moduleMetric);
+
+        TestMetricResp.SceneMetric sceneMetric = new TestMetricResp.SceneMetric();
+        sceneMetric.setTotalCount(0L);
+        sceneMetric.setP0Count(0L);
+        sceneMetric.setP1Count(0L);
+        sceneMetric.setP2Count(0L);
+        sceneMetric.setP3Count(0L);
+        sceneMetric.setWeekAddedCount(0L);
+        sceneMetric.setMonthAddedCount(0L);
+        sceneMetric.setYearAddedCount(0L);
+        sceneMetric.setExecutedCount(0L);
+        sceneMetric.setPassedCount(0L);
+        sceneMetric.setFailedCount(0L);
+        sceneMetric.setSkippedCount(0L);
+        resp.setSceneMetric(sceneMetric);
+
+        TestMetricResp.ExecutionMetric executionMetric = new TestMetricResp.ExecutionMetric();
+        executionMetric.setTotalReportCount(0L);
+        executionMetric.setWeekRunCount(0L);
+        executionMetric.setMonthRunCount(0L);
+        executionMetric.setYearRunCount(0L);
+        executionMetric.setTotalRunSceneCount(0L);
+        executionMetric.setDiscoveredDefectCount(0L);
+        executionMetric.setSavedManHours(zeroRate());
+        executionMetric.setAutomationCoverageRate(zeroRate());
+        executionMetric.setAutomationExecuteRate(zeroRate());
+        executionMetric.setAutomationPassRate(zeroRate());
+        executionMetric.setDefectRate(zeroRate());
+        resp.setExecutionMetric(executionMetric);
         return resp;
     }
 
     private Long resolveProjectId(TestMetricQuery query) {
-        if (query.getProjectId() != null) {
-            return query.getProjectId();
+        if (query == null) {
+            return null;
         }
-        return query.getUi() == null ? null : query.getUi().getProjectId();
+        return query.getProjectId() != null
+            ? query.getProjectId()
+            : query.getUi() == null ? null : query.getUi().getProjectId();
     }
 
     private Long resolveVersionId(TestMetricQuery query) {
-        if (query.getVersionId() != null) {
-            return query.getVersionId();
+        if (query == null) {
+            return null;
         }
-        return query.getUi() == null ? null : query.getUi().getVersionId();
+        return query.getVersionId() != null
+            ? query.getVersionId()
+            : query.getUi() == null ? null : query.getUi().getVersionId();
     }
 
-    private TestMetricResp.ModuleMetric buildModuleMetric(List<ProjectModuleConfigDO> modules) {
-        TestMetricResp.ModuleMetric metric = new TestMetricResp.ModuleMetric();
-        metric.setTotalCount((long)modules.size());
-        metric.setWeekAddedCount(countBetween(modules.stream()
-            .map(ProjectModuleConfigDO::getCreateTime)
-            .toList(), startOfWeek(), now()));
-        metric.setMonthAddedCount(countBetween(modules.stream()
-            .map(ProjectModuleConfigDO::getCreateTime)
-            .toList(), startOfMonth(), now()));
-        metric.setYearAddedCount(countBetween(modules.stream()
-            .map(ProjectModuleConfigDO::getCreateTime)
-            .toList(), startOfYear(), now()));
-        return metric;
+    private long number(Object value) {
+        return value instanceof Number number ? number.longValue() : 0L;
     }
 
-    private TestMetricResp.SceneMetric buildSceneMetric(List<AutomationUiSceneDO> scenes) {
-        TestMetricResp.SceneMetric metric = new TestMetricResp.SceneMetric();
-        metric.setTotalCount((long)scenes.size());
-        metric.setP0Count(countScenesByLevel(scenes, "P0"));
-        metric.setP1Count(countScenesByLevel(scenes, "P1"));
-        metric.setP2Count(countScenesByLevel(scenes, "P2"));
-        metric.setP3Count(countScenesByLevel(scenes, "P3"));
-        metric.setWeekAddedCount(countBetween(scenes.stream()
-            .map(AutomationUiSceneDO::getCreateTime)
-            .toList(), startOfWeek(), now()));
-        metric.setMonthAddedCount(countBetween(scenes.stream()
-            .map(AutomationUiSceneDO::getCreateTime)
-            .toList(), startOfMonth(), now()));
-        metric.setYearAddedCount(countBetween(scenes.stream()
-            .map(AutomationUiSceneDO::getCreateTime)
-            .toList(), startOfYear(), now()));
-        metric.setExecutedCount((long)scenes.stream()
-            .filter(item -> item.getExecuteStatus() != null && !item.getExecuteStatus().isBlank())
-            .count());
-        metric.setPassedCount((long)scenes.stream().filter(item -> isPassed(item.getExecuteResult())).count());
-        metric.setFailedCount((long)scenes.stream().filter(item -> isFailed(item.getExecuteResult())).count());
-        metric.setSkippedCount((long)scenes.stream().filter(item -> isSkipped(item.getExecuteResult())).count());
-        return metric;
-    }
-
-    private TestMetricResp.ExecutionMetric buildExecutionMetric(List<AutomationUiSceneDO> scenes,
-                                                                List<TestReportDO> reports) {
-        TestMetricResp.ExecutionMetric metric = new TestMetricResp.ExecutionMetric();
-        metric.setTotalReportCount((long)reports.size());
-        metric.setWeekRunCount(countBetween(reports.stream()
-            .map(TestReportDO::getCreateTime)
-            .toList(), startOfWeek(), now()));
-        metric.setMonthRunCount(countBetween(reports.stream()
-            .map(TestReportDO::getCreateTime)
-            .toList(), startOfMonth(), now()));
-        metric.setYearRunCount(countBetween(reports.stream()
-            .map(TestReportDO::getCreateTime)
-            .toList(), startOfYear(), now()));
-
-        long totalRunScenes = 0L;
-        long defectCount = 0L;
-        long totalRunTime = 0L;
-        long totalExecutedScenes = 0L;
-        for (TestReportDO report : reports) {
-            Map<String, Object> ui = getUiStatistic(report.getStatisticAnalysis());
-            int sceneTotal = intValue(ui.get("sceneTotal"));
-            int sceneFail = intValue(ui.get("sceneFail"));
-            totalRunScenes += sceneTotal;
-            defectCount += sceneFail;
-            totalRunTime += report.getRunTime() == null ? 0L : report.getRunTime();
-            if (sceneTotal > 0) {
-                totalExecutedScenes += sceneTotal;
-            }
-        }
-
-        long sceneCount = scenes.size();
-        long executedScenes = scenes.stream()
-            .filter(item -> item.getExecuteStatus() != null && !item.getExecuteStatus().isBlank())
-            .count();
-        long passedScenes = scenes.stream().filter(item -> isPassed(item.getExecuteResult())).count();
-
-        metric.setTotalRunSceneCount(totalRunScenes);
-        metric.setDiscoveredDefectCount(defectCount);
-        metric.setSavedManHours(BigDecimal.valueOf(totalRunTime)
-            .divide(BigDecimal.valueOf(3_600_000L), 2, RoundingMode.HALF_UP));
-        metric.setAutomationCoverageRate(percent(executedScenes, sceneCount));
-        metric.setAutomationExecuteRate(percent(totalExecutedScenes, sceneCount));
-        metric.setAutomationPassRate(percent(passedScenes, sceneCount));
-        metric.setDefectRate(percent(defectCount, totalRunScenes));
-        return metric;
-    }
-
-    private Map<String, Object> getUiStatistic(Map<String, Object> statistic) {
-        if (statistic == null) {
-            return Map.of();
-        }
-        Object ui = statistic.get("ui");
-        if (ui instanceof Map<?, ?> map) {
-            List<String> keys = new ArrayList<>();
-            for (Object key : map.keySet()) {
-                keys.add(String.valueOf(key));
-            }
-            return keys.stream().collect(java.util.stream.Collectors.toMap(key -> key, key -> map.get(key)));
-        }
-        return Map.of();
-    }
-
-    private long countScenesByLevel(List<AutomationUiSceneDO> scenes, String level) {
-        return scenes.stream().filter(item -> level.equalsIgnoreCase(item.getLevel())).count();
-    }
-
-    private long countBetween(List<LocalDateTime> times, LocalDateTime start, LocalDateTime end) {
-        return times.stream().filter(time -> time != null && !time.isBefore(start) && !time.isAfter(end)).count();
-    }
-
-    private LocalDateTime now() {
-        return LocalDateTime.now();
-    }
-
-    private LocalDateTime startOfWeek() {
-        LocalDate today = LocalDate.now();
-        LocalDate monday = today.with(DayOfWeek.MONDAY);
-        return LocalDateTime.of(monday, LocalTime.MIN);
-    }
-
-    private LocalDateTime startOfMonth() {
-        LocalDate firstDay = LocalDate.now().withDayOfMonth(1);
-        return LocalDateTime.of(firstDay, LocalTime.MIN);
-    }
-
-    private LocalDateTime startOfYear() {
-        LocalDate firstDay = LocalDate.now().withDayOfYear(1);
-        return LocalDateTime.of(firstDay, LocalTime.MIN);
-    }
-
-    private BigDecimal percent(long numerator, long denominator) {
-        if (denominator <= 0) {
-            return BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
-        }
-        return BigDecimal.valueOf(numerator)
-            .multiply(BigDecimal.valueOf(100))
-            .divide(BigDecimal.valueOf(denominator), 2, RoundingMode.HALF_UP);
-    }
-
-    private int intValue(Object value) {
-        if (value == null) {
-            return 0;
-        }
-        if (value instanceof Number number) {
-            return number.intValue();
-        }
-        try {
-            return Integer.parseInt(String.valueOf(value));
-        } catch (NumberFormatException e) {
-            return 0;
-        }
-    }
-
-    private boolean isPassed(String result) {
-        return "PASSED".equalsIgnoreCase(result) || "全部通过".equals(result);
-    }
-
-    private boolean isFailed(String result) {
-        return "FAILED".equalsIgnoreCase(result) || "不通过".equals(result);
-    }
-
-    private boolean isSkipped(String result) {
-        return "SKIPPED".equalsIgnoreCase(result) || "跳过".equals(result);
+    private BigDecimal zeroRate() {
+        return BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
     }
 }

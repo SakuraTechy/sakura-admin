@@ -35,6 +35,7 @@ public class TestPlanResp extends BaseDetailResp {
     private static final long serialVersionUID = 1L;
 
     private Long projectId;
+    private Long versionId;
     private String projectName;
     private String type;
     private String name;

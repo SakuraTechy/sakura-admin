@@ -39,6 +39,9 @@ public class TestReportQuery implements Serializable {
     private Long projectId;
 
     @Query(type = QueryType.EQ)
+    private Long versionId;
+
+    @Query(type = QueryType.EQ)
     private Long testPlanId;
 
     @Query(type = QueryType.LIKE)

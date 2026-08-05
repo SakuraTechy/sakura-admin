@@ -34,6 +34,7 @@ import top.continew.starter.core.exception.BusinessException;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -184,6 +185,12 @@ public class TestPlanReportProgressServiceImpl implements AutomationPlanReportPr
                 ? "CANCELLED"
                 : aggregate.hasFailure || aggregate.allSkipped ? "FAILED" : "PASSED"
             : "RUNNING");
+        if (report.getStartedAt() == null) {
+            report.setStartedAt(report.getCreateTime() == null ? LocalDateTime.now() : report.getCreateTime());
+        }
+        if (aggregate.terminal && report.getFinishedAt() == null) {
+            report.setFinishedAt(LocalDateTime.now());
+        }
         testReportMapper.updateById(report);
         timedTaskRunService.completeByReport(report);
     }

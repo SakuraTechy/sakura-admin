@@ -22,6 +22,7 @@ import lombok.EqualsAndHashCode;
 import top.continew.admin.common.model.resp.BaseDetailResp;
 
 import java.io.Serial;
+import java.time.LocalDateTime;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
@@ -32,6 +33,7 @@ public class TestReportResp extends BaseDetailResp {
     private static final long serialVersionUID = 1L;
 
     private Long projectId;
+    private Long versionId;
     private String projectName;
     private String versionName;
     private Long testPlanId;
@@ -47,4 +49,6 @@ public class TestReportResp extends BaseDetailResp {
     private String reportUrl;
     private String videoUrl;
     private String status;
+    private LocalDateTime startedAt;
+    private LocalDateTime finishedAt;
 }

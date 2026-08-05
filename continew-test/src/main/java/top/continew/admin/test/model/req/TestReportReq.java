@@ -37,6 +37,8 @@ public class TestReportReq implements Serializable {
     @NotNull(message = "项目ID不能为空")
     private Long projectId;
 
+    private Long versionId;
+
     private String projectName;
     private String versionName;
     private Long testPlanId;

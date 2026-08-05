@@ -31,11 +31,12 @@ automation:
     max-database-bytes: ${SAKURA_AUTOMATION_MAX_DATABASE_BYTES:0}
     cache-seconds: ${SAKURA_AUTOMATION_STORAGE_CHECK_CACHE_SECONDS:30}
   storage-cleanup:
-    # 由 SnailJob 的 CleanupAutomationStorage 任务按批次执行；0 表示暂不清理。
+    # 由 SnailJob 的 CleanupAutomationStorage 任务按批次执行；父执行事实保留 730 天，明细和附件保留 90 天。
     sys-log-retention-days: ${SAKURA_SYS_LOG_RETENTION_DAYS:30}
     sys-log-failure-retention-days: ${SAKURA_SYS_LOG_FAILURE_RETENTION_DAYS:90}
     job-retention-days: ${SAKURA_AUTOMATION_JOB_RETENTION_DAYS:30}
-    execution-retention-days: ${SAKURA_AUTOMATION_EXECUTION_RETENTION_DAYS:90}
+    execution-retention-days: ${SAKURA_AUTOMATION_EXECUTION_RETENTION_DAYS:730}
+    execution-detail-retention-days: ${SAKURA_AUTOMATION_EXECUTION_DETAIL_RETENTION_DAYS:90}
   playwright-runner:
     # Runner 在 admin 所在节点启动，生产环境必须限制 runner-root 和 node-command 的可执行范围。
     enabled: ${SAKURA_PLAYWRIGHT_RUNNER_ENABLED:true}
@@ -65,6 +66,12 @@ automation:
   # 执行迁移任务配置
   execution-migration:
     batch-size: ${SAKURA_AUTOMATION_EXECUTION_MIGRATION_BATCH_SIZE:20}
+
+test:
+  metric:
+    aggregation:
+      recompute-days: ${SAKURA_TEST_METRIC_RECOMPUTE_DAYS:3}
+      backfill-days: ${SAKURA_TEST_METRIC_BACKFILL_DAYS:30}
 
 --- ### 日志配置
 ## API 请求/响应日志配置

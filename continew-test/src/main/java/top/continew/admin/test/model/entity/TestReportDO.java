@@ -24,6 +24,7 @@ import top.continew.admin.common.enums.StatusTypeEnum;
 import top.continew.admin.common.model.entity.BaseDO;
 
 import java.io.Serial;
+import java.time.LocalDateTime;
 import java.util.Map;
 
 /**
@@ -37,6 +38,7 @@ public class TestReportDO extends BaseDO {
     private static final long serialVersionUID = 1L;
 
     private Long projectId;
+    private Long versionId;
     private String projectName;
     private String versionName;
     private Long testPlanId;
@@ -65,5 +67,7 @@ public class TestReportDO extends BaseDO {
     private String reportUrl;
     private String videoUrl;
     private String status;
+    private LocalDateTime startedAt;
+    private LocalDateTime finishedAt;
     private StatusTypeEnum delFlag = StatusTypeEnum.NORMAL;
 }

@@ -31,9 +31,12 @@ import top.continew.admin.test.model.resp.TestReportDetailResp;
 import top.continew.admin.test.model.resp.TestReportResp;
 import top.continew.admin.test.service.TestReportService;
 import top.continew.admin.test.service.TestTimedTaskRunService;
+import top.continew.starter.core.exception.BusinessException;
 import top.continew.starter.extension.crud.service.BaseServiceImpl;
 
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -41,6 +44,17 @@ public class TestReportServiceImpl extends BaseServiceImpl<TestReportMapper, Tes
 
     private final TestPlanMapper testPlanMapper;
     private final TestTimedTaskRunService timedTaskRunService;
+    private final TestReportSceneSnapshotService reportSceneSnapshotService;
+
+    @Override
+    protected void beforeCreate(TestReportReq req) {
+        validateReportScope(req);
+    }
+
+    @Override
+    protected void beforeUpdate(TestReportReq req, Long id) {
+        validateReportScope(req);
+    }
 
     @Override
     public List<TestReportDetailResp> selectByIds(List<Long> ids) {
@@ -81,17 +95,43 @@ public class TestReportServiceImpl extends BaseServiceImpl<TestReportMapper, Tes
         report.setReportUrl(req.getReportUrl());
         report.setVideoUrl(req.getVideoUrl());
         report.setStatisticAnalysis(req.getStatisticAnalysis());
+        if (report.getStartedAt() == null) {
+            report.setStartedAt(report.getCreateTime() == null ? LocalDateTime.now() : report.getCreateTime());
+        }
+        if (isTerminal(req.getStatus())) {
+            report.setFinishedAt(LocalDateTime.now());
+        }
         baseMapper.updateById(report);
         timedTaskRunService.completeByReport(report);
 
         if (report.getTestPlanId() != null) {
             TestPlanDO plan = testPlanMapper.selectById(report.getTestPlanId());
             if (plan != null) {
-                boolean terminal = "PASSED".equalsIgnoreCase(req.getStatus()) || "FAILED".equalsIgnoreCase(req
-                    .getStatus());
+                boolean terminal = isTerminal(req.getStatus());
                 plan.setStatus(terminal ? "COMPLETED" : "RUNNING");
                 testPlanMapper.updateById(plan);
             }
         }
+    }
+
+    private void validateReportScope(TestReportReq req) {
+        if (req.getTestPlanId() != null) {
+            TestPlanDO plan = testPlanMapper.selectById(req.getTestPlanId());
+            if (plan == null || !StatusTypeEnum.NORMAL.equals(plan.getDelFlag()) || !Objects.equals(plan
+                .getProjectId(), req.getProjectId())) {
+                throw new BusinessException("测试计划不存在或不属于当前项目");
+            }
+            if (req.getVersionId() == null) {
+                req.setVersionId(plan.getVersionId());
+            } else if (plan.getVersionId() != null && !Objects.equals(plan.getVersionId(), req.getVersionId())) {
+                throw new BusinessException("测试报告版本与测试计划版本不一致");
+            }
+        }
+        reportSceneSnapshotService.validateVersion(req.getProjectId(), req.getVersionId());
+    }
+
+    private boolean isTerminal(String status) {
+        return "PASSED".equalsIgnoreCase(status) || "FAILED".equalsIgnoreCase(status) || "CANCELLED"
+            .equalsIgnoreCase(status);
     }
 }

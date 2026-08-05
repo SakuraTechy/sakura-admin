@@ -263,12 +263,14 @@ public class AutomationUiExecutionRecordServiceImpl implements AutomationUiExecu
                                  Map<String, Object> record,
                                  Long definitionRevisionId) {
         jdbcTemplate
-            .update("INSERT INTO automation_ui_execution (id, execution_key, scene_id, scene_key," + " definition_revision_id, batch_id, record_type, trigger_type, execution_engine, status, result," + " create_user, create_time, update_user, update_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?," + " CURRENT_TIMESTAMP(3), ?, CURRENT_TIMESTAMP(3))", id, executionKey, scene
-                .getId(), firstNonBlank(scene.getSceneId(), String.valueOf(scene
-                    .getId())), definitionRevisionId, nullableText(record.get("batchId")), firstNonBlank(value(record
-                        .get("recordType")), "execution"), resolveTriggerType(record), resolveEngine(record), firstNonBlank(value(record
-                            .get("executeStatus")), "queued"), nullableText(record.get("executeResult")), scene
-                                .getCreateUser(), scene.getUpdateUser());
+            .update("INSERT INTO automation_ui_execution (id, execution_key, scene_id, scene_key," + " project_id, version_id, module_id, scene_level, definition_revision_id, batch_id, run_key," + " dimension_quality, record_type, trigger_type, execution_engine, status, result," + " create_user, create_time, update_user, update_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?," + " 'EXACT', ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP(3), ?, CURRENT_TIMESTAMP(3))", id, executionKey, scene
+                .getId(), firstNonBlank(scene.getSceneId(), String.valueOf(scene.getId())), scene.getProjectId(), scene
+                    .getVersionId(), scene.getModuleId(), nullableText(scene
+                        .getLevel()), definitionRevisionId, nullableText(record
+                            .get("batchId")), resolveRunKey(id, record), firstNonBlank(value(record
+                                .get("recordType")), "execution"), resolveTriggerType(record), resolveEngine(record), firstNonBlank(value(record
+                                    .get("executeStatus")), "queued"), nullableText(record.get("executeResult")), scene
+                                        .getCreateUser(), scene.getUpdateUser());
     }
 
     private void updateExecution(Long executionId,
@@ -281,9 +283,9 @@ public class AutomationUiExecutionRecordServiceImpl implements AutomationUiExecu
         String summaryJson = boundedSummary(summary, MAX_EXECUTION_SUMMARY_BYTES);
         String executionConfig = boundedSummary(asMap(record.get("executionConfig")), MAX_EXECUTION_SUMMARY_BYTES);
         jdbcTemplate
-            .update("UPDATE automation_ui_execution SET definition_revision_id = ?, batch_id = ?," + " test_plan_id = ?, test_report_id = ?, record_type = ?, trigger_type = ?, execution_engine = ?," + " status = ?, result = ?, execute_user_id = ?, execute_username = ?, execute_name = ?, execute_email = ?," + " project_environment_id = ?, project_environment_name = ?, execution_config = CAST(? AS JSON)," + " build_number = ?, console_url = ?, test_report_url = ?, case_total = ?, case_pass = ?, case_fail = ?," + " case_skip = ?, case_cancelled = ?, step_total = ?, step_pass = ?, step_fail = ?, step_skip = ?," + " executor_node = ?, heartbeat_at = ?, lease_until = ?, cancel_requested = ?, started_at = ?," + " finished_at = ?, duration_ms = ?, error_code = ?, error_message = ?, summary_json = CAST(? AS JSON)," + " version = version + 1, update_user = ?, update_time = CURRENT_TIMESTAMP(3) WHERE id = ?", definitionRevisionId, nullableText(record
-                .get("batchId")), nullableLong(record.get("testPlanId")), nullableLong(record
-                    .get("testReportId")), firstNonBlank(value(record
+            .update("UPDATE automation_ui_execution SET definition_revision_id = ?, batch_id = ?, run_key = ?," + " test_plan_id = ?, test_report_id = ?, record_type = ?, trigger_type = ?, execution_engine = ?," + " status = ?, result = ?, execute_user_id = ?, execute_username = ?, execute_name = ?, execute_email = ?," + " project_environment_id = ?, project_environment_name = ?, execution_config = CAST(? AS JSON)," + " build_number = ?, console_url = ?, test_report_url = ?, case_total = ?, case_pass = ?, case_fail = ?," + " case_skip = ?, case_cancelled = ?, step_total = ?, step_pass = ?, step_fail = ?, step_skip = ?," + " executor_node = ?, heartbeat_at = ?, lease_until = ?, cancel_requested = ?, started_at = ?," + " finished_at = ?, duration_ms = ?, error_code = ?, error_message = ?, summary_json = CAST(? AS JSON)," + " version = version + 1, update_user = ?, update_time = CURRENT_TIMESTAMP(3) WHERE id = ?", definitionRevisionId, nullableText(record
+                .get("batchId")), resolveRunKey(executionId, record), nullableLong(record
+                    .get("testPlanId")), nullableLong(record.get("testReportId")), firstNonBlank(value(record
                         .get("recordType")), "execution"), resolveTriggerType(record), resolveEngine(record), firstNonBlank(value(record
                             .get("executeStatus")), "queued"), nullableText(record
                                 .get("executeResult")), nullableLong(record.get("executeUserId")), nullableText(record
@@ -609,15 +611,34 @@ public class AutomationUiExecutionRecordServiceImpl implements AutomationUiExecu
     private String resolveTriggerType(Map<String, Object> record) {
         String explicit = value(record.get("triggerType"));
         if (StringUtils.isNotBlank(explicit))
-            return explicit.toLowerCase();
+            return explicit.trim().toLowerCase().replace('_', '-');
         if (record.get("testPlanId") != null)
             return "test-plan";
         return "jenkins".equalsIgnoreCase(resolveEngine(record)) ? "jenkins" : "manual";
     }
 
     private String resolveEngine(Map<String, Object> record) {
-        return firstNonBlank(value(record.get("executionType")), value(record.get("executor")), "unknown")
-            .toLowerCase();
+        String engine = firstNonBlank(value(record.get("executionType")), value(record.get("executor")), "unknown")
+            .trim()
+            .toLowerCase()
+            .replace('_', '-');
+        return switch (engine) {
+            case "playwright", "runner", "playwright-runner" -> "playwright-runner";
+            case "chrome-devtools-protocol", "cdp", "extension-cdp" -> "extension-cdp";
+            default -> engine;
+        };
+    }
+
+    private String resolveRunKey(Long executionId, Map<String, Object> record) {
+        Long reportId = nullableLong(record.get("testReportId"));
+        if (reportId != null) {
+            return "REPORT:" + reportId;
+        }
+        String batchId = value(record.get("batchId"));
+        if (StringUtils.isNotBlank(batchId)) {
+            return abbreviate(resolveEngine(record).toUpperCase() + ":BATCH:" + batchId, 192);
+        }
+        return "EXECUTION:" + executionId;
     }
 
     private String boundedSummary(Map<String, Object> source, int maxBytes) {

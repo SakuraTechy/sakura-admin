@@ -39,6 +39,8 @@ public class TestPlanReq implements Serializable {
     @NotNull(message = "项目ID不能为空")
     private Long projectId;
 
+    private Long versionId;
+
     private String projectName;
     private String type;
 

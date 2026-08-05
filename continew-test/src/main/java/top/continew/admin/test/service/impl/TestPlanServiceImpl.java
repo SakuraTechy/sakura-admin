@@ -21,6 +21,8 @@ import cn.dev33.satoken.stp.StpUtil;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import top.continew.admin.automation.mapper.AutomationUiSceneMapper;
 import top.continew.admin.automation.model.entity.AutomationUiSceneDO;
 import top.continew.admin.automation.model.req.AutomationUiSceneExecReq;
@@ -67,6 +69,18 @@ public class TestPlanServiceImpl extends BaseServiceImpl<TestPlanMapper, TestPla
     private final TestReportMapper testReportMapper;
     private final TestTimedTaskMapper testTimedTaskMapper;
     private final TestPlanExecutionDispatchService executionDispatchService;
+    private final TestReportSceneSnapshotService reportSceneSnapshotService;
+    private final TransactionTemplate transactionTemplate;
+
+    @Override
+    protected void beforeCreate(TestPlanReq req) {
+        validateAndResolvePlanScope(req);
+    }
+
+    @Override
+    protected void beforeUpdate(TestPlanReq req, Long id) {
+        validateAndResolvePlanScope(req);
+    }
 
     @Override
     public List<TestPlanDetailResp> selectByIds(List<Long> ids) {
@@ -102,6 +116,7 @@ public class TestPlanServiceImpl extends BaseServiceImpl<TestPlanMapper, TestPla
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void relateScenes(Long id, TestPlanSceneRelationReq req) {
         TestPlanDO plan = baseMapper.selectById(id);
         CheckUtils.throwIfNull(plan, "测试计划不存在");
@@ -128,6 +143,7 @@ public class TestPlanServiceImpl extends BaseServiceImpl<TestPlanMapper, TestPla
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void removeScenes(Long id, TestPlanSceneRelationReq req) {
         TestPlanDO plan = baseMapper.selectById(id);
         CheckUtils.throwIfNull(plan, "测试计划不存在");
@@ -152,6 +168,14 @@ public class TestPlanServiceImpl extends BaseServiceImpl<TestPlanMapper, TestPla
         CheckUtils.throwIfNull(plan, "测试计划不存在");
         CheckUtils.throwIf(plan.getUiTestScene() == null || plan.getUiTestScene().isEmpty(), "测试计划未关联 UI 场景");
         List<Long> executionSceneIds = resolveExecutionSceneIds(plan, req.getSceneIds());
+        List<AutomationUiSceneDO> executionScenes = reportSceneSnapshotService.loadAndValidate(plan.getProjectId(), plan
+            .getVersionId(), executionSceneIds);
+        Long versionId = reportSceneSnapshotService.resolveVersionId(plan.getProjectId(), plan
+            .getVersionId(), executionScenes);
+        if (!Objects.equals(plan.getVersionId(), versionId)) {
+            plan.setVersionId(versionId);
+            baseMapper.updateById(plan);
+        }
 
         TestExecutionEngineEnum engine = req.getExecutionEngine() == null
             ? TestExecutionEngineEnum.SELENIUM
@@ -162,8 +186,9 @@ public class TestPlanServiceImpl extends BaseServiceImpl<TestPlanMapper, TestPla
         }
 
         TestReportDO report = new TestReportDO();
-        AutomationUiSceneDO firstScene = automationUiSceneMapper.selectById(executionSceneIds.get(0));
+        AutomationUiSceneDO firstScene = executionScenes.get(0);
         report.setProjectId(plan.getProjectId());
+        report.setVersionId(versionId);
         report.setProjectName(plan.getProjectName());
         report.setVersionName(firstScene == null ? null : firstScene.getVersionName());
         report.setTestPlanId(plan.getId());
@@ -172,21 +197,23 @@ public class TestPlanServiceImpl extends BaseServiceImpl<TestPlanMapper, TestPla
         report.setExecuteMode("PLAN");
         report.setReportType(engine.name());
         report.setStatus("RUNNING");
+        report.setStartedAt(LocalDateTime.now());
         report.setName(StringUtils.abbreviate(plan.getName() + "_" + reportTypeLabel(engine) + "_" + LocalDateTime.now()
             .format(DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS")), 128));
         report.setProjectConfig(plan.getProjectConfig());
         report.setAutomationConfig(plan.getAutomationConfig());
         report.setRuntimeEnvironment(buildRuntimeEnvironment(req, engine, executionSceneIds));
         report.setRunTime(0L);
-        testReportMapper.insert(report);
-
-        automationUiSceneMapper.lambdaUpdate()
-            .in(AutomationUiSceneDO::getId, executionSceneIds)
-            .set(AutomationUiSceneDO::getReportId, report.getId())
-            .update();
-
-        plan.setStatus("RUNNING");
-        baseMapper.updateById(plan);
+        transactionTemplate.executeWithoutResult(status -> {
+            testReportMapper.insert(report);
+            reportSceneSnapshotService.saveSnapshot(report, executionScenes);
+            automationUiSceneMapper.lambdaUpdate()
+                .in(AutomationUiSceneDO::getId, executionSceneIds)
+                .set(AutomationUiSceneDO::getReportId, report.getId())
+                .update();
+            plan.setStatus("RUNNING");
+            baseMapper.updateById(plan);
+        });
         try {
             return switch (engine) {
                 case SELENIUM -> executeSelenium(plan, report, req, executionSceneIds);
@@ -195,6 +222,7 @@ public class TestPlanServiceImpl extends BaseServiceImpl<TestPlanMapper, TestPla
             };
         } catch (RuntimeException e) {
             report.setStatus("FAILED");
+            report.setFinishedAt(LocalDateTime.now());
             Map<String, Object> runtime = new LinkedHashMap<>(report.getRuntimeEnvironment());
             runtime.put("dispatchError", e.getMessage());
             report.setRuntimeEnvironment(runtime);
@@ -311,9 +339,13 @@ public class TestPlanServiceImpl extends BaseServiceImpl<TestPlanMapper, TestPla
             executionSceneIds = planSceneIds.stream().filter(requestedSet::contains).toList();
         }
         ensureCondition(executionSceneIds.isEmpty(), "测试计划没有可执行的关联场景");
-        List<AutomationUiSceneDO> existingScenes = automationUiSceneMapper.selectBatchIds(executionSceneIds);
-        ensureCondition(existingScenes.size() != executionSceneIds.size(), "测试计划关联场景不存在，请刷新后重试");
         return executionSceneIds;
+    }
+
+    private void validateAndResolvePlanScope(TestPlanReq req) {
+        List<AutomationUiSceneDO> scenes = reportSceneSnapshotService.loadAndValidate(req.getProjectId(), req
+            .getVersionId(), req.getUiTestScene());
+        req.setVersionId(reportSceneSnapshotService.resolveVersionId(req.getProjectId(), req.getVersionId(), scenes));
     }
 
     private void ensureCondition(boolean condition, String message) {
@@ -331,9 +363,10 @@ public class TestPlanServiceImpl extends BaseServiceImpl<TestPlanMapper, TestPla
     }
 
     private void updatePlanSceneStats(TestPlanDO plan, List<Long> sceneIds) {
-        List<AutomationUiSceneDO> scenes = sceneIds.isEmpty()
-            ? List.of()
-            : automationUiSceneMapper.selectBatchIds(sceneIds);
+        List<AutomationUiSceneDO> scenes = reportSceneSnapshotService.loadAndValidate(plan.getProjectId(), plan
+            .getVersionId(), sceneIds);
+        plan.setVersionId(reportSceneSnapshotService.resolveVersionId(plan.getProjectId(), plan
+            .getVersionId(), scenes));
         int sceneCount = scenes.size();
         int executedCount = 0;
         int passedCount = 0;

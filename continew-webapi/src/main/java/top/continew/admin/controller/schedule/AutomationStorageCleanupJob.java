@@ -52,18 +52,23 @@ public class AutomationStorageCleanupJob {
     @Value("${automation.storage-cleanup.job-retention-days:30}")
     private int jobRetentionDays;
 
-    @Value("${automation.storage-cleanup.execution-retention-days:90}")
+    @Value("${automation.storage-cleanup.execution-retention-days:730}")
     private int executionRetentionDays;
+
+    @Value("${automation.storage-cleanup.execution-detail-retention-days:90}")
+    private int executionDetailRetentionDays;
 
     @JobExecutor(name = EXECUTOR_NAME)
     public void cleanup() {
         int deletedLog = deleteSysLog();
         int deletedArtifact = deleteExpiredArtifacts();
         int deletedJob = delete("automation_playwright_job", "finished_at", jobRetentionDays, true);
+        ExecutionCleanupResult detailCleanup = deleteExpiredExecutionDetails();
         ExecutionCleanupResult executionCleanup = deleteExpiredExecutions();
         SnailJobLog.REMOTE
-            .info("UI 自动化存储清理完成，sysLog={}, jobs={}, steps={}, cases={}, executions={}, artifacts={}", deletedLog, deletedJob, executionCleanup
-                .steps(), executionCleanup.cases(), executionCleanup.executions(), deletedArtifact);
+            .info("UI 自动化存储清理完成，sysLog={}, jobs={}, detailSteps={}, detailCases={}, steps={}, cases={}, executions={}, artifacts={}", deletedLog, deletedJob, detailCleanup
+                .steps(), detailCleanup.cases(), executionCleanup.steps(), executionCleanup.cases(), executionCleanup
+                    .executions(), deletedArtifact);
     }
 
     private int deleteSysLog() {
@@ -129,9 +134,9 @@ public class AutomationStorageCleanupJob {
         }
         int days = Math.max(1, executionRetentionDays);
         List<Long> ids = jdbcTemplate
-            .query("SELECT e.id FROM automation_ui_execution e" + " WHERE e.retention_hold = 0" + " AND e.status IN ('completed','passed','failed','cancelled','interrupted','blocked','skipped')" + " AND COALESCE(e.finished_at, e.create_time) < DATE_SUB(CURRENT_TIMESTAMP, INTERVAL " + days + " DAY)" + " AND NOT EXISTS (SELECT 1 FROM automation_ui_execution_artifact a WHERE a.execution_id = e.id)" + " ORDER BY e.id LIMIT " + BATCH_SIZE, (rs,
-                                                                                                                                                                                                                                                                                                                                                                                                                                                        rowNum) -> rs
-                                                                                                                                                                                                                                                                                                                                                                                                                                                            .getLong(1));
+            .query("SELECT e.id FROM automation_ui_execution e" + " WHERE e.retention_hold = 0" + " AND e.project_id IS NOT NULL" + " AND e.status IN ('completed','passed','failed','cancelled','interrupted','blocked','skipped')" + " AND COALESCE(e.finished_at, e.create_time) < DATE_SUB(CURRENT_TIMESTAMP, INTERVAL " + days + " DAY)" + " AND EXISTS (SELECT 1 FROM test_metric_aggregation_state a WHERE a.metric_date = DATE(COALESCE(e.finished_at, e.started_at, e.create_time))" + " AND a.project_id = e.project_id AND a.version_id = COALESCE(e.version_id, 0) AND a.status = 'SUCCESS'" + " AND a.source_max_execution_id >= e.id)" + " AND NOT EXISTS (SELECT 1 FROM automation_ui_execution_artifact a WHERE a.execution_id = e.id)" + " ORDER BY e.id LIMIT " + BATCH_SIZE, (rs,
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      rowNum) -> rs
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          .getLong(1));
         if (ids.isEmpty()) {
             return new ExecutionCleanupResult(0, 0, 0);
         }
@@ -144,6 +149,27 @@ public class AutomationStorageCleanupJob {
         int executions = jdbcTemplate
             .update("DELETE FROM automation_ui_execution WHERE id IN (" + placeholders + ")", args);
         return new ExecutionCleanupResult(steps, cases, executions);
+    }
+
+    private ExecutionCleanupResult deleteExpiredExecutionDetails() {
+        if (executionDetailRetentionDays <= 0) {
+            return new ExecutionCleanupResult(0, 0, 0);
+        }
+        int days = Math.max(1, executionDetailRetentionDays);
+        List<Long> ids = jdbcTemplate
+            .query("SELECT e.id FROM automation_ui_execution e WHERE e.retention_hold = 0 AND e.status IN ('completed','passed','failed','cancelled','interrupted','blocked','skipped')" + " AND COALESCE(e.finished_at, e.create_time) < DATE_SUB(CURRENT_TIMESTAMP, INTERVAL " + days + " DAY)" + " ORDER BY e.id LIMIT " + BATCH_SIZE, (rs,
+                                                                                                                                                                                                                                                                                                                                           rowNum) -> rs
+                                                                                                                                                                                                                                                                                                                                               .getLong(1));
+        if (ids.isEmpty()) {
+            return new ExecutionCleanupResult(0, 0, 0);
+        }
+        String placeholders = placeholders(ids.size());
+        Object[] args = ids.toArray();
+        int steps = jdbcTemplate
+            .update("DELETE s FROM automation_ui_execution_step s JOIN automation_ui_execution_case c ON c.id = s.execution_case_id" + " WHERE c.execution_id IN (" + placeholders + ")", args);
+        int cases = jdbcTemplate
+            .update("DELETE FROM automation_ui_execution_case WHERE execution_id IN (" + placeholders + ")", args);
+        return new ExecutionCleanupResult(steps, cases, 0);
     }
 
     private String placeholders(int size) {

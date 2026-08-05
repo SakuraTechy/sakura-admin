@@ -18,7 +18,6 @@ package top.continew.admin.test.service.impl;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.when;
 
 import java.util.List;
 
@@ -28,8 +27,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.transaction.support.TransactionTemplate;
 import top.continew.admin.automation.mapper.AutomationUiSceneMapper;
-import top.continew.admin.automation.model.entity.AutomationUiSceneDO;
 import top.continew.admin.automation.service.AutomationUiSceneService;
 import top.continew.admin.automation.service.AutomationUiExecutionRecordService;
 import top.continew.admin.test.mapper.TestReportMapper;
@@ -57,17 +56,22 @@ class TestPlanServiceImplTest {
     @Mock
     private TestPlanExecutionDispatchService dispatchService;
 
+    @Mock
+    private TestReportSceneSnapshotService reportSceneSnapshotService;
+
+    @Mock
+    private TransactionTemplate transactionTemplate;
+
     private TestPlanServiceImpl service;
 
     @BeforeEach
     void setUp() {
-        service = new TestPlanServiceImpl(sceneMapper, executionRecordService, sceneService, reportMapper, timedTaskMapper, dispatchService);
+        service = new TestPlanServiceImpl(sceneMapper, executionRecordService, sceneService, reportMapper, timedTaskMapper, dispatchService, reportSceneSnapshotService, transactionTemplate);
     }
 
     @Test
     void shouldResolveSelectedScenesInPlanOrder() {
         TestPlanDO plan = plan();
-        when(sceneMapper.selectBatchIds(List.of(11L, 12L))).thenReturn(List.of(scene(12L), scene(11L)));
 
         List<Long> result = resolveExecutionSceneIds(plan, List.of(12L, 11L));
 
@@ -84,11 +88,11 @@ class TestPlanServiceImplTest {
     }
 
     @Test
-    void shouldRejectMissingAssociatedScene() {
+    void shouldRejectPlanWithoutAssociatedScene() {
         TestPlanDO plan = plan();
-        when(sceneMapper.selectBatchIds(List.of(11L))).thenReturn(List.of());
+        plan.setUiTestScene(List.of());
 
-        assertThatThrownBy(() -> resolveExecutionSceneIds(plan, List.of(11L))).hasMessageContaining("关联场景不存在");
+        assertThatThrownBy(() -> resolveExecutionSceneIds(plan, null)).hasMessageContaining("没有可执行的关联场景");
     }
 
     @SuppressWarnings("unchecked")
@@ -103,9 +107,4 @@ class TestPlanServiceImplTest {
         return plan;
     }
 
-    private AutomationUiSceneDO scene(Long id) {
-        AutomationUiSceneDO scene = new AutomationUiSceneDO();
-        scene.setId(id);
-        return scene;
-    }
 }

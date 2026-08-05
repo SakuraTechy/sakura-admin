@@ -49,6 +49,8 @@ public class AutomationInfrastructureTaskResp implements Serializable {
     private String startedAt;
     private String finishedAt;
     private boolean cancelRequested;
+    private String disposition;
+    private String dispositionAt;
     private List<Log> logs;
 
     @Data

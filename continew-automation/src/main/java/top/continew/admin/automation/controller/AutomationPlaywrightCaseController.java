@@ -25,6 +25,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -50,8 +51,11 @@ public class AutomationPlaywrightCaseController {
     @SaCheckPermission("automation:automationUiScene:get")
     @GetMapping("/{caseKey}")
     public R<AutomationPlaywrightCaseResp> getCase(@PathVariable String caseKey,
-                                                   @RequestParam(required = false) Long projectEnvironmentId) {
-        return R.ok(automationPlaywrightCaseService.getCase(caseKey, projectEnvironmentId));
+                                                   @RequestParam Long projectEnvironmentId,
+                                                   @RequestParam(required = false) String batchId,
+                                                   @RequestHeader(value = "X-Execution-Capability", required = false) String executionCapability) {
+        return R.ok(automationPlaywrightCaseService
+            .getCase(caseKey, projectEnvironmentId, batchId, executionCapability));
     }
 
     @Operation(summary = "按场景和用例读取 Playwright 用例")
@@ -59,16 +63,21 @@ public class AutomationPlaywrightCaseController {
     @GetMapping("/{sceneKey}/{caseId}")
     public R<AutomationPlaywrightCaseResp> getCaseByParts(@PathVariable String sceneKey,
                                                           @PathVariable String caseId,
-                                                          @RequestParam(required = false) Long projectEnvironmentId) {
-        return R.ok(automationPlaywrightCaseService.getCase(sceneKey + ":" + caseId, projectEnvironmentId));
+                                                          @RequestParam Long projectEnvironmentId,
+                                                          @RequestParam(required = false) String batchId,
+                                                          @RequestHeader(value = "X-Execution-Capability", required = false) String executionCapability) {
+        return R.ok(automationPlaywrightCaseService
+            .getCase(sceneKey + ":" + caseId, projectEnvironmentId, batchId, executionCapability));
     }
 
     @Operation(summary = "回传 Playwright 执行结果", description = "写入规范化执行事实表，并合并用例统计和步骤明细")
     @SaCheckPermission(value = {"automation:automationUiScene:update",
         "automation:automationUiScene:execute"}, mode = SaMode.OR)
     @PostMapping("/{caseKey}/results")
-    public R<Void> saveResult(@PathVariable String caseKey, @RequestBody AutomationPlaywrightResultReq req) {
-        automationPlaywrightCaseService.saveResult(caseKey, req);
+    public R<Void> saveResult(@PathVariable String caseKey,
+                              @RequestBody AutomationPlaywrightResultReq req,
+                              @RequestHeader(value = "X-Execution-Capability", required = false) String executionCapability) {
+        automationPlaywrightCaseService.saveResult(caseKey, req, executionCapability);
         return R.ok();
     }
 
@@ -78,8 +87,9 @@ public class AutomationPlaywrightCaseController {
     @PostMapping("/{sceneKey}/{caseId}/results")
     public R<Void> saveResultByParts(@PathVariable String sceneKey,
                                      @PathVariable String caseId,
-                                     @RequestBody AutomationPlaywrightResultReq req) {
-        automationPlaywrightCaseService.saveResult(sceneKey + ":" + caseId, req);
+                                     @RequestBody AutomationPlaywrightResultReq req,
+                                     @RequestHeader(value = "X-Execution-Capability", required = false) String executionCapability) {
+        automationPlaywrightCaseService.saveResult(sceneKey + ":" + caseId, req, executionCapability);
         return R.ok();
     }
 }

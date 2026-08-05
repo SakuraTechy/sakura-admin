@@ -22,6 +22,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 import cn.dev33.satoken.annotation.SaCheckPermission;
+import cn.dev33.satoken.annotation.SaMode;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -63,6 +64,9 @@ public class AutomationRecordingController {
      * @return 导入结果
      */
     @Operation(summary = "导入 Playwright 录制结果", description = "支持 createScene、appendCase、replaceCase、appendStep、replaceStep")
+    // Controller 先拦截未授权请求；Service 再按 mode 精确区分 create 与 update 权限。
+    @SaCheckPermission(value = {"automation:automationUiScene:create",
+        "automation:automationUiScene:update"}, mode = SaMode.OR)
     @PostMapping("/import")
     public Map<String, Object> importRecording(@Valid @RequestBody AutomationRecordingImportReq req) {
         AutomationRecordingImportResp resp = automationRecordingImportService.importRecording(req);

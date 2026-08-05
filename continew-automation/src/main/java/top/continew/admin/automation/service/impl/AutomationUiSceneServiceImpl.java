@@ -70,6 +70,7 @@ import top.continew.admin.common.regex.RegexUtil;
 import top.continew.admin.common.jenkins.JenkinsService;
 import top.continew.admin.common.util.StringUtils;
 import top.continew.admin.project.mapper.ProjectConfigMapper;
+import top.continew.admin.project.mapper.ProjectDataBaseConfigMapper;
 import top.continew.admin.project.mapper.ProjectEnvironmentConfigMapper;
 import top.continew.admin.project.mapper.ProjectVersionConfigMapper;
 import top.continew.admin.project.model.entity.ProjectConfigDO;
@@ -93,6 +94,8 @@ import top.continew.admin.automation.model.resp.AutomationUiSceneResp;
 import top.continew.admin.automation.model.resp.AutomationUiSceneRevisionResp;
 import top.continew.admin.automation.service.AutomationUiSceneService;
 import top.continew.admin.automation.service.AutomationUiExecutionRecordService;
+import top.continew.admin.automation.service.AutomationJenkinsExecutionConfigResolver;
+import top.continew.admin.automation.service.AutomationJenkinsExecutionConfigResolver.ResolvedScene;
 import top.continew.admin.automation.support.AutomationStoragePressureGuard;
 import top.continew.admin.automation.service.AutomationPlanReportProgressService;
 import com.baomidou.mybatisplus.core.metadata.IPage;
@@ -118,11 +121,15 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
     private final JdbcTemplate jdbcTemplate;
     private final List<AutomationPlanReportProgressService> planReportProgressServices;
     private final AutomationUiExecutionRecordService executionRecordService;
+    private final AutomationJenkinsExecutionConfigResolver jenkinsExecutionConfigResolver;
     /** 所有场景树结构写入统一委托，兼容接口不再保留独立排序算法。 */
     private final top.continew.admin.automation.service.AutomationUiCaseTreeService caseTreeService;
 
     @Resource
     private AutomationStoragePressureGuard storagePressureGuard;
+
+    @Resource
+    private ProjectDataBaseConfigMapper projectDataBaseConfigMapper;
 
     @Override
     public void beforeCreate(AutomationUiSceneReq req) {
@@ -551,6 +558,7 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
             .getServerConfig(), ProjectServerConfigDO.class);
         ProjectDataBaseConfigDO dataBaseConfig = firstBean(projectEnvironment
             .getDataBaseConfig(), ProjectDataBaseConfigDO.class);
+        dataBaseConfig = resolveDatabaseConfig(dataBaseConfig, projectEnvironment.getProjectId());
 
         AutomationEnvironmentConfigDO automationEnvironment = automationEnvironmentConfigMapper.selectById(req
             .getAutomationEnvironmentId());
@@ -581,19 +589,44 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
             : frontendPort;
         String frontendDomain = resolveServerConfigParam(serverConfig, "前端域名");
         String serverEth = resolveServerConfigParam(serverConfig, "服务器网卡");
+        String executionDomain = StringUtils.defaultIfBlank(frontendDomain, projectEnvironment.getLastDomain());
         String testReportId = UUID.randomUUID().toString().replace("-", "");
+        String resolvedTestReportId = StringUtils.defaultIfBlank(req.getTestReportId(), testReportId);
+        String executionBatchId = "JENKINS_" + UUID.randomUUID().toString().replace("-", "");
         Path sceneWorkspaceRoot = resolveSceneWorkspaceRoot(automationProjectConfig);
+
+        Map<Long, ResolvedScene> resolvedExecutionConfigs = new LinkedHashMap<>();
+        Map<Long, Map<String, String>> caseStartUrls = new LinkedHashMap<>();
+        for (AutomationUiSceneDO scene : sceneList) {
+            ResolvedScene resolvedConfig = jenkinsExecutionConfigResolver
+                .resolve(scene, projectEnvironment, browserConfig.getName(), executionDomain);
+            resolvedExecutionConfigs.put(scene.getId(), resolvedConfig);
+            caseStartUrls.put(scene.getId(), resolvedConfig.caseStartUrls());
+        }
+        String effectiveBrowser = resolvedExecutionConfigs.values()
+            .stream()
+            .findFirst()
+            .map(ResolvedScene::browser)
+            .orElseGet(() -> AutomationUiSceneXmlUtils.normalizeBrowserName(browserConfig.getName()));
 
         AutomationUiSceneXmlUtils.BundleContext bundleContext;
         try {
             bundleContext = AutomationUiSceneXmlUtils.createBundle(sceneList, defaultString(projectConfig
                 .getName()), defaultString(projectConfig.getAbbreviate()), defaultString(versionConfig
-                    .getName()), browserConfig == null
-                        ? ""
-                        : defaultString(browserConfig.getName()), defaultString(nodeConfig
-                            .getName()), frontendDomain, serverEth, sceneWorkspaceRoot);
+                    .getName()), effectiveBrowser, defaultString(nodeConfig
+                        .getName()), executionDomain, serverEth, sceneWorkspaceRoot, caseStartUrls);
         } catch (Exception e) {
             throw new BusinessException("执行失败：生成场景 XML 压缩包失败：" + e.getMessage());
+        }
+
+        // Jenkins 属于外部副作用；queued execution 必须先独立提交并绑定 revision。
+        for (AutomationUiSceneDO scene : sceneList) {
+            Map<String, Object> preparedRecord = buildExecutingRecord(scene, executionBatchId, null, "", "", executeName, req
+                .getTestPlanId(), resolvedTestReportId, projectEnvironment, resolvedExecutionConfigs.get(scene.getId())
+                    .auditConfig());
+            preparedRecord.put("executeStatus", "queued");
+            preparedRecord.put("startedAt", null);
+            executionRecordService.saveExternalExecutionRecord(scene, preparedRecord);
         }
 
         Map<String, String> params = new LinkedHashMap<>(28);
@@ -615,30 +648,36 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
             : String.valueOf(dataBaseConfig.getPort()));
         params.put("DataBaseName", dataBaseConfig == null ? "" : defaultString(dataBaseConfig.getUserName()));
         params.put("DataBasePassWord", dataBaseConfig == null ? "" : defaultString(dataBaseConfig.getPassWord()));
-        params.put("Domain", StringUtils.isBlank(frontendDomain)
-            ? defaultString(projectEnvironment.getLastDomain())
-            : frontendDomain);
+        params.put("Domain", defaultString(executionDomain));
         params.put("Run", defaultString(nodeConfig.getName()));
         params.put("Branch", "ankki");
         params.put("jenkinsUrl", normalizeUrl(jenkinsConfig.getUrl()) + "/job/" + jobName);
         params.put("testPlanId", defaultString(req.getTestPlanId()));
-        params.put("testReportId", StringUtils.isBlank(req.getTestReportId()) ? testReportId : req.getTestReportId());
+        params.put("testReportId", resolvedTestReportId);
         params.put("sceneIds", joinSceneIds(sceneList));
-        params.put("browser", browserConfig == null ? "" : defaultString(browserConfig.getName()));
+        params.put("browser", effectiveBrowser);
         params.put("browserType", browserConfig == null ? "" : defaultString(browserConfig.getType()));
         params.put("sceneWorkspace", bundleContext.workspaceRoot().toString());
         params.put("sceneXmlDir", bundleContext.testCaseDir().toString());
         params.put("testngXmlPath", bundleContext.testngXmlPath().toString());
         params.put("extentXmlPath", bundleContext.extentXmlPath().toString());
 
-        Integer buildNumber = JenkinsService.launchJob(jenkinsConfig.getUrl(), jenkinsConfig
-            .getUserName(), jenkinsConfig.getPassWord(), jobName, params);
+        Integer buildNumber;
         try {
-            JenkinsService.close();
-        } catch (Exception e) {
-            log.warn("Failed to close Jenkins client: {}", e.getMessage());
+            buildNumber = JenkinsService.launchJob(jenkinsConfig.getUrl(), jenkinsConfig.getUserName(), jenkinsConfig
+                .getPassWord(), jobName, params);
+        } finally {
+            try {
+                JenkinsService.close();
+            } catch (Exception e) {
+                log.warn("Failed to close Jenkins client: {}", e.getMessage());
+            }
         }
-        CheckUtils.throwIf(buildNumber == null || buildNumber <= 0, "执行失败：Jenkins 构建号无效");
+        if (buildNumber == null || buildNumber <= 0) {
+            markJenkinsLaunchFailed(sceneList, executionBatchId, executeName, req
+                .getTestPlanId(), resolvedTestReportId, projectEnvironment, resolvedExecutionConfigs);
+            throw new BusinessException("执行失败：Jenkins 构建号无效");
+        }
 
         String consoleUrl = normalizeUrl(jenkinsConfig.getUrl()) + "/job/" + jobName + "/" + buildNumber + "/console";
         String testReportUrl = normalizeUrl(jenkinsConfig
@@ -647,26 +686,18 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
                     .getName())) + "/index.html";
 
         for (AutomationUiSceneDO scene : sceneList) {
-            AutomationUiSceneDO latest = baseMapper.selectById(scene.getId());
-            if (latest == null) {
+            if (baseMapper.selectById(scene.getId()) == null) {
                 continue;
             }
-            Map<String, Object> executionRecord = buildExecutingRecord(latest, buildNumber, consoleUrl, testReportUrl, executeName, req
-                .getTestPlanId(), req.getTestReportId());
-            latest.setExecuteStatus(STATUS_RUNNING);
-            latest.setExecuteResult(RESULT_NOT_EXECUTED);
-            latest.setBuildNumber(buildNumber);
-            latest.setConsoleUrl(consoleUrl);
-            latest.setTestReportUrl(testReportUrl);
-            latest.setLastResult(RESULT_NOT_EXECUTED);
-            if (StringUtils.isNotBlank(req.getTestReportId())) {
-                latest.setReportId(Long.parseLong(req.getTestReportId()));
-            }
-            executionRecordService.saveRecord(latest, executionRecord, null);
+            // 使用启动时快照保存记录，避免 Jenkins 排队期间场景编辑把 execution 绑定到新定义。
+            Map<String, Object> executionRecord = buildExecutingRecord(scene, executionBatchId, buildNumber, consoleUrl, testReportUrl, executeName, req
+                .getTestPlanId(), resolvedTestReportId, projectEnvironment, resolvedExecutionConfigs.get(scene.getId())
+                    .auditConfig());
+            executionRecordService.saveExternalExecutionRecord(scene, executionRecord);
         }
 
         AutomationUiSceneExecResp resp = new AutomationUiSceneExecResp();
-        resp.setTestReportId(StringUtils.isBlank(req.getTestReportId()) ? testReportId : req.getTestReportId());
+        resp.setTestReportId(resolvedTestReportId);
         resp.setBuildNumber(buildNumber);
         resp.setConsoleUrl(consoleUrl);
         resp.setTestReportUrl(testReportUrl);
@@ -820,6 +851,10 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
         latest.put("testReportId", StringUtils.defaultIfBlank(req.getTestReportId(), executingRecord == null
             ? null
             : String.valueOf(executingRecord.get("testReportId"))));
+        if (executingRecord != null && executingRecord.get("batchId") != null) {
+            // Jenkins 回传只有 buildNumber；沿用预执行 batchId，才能更新启动前已绑定 revision 的 execution。
+            latest.put("batchId", String.valueOf(executingRecord.get("batchId")));
+        }
         latest.put("buildNumber", ui.getBuildNumber());
         latest.put("executionType", "jenkins");
         latest.put("executionId", String.valueOf(ui.getBuildNumber()));
@@ -994,22 +1029,28 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
     /**
      * 生成执行中的历史记录快照。
      *
-     * @param scene         场景
-     * @param buildNumber   Jenkins 构建号
-     * @param consoleUrl    控制台地址
-     * @param testReportUrl 报告地址
-     * @param executeName   执行人
-     * @param testPlanId    测试计划 ID
-     * @param testReportId  测试报告 ID
+     * @param scene           场景
+     * @param batchId         服务端执行批次 ID
+     * @param buildNumber     Jenkins 构建号
+     * @param consoleUrl      控制台地址
+     * @param testReportUrl   报告地址
+     * @param executeName     执行人
+     * @param testPlanId      测试计划 ID
+     * @param testReportId    测试报告 ID
+     * @param environment     本次执行绑定的项目环境
+     * @param executionConfig 服务端冻结的最终生效配置
      * @return 历史记录
      */
     private Map<String, Object> buildExecutingRecord(AutomationUiSceneDO scene,
+                                                     String batchId,
                                                      Integer buildNumber,
                                                      String consoleUrl,
                                                      String testReportUrl,
                                                      String executeName,
                                                      String testPlanId,
-                                                     String testReportId) {
+                                                     String testReportId,
+                                                     ProjectEnvironmentConfigDO environment,
+                                                     Map<String, Object> executionConfig) {
         Map<String, Object> record = new HashMap<>(16);
         int caseTotal = scene.getCaseList() == null ? 0 : scene.getCaseList().size();
         int stepTotal = 0;
@@ -1023,9 +1064,9 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
         record.put("testPlanId", testPlanId);
         record.put("testReportId", testReportId);
         record.put("buildNumber", buildNumber);
-        record.put("batchId", String.valueOf(buildNumber));
+        record.put("batchId", batchId);
         record.put("executionType", "jenkins");
-        record.put("executionId", String.valueOf(buildNumber));
+        record.put("executionId", batchId);
         record.put("startedAt", java.time.OffsetDateTime.now().toString());
         record.put("finishedAt", null);
         record.put("artifactUrls", Map
@@ -1033,6 +1074,9 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
         record.put("consoleUrl", consoleUrl);
         record.put("testReportUrl", testReportUrl);
         record.put("executeName", executeName);
+        record.put("projectEnvironmentId", environment == null ? null : environment.getId());
+        record.put("projectEnvironmentName", environment == null ? null : environment.getName());
+        record.put("executionConfig", executionConfig == null ? Map.of() : executionConfig);
         record.put("executeStatus", STATUS_RUNNING);
         record.put("executeResult", RESULT_NOT_EXECUTED);
         record.put("duration", "-");
@@ -1046,6 +1090,27 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
         record.put("stepFail", 0);
         record.put("stepSkip", 0);
         return record;
+    }
+
+    private void markJenkinsLaunchFailed(List<AutomationUiSceneDO> sceneList,
+                                         String batchId,
+                                         String executeName,
+                                         String testPlanId,
+                                         String testReportId,
+                                         ProjectEnvironmentConfigDO environment,
+                                         Map<Long, ResolvedScene> resolvedExecutionConfigs) {
+        for (AutomationUiSceneDO scene : sceneList) {
+            ResolvedScene resolvedConfig = resolvedExecutionConfigs.get(scene.getId());
+            Map<String, Object> failedRecord = buildExecutingRecord(scene, batchId, null, "", "", executeName, testPlanId, testReportId, environment, resolvedConfig == null
+                ? Map.of()
+                : resolvedConfig.auditConfig());
+            failedRecord.put("executeStatus", "completed");
+            failedRecord.put("executeResult", "failed");
+            failedRecord.put("finishedAt", java.time.OffsetDateTime.now().toString());
+            failedRecord.put("errorCode", "JENKINS_LAUNCH_FAILED");
+            failedRecord.put("errorMessage", "Jenkins 启动失败或未返回有效构建号");
+            executionRecordService.saveExternalExecutionRecord(scene, failedRecord);
+        }
     }
 
     private String joinSceneIds(List<AutomationUiSceneDO> sceneList) {
@@ -1072,6 +1137,20 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
             }
         }
         return nodeList.get(0);
+    }
+
+    private ProjectDataBaseConfigDO resolveDatabaseConfig(ProjectDataBaseConfigDO snapshot, Long projectId) {
+        if (snapshot == null) {
+            return null;
+        }
+        CheckUtils.throwIfNull(snapshot.getId(), "执行失败：项目环境数据库配置缺少主数据 ID");
+        if (projectDataBaseConfigMapper == null) {
+            return snapshot;
+        }
+        ProjectDataBaseConfigDO current = projectDataBaseConfigMapper.selectById(snapshot.getId());
+        CheckUtils.throwIfNull(current, "执行失败：项目环境数据库配置不存在");
+        CheckUtils.throwIf(!Objects.equals(projectId, current.getProjectId()), "执行失败：数据库配置与项目环境不一致");
+        return current;
     }
 
     private String resolveJobName(AutomationJenkinsConfigDO jenkinsConfig) {

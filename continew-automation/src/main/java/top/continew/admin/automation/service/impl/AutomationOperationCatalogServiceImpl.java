@@ -77,18 +77,16 @@ public class AutomationOperationCatalogServiceImpl implements AutomationOperatio
 
     @Override
     public AutomationOperationCatalog getCatalog(Long sceneId,
-                                                  Long projectEnvironmentId,
-                                                  String executorInstanceId,
-                                                  String principalScope,
-                                                  String sessionId,
-                                                  boolean canAddStep,
-                                                  boolean canExecuteInfrastructure,
-                                                  Set<String> agentTypes,
-                                                  Set<String> agentFeatures) {
+                                                 Long projectEnvironmentId,
+                                                 String executorInstanceId,
+                                                 String principalScope,
+                                                 String sessionId,
+                                                 boolean canAddStep,
+                                                 boolean canExecuteInfrastructure,
+                                                 Set<String> agentTypes,
+                                                 Set<String> agentFeatures) {
         cleanupExpiredSnapshots();
-        CatalogRequestScope scope = new CatalogRequestScope(sceneId, projectEnvironmentId, executorInstanceId,
-            principalScope, sessionId, canAddStep, canExecuteInfrastructure, normalizeSet(agentTypes), normalizeSet(
-                agentFeatures));
+        CatalogRequestScope scope = new CatalogRequestScope(sceneId, projectEnvironmentId, executorInstanceId, principalScope, sessionId, canAddStep, canExecuteInfrastructure, normalizeSet(agentTypes), normalizeSet(agentFeatures));
         AutomationOperationCatalog response = objectMapper.convertValue(catalog, AutomationOperationCatalog.class);
         for (AutomationOperationCatalog.OperationType type : response.getTypes()) {
             for (AutomationOperationCatalog.OperationMethod method : type.getMethods()) {
@@ -111,6 +109,22 @@ public class AutomationOperationCatalogServiceImpl implements AutomationOperatio
             .convertValue(method, AutomationOperationCatalog.OperationMethod.class);
         applyStaticAvailability(copy);
         return Optional.of(copy);
+    }
+
+    @Override
+    public Optional<OperationDescriptor> findOperation(String methodCodeOrAction) {
+        Optional<AutomationOperationCatalog.OperationMethod> resolved = findMethod(methodCodeOrAction);
+        if (resolved.isEmpty()) {
+            return Optional.empty();
+        }
+        AutomationOperationCatalog.OperationMethod method = resolved.get();
+        return catalog.getTypes()
+            .stream()
+            .filter(type -> type.getMethods()
+                .stream()
+                .anyMatch(candidate -> candidate.getMethodCode().equals(method.getMethodCode())))
+            .findFirst()
+            .map(type -> new OperationDescriptor(type.getTypeCode(), type.getLabel(), method));
     }
 
     @Override
@@ -146,7 +160,8 @@ public class AutomationOperationCatalogServiceImpl implements AutomationOperatio
             scope = scope + ":" + sessionId;
         }
         Instant reportedAt = Instant.now();
-        CapabilitySnapshotKey key = new CapabilitySnapshotKey(executor, instanceId, req.getProjectEnvironmentId(), scope);
+        CapabilitySnapshotKey key = new CapabilitySnapshotKey(executor, instanceId, req
+            .getProjectEnvironmentId(), scope);
         capabilitySnapshots.put(key, new CapabilitySnapshot(req.getExecutorVersion(), Set.copyOf(actions), Set
             .copyOf(features), reportedAt, reportedAt.plus(CAPABILITY_SNAPSHOT_TTL)));
     }
@@ -262,8 +277,8 @@ public class AutomationOperationCatalogServiceImpl implements AutomationOperatio
         }
         if (requiresAgent(method)) {
             Set<String> requiredAgentTypes = requiredAgentTypes(method);
-            if (!scope.agentTypes().containsAll(requiredAgentTypes)
-                || !scope.agentFeatures().containsAll(requiredFeatures(method))) {
+            if (!scope.agentTypes().containsAll(requiredAgentTypes) || !scope.agentFeatures()
+                .containsAll(requiredFeatures(method))) {
                 disable(method, disabledCodeForAgent(method.getActionType()), "当前环境没有满足安全前置条件的执行 Agent");
                 return;
             }
@@ -296,8 +311,9 @@ public class AutomationOperationCatalogServiceImpl implements AutomationOperatio
             .filter(entry -> executor.equals(entry.getKey().executorType()))
             .filter(entry -> scope.projectEnvironmentId().equals(entry.getKey().projectEnvironmentId()))
             .filter(entry -> !"cuecast".equals(executor) || cuecastScope.equals(entry.getKey().principalScope()))
-            .filter(entry -> !"playwright".equals(executor) || scope.executorInstanceId() == null || scope.executorInstanceId().isBlank()
-                || normalize(scope.executorInstanceId()).equals(entry.getKey().executorInstanceId()))
+            .filter(entry -> !"playwright".equals(executor) || scope.executorInstanceId() == null || scope
+                .executorInstanceId()
+                .isBlank() || normalize(scope.executorInstanceId()).equals(entry.getKey().executorInstanceId()))
             .filter(entry -> entry.getValue().expiresAt().isAfter(Instant.now()))
             .toList();
         if (candidates.isEmpty()) {
@@ -305,7 +321,10 @@ public class AutomationOperationCatalogServiceImpl implements AutomationOperatio
         }
         // Playwright 是节点能力，不允许多个节点在未指定实例时互相污染目录状态。
         if ("playwright".equals(executor) && (scope.executorInstanceId() == null || scope.executorInstanceId()
-            .isBlank()) && candidates.stream().map(entry -> entry.getKey().executorInstanceId()).distinct().count() != 1) {
+            .isBlank()) && candidates.stream()
+                .map(entry -> entry.getKey().executorInstanceId())
+                .distinct()
+                .count() != 1) {
             return null;
         }
         return candidates.stream()
@@ -403,9 +422,9 @@ public class AutomationOperationCatalogServiceImpl implements AutomationOperatio
     }
 
     private record CatalogRequestScope(Long sceneId, Long projectEnvironmentId, String executorInstanceId,
-                                       String principalScope,
-                                       String sessionId, boolean canAddStep, boolean canExecuteInfrastructure,
-                                       Set<String> agentTypes, Set<String> agentFeatures) {
+                                       String principalScope, String sessionId, boolean canAddStep,
+                                       boolean canExecuteInfrastructure, Set<String> agentTypes,
+                                       Set<String> agentFeatures) {
     }
 
     private record CapabilitySnapshotKey(String executorType, String executorInstanceId, Long projectEnvironmentId,

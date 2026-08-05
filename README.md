@@ -275,8 +275,41 @@ git clone https://github.com/continew-org/continew-admin.git
 # [3.也可以在 IntelliJ IDEA 中直接配置程序启动环境变量（DB_HOST、DB_PORT、DB_USER、DB_PWD、DB_NAME；REDIS_HOST、REDIS_PORT、REDIS_PWD、REDIS_DB）]
 
 # 4.启动程序
-# 4.1 启动成功：访问 http://localhost:8000/，页面输出：Xxx started successfully.
-# 4.2 接口文档：http://localhost:8000/doc.html
+# 4.1 开发态热重启启动（推荐用于改代码后实时验证）
+cd D:\King\sakura\sakura-admin
+.\dev-start.ps1
+
+# 4.1.1 已经执行过 dev-start.ps1 且未改依赖时，可跳过打包直接启动：
+.\dev-start.ps1 -SkipPackage
+
+# 4.1.2 如果系统拦截 PowerShell 脚本执行，可使用：
+powershell.exe -ExecutionPolicy Bypass -File .\dev-start.ps1
+
+# 4.1.3 代码修改后需要让 IDE 自动编译到 target/classes，Spring Boot DevTools 会自动重启应用。
+#       如果未开启 IDE 自动编译，可另开终端手动执行以下命令触发重启：
+mvn -pl continew-webapi -am compile -DskipTests '-Dspotless.apply.skip=true'
+
+# 4.2 普通打包启动（部署或验证完整产物时使用）
+cd D:\King\sakura\sakura-admin
+mvn clean package -DskipTests '-Dspotless.apply.skip=true'
+java -jar .\continew-webapi\target\app\bin\continew-admin.jar
+
+# 4.3 如果必须使用 Maven 命令启动，可在打包后用 exec:exec 调用 java -jar
+cd D:\King\sakura\sakura-admin
+mvn -pl continew-webapi -am package -DskipTests '-Dspotless.apply.skip=true'
+mvn -f .\continew-webapi\pom.xml exec:exec '-Dexec.executable=java' '-Dexec.args=-jar target\app\bin\continew-admin.jar'
+
+# 4.4 注意：Windows PowerShell 中带点号的 -D 参数必须加英文引号，避免 Maven 将参数拆错。
+# 4.5 注意：本地启动时建议加 '-Dspotless.apply.skip=true'，避免 compile 阶段执行 spotless 修改代码或找不到 .style 配置。
+# 4.6 注意：dev-start.ps1 使用 -Ddevtools=true 生成本地开发依赖；普通打包建议使用 clean package 清理开发态产物。
+# 4.7 注意：当前不推荐在 continew-webapi 子模块直接执行 mvn spring-boot:run，
+#     因 continew-common 的 systemPath 依赖会让本地仓库 POM 被 Maven 判定为 invalid，
+#     导致传递依赖缺失，并可能报 AbstractBaseController.class 不存在。
+# 4.8 注意：不要直接在根目录执行 mvn -pl continew-webapi -am spring-boot:run，
+#     否则 Maven 可能先在父工程 continew-admin 上执行 spring-boot:run，
+#     因父工程是 pom 聚合模块、没有启动类而失败。
+# 4.9 启动成功：访问 http://localhost:8000/，页面输出：Xxx started successfully.
+# 4.10 接口文档：http://localhost:8000/doc.html
 
 # 5.部署
 # 5.1 Docker 部署

@@ -17,6 +17,7 @@
 package top.continew.admin.automation.service;
 
 import top.continew.admin.automation.model.req.infrastructure.AutomationInfrastructureTaskCreateReq;
+import top.continew.admin.automation.model.req.infrastructure.AutomationInfrastructureTaskDispositionReq;
 import top.continew.admin.automation.model.resp.infrastructure.AutomationInfrastructureTaskResp;
 import top.continew.admin.automation.model.resp.infrastructure.AutomationInfrastructureTargetResp;
 
@@ -30,6 +31,19 @@ public interface AutomationInfrastructureTaskService {
 
     AutomationInfrastructureTaskResp get(String taskId, Long afterSequence);
 
+    AutomationInfrastructureTaskResp get(String taskId, Long afterSequence, String executionCapability);
+
     AutomationInfrastructureTaskResp cancel(String taskId);
+
+    AutomationInfrastructureTaskResp cancel(String taskId, String executionCapability);
+
+    AutomationInfrastructureTaskResp disposeUnknownOutcome(String taskId,
+                                                           AutomationInfrastructureTaskDispositionReq req,
+                                                           String executionCapability);
+
+    ArtifactDownload downloadArtifact(String taskId, String executionCapability);
+
+    record ArtifactDownload(String fileName, String contentType, byte[] bytes, String sha256) {
+    }
 
 }

@@ -20,6 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -42,6 +43,7 @@ import top.continew.admin.automation.converter.AutomationPlaywrightStepExtractor
 import top.continew.admin.automation.mapper.AutomationUiSceneMapper;
 import top.continew.admin.automation.model.entity.AutomationUiSceneDO;
 import top.continew.admin.automation.model.entity.ui.CaseDO;
+import top.continew.admin.automation.model.entity.ui.CaseExecutionConfigDO;
 import top.continew.admin.automation.model.entity.ui.StepDO;
 import top.continew.admin.automation.model.req.playwright.AutomationPlaywrightBatchCreateReq;
 import top.continew.admin.automation.model.req.playwright.AutomationPlaywrightBatchCaseStatusReq;
@@ -49,7 +51,10 @@ import top.continew.admin.automation.model.req.playwright.AutomationPlaywrightRe
 import top.continew.admin.automation.model.resp.playwright.AutomationPlaywrightBatchResp;
 import top.continew.admin.automation.model.resp.playwright.AutomationPlaywrightCaseResp;
 import top.continew.admin.automation.service.AutomationPlaywrightSessionStateService;
+import top.continew.admin.automation.service.AutomationCaseExecutionClassifier;
 import top.continew.admin.automation.service.AutomationUiExecutionRecordService;
+import top.continew.admin.automation.service.AutomationUiExecutionRecordService.FrozenExecutionCase;
+import top.continew.admin.automation.service.EffectiveExecutionConfigResolver;
 import top.continew.admin.common.enums.DisEnableStatusEnum;
 import top.continew.admin.project.mapper.ProjectConfigMapper;
 import top.continew.admin.project.mapper.ProjectEnvironmentConfigMapper;
@@ -82,9 +87,9 @@ class AutomationPlaywrightCaseServiceImplTest {
     @BeforeEach
     void setUp() {
         service = new AutomationPlaywrightCaseServiceImpl(sceneMapper, stepExtractor, environmentMapper, projectConfigMapper, new AutomationPlaybackUrlRewriter(), List
-            .of(), sessionStateService, executionRecordService);
+            .of(), sessionStateService, executionRecordService, new EffectiveExecutionConfigResolver(), new AutomationCaseExecutionClassifier(stepExtractor));
         lenient().when(stepExtractor.extract(any(StepDO.class), anyInt()))
-            .thenReturn(Map.of("start_url", "https://172.19.5.45/login"));
+            .thenReturn(Map.of("action_type", "navigate", "start_url", "https://172.19.5.45/login"));
         // 这些旧单测通过内存 mock 模拟规范化执行表，生产代码不会再写 scene JSON。
         lenient().doAnswer(invocation -> {
             AutomationUiSceneDO scene = invocation.getArgument(0);
@@ -143,9 +148,65 @@ class AutomationPlaywrightCaseServiceImplTest {
     }
 
     @Test
+    void shouldReadCaseExecutionConfigBeforeLegacyStepConfig() {
+        AutomationUiSceneDO storedScene = scene(1L);
+        CaseExecutionConfigDO config = new CaseExecutionConfigDO();
+        config.setStartUrl("https://case-config.example/login");
+        config.setWindowSizeMode("custom");
+        config.setViewportWidth(1280);
+        config.setViewportHeight(720);
+        config.setScreenshotMode("full");
+        config.setPageErrorCheckEnabled(1);
+        storedScene.getCaseList().get(0).setExecutionConfig(config);
+        when(sceneMapper.selectById(100L)).thenReturn(storedScene);
+        when(stepExtractor.extract(any(StepDO.class), anyInt())).thenReturn(Map
+            .of("start_url", "https://legacy-step.example/login", "window_size_mode", "maximized"));
+
+        AutomationPlaywrightCaseResp response = service.getCase("100:CASE_001");
+
+        assertThat(response.getStartUrl()).isEqualTo("https://case-config.example/login");
+        assertThat(response.getWindowSizeMode()).isEqualTo("custom");
+        assertThat(response.getViewportWidth()).isEqualTo(1280);
+        assertThat(response.getViewportHeight()).isEqualTo(720);
+        assertThat(response.getScreenshotMode()).isEqualTo("full");
+        assertThat(response.getPageErrorCheckEnabled()).isEqualTo(1);
+    }
+
+    @Test
+    void shouldReadBatchCaseAndEffectiveConfigFromBoundRevision() {
+        AutomationUiSceneDO currentScene = scene(1L);
+        currentScene.setCaseList(List.of());
+        when(sceneMapper.selectById(100L)).thenReturn(currentScene);
+        when(executionRecordService.findBatch(100L, "BATCH_FROZEN")).thenReturn(Map
+            .of("batchId", "BATCH_FROZEN", "caseResults", List.of(Map.of("case_id", "CASE_001"))));
+        when(executionRecordService.matchesExecutionCapability(100L, "BATCH_FROZEN", "capability")).thenReturn(true);
+
+        CaseDO frozenCase = scene(1L).getCaseList().get(0);
+        frozenCase.setName("冻结用例");
+        CaseExecutionConfigDO frozenConfig = new CaseExecutionConfigDO();
+        frozenConfig.setStartUrl("https://revision.example/original");
+        frozenCase.setExecutionConfig(frozenConfig);
+        Map<String, Object> effectiveConfig = Map
+            .of("start_url", "https://revision.example/effective", "window_size_mode", "viewport", "viewport_width", 1440, "viewport_height", 900, "page_error_check_enabled", true);
+        when(executionRecordService.findFrozenCase(100L, "BATCH_FROZEN", "CASE_001"))
+            .thenReturn(new FrozenExecutionCase(frozenCase, 7001L, null, effectiveConfig));
+
+        AutomationPlaywrightCaseResp response = service.getCase("100:CASE_001", null, "BATCH_FROZEN", "capability");
+
+        assertThat(response.getName()).isEqualTo("冻结用例");
+        assertThat(response.getDefinitionRevisionId()).isEqualTo(7001L);
+        assertThat(response.getStartUrl()).isEqualTo("https://revision.example/effective");
+        assertThat(response.getViewportWidth()).isEqualTo(1440);
+        assertThat(response.getViewportHeight()).isEqualTo(900);
+        assertThat(response.getPageErrorCheckEnabled()).isEqualTo(1);
+        assertThat(response.getEffectiveExecutionConfig()).isEqualTo(effectiveConfig);
+    }
+
+    @Test
     void shouldRejectEnvironmentWithoutFrontendAddress() {
         when(sceneMapper.selectById(100L)).thenReturn(scene(1L));
         ProjectEnvironmentConfigDO environment = environment(1L);
+        environment.setLastDomain(null);
         environment.setServerConfig(List.of());
         when(environmentMapper.selectById(47L)).thenReturn(environment);
 
@@ -230,6 +291,7 @@ class AutomationPlaywrightCaseServiceImplTest {
         raw.put("finished_at", "2026-07-15T09:15:36.123Z");
         raw.put("detail", Map.of("console_events", List.of(Map.of("timestamp", "2026-07-15T09:15:35.456Z"))));
         raw.put("response_snapshot", Map.of("captured_at", "2026-07-15T09:15:35.789Z"));
+        raw.put("artifacts", Map.of("execution_log", "/automation/playwright/artifacts/files/124"));
         AutomationPlaywrightResultReq request = new AutomationPlaywrightResultReq();
         request.setStatus("passed");
         request.setSuccess(true);
@@ -249,6 +311,10 @@ class AutomationPlaywrightCaseServiceImplTest {
         assertThat(consoleEvents.get(0).get("timestamp")).isEqualTo("2026-07-15 17:15:35");
         Map<String, Object> responseSnapshot = (Map<String, Object>)storedResult.get("response_snapshot");
         assertThat(responseSnapshot.get("captured_at")).isEqualTo("2026-07-15 17:15:35");
+        assertThat(storedRecord).doesNotContainKeys("playwrightArtifacts", "artifactUrls", "artifactUploadErrors");
+        Map<String, Object> storedCase = (Map<String, Object>)((List<?>)storedRecord.get("caseResults")).get(0);
+        assertThat(storedCase.get("artifact_urls")).isEqualTo(Map
+            .of("execution_log", "/automation/playwright/artifacts/files/124"));
         verify(sceneMapper).updateById(storedScene);
     }
 
@@ -300,6 +366,35 @@ class AutomationPlaywrightCaseServiceImplTest {
 
     @Test
     @SuppressWarnings("unchecked")
+    void shouldPersistInfrastructurePreviewInStepDetails() {
+        AutomationUiSceneDO storedScene = scene(1L);
+        when(sceneMapper.selectById(100L)).thenReturn(storedScene);
+        when(stepExtractor.extract(any(StepDO.class), anyInt())).thenReturn(Map
+            .of("id", "STEP_001", "step_index", 0, "action_type", "server_command"));
+
+        Map<String, Object> infrastructure = Map
+            .of("schemaVersion", 2, "kind", "SERVER_COMMAND", "exitCode", 0, "durationMs", 18, "results", List
+                .of(), "stdout", "command completed", "stderr", "", "truncated", false);
+        Map<String, Object> raw = new LinkedHashMap<>();
+        raw.put("steps", List.of(Map
+            .of("step_index", 0, "step_id", "STEP_001", "action_type", "server_command", "status", "passed", "infrastructure_task_id", "INFRA_001", "details", Map
+                .of("infrastructure", infrastructure))));
+        AutomationPlaywrightResultReq request = new AutomationPlaywrightResultReq();
+        request.setStatus("passed");
+        request.setSuccess(true);
+        request.setDurationMs(18L);
+        request.setRaw(raw);
+
+        service.saveResult("100:CASE_001", request);
+
+        Map<String, Object> record = (Map<String, Object>)storedScene.getDebugRecord().get(0);
+        Map<String, Object> storedStep = (Map<String, Object>)((List<?>)record.get("stepResults")).get(0);
+        assertThat(storedStep).containsEntry("infrastructure_task_id", "INFRA_001");
+        assertThat((Map<String, Object>)storedStep.get("details")).containsEntry("infrastructure", infrastructure);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
     void shouldCreateFourteenDigitBatchAndExecutionIds() {
         AutomationUiSceneDO storedScene = scene(1L);
         when(sceneMapper.selectById(100L)).thenReturn(storedScene);
@@ -318,6 +413,10 @@ class AutomationPlaywrightCaseServiceImplTest {
         assertThat(response.getCases()).hasSize(1);
         assertThat(response.getCases().get(0).getStatus()).isEqualTo("queued");
         assertThat(response.getCases().get(0).getExecutionId()).matches("\\d{14}").isNotEqualTo(response.getBatchId());
+        assertThat(response.getCases().get(0).getEffectiveExecutionConfig())
+            .containsEntry("start_url", "https://172.19.5.47/login");
+        assertThat((Map<String, String>)response.getCases().get(0).getEffectiveExecutionConfig().get("sources"))
+            .containsEntry("start_url", "environment");
         Map<String, Object> storedBatch = (Map<String, Object>)storedScene.getDebugRecord().get(0);
         Map<String, Object> storedCase = (Map<String, Object>)((List<?>)storedBatch.get("caseResults")).get(0);
         assertThat(storedBatch.get("batchId")).isEqualTo(response.getBatchId());
@@ -382,6 +481,75 @@ class AutomationPlaywrightCaseServiceImplTest {
     }
 
     @Test
+    void shouldRejectResultForUnknownBatchInsteadOfCreatingStandaloneRecord() {
+        AutomationUiSceneDO storedScene = scene(1L);
+        when(sceneMapper.selectById(100L)).thenReturn(storedScene);
+
+        Map<String, Object> raw = new LinkedHashMap<>();
+        raw.put("batch_id", "BATCH_MISSING");
+        raw.put("run_id", "RUN_MISSING");
+        AutomationPlaywrightResultReq result = new AutomationPlaywrightResultReq();
+        result.setStatus("passed");
+        result.setSuccess(true);
+        result.setRaw(raw);
+
+        assertThatThrownBy(() -> service.saveResult("100:CASE_001", result)).hasMessageContaining("执行批次不存在")
+            .hasMessageContaining("BATCH_MISSING");
+        verify(executionRecordService, never())
+            .saveRecord(any(AutomationUiSceneDO.class), any(Map.class), nullable(String.class));
+    }
+
+    @Test
+    void shouldRequireMatchingCapabilityForRunnerBatchCallback() {
+        AutomationUiSceneDO storedScene = scene(1L);
+        when(sceneMapper.selectById(100L)).thenReturn(storedScene);
+        when(environmentMapper.selectById(47L)).thenReturn(environment(1L));
+        AutomationPlaywrightBatchCreateReq batchRequest = new AutomationPlaywrightBatchCreateReq();
+        batchRequest.setSceneKey("100");
+        batchRequest.setExecutionType("playwright-runner");
+        batchRequest.setCaseIds(List.of("CASE_001"));
+        batchRequest.setProjectEnvironmentId(47L);
+        AutomationPlaywrightBatchResp batch = service.createBatch(batchRequest);
+
+        Map<String, Object> raw = new LinkedHashMap<>();
+        raw.put("batch_id", batch.getBatchId());
+        raw.put("run_id", batch.getCases().get(0).getExecutionId());
+        AutomationPlaywrightResultReq result = new AutomationPlaywrightResultReq();
+        result.setStatus("passed");
+        result.setSuccess(true);
+        result.setRaw(raw);
+
+        when(executionRecordService.matchesExecutionCapability(100L, batch.getBatchId(), batch
+            .getExecutionCapability())).thenReturn(false);
+        assertThatThrownBy(() -> service.saveResult("100:CASE_001", result, batch.getExecutionCapability()))
+            .hasMessageContaining("EXECUTION_SCOPE_DENIED");
+
+        when(executionRecordService.matchesExecutionCapability(100L, batch.getBatchId(), batch
+            .getExecutionCapability())).thenReturn(true);
+        service.saveResult("100:CASE_001", result, batch.getExecutionCapability());
+        verify(executionRecordService, atLeastOnce())
+            .saveRecord(any(AutomationUiSceneDO.class), any(Map.class), nullable(String.class));
+    }
+
+    @Test
+    void shouldRequireMatchingCapabilityWhenRunnerReadsBatchCase() {
+        AutomationUiSceneDO storedScene = scene(1L);
+        when(sceneMapper.selectById(100L)).thenReturn(storedScene);
+        when(environmentMapper.selectById(47L)).thenReturn(environment(1L));
+        AutomationPlaywrightBatchCreateReq batchRequest = new AutomationPlaywrightBatchCreateReq();
+        batchRequest.setSceneKey("100");
+        batchRequest.setExecutionType("playwright-runner");
+        batchRequest.setCaseIds(List.of("CASE_001"));
+        batchRequest.setProjectEnvironmentId(47L);
+        AutomationPlaywrightBatchResp batch = service.createBatch(batchRequest);
+
+        when(executionRecordService.matchesExecutionCapability(100L, batch.getBatchId(), batch
+            .getExecutionCapability())).thenReturn(false);
+        assertThatThrownBy(() -> service.getCase("100:CASE_001", 47L, batch.getBatchId(), batch
+            .getExecutionCapability())).hasMessageContaining("EXECUTION_SCOPE_DENIED");
+    }
+
+    @Test
     void shouldRejectPlanBatchWhenSceneIsNotRelated() {
         AutomationUiSceneDO storedScene = scene(1L);
         storedScene.setTestPlanId(List.<Object>of("PLAN_002"));
@@ -443,10 +611,13 @@ class AutomationPlaywrightCaseServiceImplTest {
         raw.put("run_id", "RUN_001");
         raw.put("started_at", "2026-07-17T02:00:01Z");
         raw.put("finished_at", "2026-07-17T02:00:02Z");
+        raw.put("executionCapability", "short-lived-secret");
         raw.put("steps", List.of(stepResult));
         raw.put("execution_logs", List.of(Map.of("timestamp", "2026-07-17T02:00:00Z", "message", "Runner 任务开始"), Map
             .of("timestamp", "2026-07-17T02:00:01.200Z", "message", "[runner] passed")));
         raw.put("screenshot_base64", "data:image/png;base64,AAAA");
+        raw.put("diagnostics", Map
+            .of("safe", "保留", "nested_screenshot_base64", "AAAA", "preview", "data:image/png;base64,BBBB"));
         raw.put("artifacts", Map.of("report_html", "/api/report/RUN_001", "trace", "D:\\runner\\RUN_001\\trace.zip"));
         raw.put("artifact_file_ids", Map.of("report_html", "10001"));
         AutomationPlaywrightResultReq request = new AutomationPlaywrightResultReq();
@@ -471,6 +642,8 @@ class AutomationPlaywrightCaseServiceImplTest {
         assertThat(storedCase.get("artifact_file_ids")).isEqualTo(Map.of("report_html", "10001"));
         Map<String, Object> storedRawResult = (Map<String, Object>)storedCase.get("playwright_result");
         assertThat(storedRawResult).doesNotContainKey("screenshot_base64");
+        assertThat(storedRawResult).doesNotContainKey("executionCapability");
+        assertThat(storedRawResult).containsEntry("diagnostics", Map.of("safe", "保留"));
         assertThat(storedRawResult)
             .doesNotContainKeys("steps", "artifacts", "artifact_file_ids", "artifact_upload_errors");
         assertThat(storedStep.get("step_name")).isEqualTo("点击登录按钮");
@@ -675,6 +848,7 @@ class AutomationPlaywrightCaseServiceImplTest {
         ProjectEnvironmentConfigDO environment = new ProjectEnvironmentConfigDO();
         environment.setId(47L);
         environment.setProjectId(projectId);
+        environment.setLastDomain("https://172.19.5.47");
         environment.setStatus(DisEnableStatusEnum.ENABLE);
         return environment;
     }

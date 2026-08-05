@@ -28,6 +28,7 @@ import org.dromara.x.file.storage.core.FileInfo;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import top.continew.admin.automation.service.AutomationRecordingScreenshotService;
+import top.continew.admin.automation.service.AutomationRecordingScreenshotService.ScreenshotStorageException;
 import top.continew.admin.system.service.FileService;
 import top.continew.starter.core.exception.BusinessException;
 
@@ -71,7 +72,7 @@ public class AutomationRecordingScreenshotServiceImpl implements AutomationRecor
             return new ScreenshotArtifact(fileInfo.getUrl(), relativePathText, String.valueOf(fileInfo
                 .getId()), fileInfo.getThUrl(), parsed.contentType(), parsed.bytes().length);
         } catch (Exception e) {
-            throw new BusinessException("录制导入失败：保存截图 artifact 失败：" + e.getMessage());
+            throw new ScreenshotStorageException("录制导入失败：保存截图 artifact 失败：" + e.getMessage(), e);
         }
     }
 

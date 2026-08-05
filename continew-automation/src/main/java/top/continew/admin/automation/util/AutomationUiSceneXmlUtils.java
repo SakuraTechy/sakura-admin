@@ -89,6 +89,20 @@ public final class AutomationUiSceneXmlUtils {
                                              String domain,
                                              String serverEth,
                                              Path workspaceRoot) throws Exception {
+        return createBundle(scenes, projectName, projectAbbreviate, versionName, browserName, nodeName, domain, serverEth, workspaceRoot, Map
+            .of());
+    }
+
+    public static BundleContext createBundle(List<AutomationUiSceneDO> scenes,
+                                             String projectName,
+                                             String projectAbbreviate,
+                                             String versionName,
+                                             String browserName,
+                                             String nodeName,
+                                             String domain,
+                                             String serverEth,
+                                             Path workspaceRoot,
+                                             Map<Long, Map<String, String>> caseStartUrls) throws Exception {
         String projectSegment = sanitizeSegment(projectAbbreviate);
         String versionSegment = sanitizePathSegment(versionName);
         Path workspace = workspaceRoot == null
@@ -108,7 +122,9 @@ public final class AutomationUiSceneXmlUtils {
             .nullsLast(String::compareTo)));
         for (AutomationUiSceneDO scene : sortedScenes) {
             Files.writeString(testCaseDir.resolve(scene
-                .getSceneId() + ".xml"), buildSceneXml(scene, domain, serverEth), StandardCharsets.UTF_8);
+                .getSceneId() + ".xml"), buildSceneXml(scene, domain, serverEth, caseStartUrls == null
+                    ? Map.of()
+                    : caseStartUrls.getOrDefault(scene.getId(), Map.of())), StandardCharsets.UTF_8);
         }
         createJavaClasses(sortedScenes, workspace, projectAbbreviate, versionName);
 
@@ -188,7 +204,10 @@ public final class AutomationUiSceneXmlUtils {
         }
     }
 
-    private static String buildSceneXml(AutomationUiSceneDO scene, String domain, String serverEth) {
+    private static String buildSceneXml(AutomationUiSceneDO scene,
+                                        String domain,
+                                        String serverEth,
+                                        Map<String, String> caseStartUrls) {
         String sceneContext = buildSceneContext(scene);
         StringBuilder builder = new StringBuilder(2048);
         builder.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
@@ -219,7 +238,11 @@ public final class AutomationUiSceneXmlUtils {
                     continue;
                 }
                 String stepContext = buildStepContext(scene, caseDO, stepDO);
-                Map<String, String> dynamicAttributes = resolveStepDynamicAttributes(stepDO, domain, serverEth);
+                // Jenkins/Selenium 兼容 XML 必须消费启动前冻结的 Case start_url，不能在执行端重新合并。
+                String effectiveStartUrl = caseStartUrls == null
+                    ? domain
+                    : StringUtils.defaultIfBlank(caseStartUrls.get(caseDO.getId()), domain);
+                Map<String, String> dynamicAttributes = resolveStepDynamicAttributes(stepDO, effectiveStartUrl, serverEth);
                 Map<String, String> orderedAttributes = new LinkedHashMap<>();
                 putIfNotBlank(orderedAttributes, "type", chooseValue(stepDO.getType(), dynamicAttributes
                     .remove("type")));
@@ -423,7 +446,7 @@ public final class AutomationUiSceneXmlUtils {
         return builder.toString();
     }
 
-    private static String normalizeBrowserName(String browserName) {
+    public static String normalizeBrowserName(String browserName) {
         if (StringUtils.isBlank(browserName)) {
             return "chrome";
         }

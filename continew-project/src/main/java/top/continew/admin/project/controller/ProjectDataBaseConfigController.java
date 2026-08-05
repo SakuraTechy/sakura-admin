@@ -135,8 +135,9 @@ public class ProjectDataBaseConfigController extends BaseController<ProjectDataB
     @Operation(summary = "测试数据库配置信息", description = "测试数据库配置信息")
     @SaCheckPermission("project:projectDataBaseConfig:test")
     @PostMapping("/test")
-    public void test(@RequestBody @Validated ProjectDataBaseConfigReq projectDataBaseConfigReq) {
-        boolean isConnected = baseService.testDataBase(projectDataBaseConfigReq);
+    public void test(@RequestBody @Validated ProjectDataBaseConfigReq projectDataBaseConfigReq,
+                     @RequestParam(required = false) Long id) {
+        boolean isConnected = baseService.testDataBase(projectDataBaseConfigReq, id);
         CheckUtils.throwIf(!isConnected, "数据库连接失败，请检查环境及用户名密码是否正确且开启防火墙端口及远程访问！");
     }
 }

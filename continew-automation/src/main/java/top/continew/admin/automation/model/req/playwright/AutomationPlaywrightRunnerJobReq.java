@@ -44,6 +44,9 @@ public class AutomationPlaywrightRunnerJobReq implements Serializable {
     /** 服务端预生成的稳定单用例运行标识。 */
     private String executionId;
 
+    /** 批次创建时签发的短时执行 capability，仅用于 Runner 访问本次 ExecutionContext。 */
+    private String executionCapability;
+
     /** 产品环境只用于生成本次执行快照，不会改写场景主数据。 */
     @NotNull(message = "Playwright Runner 产品环境不能为空")
     private Long projectEnvironmentId;

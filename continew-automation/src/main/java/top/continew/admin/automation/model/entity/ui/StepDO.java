@@ -16,6 +16,7 @@
 
 package top.continew.admin.automation.model.entity.ui;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 import top.continew.admin.common.enums.StatusTypeEnum;
 
@@ -32,6 +33,7 @@ public class StepDO implements Serializable {
     private String pid;
 
     /** 兼容接口也必须携带读取时的场景定义版本。 */
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private Long expectedDefinitionVersion;
 
     private String id;
@@ -59,15 +61,21 @@ public class StepDO implements Serializable {
         private String paramsValue;
     }
 
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String copyId;
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String copyPid;
 
     private Integer order;
     private Integer sortType;
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private Integer itemOrder;
 
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private StepDO dragNode;     // 被拖拽的节点
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private StepDO dropNode;     // 放置的目标节点
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private Integer dropPosition; // 放置位置(-1:上方, 0:内部, 1:下方)
 
     private StatusTypeEnum status = StatusTypeEnum.ENABLE;

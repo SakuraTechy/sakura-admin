@@ -21,10 +21,12 @@ import java.util.Map;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import top.continew.admin.automation.mapper.AutomationUiSceneMapper;
 import top.continew.admin.automation.model.entity.AutomationUiSceneDO;
 import top.continew.admin.automation.model.resp.playwright.AutomationPlaywrightBatchResp;
 import top.continew.admin.automation.model.resp.playwright.AutomationPlaywrightCaseCancellationResp;
+import top.continew.admin.automation.model.resp.playwright.AutomationPlaywrightRunnerJobResp;
 import top.continew.admin.automation.service.AutomationPlanReportProgressService;
 import top.continew.admin.automation.service.AutomationPlaywrightCaseService;
 import top.continew.admin.automation.service.AutomationPlaywrightRunnerJobService;
@@ -36,6 +38,7 @@ import top.continew.admin.test.model.resp.TestPlanExecuteResp;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.timeout;
@@ -98,5 +101,48 @@ class TestPlanExecutionDispatchServiceTest {
 
         verify(runnerJobService).cancelBatch("BATCH_001");
         verify(caseService).cancelBatch("100", "BATCH_001");
+    }
+
+    @Test
+    void shouldNotStartRunnerForBatchCaseRejectedDuringConfigResolution() {
+        TestPlanDO plan = new TestPlanDO();
+        plan.setId(1L);
+        TestPlanExecuteResp.SceneExecution scene = new TestPlanExecuteResp.SceneExecution();
+        scene.setSceneKey("100");
+        scene.setCaseIds(List.of("CASE_BAD", "CASE_OK"));
+        AutomationPlaywrightBatchResp batch = new AutomationPlaywrightBatchResp();
+        batch.setBatchId("BATCH_001");
+        AutomationPlaywrightBatchResp.CaseExecution rejected = new AutomationPlaywrightBatchResp.CaseExecution();
+        rejected.setCaseId("CASE_BAD");
+        rejected.setStatus("failed");
+        AutomationPlaywrightBatchResp.CaseExecution queued = new AutomationPlaywrightBatchResp.CaseExecution();
+        queued.setCaseId("CASE_OK");
+        queued.setExecutionId("EXEC_001");
+        queued.setStatus("queued");
+        queued.setEffectiveExecutionConfig(Map
+            .of("browser", "firefox", "case_timeout_ms", 12000, "headed", true, "sources", Map
+                .of("browser", "case-default")));
+        batch.setCases(List.of(rejected, queued));
+        batch.setExecutionCapability("capability");
+        when(caseService.createBatch(any())).thenReturn(batch);
+        when(caseService.getCaseCancellation(anyString(), anyString(), anyString()))
+            .thenReturn(new AutomationPlaywrightCaseCancellationResp());
+        AutomationPlaywrightRunnerJobResp job = new AutomationPlaywrightRunnerJobResp();
+        job.setJobId("JOB_001");
+        job.setStatus("passed");
+        when(runnerJobService.create(any(), anyString())).thenReturn(job);
+
+        service.dispatchRunner(plan, "REPORT_001", new TestPlanExecuteReq(), List.of(scene), "token");
+
+        verify(runnerJobService, timeout(2_000)).create(argThat(request -> "100:CASE_OK".equals(request
+            .getCaseKey())), anyString());
+        ArgumentCaptor<top.continew.admin.automation.model.req.playwright.AutomationPlaywrightRunnerJobReq> requestCaptor = ArgumentCaptor
+            .forClass(top.continew.admin.automation.model.req.playwright.AutomationPlaywrightRunnerJobReq.class);
+        verify(runnerJobService, timeout(2_000)).create(requestCaptor.capture(), anyString());
+        org.junit.jupiter.api.Assertions.assertEquals("firefox", requestCaptor.getValue().getOptions().getBrowser());
+        org.junit.jupiter.api.Assertions.assertEquals(12000, requestCaptor.getValue().getOptions().getCaseTimeoutMs());
+        org.junit.jupiter.api.Assertions.assertTrue(requestCaptor.getValue().getOptions().getHeaded());
+        verify(runnerJobService, never()).create(argThat(request -> "100:CASE_BAD".equals(request
+            .getCaseKey())), anyString());
     }
 }

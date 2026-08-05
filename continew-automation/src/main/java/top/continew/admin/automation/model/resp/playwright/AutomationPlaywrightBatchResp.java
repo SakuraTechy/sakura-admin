@@ -18,6 +18,7 @@ package top.continew.admin.automation.model.resp.playwright;
 
 import java.io.Serial;
 import java.io.Serializable;
+import java.util.Map;
 import java.util.List;
 
 import lombok.Data;
@@ -32,6 +33,9 @@ public class AutomationPlaywrightBatchResp implements Serializable {
     private static final long serialVersionUID = 1L;
 
     private String batchId;
+
+    /** 仅供当前执行链路使用的短时 capability；Admin 不保存明文。 */
+    private String executionCapability;
 
     private String executionType;
 
@@ -58,5 +62,8 @@ public class AutomationPlaywrightBatchResp implements Serializable {
         private String status;
 
         private Integer stepTotal;
+
+        /** 批次创建时冻结的最终执行配置，Runner 必须使用该事实而不是重新合并默认值。 */
+        private Map<String, Object> effectiveExecutionConfig;
     }
 }

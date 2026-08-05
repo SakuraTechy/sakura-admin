@@ -27,6 +27,7 @@ import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
 import top.continew.admin.common.enums.StatusTypeEnum;
 import top.continew.admin.common.model.entity.BaseDO;
 import top.continew.admin.common.enums.DisEnableStatusEnum;
+import top.continew.starter.security.crypto.annotation.FieldEncrypt;
 
 /**
  * 项目管理-数据库配置实体
@@ -87,6 +88,8 @@ public class ProjectDataBaseConfigDO extends BaseDO {
     /**
      * 数据库密码
      */
+    // 数据库连接凭据必须加密落库，查询时由统一字段加密拦截器解密。
+    @FieldEncrypt
     private String passWord;
 
     /**

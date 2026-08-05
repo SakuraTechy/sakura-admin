@@ -18,6 +18,7 @@ package top.continew.admin.project.service.impl;
 
 import java.util.List;
 import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.core.util.StrUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -32,6 +33,7 @@ import top.continew.admin.project.model.req.ProjectDataBaseConfigReq;
 import top.continew.admin.project.model.resp.ProjectDataBaseConfigDetailResp;
 import top.continew.admin.project.model.resp.ProjectDataBaseConfigResp;
 import top.continew.admin.project.service.ProjectDataBaseConfigService;
+import top.continew.starter.core.constant.StringConstants;
 
 /**
  * 项目管理-数据库配置业务实现
@@ -64,6 +66,22 @@ public class ProjectDataBaseConfigServiceImpl extends BaseServiceImpl<ProjectDat
     }
 
     @Override
+    public void beforeUpdate(ProjectDataBaseConfigReq req, Long id) {
+        ProjectDataBaseConfigDO current = baseMapper.selectById(id);
+        this.preserveMaskedPassword(req, current);
+    }
+
+    /**
+     * 前端只持有脱敏密码，未输入新值时必须保留数据库中的原始凭据。
+     */
+    void preserveMaskedPassword(ProjectDataBaseConfigReq req, ProjectDataBaseConfigDO current) {
+        String password = req.getPassWord();
+        if (current != null && (StrUtil.isBlank(password) || password.contains(StringConstants.ASTERISK))) {
+            req.setPassWord(current.getPassWord());
+        }
+    }
+
+    @Override
     public boolean isExists(Long id, Object... param) {
         return baseMapper.lambdaQuery()
             .eq(ProjectDataBaseConfigDO::getProjectId, param[0])
@@ -78,10 +96,14 @@ public class ProjectDataBaseConfigServiceImpl extends BaseServiceImpl<ProjectDat
      * 测试数据库配置信息
      *
      * @param projectDataBaseConfigReq 数据库配置
+     * @param id                       已保存配置 ID
      * @return true：测试成功；false：测试失败
      */
     @Override
-    public boolean testDataBase(ProjectDataBaseConfigReq projectDataBaseConfigReq) {
+    public boolean testDataBase(ProjectDataBaseConfigReq projectDataBaseConfigReq, Long id) {
+        if (id != null) {
+            this.preserveMaskedPassword(projectDataBaseConfigReq, baseMapper.selectById(id));
+        }
         if (projectDataBaseConfigReq.getType().equals("MongoDB")) {
             return DataBaseUtil.testConnection(projectDataBaseConfigReq.getUrl());
         } else {

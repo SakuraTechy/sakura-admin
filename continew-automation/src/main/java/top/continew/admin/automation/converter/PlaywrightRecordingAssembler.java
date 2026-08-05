@@ -19,19 +19,26 @@ package top.continew.admin.automation.converter;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import top.continew.admin.automation.model.entity.ui.CaseDO;
+import top.continew.admin.automation.model.entity.ui.CaseExecutionConfigDO;
+import top.continew.admin.automation.model.entity.ui.CaseOriginDO;
 import top.continew.admin.automation.model.entity.ui.StepDO;
 import top.continew.admin.automation.model.req.recording.PlaywrightRecordedCaseReq;
 import top.continew.admin.automation.model.req.recording.PlaywrightRecordedStepReq;
 import top.continew.admin.automation.service.AutomationRecordingScreenshotService;
 import top.continew.admin.automation.service.AutomationRecordingScreenshotService.ScreenshotArtifact;
+import top.continew.admin.automation.service.AutomationRecordingScreenshotService.ScreenshotStorageException;
+import top.continew.admin.automation.service.AutomationOperationCatalogService;
 import top.continew.admin.common.enums.StatusTypeEnum;
 import top.continew.starter.core.exception.BusinessException;
 
@@ -44,6 +51,8 @@ import top.continew.starter.core.exception.BusinessException;
 @RequiredArgsConstructor
 public class PlaywrightRecordingAssembler {
 
+    private static final Logger log = LoggerFactory.getLogger(PlaywrightRecordingAssembler.class);
+
     public static final String DEFAULT_CASE_ID = "SCENE_CASE_001";
     public static final String STEP_ID_PREFIX = "CASE_STEP_";
     public static final String SOURCE = "sakura-playwright";
@@ -53,6 +62,7 @@ public class PlaywrightRecordingAssembler {
 
     private final ObjectMapper objectMapper;
     private final AutomationRecordingScreenshotService screenshotService;
+    private final AutomationOperationCatalogService operationCatalogService;
 
     public CaseDO toCase(PlaywrightRecordedCaseReq recordedCase, RecordingImportContext context) {
         return toCase(recordedCase, DEFAULT_CASE_ID, 1, context);
@@ -69,6 +79,21 @@ public class PlaywrightRecordingAssembler {
         caseDO.setType(TYPE_CASE);
         caseDO.setOrder(order);
         caseDO.setStatus(StatusTypeEnum.ENABLE);
+
+        CaseExecutionConfigDO executionConfig = new CaseExecutionConfigDO();
+        executionConfig.setStartUrl(recordedCase.getStartUrl());
+        executionConfig.setWindowSizeMode(recordedCase.getWindowSizeMode());
+        executionConfig.setViewportWidth(recordedCase.getViewportWidth());
+        executionConfig.setViewportHeight(recordedCase.getViewportHeight());
+        executionConfig.setScreenshotMode(recordedCase.getScreenshotMode());
+        executionConfig.setPageErrorCheckEnabled(recordedCase.getPageErrorCheckEnabled());
+        caseDO.setExecutionConfig(executionConfig);
+
+        CaseOriginDO origin = new CaseOriginDO();
+        origin.setCreationSource(SOURCE);
+        origin.setOriginalCaseId(valueToString(recordedCase.getId()));
+        origin.setInitialRecordingId(context.recordingId());
+        caseDO.setOrigin(origin);
 
         caseDO.setStepList(toSteps(recordedCase, caseId, context));
         return caseDO;
@@ -90,7 +115,7 @@ public class PlaywrightRecordingAssembler {
                          int order,
                          RecordingImportContext context) {
         String actionType = normalizeActionType(step.getActionType());
-        PlaywrightActionMapping.ActionDisplay display = PlaywrightActionMapping.resolve(actionType);
+        PlaywrightActionMapping.ActionDisplay display = resolveDisplay(actionType);
 
         StepDO stepDO = new StepDO();
         stepDO.setPid(caseId);
@@ -105,6 +130,13 @@ public class PlaywrightRecordingAssembler {
         stepDO.setStatus(StatusTypeEnum.ENABLE);
         stepDO.setConfigList(buildConfigList(recordedCase, step, actionType, caseId, stepDO.getId(), order, context));
         return stepDO;
+    }
+
+    private PlaywrightActionMapping.ActionDisplay resolveDisplay(String actionType) {
+        return operationCatalogService.findOperation(actionType)
+            .map(operation -> new PlaywrightActionMapping.ActionDisplay(operation.typeLabel(), operation.method()
+                .getLabel(), operation.method().getLegacyAction()))
+            .orElseGet(() -> PlaywrightActionMapping.resolve(actionType));
     }
 
     private List<StepDO.Config> buildConfigList(PlaywrightRecordedCaseReq recordedCase,
@@ -193,17 +225,60 @@ public class PlaywrightRecordingAssembler {
                 raw.put("screenshot_url", screenshotArtifact.url());
                 raw.put("screenshot_path", screenshotArtifact.relativePath());
                 raw.put("screenshot_file_id", screenshotArtifact.fileId());
-            } else if (context.keepRawScreenshotInStep()) {
-                raw.put("screenshot", step.getScreenshot());
             } else {
-                // screenshot base64 可能非常大，MVP 只保留存在标记，避免 caseList JSON 无界增长。
+                // 无论客户端是否传入兼容开关，都不能把截图 base64 长期写入 caseList JSON。
                 raw.put("screenshot_present", true);
             }
         }
         putIfNotNull(raw, "screenshot_focus", step.getScreenshotFocus());
         putIfNotNull(raw, "screenshot_focus_rect", step.getScreenshotFocusRect());
-        raw.putAll(step.getExtra());
+        copySafeExtraFields(raw, step.getExtra());
         return raw;
+    }
+
+    private void copySafeExtraFields(Map<String, Object> raw, Map<String, Object> extra) {
+        if (extra == null || extra.isEmpty()) {
+            return;
+        }
+        extra.forEach((key, value) -> {
+            if (containsScreenshotBinary(key, value, false)) {
+                // 未知字段也不能绕过截图文件化规则；显式 screenshot 字段已在上方处理。
+                raw.put("screenshot_present", true);
+                return;
+            }
+            raw.put(key, value);
+        });
+    }
+
+    private boolean containsScreenshotBinary(String key, Object value, boolean screenshotContext) {
+        String normalizedKey = key == null ? "" : key.toLowerCase(Locale.ROOT);
+        boolean currentScreenshotContext = screenshotContext || normalizedKey.contains("screenshot");
+        // 未知字段中的 screenshot 也必须视为二进制载荷，不能只依赖 data URL 或 base64 后缀。
+        boolean suspiciousKey = normalizedKey.equals("screenshot") || normalizedKey
+            .contains("screenshot_base64") || normalizedKey.contains("screenshot_data") || normalizedKey
+                .contains("screenshotbase64");
+        if (suspiciousKey || isImageDataUrl(value)) {
+            return true;
+        }
+        if (value instanceof Map<?, ?> map) {
+            return map.entrySet()
+                .stream()
+                .anyMatch(entry -> containsScreenshotBinary(entry.getKey() == null
+                    ? ""
+                    : String.valueOf(entry.getKey()), entry.getValue(), currentScreenshotContext));
+        }
+        if (value instanceof Iterable<?> iterable) {
+            return java.util.stream.StreamSupport.stream(iterable.spliterator(), false)
+                .anyMatch(item -> containsScreenshotBinary("", item, currentScreenshotContext));
+        }
+        return currentScreenshotContext && normalizedKey.contains("base64");
+    }
+
+    private boolean isImageDataUrl(Object value) {
+        if (!(value instanceof String text)) {
+            return false;
+        }
+        return text.regionMatches(true, 0, "data:image/", 0, 11);
     }
 
     private ScreenshotArtifact saveScreenshotIfNeeded(PlaywrightRecordedStepReq step,
@@ -213,8 +288,14 @@ public class PlaywrightRecordingAssembler {
         if (!context.persistScreenshots() || !hasText(step.getScreenshot())) {
             return null;
         }
-        return screenshotService.store(context.recordingId(), context.projectShortName(), context.versionName(), context
-            .sceneId(), caseId, adminStepId, step.getScreenshot());
+        try {
+            return screenshotService.store(context.recordingId(), context.projectShortName(), context
+                .versionName(), context.sceneId(), caseId, adminStepId, step.getScreenshot());
+        } catch (ScreenshotStorageException e) {
+            // 存储后端失败不应阻断场景导入；保留 screenshot_present 让后续人工补传或重试。
+            log.warn("录制截图 artifact 保存失败，降级为存在标记：recordingId={}, stepId={}", context.recordingId(), adminStepId, e);
+            return null;
+        }
     }
 
     private String resolveStepName(PlaywrightRecordedStepReq step,

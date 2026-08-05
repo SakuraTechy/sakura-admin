@@ -22,6 +22,9 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
 import java.util.Map;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -69,14 +72,52 @@ public class AutomationExecutionAgentClient {
         return exchange("GET", "/health", null);
     }
 
+    public ArtifactDownload downloadArtifact(String taskId) {
+        if (taskId == null || !taskId.matches("[A-Za-z0-9._-]{1,128}")) {
+            throw new BusinessException("基础设施结果附件任务 ID 非法");
+        }
+        if (token == null || token.isBlank()) {
+            throw new BusinessException("执行 Agent 令牌未配置");
+        }
+        URI uri = requireLoopbackUri("/v1/tasks/" + taskId + "/artifact");
+        try {
+            HttpRequest request = HttpRequest.newBuilder(uri)
+                .timeout(Duration.ofSeconds(35))
+                .header("Authorization", "Bearer " + token)
+                .header("Accept", "application/json")
+                .GET()
+                .build();
+            HttpResponse<byte[]> response = httpClient.send(request, HttpResponse.BodyHandlers.ofByteArray());
+            if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                throw new BusinessException("执行 Agent 附件请求失败：HTTP状态=" + response
+                    .statusCode() + " 原因=" + responseError(new String(response
+                        .body(), java.nio.charset.StandardCharsets.UTF_8)));
+            }
+            byte[] bytes = response.body();
+            String expectedDigest = response.headers().firstValue("X-Content-Sha256").orElse("");
+            String actualDigest = sha256(bytes);
+            if (!expectedDigest.matches("[0-9a-fA-F]{64}") || !MessageDigest.isEqual(expectedDigest.toLowerCase()
+                .getBytes(java.nio.charset.StandardCharsets.US_ASCII), actualDigest
+                    .getBytes(java.nio.charset.StandardCharsets.US_ASCII))) {
+                throw new BusinessException("执行 Agent 附件摘要校验失败");
+            }
+            String contentType = response.headers()
+                .firstValue("Content-Type")
+                .orElse("application/octet-stream")
+                .split(";", 2)[0];
+            return new ArtifactDownload(taskId + ".json", contentType, bytes, actualDigest);
+        } catch (BusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new BusinessException("执行 Agent 附件不可用：" + diagnosticMessage(e));
+        }
+    }
+
     private Map<String, Object> exchange(String method, String path, Object body) {
         if (token == null || token.isBlank()) {
             throw new BusinessException("执行 Agent 令牌未配置");
         }
-        URI uri = URI.create(baseUrl + path);
-        if (!"127.0.0.1".equalsIgnoreCase(uri.getHost()) && !"localhost".equalsIgnoreCase(uri.getHost())) {
-            throw new BusinessException("执行 Agent 必须使用本机回环地址");
-        }
+        URI uri = requireLoopbackUri(path);
         try {
             HttpRequest.Builder builder = HttpRequest.newBuilder(uri)
                 .timeout(Duration.ofSeconds(35))
@@ -115,6 +156,25 @@ public class AutomationExecutionAgentClient {
                 .getClass()
                 .getSimpleName() + " 原因=" + diagnosticMessage(e));
         }
+    }
+
+    private URI requireLoopbackUri(String path) {
+        URI uri = URI.create(baseUrl + path);
+        if (!"127.0.0.1".equalsIgnoreCase(uri.getHost()) && !"localhost".equalsIgnoreCase(uri.getHost())) {
+            throw new BusinessException("执行 Agent 必须使用本机回环地址");
+        }
+        return uri;
+    }
+
+    private String sha256(byte[] bytes) {
+        try {
+            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes));
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("当前 JVM 不支持 SHA-256", e);
+        }
+    }
+
+    public record ArtifactDownload(String fileName, String contentType, byte[] bytes, String sha256) {
     }
 
     private String responseError(String body) {

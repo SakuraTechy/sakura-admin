@@ -96,9 +96,8 @@ class AutomationPlaywrightStepExtractorTest {
         stepDO.setId("STEP_004");
         stepDO.setName("打开新地址");
         stepDO.setOperationValue("web-geturls");
-        stepDO.setConfigList(List.of(config("source", "admin-manual"),
-            config("playwright_step", "{\"action_type\":\"navigate\",\"url\":\"https://stale.example\"}"),
-            config("value", "https://current.example")));
+        stepDO.setConfigList(List
+            .of(config("source", "admin-manual"), config("playwright_step", "{\"action_type\":\"navigate\",\"url\":\"https://stale.example\"}"), config("value", "https://current.example")));
 
         Map<String, Object> extracted = extractor.extract(stepDO, 3);
 

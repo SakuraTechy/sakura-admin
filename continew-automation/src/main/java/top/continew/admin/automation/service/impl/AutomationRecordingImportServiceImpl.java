@@ -172,7 +172,7 @@ public class AutomationRecordingImportServiceImpl implements AutomationRecording
             .getProjectId(), scene.getProjectName(), scene.getVersionName(), scene.getSceneId());
         targetCase.setStepList(playwrightRecordingAssembler.toSteps(recordedCase, targetCase.getId(), context));
         assignNewStepIds(scene, targetCase, new ArrayList<>(), mutableStepList(targetCase), null);
-        targetCase.setName(recordedCase.getName());
+        // 兼容模式只替换步骤，保留原用例名称、备注、顺序和状态，避免旧客户端覆盖中台业务元信息。
         normalizeOrderAndPid(mutableCaseList(scene));
         refreshSceneCounts(scene, mutableCaseList(scene));
         updateDefinition(scene, req);
@@ -312,6 +312,8 @@ public class AutomationRecordingImportServiceImpl implements AutomationRecording
 
     private void preserveCaseIdentity(CaseDO targetCase, CaseDO replacement) {
         replacement.setId(targetCase.getId());
+        // replaceCase 只替换可执行步骤，原用例名称仍是中台业务标识，不能被录制端默认名称覆盖。
+        replacement.setName(targetCase.getName());
         replacement.setOrder(targetCase.getOrder());
         replacement.setCopyId(targetCase.getCopyId());
         replacement.setSortType(targetCase.getSortType());

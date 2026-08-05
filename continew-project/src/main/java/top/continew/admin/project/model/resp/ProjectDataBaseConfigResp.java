@@ -31,6 +31,7 @@ import top.continew.admin.common.enums.DisEnableStatusEnum;
 import top.continew.admin.common.enums.StatusTypeEnum;
 import top.continew.admin.common.model.resp.BaseDetailResp;
 import top.continew.admin.project.service.ProjectConfigService;
+import top.continew.starter.security.mask.annotation.JsonMask;
 
 import java.time.*;
 
@@ -105,6 +106,7 @@ public class ProjectDataBaseConfigResp extends BaseDetailResp {
      * 数据库密码
      */
     @Schema(description = "数据库密码")
+    @JsonMask
     private String passWord;
 
     /**

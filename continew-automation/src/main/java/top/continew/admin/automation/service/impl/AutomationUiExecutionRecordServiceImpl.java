@@ -34,14 +34,22 @@ import java.util.Objects;
 import cn.hutool.crypto.digest.DigestUtil;
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.incrementer.IdentifierGenerator;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import top.continew.admin.automation.converter.AutomationUiDefinitionSnapshotMapper;
 import top.continew.admin.automation.model.entity.AutomationUiSceneDO;
+import top.continew.admin.automation.model.entity.ui.CaseDO;
+import top.continew.admin.automation.model.entity.ui.StepDO;
 import top.continew.admin.automation.service.AutomationUiExecutionRecordService;
+import top.continew.admin.automation.support.AutomationExecutionCapability;
+import top.continew.starter.core.exception.BusinessException;
 
 /**
  * UI 自动化规范化执行记录服务实现。
@@ -64,30 +72,48 @@ public class AutomationUiExecutionRecordServiceImpl implements AutomationUiExecu
 
     private final JdbcTemplate jdbcTemplate;
     private final IdentifierGenerator identifierGenerator;
+    private final ObjectMapper objectMapper;
+
+    @Override
+    @Transactional(propagation = Propagation.REQUIRES_NEW, rollbackFor = Exception.class)
+    public void saveExternalExecutionRecord(AutomationUiSceneDO scene, Map<String, Object> record) {
+        saveRecordInternal(scene, record, null);
+    }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void saveRecord(AutomationUiSceneDO scene, Map<String, Object> record, String changedCaseId) {
+        saveRecordInternal(scene, record, changedCaseId);
+    }
+
+    private void saveRecordInternal(AutomationUiSceneDO scene, Map<String, Object> record, String changedCaseId) {
         if (scene == null || scene.getId() == null || record == null || record.isEmpty()) {
             return;
         }
-        Long definitionRevisionId = ensureDefinitionRevision(scene);
         String rawExecutionKey = resolveRawExecutionKey(record);
         String executionKey = stableExecutionKey(scene.getId(), rawExecutionKey);
         Long executionId = findExecutionId(executionKey);
+        // 已存在的 execution 必须继续使用创建时绑定的 revision；场景后续编辑只影响新 execution。
+        Long definitionRevisionId = executionId == null
+            ? ensureDefinitionRevision(scene)
+            : findBoundDefinitionRevision(executionId);
+        if (definitionRevisionId == null) {
+            throw new BusinessException("DEFINITION_REVISION_NOT_FOUND：执行记录未绑定不可变定义 revision");
+        }
         if (executionId == null) {
             executionId = nextId(record);
             try {
                 insertExecution(executionId, executionKey, scene, record, definitionRevisionId);
             } catch (DuplicateKeyException ignored) {
                 executionId = findExecutionId(executionKey);
+                definitionRevisionId = executionId == null ? null : findBoundDefinitionRevision(executionId);
             }
         }
-        if (executionId == null) {
+        if (executionId == null || definitionRevisionId == null) {
             throw new IllegalStateException("创建 UI 自动化执行事实失败，executionKey=" + executionKey);
         }
         updateExecution(executionId, scene, record, definitionRevisionId);
-        persistCases(executionId, record, changedCaseId);
+        persistCases(executionId, definitionRevisionId, record, changedCaseId);
         upsertSceneState(scene, record, executionId);
         removeReplacedPlaceholder(scene.getId(), nullableLong(record.get("testReportId")), executionId, value(record
             .get("recordType")));
@@ -99,7 +125,58 @@ public class AutomationUiExecutionRecordServiceImpl implements AutomationUiExecu
             return null;
         }
         Long executionId = queryLong("SELECT id FROM automation_ui_execution WHERE scene_id = ? AND batch_id = ?" + " ORDER BY create_time DESC LIMIT 1", sceneId, batchId);
+        if (executionId == null) {
+            Integer buildNumber = nullableInteger(batchId);
+            if (buildNumber != null) {
+                executionId = queryLong("SELECT id FROM automation_ui_execution WHERE scene_id = ? AND build_number = ?" + " ORDER BY create_time DESC LIMIT 1", sceneId, buildNumber);
+            }
+        }
         return executionId == null ? null : loadRecord(executionId);
+    }
+
+    @Override
+    public FrozenExecutionCase findFrozenCase(Long sceneId, String batchId, String caseId) {
+        if (sceneId == null || StringUtils.isAnyBlank(batchId, caseId)) {
+            return null;
+        }
+        List<FrozenExecutionRef> refs = jdbcTemplate
+            .query("SELECT definition_revision_id, project_environment_id, execution_config" + " FROM automation_ui_execution WHERE scene_id = ? AND batch_id = ?" + " ORDER BY create_time DESC LIMIT 1", (rs,
+                                                                                                                                                                                                            rowNum) -> new FrozenExecutionRef(rs
+                                                                                                                                                                                                                .getLong("definition_revision_id"), nullableLong(rs
+                                                                                                                                                                                                                    .getObject("project_environment_id")), rs
+                                                                                                                                                                                                                        .getString("execution_config")), sceneId, batchId);
+        if (refs.isEmpty()) {
+            return null;
+        }
+        FrozenExecutionRef ref = refs.get(0);
+        CaseDO frozenCase = loadFrozenCase(ref.definitionRevisionId(), caseId);
+        if (frozenCase == null) {
+            return null;
+        }
+        Map<String, Object> executionConfig = parseMap(ref.executionConfigJson());
+        Map<String, Object> effectiveConfig = asMap(asMap(executionConfig.get("cases")).get(caseId));
+        return new FrozenExecutionCase(frozenCase, ref.definitionRevisionId(), ref
+            .projectEnvironmentId(), effectiveConfig);
+    }
+
+    @Override
+    public boolean matchesExecutionCapability(Long sceneId, String batchId, String executionCapability) {
+        if (sceneId == null || StringUtils.isBlank(batchId) || StringUtils.isBlank(executionCapability)) {
+            return false;
+        }
+        List<CapabilityRow> rows = jdbcTemplate
+            .query("SELECT execution_capability_digest, execution_capability_expires_at FROM automation_ui_execution" + " WHERE scene_id = ? AND batch_id = ? ORDER BY create_time DESC LIMIT 1", (rs,
+                                                                                                                                                                                                   rowNum) -> new CapabilityRow(rs
+                                                                                                                                                                                                       .getString("execution_capability_digest"), rs
+                                                                                                                                                                                                           .getTimestamp("execution_capability_expires_at") == null
+                                                                                                                                                                                                               ? null
+                                                                                                                                                                                                               : rs.getTimestamp("execution_capability_expires_at")
+                                                                                                                                                                                                                   .toLocalDateTime()), sceneId, batchId);
+        if (rows.isEmpty()) {
+            return false;
+        }
+        CapabilityRow row = rows.get(0);
+        return AutomationExecutionCapability.matches(executionCapability, row.digest(), row.expiresAt());
     }
 
     @Override
@@ -233,27 +310,51 @@ public class AutomationUiExecutionRecordServiceImpl implements AutomationUiExecu
     }
 
     private Long ensureDefinitionRevision(AutomationUiSceneDO scene) {
-        Object sanitizedDefinition = sanitizeDefinitionValue("case_list", scene.getCaseList());
-        String definitionJson = JSONUtil.toJsonStr(sanitizedDefinition == null ? List.of() : sanitizedDefinition);
-        String contentHash = DigestUtil.sha256Hex(definitionJson);
-        Long existingId = queryLong("SELECT id FROM automation_ui_scene_definition_revision" + " WHERE scene_id = ? AND content_hash = ? LIMIT 1", scene
-            .getId(), contentHash);
-        if (existingId != null) {
-            return existingId;
+        Long definitionVersion = scene.getDefinitionVersion();
+        if (definitionVersion == null || definitionVersion < 0) {
+            throw new BusinessException("DEFINITION_VERSION_REQUIRED：场景定义版本不能为空");
         }
-        Long revisionNo = queryLong("SELECT COALESCE(MAX(revision_no), 0) + 1" + " FROM automation_ui_scene_definition_revision WHERE scene_id = ?", scene
-            .getId());
+        AutomationUiDefinitionSnapshotMapper.Snapshot snapshot = AutomationUiDefinitionSnapshotMapper.map(scene
+            .getCaseList());
+        DefinitionRevisionRef existing = findDefinitionRevision(scene.getId(), definitionVersion);
+        if (existing != null) {
+            requireSameDefinition(existing, snapshot);
+            return existing.id();
+        }
         Long id = nextId(scene);
         try {
             jdbcTemplate
-                .update("INSERT INTO automation_ui_scene_definition_revision" + " (id, scene_id, revision_no, content_hash, definition_json, create_user, create_time)" + " VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP(3))", id, scene
-                    .getId(), revisionNo, contentHash, definitionJson, scene.getUpdateUser() == null
-                        ? scene.getCreateUser()
-                        : scene.getUpdateUser());
+                .update("INSERT INTO automation_ui_scene_definition_revision" + " (id, scene_id, revision_no, definition_version, content_hash, definition_json, create_user, create_time)" + " VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP(3))", id, scene
+                    .getId(), definitionVersion, definitionVersion, snapshot.contentHash(), snapshot
+                        .definitionJson(), scene.getUpdateUser() == null
+                            ? scene.getCreateUser()
+                            : scene.getUpdateUser());
             return id;
         } catch (DuplicateKeyException ignored) {
-            return queryLong("SELECT id FROM automation_ui_scene_definition_revision" + " WHERE scene_id = ? AND content_hash = ? LIMIT 1", scene
-                .getId(), contentHash);
+            DefinitionRevisionRef raced = findDefinitionRevision(scene.getId(), definitionVersion);
+            if (raced == null) {
+                throw new BusinessException("DEFINITION_REVISION_NOT_FOUND：并发创建后未找到定义 revision");
+            }
+            requireSameDefinition(raced, snapshot);
+            return raced.id();
+        }
+    }
+
+    private DefinitionRevisionRef findDefinitionRevision(Long sceneId, Long definitionVersion) {
+        return jdbcTemplate
+            .query("SELECT id, content_hash FROM automation_ui_scene_definition_revision" + " WHERE scene_id = ? AND definition_version = ? LIMIT 1", (rs,
+                                                                                                                                                       rowNum) -> new DefinitionRevisionRef(rs
+                                                                                                                                                           .getLong("id"), rs
+                                                                                                                                                               .getString("content_hash")), sceneId, definitionVersion)
+            .stream()
+            .findFirst()
+            .orElse(null);
+    }
+
+    private void requireSameDefinition(DefinitionRevisionRef revision,
+                                       AutomationUiDefinitionSnapshotMapper.Snapshot snapshot) {
+        if (!Objects.equals(revision.contentHash(), snapshot.contentHash())) {
+            throw new BusinessException("DEFINITION_REVISION_CONFLICT：同一 definitionVersion 已绑定不同定义内容");
         }
     }
 
@@ -263,12 +364,13 @@ public class AutomationUiExecutionRecordServiceImpl implements AutomationUiExecu
                                  Map<String, Object> record,
                                  Long definitionRevisionId) {
         jdbcTemplate
-            .update("INSERT INTO automation_ui_execution (id, execution_key, scene_id, scene_key," + " definition_revision_id, batch_id, record_type, trigger_type, execution_engine, status, result," + " create_user, create_time, update_user, update_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?," + " CURRENT_TIMESTAMP(3), ?, CURRENT_TIMESTAMP(3))", id, executionKey, scene
+            .update("INSERT INTO automation_ui_execution (id, execution_key, scene_id, scene_key," + " definition_revision_id, execution_capability_digest, execution_capability_expires_at, batch_id, record_type, trigger_type, execution_engine, status, result," + " create_user, create_time, update_user, update_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?," + " CURRENT_TIMESTAMP(3), ?, CURRENT_TIMESTAMP(3))", id, executionKey, scene
                 .getId(), firstNonBlank(scene.getSceneId(), String.valueOf(scene
-                    .getId())), definitionRevisionId, nullableText(record.get("batchId")), firstNonBlank(value(record
-                        .get("recordType")), "execution"), resolveTriggerType(record), resolveEngine(record), firstNonBlank(value(record
-                            .get("executeStatus")), "queued"), nullableText(record.get("executeResult")), scene
-                                .getCreateUser(), scene.getUpdateUser());
+                    .getId())), definitionRevisionId, capabilityDigest(record), capabilityExpiresAt(record), nullableText(record
+                        .get("batchId")), firstNonBlank(value(record
+                            .get("recordType")), "execution"), resolveTriggerType(record), resolveEngine(record), firstNonBlank(value(record
+                                .get("executeStatus")), "queued"), nullableText(record.get("executeResult")), scene
+                                    .getCreateUser(), scene.getUpdateUser());
     }
 
     private void updateExecution(Long executionId,
@@ -278,10 +380,11 @@ public class AutomationUiExecutionRecordServiceImpl implements AutomationUiExecu
         Map<String, Object> summary = sanitizedMap(record);
         summary.remove("caseResults");
         summary.remove("stepResults");
+        summary.remove("executionCapability");
         String summaryJson = boundedSummary(summary, MAX_EXECUTION_SUMMARY_BYTES);
         String executionConfig = boundedSummary(asMap(record.get("executionConfig")), MAX_EXECUTION_SUMMARY_BYTES);
         jdbcTemplate
-            .update("UPDATE automation_ui_execution SET definition_revision_id = ?, batch_id = ?," + " test_plan_id = ?, test_report_id = ?, record_type = ?, trigger_type = ?, execution_engine = ?," + " status = ?, result = ?, execute_user_id = ?, execute_username = ?, execute_name = ?, execute_email = ?," + " project_environment_id = ?, project_environment_name = ?, execution_config = CAST(? AS JSON)," + " build_number = ?, console_url = ?, test_report_url = ?, case_total = ?, case_pass = ?, case_fail = ?," + " case_skip = ?, case_cancelled = ?, step_total = ?, step_pass = ?, step_fail = ?, step_skip = ?," + " executor_node = ?, heartbeat_at = ?, lease_until = ?, cancel_requested = ?, started_at = ?," + " finished_at = ?, duration_ms = ?, error_code = ?, error_message = ?, summary_json = CAST(? AS JSON)," + " version = version + 1, update_user = ?, update_time = CURRENT_TIMESTAMP(3) WHERE id = ?", definitionRevisionId, nullableText(record
+            .update("UPDATE automation_ui_execution SET definition_revision_id = ?, execution_capability_digest = COALESCE(?, execution_capability_digest), execution_capability_expires_at = COALESCE(?, execution_capability_expires_at), batch_id = ?," + " test_plan_id = ?, test_report_id = ?, record_type = ?, trigger_type = ?, execution_engine = ?," + " status = ?, result = ?, execute_user_id = ?, execute_username = ?, execute_name = ?, execute_email = ?," + " project_environment_id = ?, project_environment_name = ?, execution_config = CAST(? AS JSON)," + " build_number = ?, console_url = ?, test_report_url = ?, case_total = ?, case_pass = ?, case_fail = ?," + " case_skip = ?, case_cancelled = ?, step_total = ?, step_pass = ?, step_fail = ?, step_skip = ?," + " executor_node = ?, heartbeat_at = ?, lease_until = ?, cancel_requested = ?, started_at = ?," + " finished_at = ?, duration_ms = ?, error_code = ?, error_message = ?, summary_json = CAST(? AS JSON)," + " version = version + 1, update_user = ?, update_time = CURRENT_TIMESTAMP(3) WHERE id = ?", definitionRevisionId, capabilityDigest(record), capabilityExpiresAt(record), nullableText(record
                 .get("batchId")), nullableLong(record.get("testPlanId")), nullableLong(record
                     .get("testReportId")), firstNonBlank(value(record
                         .get("recordType")), "execution"), resolveTriggerType(record), resolveEngine(record), firstNonBlank(value(record
@@ -317,7 +420,10 @@ public class AutomationUiExecutionRecordServiceImpl implements AutomationUiExecu
                                                                                                                                                 .getUpdateUser(), executionId);
     }
 
-    private void persistCases(Long executionId, Map<String, Object> record, String changedCaseId) {
+    private void persistCases(Long executionId,
+                              Long definitionRevisionId,
+                              Map<String, Object> record,
+                              String changedCaseId) {
         List<Object> caseResults = asList(record.get("caseResults"));
         for (int caseIndex = 0; caseIndex < caseResults.size(); caseIndex++) {
             Map<String, Object> caseResult = asMap(caseResults.get(caseIndex));
@@ -344,7 +450,49 @@ public class AutomationUiExecutionRecordServiceImpl implements AutomationUiExecu
             }
             updateCase(caseExecutionId, caseIndex, caseResult);
             persistSteps(caseExecutionId, caseResult);
+            ensureDefinitionStepExecutions(caseExecutionId, definitionRevisionId, caseId);
             persistArtifacts(executionId, caseExecutionId, caseResult);
+        }
+    }
+
+    private void ensureDefinitionStepExecutions(Long caseExecutionId, Long definitionRevisionId, String caseId) {
+        CaseDO sourceCase = loadFrozenCase(definitionRevisionId, caseId);
+        if (sourceCase == null || sourceCase.getStepList() == null) {
+            return;
+        }
+        for (int stepIndex = 0; stepIndex < sourceCase.getStepList().size(); stepIndex++) {
+            StepDO sourceStep = sourceCase.getStepList().get(stepIndex);
+            Long existingId = queryLong("SELECT id FROM automation_ui_execution_step" + " WHERE execution_case_id = ? AND step_index = ? AND attempt_no = 1 LIMIT 1", caseExecutionId, stepIndex);
+            if (existingId != null) {
+                continue;
+            }
+            try {
+                // StepExecution 必须来自执行绑定的冻结 revision，后续场景编辑不能补入旧执行。
+                jdbcTemplate
+                    .update("INSERT INTO automation_ui_execution_step (id, execution_case_id, step_id," + " source_step_id, step_index, attempt_no, step_name, status, event_sequence, create_time, update_time)" + " VALUES (?, ?, ?, ?, ?, 1, ?, 'queued', 0, CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3))", nextId(sourceStep), caseExecutionId, sourceStep
+                        .getId(), sourceStep.getId(), stepIndex, sourceStep.getName());
+            } catch (DuplicateKeyException ignored) {
+                // 并发初始化由唯一键收敛，已存在的 StepExecution 保持不变。
+            }
+        }
+    }
+
+    private CaseDO loadFrozenCase(Long definitionRevisionId, String caseId) {
+        if (definitionRevisionId == null) {
+            throw new BusinessException("DEFINITION_REVISION_NOT_FOUND：执行未绑定定义 revision");
+        }
+        String definitionJson = jdbcTemplate
+            .query("SELECT definition_json FROM automation_ui_scene_definition_revision" + " WHERE id = ? LIMIT 1", (rs,
+                                                                                                                     rowNum) -> rs
+                                                                                                                         .getString(1), definitionRevisionId)
+            .stream()
+            .findFirst()
+            .orElseThrow(() -> new BusinessException("DEFINITION_REVISION_NOT_FOUND：执行绑定的定义 revision 不存在"));
+        try {
+            return objectMapper.readValue(definitionJson, new TypeReference<List<CaseDO>>() {
+            }).stream().filter(item -> Objects.equals(caseId, item.getId())).findFirst().orElse(null);
+        } catch (Exception e) {
+            throw new BusinessException("DEFINITION_REVISION_INVALID：执行绑定的定义 revision 无法解析");
         }
     }
 
@@ -569,6 +717,19 @@ public class AutomationUiExecutionRecordServiceImpl implements AutomationUiExecu
         return queryLong("SELECT id FROM automation_ui_execution WHERE execution_key = ? LIMIT 1", executionKey);
     }
 
+    private Long findBoundDefinitionRevision(Long executionId) {
+        return queryLong("SELECT definition_revision_id FROM automation_ui_execution WHERE id = ? LIMIT 1", executionId);
+    }
+
+    private String capabilityDigest(Map<String, Object> record) {
+        String token = nullableText(record.get("executionCapability"));
+        return token == null ? null : AutomationExecutionCapability.digest(token);
+    }
+
+    private Timestamp capabilityExpiresAt(Map<String, Object> record) {
+        return capabilityDigest(record) == null ? null : Timestamp.valueOf(AutomationExecutionCapability.expiresAt());
+    }
+
     private String resolveRawExecutionKey(Map<String, Object> record) {
         String rawExecutionKey = firstNonBlank(value(record.get("batchId")), value(record
             .get("executionId")), value(record.get("buildNumber")));
@@ -681,37 +842,6 @@ public class AutomationUiExecutionRecordServiceImpl implements AutomationUiExecu
             return null;
         }
         return abbreviate(text, MAX_TEXT_LENGTH);
-    }
-
-    private Object sanitizeDefinitionValue(String key, Object value) {
-        if (value instanceof Map<?, ?> map) {
-            Map<String, Object> result = new LinkedHashMap<>();
-            map.forEach((childKey, childValue) -> {
-                String childName = String.valueOf(childKey);
-                Object sanitized = sanitizeDefinitionValue(childName, childValue);
-                if (sanitized != null)
-                    result.put(childName, sanitized);
-            });
-            return result;
-        }
-        if (value instanceof List<?> list) {
-            List<Object> result = new ArrayList<>();
-            for (Object item : list) {
-                Object sanitized = sanitizeDefinitionValue(key, item);
-                if (sanitized != null)
-                    result.add(sanitized);
-            }
-            return result;
-        }
-        if (value instanceof CharSequence text) {
-            String normalizedKey = StringUtils.defaultString(key).toLowerCase().replace('-', '_');
-            if (normalizedKey.contains("screenshot") || normalizedKey.contains("base64") || String.valueOf(text)
-                .regionMatches(true, 0, "data:image/", 0, 11)) {
-                // 定义版本必须完整保留 playwright_step 和 locator_meta，但执行截图正文不能进入数据库。
-                return null;
-            }
-        }
-        return value;
     }
 
     @SuppressWarnings("unchecked")
@@ -840,6 +970,16 @@ public class AutomationUiExecutionRecordServiceImpl implements AutomationUiExecu
     }
 
     private record SceneExecutionRef(Long sceneId, Long executionId) {
+    }
+
+    private record DefinitionRevisionRef(Long id, String contentHash) {
+    }
+
+    private record CapabilityRow(String digest, LocalDateTime expiresAt) {
+    }
+
+    private record FrozenExecutionRef(Long definitionRevisionId, Long projectEnvironmentId,
+                                      String executionConfigJson) {
     }
 
     private static final class ExecutionRow {

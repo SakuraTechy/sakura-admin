@@ -172,4 +172,25 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <profile>
+            <id>devtools</id>
+            <activation>
+                <property>
+                    <name>devtools</name>
+                    <value>true</value>
+                </property>
+            </activation>
+            <dependencies>
+                <!-- 本地开发热重启依赖，仅在 -Ddevtools=true 时启用，避免进入常规部署产物。 -->
+                <dependency>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-devtools</artifactId>
+                    <scope>runtime</scope>
+                    <optional>true</optional>
+                </dependency>
+            </dependencies>
+        </profile>
+    </profiles>
 </project>

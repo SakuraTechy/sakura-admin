@@ -99,8 +99,8 @@ class AutomationPlaywrightSessionStateServiceTest {
             """);
         assertThatThrownBy(() -> service.promote(files)).hasMessageContaining("sessionStorage 结构无效");
         assertThat(service.redactCommand(List
-            .of("node", "src/index.js", "--token", "token-value", "--storage-state=C:\\secret\\current.json", "--storage-state-out", "C:\\secret\\candidate.json", "--browser", "chromium")))
-            .containsExactly("node", "src/index.js", "--token", "***", "--storage-state=***", "--storage-state-out", "***", "--browser", "chromium");
+            .of("node", "src/index.js", "--token", "token-value", "--execution-capability", "capability-value", "--storage-state=C:\\secret\\current.json", "--storage-state-out", "C:\\secret\\candidate.json", "--browser", "chromium")))
+            .containsExactly("node", "src/index.js", "--token", "***", "--execution-capability", "***", "--storage-state=***", "--storage-state-out", "***", "--browser", "chromium");
     }
 
     @Test

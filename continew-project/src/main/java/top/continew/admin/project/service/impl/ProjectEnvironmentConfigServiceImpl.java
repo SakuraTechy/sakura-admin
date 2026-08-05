@@ -63,6 +63,16 @@ public class ProjectEnvironmentConfigServiceImpl extends BaseServiceImpl<Project
     private final ProjectDataBaseConfigMapper projectDataBaseConfigMapper;
 
     @Override
+    public void beforeCreate(ProjectEnvironmentConfigReq req) {
+        sanitizeDatabaseSnapshots(req);
+    }
+
+    @Override
+    public void beforeUpdate(ProjectEnvironmentConfigReq req, Long id) {
+        sanitizeDatabaseSnapshots(req);
+    }
+
+    @Override
     public List<ProjectEnvironmentConfigDetailResp> selectByIds(List<Long> ids) {
         List<ProjectEnvironmentConfigDetailResp> list = BeanUtil.copyToList(baseMapper
             .selectByIds(ids), ProjectEnvironmentConfigDetailResp.class);
@@ -210,7 +220,8 @@ public class ProjectEnvironmentConfigServiceImpl extends BaseServiceImpl<Project
                         ProjectDataBaseConfigDO candidate = BeanUtil.toBean(dataBaseConfigList
                             .get(i), ProjectDataBaseConfigDO.class);
                         if (candidate != null && candidate.getId() != null && candidate.getId().equals(id)) {
-                            dataBaseConfigList.set(i, dataBaseConfig);
+                            // 环境 JSON 只保留非敏感快照；执行时按 ID 回查数据库主表获取凭据。
+                            dataBaseConfigList.set(i, toEnvironmentDatabaseSnapshot(dataBaseConfig));
                             break;
                         }
                     }
@@ -223,6 +234,28 @@ public class ProjectEnvironmentConfigServiceImpl extends BaseServiceImpl<Project
             log.error("同步环境数据库配置失败，{}", e.getMessage(), e);
         }
         return false;
+    }
+
+    static ProjectDataBaseConfigDO toEnvironmentDatabaseSnapshot(ProjectDataBaseConfigDO source) {
+        if (source == null) {
+            return null;
+        }
+        ProjectDataBaseConfigDO snapshot = BeanUtil.copyProperties(source, ProjectDataBaseConfigDO.class);
+        snapshot.setUserName(null);
+        snapshot.setPassWord(null);
+        snapshot.setUrl(null);
+        snapshot.setConfigList(null);
+        return snapshot;
+    }
+
+    private void sanitizeDatabaseSnapshots(ProjectEnvironmentConfigReq req) {
+        if (req == null || req.getDataBaseConfig() == null) {
+            return;
+        }
+        req.setDataBaseConfig(req.getDataBaseConfig()
+            .stream()
+            .map(item -> (Object)toEnvironmentDatabaseSnapshot(BeanUtil.toBean(item, ProjectDataBaseConfigDO.class)))
+            .toList());
     }
 
     private ProjectServerConfigDO resolvePrimaryServer(List<?> serverConfigList) {

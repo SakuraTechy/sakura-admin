@@ -22,7 +22,9 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+import cn.hutool.crypto.digest.DigestUtil;
 import cn.dev33.satoken.annotation.SaCheckPermission;
+import cn.dev33.satoken.context.SaHolder;
 import cn.dev33.satoken.stp.StpUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -35,17 +37,16 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.PathVariable;
 import top.continew.admin.automation.mapper.AutomationUiSceneMapper;
-import top.continew.admin.automation.mapper.AutomationNodeConfigMapper;
-import top.continew.admin.automation.model.entity.AutomationNodeConfigDO;
 import top.continew.admin.automation.model.catalog.AutomationOperationCatalog;
 import top.continew.admin.automation.model.entity.AutomationUiSceneDO;
 import top.continew.admin.automation.model.req.catalog.AutomationExecutorCapabilityReq;
+import top.continew.admin.automation.model.req.catalog.AutomationExecutorRegistrationReq;
 import top.continew.admin.automation.service.AutomationOperationCatalogService;
+import top.continew.admin.automation.service.AutomationExecutorRegistrationService;
 import top.continew.admin.automation.support.AutomationExecutionAgentClient;
 import top.continew.admin.project.mapper.ProjectEnvironmentConfigMapper;
 import top.continew.admin.project.mapper.ProjectConfigMapper;
 import top.continew.admin.project.model.entity.ProjectConfigDO;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import top.continew.admin.project.model.entity.ProjectEnvironmentConfigDO;
 import top.continew.starter.core.exception.BusinessException;
 import top.continew.starter.web.model.R;
@@ -62,10 +63,10 @@ import top.continew.starter.web.model.R;
 public class AutomationOperationCatalogController {
 
     private final AutomationOperationCatalogService catalogService;
+    private final AutomationExecutorRegistrationService registrationService;
     private final AutomationUiSceneMapper sceneMapper;
     private final ProjectEnvironmentConfigMapper environmentMapper;
     private final ProjectConfigMapper projectConfigMapper;
-    private final AutomationNodeConfigMapper nodeConfigMapper;
     private final AutomationExecutionAgentClient executionAgentClient;
 
     @Operation(summary = "读取操作能力目录")
@@ -93,19 +94,45 @@ public class AutomationOperationCatalogController {
     public R<Void> registerCapabilities(@PathVariable String executorType,
                                         @Valid @RequestBody AutomationExecutorCapabilityReq req) {
         validateEnvironment(req.getProjectEnvironmentId());
-        if ("playwright".equalsIgnoreCase(executorType) && !isRegisteredExecutor(req.getExecutorInstanceId())) {
-            throw new BusinessException("EXECUTOR_INSTANCE_NOT_REGISTERED：Playwright 执行器实例未绑定 Admin 节点配置");
+        String applicationAccessKey = currentApplicationAccessKey();
+        if ("playwright".equalsIgnoreCase(executorType) && !registrationService.isRegistered(executorType, req
+            .getExecutorInstanceId(), req.getProjectEnvironmentId(), applicationAccessKey)) {
+            throw new BusinessException("EXECUTOR_INSTANCE_NOT_REGISTERED：Playwright 执行器实例未在 Admin 独立注册表中启用");
         }
         catalogService.registerCapabilities(executorType, principalScope(), req);
+        if (registrationService.isRegistered(executorType, req.getExecutorInstanceId(), req
+            .getProjectEnvironmentId(), applicationAccessKey)) {
+            registrationService.recordReport(executorType, req);
+        }
         return R.ok();
     }
 
-    private boolean isRegisteredExecutor(String instanceId) {
-        if (instanceId == null || instanceId.isBlank()) {
-            return false;
-        }
-        return nodeConfigMapper.selectCount(new LambdaQueryWrapper<AutomationNodeConfigDO>()
-            .eq(AutomationNodeConfigDO::getName, instanceId)) > 0;
+    @Operation(summary = "注册执行器实例")
+    @SaCheckPermission("automation:executor:registration:manage")
+    @PostMapping("/executors")
+    public R<Void> registerExecutor(@Valid @RequestBody AutomationExecutorRegistrationReq req) {
+        requireHumanAdminForRegistrationManagement();
+        registrationService.register(req);
+        return R.ok();
+    }
+
+    @Operation(summary = "查询执行器注册和最近能力上报")
+    @SaCheckPermission("automation:executor:registration:manage")
+    @GetMapping("/executors/{executorType}/{executorInstanceId}")
+    public R<top.continew.admin.automation.model.entity.AutomationExecutorRegistrationDO> getExecutor(@PathVariable String executorType,
+                                                                                                      @PathVariable String executorInstanceId) {
+        requireHumanAdminForRegistrationManagement();
+        return R.ok(registrationService.find(executorType, executorInstanceId)
+            .orElseThrow(() -> new BusinessException("执行器注册信息不存在：" + executorInstanceId)));
+    }
+
+    @Operation(summary = "禁用执行器实例")
+    @SaCheckPermission("automation:executor:registration:manage")
+    @PostMapping("/executors/{executorType}/{executorInstanceId}/disable")
+    public R<Void> disableExecutor(@PathVariable String executorType, @PathVariable String executorInstanceId) {
+        requireHumanAdminForRegistrationManagement();
+        registrationService.disable(executorType, executorInstanceId);
+        return R.ok();
     }
 
     private void validateSceneEnvironment(Long sceneId, Long projectEnvironmentId) {
@@ -131,7 +158,22 @@ public class AutomationOperationCatalogController {
     }
 
     private String principalScope() {
+        String applicationAccessKey = currentApplicationAccessKey();
+        if (applicationAccessKey != null && !applicationAccessKey.isBlank()) {
+            // 应用签名请求没有用户登录态；使用 Access Key 摘要隔离不同外部 Runner 的能力快照。
+            return "application:" + DigestUtil.sha256Hex(applicationAccessKey);
+        }
         return "principal:" + StpUtil.getLoginId(-1L);
+    }
+
+    private String currentApplicationAccessKey() {
+        return SaHolder.getRequest().getParam("accessKey");
+    }
+
+    private void requireHumanAdminForRegistrationManagement() {
+        if (currentApplicationAccessKey() != null && !currentApplicationAccessKey().isBlank()) {
+            throw new BusinessException("外部应用不能变更执行器注册信息，请由管理员手动完成注册或禁用");
+        }
     }
 
     private AgentHealth readAgentHealth() {

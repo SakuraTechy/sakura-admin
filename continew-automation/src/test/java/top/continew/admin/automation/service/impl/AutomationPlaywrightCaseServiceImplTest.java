@@ -366,6 +366,42 @@ class AutomationPlaywrightCaseServiceImplTest {
 
     @Test
     @SuppressWarnings("unchecked")
+    void shouldMarkMissingStructuredStepResultAsFailedInsteadOfSkipped() {
+        AutomationUiSceneDO storedScene = scene(1L);
+        StepDO secondStep = new StepDO();
+        secondStep.setId("STEP_002");
+        secondStep.setName("提交");
+        secondStep.setOrder(2);
+        storedScene.getCaseList()
+            .get(0)
+            .setStepList(List.of(storedScene.getCaseList().get(0).getStepList().get(0), secondStep));
+        when(sceneMapper.selectById(100L)).thenReturn(storedScene);
+        when(stepExtractor.extract(any(StepDO.class), anyInt())).thenAnswer(invocation -> {
+            int index = invocation.getArgument(1);
+            return Map.of("id", index == 0
+                ? "STEP_001"
+                : "STEP_002", "step_index", index, "action_type", "click", "description", index == 0 ? "打开" : "提交");
+        });
+
+        Map<String, Object> raw = new LinkedHashMap<>();
+        raw.put("steps", List.of(Map.of("step_index", 0, "step_id", "STEP_001", "status", "passed")));
+        AutomationPlaywrightResultReq request = new AutomationPlaywrightResultReq();
+        request.setStatus("failed");
+        request.setSuccess(false);
+        request.setDurationMs(100L);
+        request.setRaw(raw);
+
+        service.saveResult("100:CASE_001", request);
+
+        Map<String, Object> record = (Map<String, Object>)storedScene.getDebugRecord().get(0);
+        List<Map<String, Object>> stepResults = (List<Map<String, Object>>)record.get("stepResults");
+        assertThat(stepResults).extracting(item -> item.get("status")).containsExactly("passed", "failed");
+        assertThat(stepResults.get(1)).containsEntry("result_incomplete", true)
+            .containsEntry("error", "执行结果缺失：Runner 未回传该步骤结果");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
     void shouldPersistInfrastructurePreviewInStepDetails() {
         AutomationUiSceneDO storedScene = scene(1L);
         when(sceneMapper.selectById(100L)).thenReturn(storedScene);

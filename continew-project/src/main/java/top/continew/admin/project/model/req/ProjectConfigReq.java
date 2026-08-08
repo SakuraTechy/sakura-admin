@@ -87,4 +87,7 @@ public class ProjectConfigReq implements Serializable {
 
     @Schema(description = "UI 自动化操作目录 v2 灰度开关")
     private Boolean automationOperationCatalogV2 = Boolean.TRUE;
+
+    @Schema(description = "UI 自动化统一执行详情 v1 灰度开关")
+    private Boolean operationDiagnosticV1 = Boolean.TRUE;
 }

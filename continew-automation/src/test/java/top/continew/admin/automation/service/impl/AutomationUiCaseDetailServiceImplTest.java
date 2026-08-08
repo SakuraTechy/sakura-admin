@@ -32,7 +32,9 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import top.continew.admin.automation.converter.AutomationOperationStepReverseAdapter;
+import top.continew.admin.automation.converter.AutomationOperationConfigValidator;
 import top.continew.admin.automation.converter.AutomationRecordingActionResolver;
+import top.continew.admin.automation.converter.CuecastRecordingOperationProjector;
 import top.continew.admin.automation.mapper.AutomationUiSceneMapper;
 import top.continew.admin.automation.model.entity.AutomationUiSceneDO;
 import top.continew.admin.automation.model.entity.ui.CaseDO;
@@ -57,7 +59,8 @@ class AutomationUiCaseDetailServiceImplTest {
         ObjectMapper objectMapper = new ObjectMapper();
         AutomationOperationCatalogServiceImpl catalogService = new AutomationOperationCatalogServiceImpl(objectMapper);
         catalogService.initialize();
-        AutomationOperationStepReverseAdapter reverseAdapter = new AutomationOperationStepReverseAdapter(objectMapper, catalogService);
+        CuecastRecordingOperationProjector projector = new CuecastRecordingOperationProjector(objectMapper, catalogService, new AutomationOperationConfigValidator());
+        AutomationOperationStepReverseAdapter reverseAdapter = new AutomationOperationStepReverseAdapter(objectMapper, catalogService, projector);
         service = new AutomationUiCaseDetailServiceImpl(sceneMapper, caseTreeService, new AutomationRecordingActionResolver(reverseAdapter), catalogService, objectMapper);
     }
 

@@ -49,9 +49,9 @@ public class AutomationOperationStepAssembler {
 
     private static final TypeReference<LinkedHashMap<String, Object>> MAP_TYPE = new TypeReference<>() {
     };
-    private static final String CATALOG_VERSION = "2026-07-30.1";
+    private static final String CATALOG_VERSION = "2026-08-07.1";
     private static final java.util.Set<String> GENERATED_CONFIGS = java.util.Set
-        .of("method_version", "method_config", "action_type", "source", "schema_version", "catalog_version", "canonical_digest", "playwright_step");
+        .of("type_code", "type_label", "method_label", "diagnostic_profile", "method_version", "method_config", "action_type", "source", "schema_version", "catalog_version", "canonical_digest", "playwright_step");
 
     private final ObjectMapper objectMapper;
     private final AutomationOperationCatalogService catalogService;
@@ -97,6 +97,12 @@ public class AutomationOperationStepAssembler {
             }
         }
         putConfig(configs, "method_code", method.getMethodCode());
+        var operation = catalogService.findOperation(method.getMethodCode())
+            .orElseThrow(() -> new BusinessException("METHOD_NOT_FOUND：未注册的操作方法 " + method.getMethodCode()));
+        putConfig(configs, "type_code", operation.typeCode());
+        putConfig(configs, "type_label", operation.typeLabel());
+        putConfig(configs, "method_label", method.getLabel());
+        putConfig(configs, "diagnostic_profile", method.getDiagnosticProfile());
         putConfig(configs, "method_version", String.valueOf(method.getMethodVersion()));
         putConfig(configs, "method_config", writeJson(methodConfig));
         legacyConfigs.forEach((name, value) -> putConfig(configs, name, value));
@@ -221,6 +227,12 @@ public class AutomationOperationStepAssembler {
             case "web-check", "web-notcheck" -> {
                 putLocator(legacy, locator);
                 putAssertionOptions(legacy, methodConfig, true);
+            }
+            case "web-assert-element-match" -> {
+                putLocator(legacy, locator);
+                putValue(legacy, "read_mode", methodConfig.get("read_mode"));
+                putValue(legacy, "match_mode", methodConfig.get("match_mode"));
+                putValue(legacy, "expect", methodConfig.get("expect"));
             }
             case "web-checkvalue" -> {
                 putLocator(legacy, locator);

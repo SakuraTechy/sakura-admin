@@ -26,10 +26,10 @@ import java.util.Base64;
 
 public class JenkinsClient {
     public static void main(String[] args) throws Exception {
-        String jenkinsUrl = "http://172.19.5.222:8080";
-        String username = "sakura";
-        String password = "3edc$RFV";
-        String nodeId = "172.19.5.230";
+        String jenkinsUrl = requiredSetting("SAKURA_JENKINS_URL");
+        String username = requiredSetting("SAKURA_JENKINS_USERNAME");
+        String password = requiredSetting("SAKURA_JENKINS_PASSWORD");
+        String nodeId = requiredSetting("SAKURA_JENKINS_NODE");
 
         // 构建HTTP客户端
         HttpClient client = HttpClientBuilder.create().build();
@@ -50,5 +50,13 @@ public class JenkinsClient {
 
         // 打印节点配置信息
         System.out.println(xmlResponse);
+    }
+
+    private static String requiredSetting(String name) {
+        String value = System.getenv(name);
+        if (value == null || value.isBlank()) {
+            throw new IllegalStateException("缺少环境变量：" + name);
+        }
+        return value.trim();
     }
 }

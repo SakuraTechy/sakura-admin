@@ -148,3 +148,12 @@ VALUES
      'automation:automationUiScene:download-infrastructure-artifact', 15, 1, 1, NOW());
 
 -- rollback DELETE FROM `sys_menu` WHERE `id` = 1933371197522239502;
+
+-- changeset codex:automation-ui-execution-diagnostic-switch-20260807
+-- preconditions onFail:MARK_RAN onError:HALT
+-- precondition-sql-check expectedResult:0 SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'automation_ui_execution' AND column_name = 'operation_diagnostic_v1'
+-- comment 将统一执行详情灰度开关冻结到 execution，避免一次执行中途切换项目配置导致详情格式不一致。
+ALTER TABLE `automation_ui_execution`
+    ADD COLUMN `operation_diagnostic_v1` tinyint(1) NOT NULL DEFAULT 1 COMMENT '该执行是否写入统一执行详情 v1' AFTER `result`;
+
+-- rollback ALTER TABLE `automation_ui_execution` DROP COLUMN `operation_diagnostic_v1`;

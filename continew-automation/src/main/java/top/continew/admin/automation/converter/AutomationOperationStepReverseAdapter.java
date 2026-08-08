@@ -48,6 +48,7 @@ public class AutomationOperationStepReverseAdapter {
 
     private final ObjectMapper objectMapper;
     private final AutomationOperationCatalogService catalogService;
+    private final CuecastRecordingOperationProjector recordingOperationProjector;
 
     public ReverseResult adapt(StepDO step) {
         if (step == null) {
@@ -89,6 +90,15 @@ public class AutomationOperationStepReverseAdapter {
             return new ReverseResult(false, "", null, Map.of(), List.of("playwright_step 不是合法 JSON，不能覆盖历史字段"));
         }
         String actionType = text(raw.get("action_type"));
+        CuecastRecordingOperationProjector.RecordedOperationProjection projection = recordingOperationProjector
+            .project(raw);
+        if (projection.recognized()) {
+            return new ReverseResult(true, projection.methodCode(), projection.methodVersion(), projection
+                .methodConfig(), projection.warnings());
+        }
+        if (projection.attempted()) {
+            return new ReverseResult(false, "", null, Map.of(), projection.warnings());
+        }
         AutomationOperationCatalog.OperationMethod method = catalogService.findMethod(actionType).orElse(null);
         if (method == null) {
             return new ReverseResult(false, "", null, Map.of(), List.of("raw step action_type 未注册：" + actionType));
@@ -187,7 +197,7 @@ public class AutomationOperationStepReverseAdapter {
         return switch (value) {
             case "获取当前时间戳", "timestamp" -> "timestamp";
             case "获取自定义时间", "custom_datetime" -> "custom_datetime";
-            default -> "today";
+            default -> "current_datetime";
         };
     }
 

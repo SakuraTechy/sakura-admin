@@ -799,36 +799,36 @@ public class DataBaseUtil {
         //        sqls1[6] = "UPDATE \"TEST\".\"JDBC\" SET \"name\"='小李' WHERE \"id\"=1";
 
         try {
-            //            query("oracle.jdbc.driver.OracleDriver","jdbc:oracle:thin:@172.19.5.234:1521:orcl","sys as sysdba","3edc$RFV", Oracle_sql);
-            //            query("com.mysql.jdbc.Driver","jdbc:mysql://172.19.5.234:3306/test?useUnicode=true&characterEncoding=utf-8&useSSL=false","root","Ankki_mySQL123", MySql_sql);
-            //            query("com.microsoft.sqlserver.jdbc.SQLServerDriver","jdbc:sqlserver://172.19.5.234:1433;DatabaseName=master;encrypt=false;trustServerCertificate=false","sa","3edc$RFV", SqlServer_sql);
-            //            query("org.postgresql.Driver","jdbc:postgresql://172.19.1.12:5432/postgres?encrypt=false&trustServerCertificate=false","postgres","Ceshi123", PostgreSQL_sql);
-            //            query("org.postgresql.Driver","jdbc:postgresql://172.19.1.244:5432/postgres","gpadmin","gpadmin", Greenplum_sql);
-            //            query("com.sybase.jdbc4.jdbc.SybDriver","jdbc:sybase:Tds:172.19.1.180:5000/test","sa","Ceshi123", Sybase_sql);
-            //            query("org.apache.hive.jdbc.HiveDriver","jdbc:hive2://172.19.1.91:10000/default","root","Ankki@2009", Hive_sql);
-            //            query("com.mysql.cj.jdbc.Driver","jdbc:mysql://172.19.1.146:4000/test","root","Ceshi123", TiDB_sql);
-            //            query("com.mysql.jdbc.Driver","jdbc:mysql://172.19.3.170:2881/oceanbase","demo","12345678", OceanBase_sql);
-            //            query("com.teradata.jdbc.TeraDriver","jdbc:teradata://172.19.1.204/DATABASE=test,DBS_PORT=1025","dbc","dbc", Teradata_sql);
-            //            query("org.mariadb.jdbc.Driver","jdbc:mysql://172.19.1.98:3306/test","root","Ceshi123", MariaDB_sql);
-            //            query("com.kingbase8.Driver","jdbc:kingbase8://172.19.1.170:54321/test","system","Ceshi123", KingBase_sql);
-            //            query("com.intersystems.jdbc.IRISDriver","jdbc:IRIS://172.19.1.77:1972/%sys","_system","Ceshi123", IRIS_sql);
-            //            query("com.informix.jdbc.IfxDriver","jdbc:informix-sqli://172.19.5.224:9088/sysadmin:informixserver=informix","informix","3edc$RFV", Informix_sql);
-            //            query("com.ibm.db2.jcc.DB2Driver","jdbc:db2://172.19.1.203:50000/test","db2inst1","Ankki@2009", DB2_sql);
-            //            query("com.intersys.jdbc.CacheDriver","jdbc:Cache://172.19.1.222:1972/%sys","_SYSTEM","ankki", Cache_sql);
-            //            query("org.postgresql.Driver","jdbc:postgresql://172.19.1.92:25308/test","test","Ceshi123", GaussDB_sql);
-            //            query("com.gbase.jdbc.Driver", "jdbc:gbase://172.19.1.165:5258/test", "root", "Ceshi123", Gbase8a_sql);
-            //            query("com.gbasedbt.jdbc.Driver","jdbc:gbasedbt-sqli://172.19.1.146:9088/test:GBASEDBTSERVER=gbaseserver;CLIENT_LOCALE=zh_cn.utf8;SQLMODE=GBase;NEWCODESET=UTF8,zh_cn.UTF8,57372;DB_LOCALE=zh_CN.57372;","gbasedbt","Ankki@2009", Gbase8s_sql);
-            //            query("com.taosdata.jdbc.rs.RestfulDriver","jdbc:TAOS-RS://172.19.1.250:6041/information_schema","root","Ceshi123", TDengine_sql);
+            //            query("oracle.jdbc.driver.OracleDriver","jdbc:oracle:thin:@172.19.5.234:1521:orcl","sys as sysdba","${DB_PASSWORD}", Oracle_sql);
+            //            query("com.mysql.jdbc.Driver","jdbc:mysql://172.19.5.234:3306/test?useUnicode=true&characterEncoding=utf-8&useSSL=false","root","${DB_PASSWORD}", MySql_sql);
+            //            query("com.microsoft.sqlserver.jdbc.SQLServerDriver","jdbc:sqlserver://172.19.5.234:1433;DatabaseName=master;encrypt=false;trustServerCertificate=false","sa","${DB_PASSWORD}", SqlServer_sql);
+            //            query("org.postgresql.Driver","jdbc:postgresql://172.19.1.12:5432/postgres?encrypt=false&trustServerCertificate=false","postgres","${DB_PASSWORD}", PostgreSQL_sql);
+            //            query("org.postgresql.Driver","jdbc:postgresql://172.19.1.244:5432/postgres","gpadmin","${DB_PASSWORD}", Greenplum_sql);
+            //            query("com.sybase.jdbc4.jdbc.SybDriver","jdbc:sybase:Tds:172.19.1.180:5000/test","sa","${DB_PASSWORD}", Sybase_sql);
+            //            query("org.apache.hive.jdbc.HiveDriver","jdbc:hive2://172.19.1.91:10000/default","root","${DB_PASSWORD}", Hive_sql);
+            //            query("com.mysql.cj.jdbc.Driver","jdbc:mysql://172.19.1.146:4000/test","root","${DB_PASSWORD}", TiDB_sql);
+            //            query("com.mysql.jdbc.Driver","jdbc:mysql://172.19.3.170:2881/oceanbase","demo","${DB_PASSWORD}", OceanBase_sql);
+            //            query("com.teradata.jdbc.TeraDriver","jdbc:teradata://172.19.1.204/DATABASE=test,DBS_PORT=1025","dbc","${DB_PASSWORD}", Teradata_sql);
+            //            query("org.mariadb.jdbc.Driver","jdbc:mysql://172.19.1.98:3306/test","root","${DB_PASSWORD}", MariaDB_sql);
+            //            query("com.kingbase8.Driver","jdbc:kingbase8://172.19.1.170:54321/test","system","${DB_PASSWORD}", KingBase_sql);
+            //            query("com.intersystems.jdbc.IRISDriver","jdbc:IRIS://172.19.1.77:1972/%sys","_system","${DB_PASSWORD}", IRIS_sql);
+            //            query("com.informix.jdbc.IfxDriver","jdbc:informix-sqli://172.19.5.224:9088/sysadmin:informixserver=informix","informix","${DB_PASSWORD}", Informix_sql);
+            //            query("com.ibm.db2.jcc.DB2Driver","jdbc:db2://172.19.1.203:50000/test","db2inst1","${DB_PASSWORD}", DB2_sql);
+            //            query("com.intersys.jdbc.CacheDriver","jdbc:Cache://172.19.1.222:1972/%sys","_SYSTEM","${DB_PASSWORD}", Cache_sql);
+            //            query("org.postgresql.Driver","jdbc:postgresql://172.19.1.92:25308/test","test","${DB_PASSWORD}", GaussDB_sql);
+            //            query("com.gbase.jdbc.Driver", "jdbc:gbase://172.19.1.165:5258/test", "root", "${DB_PASSWORD}", Gbase8a_sql);
+            //            query("com.gbasedbt.jdbc.Driver","jdbc:gbasedbt-sqli://172.19.1.146:9088/test:GBASEDBTSERVER=gbaseserver;CLIENT_LOCALE=zh_cn.utf8;SQLMODE=GBase;NEWCODESET=UTF8,zh_cn.UTF8,57372;DB_LOCALE=zh_CN.57372;","gbasedbt","${DB_PASSWORD}", Gbase8s_sql);
+            //            query("com.taosdata.jdbc.rs.RestfulDriver","jdbc:TAOS-RS://172.19.1.250:6041/information_schema","root","${DB_PASSWORD}", TDengine_sql);
             //                        query("org.apache.phoenix.jdbc.PhoenixDriver","jdbc:phoenix:172.19.5.224:2181","","", Hbase_sql);
             //            query("dm.jdbc.driver.DmDriver","jdbc:dm://172.19.1.238:5236/schema=TEST?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=GMT","SYSDBA","SYSDBA", DM8_sql);
-            //            MongoDBUtil mongoDBUtil = new MongoDBUtil("mongodb://root:Ceshi123@172.19.1.250:27017/test?authSource=admin");
+            //            MongoDBUtil mongoDBUtil = new MongoDBUtil("mongodb://root:${MONGODB_PASSWORD}@172.19.1.250:27017/test?authSource=admin");
             //            mongoDBUtil.executeOperation("SELECT", "test", null, null);
 
             //            getBatchQuery(con, sqls);
             //            goBatchUpdate(con, sqls1);
             // 添加到 main 方法的测试部分
             String clickhouseSql = "SELECT * FROM bs_audit.audit_record LIMIT 10";
-            query("com.clickhouse.jdbc.ClickHouseDriver", "jdbc:clickhouse://172.19.5.45:8123/default", "root", "Ankki_cK123", clickhouseSql);
+            query("com.clickhouse.jdbc.ClickHouseDriver", "jdbc:clickhouse://172.19.5.45:8123/default", "root", "${DB_PASSWORD}", clickhouseSql);
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -839,7 +839,7 @@ public class DataBaseUtil {
         //        String className = "com.mysql.jdbc.Driver";
         //        String url = "jdbc:mysql://172.19.5.229:3306/test?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=GMT";
         //        String user = "root";
-        //        String password = "Ankki_mySQL123";
+        //        String password = "${DB_PASSWORD}";
         //        String sql1 = "INSERT INTO `TEST`.`JDBC` VALUES (1, '小王', 5/3,5/3,SYSDATE());";
         //        String sql2 = "UPDATE `TEST`.`JDBC` SET name='小王' WHERE id=1;";
         //        String sql3 = "SELECT * FROM `TEST`.`JDBC`;";

@@ -17,6 +17,8 @@
 package top.continew.admin.automation.converter;
 
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -49,11 +51,16 @@ public class AutomationOperationConfigValidator {
     private static final List<String> RESERVED_VARIABLE_PREFIXES = List.of("system.", "secret.", "execution.");
     private static final Set<String> SERVER_TARGET_ACTIONS = Set.of("server_command", "server_file_upload");
     private static final Set<String> DATABASE_TARGET_ACTIONS = Set.of("database_sql", "database_native");
+    private static final Map<String, Set<String>> INFRASTRUCTURE_COMPATIBILITY_FIELDS = Map.of("server_command", Set
+        .of("shell", "timeout_ms"), "database_sql", Set.of("sql_mode", "timeout_ms"), "database_native", Set
+            .of("mongo_operation", "collection", "filter", "document", "timeout_ms"));
 
     public void validate(AutomationOperationCatalog.OperationMethod method, Map<String, Object> config) {
-        validateRequiredFields(method, config);
-        validateInfrastructureTargetRef(method, config);
         rejectPlaintextSecrets(config);
+        validateDeclaredFields(method, config);
+        validateRequiredFields(method, config);
+        validateFieldValues(method, config);
+        validateInfrastructureTargetRef(method, config);
         validateRegex(config);
         validateVariableName(method.getActionType(), config);
         validateDateFormat(method.getActionType(), config);
@@ -63,16 +70,170 @@ public class AutomationOperationConfigValidator {
 
     private void validateRequiredFields(AutomationOperationCatalog.OperationMethod method, Map<String, Object> config) {
         for (Map<String, Object> field : method.getFormSchema()) {
-            if (!Boolean.TRUE.equals(field.get("required"))) {
+            if (!isFieldVisible(field, config)) {
+                continue;
+            }
+            String name = stringValue(field.get("name"));
+            boolean required = Boolean.TRUE.equals(field.get("required")) || conditionMatches(field
+                .get("required_when"), config);
+            if (!required) {
+                continue;
+            }
+            Object value = config.get(name);
+            if (isEmpty(value)) {
+                throw new BusinessException("METHOD_CONFIG_INVALID：" + method
+                    .getLabel() + " 缺少必填参数“" + fieldLabel(field) + "”");
+            }
+        }
+    }
+
+    private void validateDeclaredFields(AutomationOperationCatalog.OperationMethod method, Map<String, Object> config) {
+        Map<String, Map<String, Object>> declaredFields = fieldMap(method);
+        for (Map.Entry<String, Object> entry : config.entrySet()) {
+            Map<String, Object> field = declaredFields.get(entry.getKey());
+            if (field == null) {
+                if (infrastructureCompatibilityFields(method).contains(entry.getKey())) {
+                    validateInfrastructureCompatibilityField(method, entry.getKey(), entry.getValue());
+                    continue;
+                }
+                throw new BusinessException("METHOD_CONFIG_INVALID：" + method.getLabel() + " 包含未声明参数“" + entry
+                    .getKey() + "”");
+            }
+            if (!isFieldVisible(field, config)) {
+                throw new BusinessException("METHOD_CONFIG_INVALID：" + method
+                    .getLabel() + " 当前选项不允许参数“" + fieldLabel(field) + "”");
+            }
+        }
+    }
+
+    private Set<String> infrastructureCompatibilityFields(AutomationOperationCatalog.OperationMethod method) {
+        return INFRASTRUCTURE_COMPATIBILITY_FIELDS.getOrDefault(method.getActionType(), Set.of());
+    }
+
+    private void validateInfrastructureCompatibilityField(AutomationOperationCatalog.OperationMethod method,
+                                                          String name,
+                                                          Object value) {
+        if ("timeout_ms".equals(name)) {
+            double timeout;
+            try {
+                timeout = Double.parseDouble(stringValue(value));
+            } catch (NumberFormatException e) {
+                throw new BusinessException("METHOD_CONFIG_INVALID：" + method.getLabel() + " 参数“执行超时”必须是数字");
+            }
+            if (!Double.isFinite(timeout) || timeout < 1000 || timeout > 600000) {
+                throw new BusinessException("METHOD_CONFIG_INVALID：" + method
+                    .getLabel() + " 参数“执行超时”必须在 1000-600000 毫秒之间");
+            }
+        } else if ("shell".equals(name) && !Set.of("bash", "sh", "powershell").contains(stringValue(value))) {
+            throw new BusinessException("METHOD_CONFIG_INVALID：" + method.getLabel() + " 参数“Shell 类型”不是有效选项");
+        } else if ("sql_mode".equals(name) && !Set.of("query", "update", "call").contains(stringValue(value))) {
+            throw new BusinessException("METHOD_CONFIG_INVALID：" + method.getLabel() + " 参数“SQL 类型”不是有效选项");
+        } else if ("mongo_operation".equals(name) && !Set.of("find", "insert", "update", "delete")
+            .contains(stringValue(value))) {
+            throw new BusinessException("METHOD_CONFIG_INVALID：" + method.getLabel() + " 参数“MongoDB 操作”不是有效选项");
+        }
+    }
+
+    private void validateFieldValues(AutomationOperationCatalog.OperationMethod method, Map<String, Object> config) {
+        for (Map<String, Object> field : method.getFormSchema()) {
+            if (!isFieldVisible(field, config)) {
                 continue;
             }
             String name = stringValue(field.get("name"));
             Object value = config.get(name);
-            if (value == null || value instanceof String text && text
-                .isBlank() || value instanceof Collection<?> collection && collection.isEmpty()) {
-                throw new BusinessException("METHOD_CONFIG_INVALID：" + method.getLabel() + " 缺少必填参数 " + name);
+            if (isEmpty(value)) {
+                continue;
+            }
+            String component = stringValue(field.get("component"));
+            if ("number".equals(component)) {
+                validateNumberField(method, field, value);
+            } else if ("select".equals(component)) {
+                validateSelectField(method, field, value);
             }
         }
+    }
+
+    private void validateNumberField(AutomationOperationCatalog.OperationMethod method,
+                                     Map<String, Object> field,
+                                     Object value) {
+        if (!(value instanceof Number numericValue)) {
+            throw invalidField(method, field, "必须是数字");
+        }
+        double number = numericValue.doubleValue();
+        if (!Double.isFinite(number)) {
+            throw invalidField(method, field, "必须是有限数字");
+        }
+        if (field.get("min") instanceof Number min && number < min.doubleValue()) {
+            throw invalidField(method, field, "不能小于 " + min);
+        }
+        if (field.get("max") instanceof Number max && number > max.doubleValue()) {
+            throw invalidField(method, field, "不能大于 " + max);
+        }
+    }
+
+    private void validateSelectField(AutomationOperationCatalog.OperationMethod method,
+                                     Map<String, Object> field,
+                                     Object value) {
+        Set<String> allowedValues = new HashSet<>();
+        Object rawOptions = field.get("options");
+        if (rawOptions instanceof Collection<?> options) {
+            for (Object option : options) {
+                if (option instanceof Map<?, ?> optionMap) {
+                    allowedValues.add(stringValue(optionMap.get("value")));
+                }
+            }
+        }
+        if (!allowedValues.contains(stringValue(value))) {
+            throw invalidField(method, field, "不是有效选项");
+        }
+    }
+
+    private BusinessException invalidField(AutomationOperationCatalog.OperationMethod method,
+                                           Map<String, Object> field,
+                                           String reason) {
+        return new BusinessException("METHOD_CONFIG_INVALID：" + method
+            .getLabel() + " 参数“" + fieldLabel(field) + "”" + reason);
+    }
+
+    private Map<String, Map<String, Object>> fieldMap(AutomationOperationCatalog.OperationMethod method) {
+        Map<String, Map<String, Object>> fields = new HashMap<>();
+        for (Map<String, Object> field : method.getFormSchema()) {
+            fields.put(stringValue(field.get("name")), field);
+        }
+        return fields;
+    }
+
+    private boolean isFieldVisible(Map<String, Object> field, Map<String, Object> config) {
+        return !field.containsKey("visible_when") || conditionMatches(field.get("visible_when"), config);
+    }
+
+    private boolean conditionMatches(Object rawCondition, Map<String, Object> config) {
+        if (!(rawCondition instanceof Map<?, ?> condition) || condition.isEmpty()) {
+            return false;
+        }
+        for (Map.Entry<?, ?> entry : condition.entrySet()) {
+            String actual = stringValue(config.get(stringValue(entry.getKey())));
+            Object expected = entry.getValue();
+            if (expected instanceof Collection<?> values) {
+                if (values.stream().map(this::stringValue).noneMatch(actual::equals)) {
+                    return false;
+                }
+            } else if (!actual.equals(stringValue(expected))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private boolean isEmpty(Object value) {
+        return value == null || value instanceof String text && text
+            .isBlank() || value instanceof Collection<?> collection && collection
+                .isEmpty() || value instanceof Map<?, ?> map && map.isEmpty();
+    }
+
+    private String fieldLabel(Map<String, Object> field) {
+        String label = stringValue(field.get("label"));
+        return label.isBlank() ? stringValue(field.get("name")) : label;
     }
 
     /**

@@ -142,4 +142,8 @@ public class ProjectConfigDetailResp extends BaseDetailResp {
     @Schema(description = "UI 自动化操作目录 v2 灰度开关")
     @ExcelProperty(value = "UI 自动化操作目录 v2 灰度开关", order = 14)
     private Boolean automationOperationCatalogV2;
+
+    @Schema(description = "UI 自动化统一执行详情 v1 灰度开关")
+    @ExcelProperty(value = "UI 自动化统一执行详情 v1 灰度开关", order = 15)
+    private Boolean operationDiagnosticV1;
 }

@@ -114,6 +114,21 @@ class AutomationPlaywrightRunnerJobServiceImplTest {
             .hasRootCauseMessage("Playwright Runner 批次已取消，不能创建新任务");
     }
 
+    @Test
+    void shouldPreserveVideoPolicyForReuseBrowserSession() throws Exception {
+        AutomationPlaywrightRunnerOptionsReq options = new AutomationPlaywrightRunnerOptionsReq();
+        options.setSessionMode("reuse-browser");
+        options.setVideo("retain-on-failure");
+        AutomationPlaywrightRunnerJobReq request = new AutomationPlaywrightRunnerJobReq();
+        request.setProjectEnvironmentId(47L);
+        request.setOptions(options);
+
+        List<String> command = invokeBuildCommand(request);
+
+        assertThat(optionValue(command, "--session-mode")).isEqualTo("reuse-browser");
+        assertThat(optionValue(command, "--video")).isEqualTo("retain-on-failure");
+    }
+
     @SuppressWarnings("unchecked")
     private List<String> invokeBuildCommand(AutomationPlaywrightRunnerJobReq request) throws Exception {
         Method method = AutomationPlaywrightRunnerJobServiceImpl.class

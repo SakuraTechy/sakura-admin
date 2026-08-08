@@ -42,6 +42,8 @@ import top.continew.admin.automation.model.req.AutomationUiTreeCopyReq;
 import top.continew.admin.automation.model.req.AutomationUiTreeDeleteReq;
 import top.continew.admin.automation.model.req.AutomationUiTreeMoveReq;
 import top.continew.admin.automation.model.req.AutomationUiTreeNodeRefReq;
+import top.continew.admin.automation.model.req.ui.AutomationUiStepConfigEditReq;
+import top.continew.admin.automation.model.req.ui.AutomationUiStepCopyReq;
 import top.continew.admin.automation.model.resp.AutomationUiTreeMutationResp;
 import top.continew.admin.automation.model.resp.AutomationUiTreeNodeRefResp;
 import top.continew.admin.automation.service.AutomationUiCaseTreeService;
@@ -143,28 +145,32 @@ public class AutomationUiCaseTreeServiceImpl implements AutomationUiCaseTreeServ
             ref.setCaseId(request.getPid());
             ref.setStepId(request.getId());
             StepDO target = requireStep(scene.getCaseList(), ref, "TREE_SOURCE_NOT_FOUND").step();
-            StepDO editRequest = reverseLegacyStepForExplicitEdit(request);
-            StepDO assembledRequest = operationStepAssembler.assembleManualStep(editRequest);
-            boolean maskedValue = isMasked(target.getConfigList());
-            preserveOriginalRecordingConfigs(target);
-            String existingOperationValue = target.getOperationValue();
-            target.setName(assembledRequest.getName());
-            target.setRemark(assembledRequest.getRemark());
-            if (assembledRequest.getOperationType() != null) {
-                target.setOperationType(assembledRequest.getOperationType());
-            }
-            if (assembledRequest.getOperationName() != null) {
-                target.setOperationName(assembledRequest.getOperationName());
-            }
-            // 展示接口返回的是掩码，编辑时必须保留数据库中的真实操作值。
-            target.setOperationValue(maskedValue ? existingOperationValue : assembledRequest.getOperationValue());
-            target.setStatus(assembledRequest.getStatus());
-            boolean replaceCanonicalStep = hasConfig(assembledRequest, "method_code") || "admin-manual"
-                .equals(configValue(assembledRequest, "source")) || isInfrastructureStep(assembledRequest);
-            target.setConfigList(mergeProtectedConfigs(target.getConfigList(), assembledRequest
-                .getConfigList(), replaceCanonicalStep));
-            return result(true, stepRef(assembledRequest.getPid(), assembledRequest.getId()));
+            applyStepEdit(target, request);
+            return result(true, stepRef(target.getPid(), target.getId()));
         });
+    }
+
+    private void applyStepEdit(StepDO target, StepDO request) {
+        StepDO editRequest = reverseLegacyStepForExplicitEdit(request);
+        StepDO assembledRequest = operationStepAssembler.assembleManualStep(editRequest);
+        boolean maskedValue = isMasked(target.getConfigList());
+        preserveOriginalRecordingConfigs(target);
+        String existingOperationValue = target.getOperationValue();
+        target.setName(assembledRequest.getName());
+        target.setRemark(assembledRequest.getRemark());
+        if (assembledRequest.getOperationType() != null) {
+            target.setOperationType(assembledRequest.getOperationType());
+        }
+        if (assembledRequest.getOperationName() != null) {
+            target.setOperationName(assembledRequest.getOperationName());
+        }
+        // 展示接口返回的是掩码，编辑或复制时必须保留数据库中的真实操作值。
+        target.setOperationValue(maskedValue ? existingOperationValue : assembledRequest.getOperationValue());
+        target.setStatus(assembledRequest.getStatus());
+        boolean replaceCanonicalStep = hasConfig(assembledRequest, "method_code") || "admin-manual"
+            .equals(configValue(assembledRequest, "source")) || isInfrastructureStep(assembledRequest);
+        target.setConfigList(mergeProtectedConfigs(target.getConfigList(), assembledRequest
+            .getConfigList(), replaceCanonicalStep));
     }
 
     private void preserveOriginalRecordingConfigs(StepDO target) {
@@ -296,6 +302,7 @@ public class AutomationUiCaseTreeServiceImpl implements AutomationUiCaseTreeServ
                 copy.setName(req.getName());
             if (req.getRemark() != null)
                 copy.setRemark(req.getRemark());
+            applyStepCopyOverrides(copy, req.getStep());
             int index = copyStepIndex(targetCase, req.getPosition(), req.getAnchor());
             targetCase.getStepList().add(index, copy);
             return result(true, stepRef(targetCase.getId(), copy.getId()));
@@ -668,6 +675,46 @@ public class AutomationUiCaseTreeServiceImpl implements AutomationUiCaseTreeServ
             }
         copy.setConfigList(configs);
         return copy;
+    }
+
+    private void applyStepCopyOverrides(StepDO target, AutomationUiStepCopyReq request) {
+        if (request == null) {
+            return;
+        }
+        StepDO editRequest = copyStep(target);
+        if (request.getName() != null) {
+            editRequest.setName(request.getName());
+        }
+        if (request.getRemark() != null) {
+            editRequest.setRemark(request.getRemark());
+        }
+        if (request.getStatus() != null) {
+            editRequest.setStatus(request.getStatus());
+        }
+        if (request.getOperationType() != null) {
+            editRequest.setOperationType(request.getOperationType());
+        }
+        if (request.getOperationName() != null) {
+            editRequest.setOperationName(request.getOperationName());
+        }
+        if (request.getOperationValue() != null) {
+            editRequest.setOperationValue(request.getOperationValue());
+        }
+        if (request.getConfigList() != null) {
+            List<StepDO.Config> configs = new ArrayList<>();
+            for (AutomationUiStepConfigEditReq source : request.getConfigList()) {
+                if (source == null || source.getParamsName() == null || source.getParamsName().isBlank()) {
+                    continue;
+                }
+                StepDO.Config config = new StepDO.Config();
+                config.setParamsName(source.getParamsName());
+                config.setParamsValue(source.getParamsValue());
+                configs.add(config);
+            }
+            editRequest.setConfigList(configs);
+        }
+        // 复制覆盖与修改步骤共用保护规则，原始 Playwright step、定位元数据和掩码值不能丢失。
+        applyStepEdit(target, editRequest);
     }
 
     /**

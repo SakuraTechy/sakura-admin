@@ -28,7 +28,7 @@
         "id": "SCENE_CASE_001",
         "copyId": null,
         "name": "前置条件",
-        "remark": "<h2 id=\"aie-heading-1\">开启MySQL数据库远程连接</h2><h3 id=\"aie-heading-2\">1. 进入数据库</h3><div class=\"container-wrapper info\"><p>mysql -usroot -pAnkki_mySQL123 mysql</p></div><pre><code class=\"language-sql\">UPDATE `mysql`.`user` SET `Host` = '%' WHERE `Host` = '127.0.0.1'; \nquit;</code></pre><h3 id=\"aie-heading-3\">2. 重启mysqld</h3><pre><code class=\"language-auto\">systemctl restart mysqld</code></pre><h3 id=\"aie-heading-4\">3. 开放端口</h3><pre><code class=\"language-auto\">firewall-cmd --zone=public --add-port=23306/tcp --permanent&amp;&amp;firewall-cmd --reload\nufw allow 23306/tcp</code></pre>",
+        "remark": "<h2 id=\"aie-heading-1\">开启MySQL数据库远程连接</h2><h3 id=\"aie-heading-2\">1. 进入数据库</h3><div class=\"container-wrapper info\"><p>mysql -usroot -p${DB_PASSWORD} mysql</p></div><pre><code class=\"language-sql\">UPDATE `mysql`.`user` SET `Host` = '%' WHERE `Host` = '127.0.0.1'; \nquit;</code></pre><h3 id=\"aie-heading-3\">2. 重启mysqld</h3><pre><code class=\"language-auto\">systemctl restart mysqld</code></pre><h3 id=\"aie-heading-4\">3. 开放端口</h3><pre><code class=\"language-auto\">firewall-cmd --zone=public --add-port=23306/tcp --permanent&amp;&amp;firewall-cmd --reload\nufw allow 23306/tcp</code></pre>",
         "cancel": null,
         "type": "case",
         "order": 1,

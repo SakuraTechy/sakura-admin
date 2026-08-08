@@ -36,6 +36,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 import top.continew.admin.automation.model.req.infrastructure.AutomationInfrastructureTaskCreateReq;
 import top.continew.admin.automation.model.req.infrastructure.AutomationInfrastructureTaskDispositionReq;
+import top.continew.admin.automation.model.resp.infrastructure.AutomationInfrastructureStatementResp;
 import top.continew.admin.automation.model.resp.infrastructure.AutomationInfrastructureTaskResp;
 import top.continew.admin.automation.service.AutomationInfrastructureTaskService;
 import top.continew.admin.automation.service.AutomationInfrastructureTaskService.ArtifactDownload;
@@ -69,6 +70,13 @@ public class AutomationInfrastructureTaskController {
                                                    @RequestParam(required = false) Long afterSequence,
                                                    @RequestHeader(value = "X-Execution-Capability", required = false) String executionCapability) {
         return R.ok(taskService.get(taskId, afterSequence, executionCapability));
+    }
+
+    @Operation(summary = "查询基础设施 SQL 或命令定义快照")
+    @SaCheckPermission("automation:automationUiScene:get")
+    @GetMapping("/{taskId}/statement")
+    public R<AutomationInfrastructureStatementResp> getStatement(@PathVariable String taskId) {
+        return R.ok(taskService.getStatement(taskId));
     }
 
     @Operation(summary = "下载基础设施步骤结果附件")

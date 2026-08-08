@@ -42,6 +42,8 @@ automation:
     root: ${SAKURA_PLAYWRIGHT_RUNNER_ROOT:sakura-playwright}
     node-command: ${SAKURA_PLAYWRIGHT_NODE_COMMAND:node}
     max-concurrent: ${SAKURA_PLAYWRIGHT_RUNNER_MAX_CONCURRENT:2}
+    # Admin 托管 Runner 的稳定身份；为空时自动生成 playwright-<本机名>。
+    executor-instance-id: ${SAKURA_PLAYWRIGHT_EXECUTOR_INSTANCE_ID:}
     runtime-retention-minutes: ${SAKURA_PLAYWRIGHT_RUNTIME_RETENTION_MINUTES:30}
     max-terminal-runtime-count: ${SAKURA_PLAYWRIGHT_MAX_TERMINAL_RUNTIME_COUNT:100}
     lost-heartbeat-seconds: ${SAKURA_PLAYWRIGHT_LOST_HEARTBEAT_SECONDS:90}

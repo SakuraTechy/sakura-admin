@@ -204,12 +204,12 @@ public class SSHUtil {
     }
 
     public static void main(String[] args) {
-        //		SSHUtil sshUtil = new SSHUtil("172.19.5.60", 2233, "root", "@nKk1^2Oe38&8!~!");
+        //		SSHUtil sshUtil = new SSHUtil("172.19.5.60", 2233, "root", "${SSH_PASSWORD}");
         ////		// 执行 ls /opt/命令
         //		String result = sshUtil.executeForResult("df -h");
         //		log.info(result);
         //		sshUtil.close();
         //		runShell("");
-        testConnection("172.19.5.60", 2233, "root", "@nKk1^2Oe38&8!~!");
+        testConnection("172.19.5.60", 2233, "root", "${SSH_PASSWORD}");
     }
 }

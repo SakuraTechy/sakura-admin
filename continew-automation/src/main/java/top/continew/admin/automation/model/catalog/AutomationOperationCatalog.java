@@ -42,6 +42,12 @@ public class AutomationOperationCatalog {
     /** 项目级灰度开关；关闭时前端明确使用旧表单，不调用 v2 保存协议。 */
     private Boolean v2Enabled = Boolean.TRUE;
 
+    /** 方法编码到执行详情模板的映射，避免 UI 按 action_type 自行猜测展示语义。 */
+    private Map<String, List<String>> diagnosticProfiles = new LinkedHashMap<>();
+
+    /** 字段级执行详情语义和安全边界，加载后会复制到每个 form_schema 字段。 */
+    private Map<String, Map<String, String>> diagnosticFieldDefaults = new LinkedHashMap<>();
+
     private List<OperationType> types = new ArrayList<>();
 
     @Data
@@ -70,6 +76,8 @@ public class AutomationOperationCatalog {
         private String legacyAction;
 
         private String actionType;
+
+        private String diagnosticProfile;
 
         private List<String> aliases = new ArrayList<>();
 

@@ -42,7 +42,7 @@ public class AutomationPlaywrightStepExtractor {
     private static final TypeReference<Map<String, Object>> MAP_TYPE = new TypeReference<>() {
     };
     private static final Set<String> INTERNAL_CONFIGS = Set
-        .of("playwright_step", "method_code", "method_version", "method_config", "canonical_digest", "catalog_version", "schema_version", "original_case_id", "original_step_id", "recording_id", "screenshot", "screenshot_url", "screenshot_file_id", "screenshot_path", "screenshot_present");
+        .of("playwright_step", "type_code", "type_label", "method_code", "method_version", "method_label", "diagnostic_profile", "method_config", "canonical_digest", "catalog_version", "schema_version", "original_case_id", "original_step_id", "recording_id", "screenshot", "screenshot_url", "screenshot_file_id", "screenshot_path", "screenshot_present");
 
     private final ObjectMapper objectMapper;
     private final AutomationOperationCatalogService catalogService;
@@ -73,6 +73,7 @@ public class AutomationPlaywrightStepExtractor {
             copyIfAbsent(step, configs, "window_size_mode");
             copyIfAbsent(step, configs, "viewport_width");
             copyIfAbsent(step, configs, "viewport_height");
+            enrichMethodIdentity(step, configs);
             return step;
         }
         Map<String, Object> step = fallbackStep(stepDO, configs);
@@ -82,7 +83,26 @@ public class AutomationPlaywrightStepExtractor {
         step.putIfAbsent("value_masked", configs.getOrDefault("value_masked", "0"));
         step.putIfAbsent("wait_before", configs.getOrDefault("wait_before", "0"));
         step.putIfAbsent("is_overlay", configs.getOrDefault("is_overlay", "0"));
+        enrichMethodIdentity(step, configs);
         return step;
+    }
+
+    private void enrichMethodIdentity(Map<String, Object> step, Map<String, String> configs) {
+        String methodRef = firstText(String.valueOf(step.getOrDefault("method_code", "")), configs
+            .get("method_code"), String.valueOf(step.getOrDefault("action_type", "")));
+        catalogService.findOperation(methodRef).ifPresent(operation -> {
+            var method = operation.method();
+            step.putIfAbsent("type_code", operation.typeCode());
+            step.putIfAbsent("type_label", operation.typeLabel());
+            step.putIfAbsent("method_code", method.getMethodCode());
+            step.putIfAbsent("method_version", method.getMethodVersion());
+            step.putIfAbsent("method_label", method.getLabel());
+            step.putIfAbsent("diagnostic_profile", method.getDiagnosticProfile());
+            // Runner 按 Admin 已校验的目录字段生成执行详情，避免各执行器维护第二份参数列表。
+            if (!step.containsKey("diagnostic_fields") && method.getFormSchema() != null) {
+                step.put("diagnostic_fields", method.getFormSchema().stream().map(LinkedHashMap::new).toList());
+            }
+        });
     }
 
     /**

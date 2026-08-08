@@ -18,7 +18,10 @@ package top.continew.admin.automation.service.impl;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -45,7 +48,7 @@ class AutomationOperationCatalogServiceImplTest {
     }
 
     @Test
-    void shouldLoadThirteenTypesAndSixtyTwoMethods() {
+    void shouldLoadThirteenTypesAndSixtyThreeMethods() {
         AutomationOperationCatalog catalog = catalog();
         List<AutomationOperationCatalog.OperationMethod> methods = catalog.getTypes()
             .stream()
@@ -53,7 +56,7 @@ class AutomationOperationCatalogServiceImplTest {
             .toList();
 
         assertThat(catalog.getTypes()).hasSize(13);
-        assertThat(methods).hasSize(62);
+        assertThat(methods).hasSize(63);
         assertThat(methods).allSatisfy(method -> {
             assertThat(method.getMethodCode()).isNotBlank();
             assertThat(method.getLegacyAction()).isNotBlank();
@@ -65,6 +68,64 @@ class AutomationOperationCatalogServiceImplTest {
             assertThat(method.getRuntimeReady()).isFalse();
             assertThat(method.getEnabled()).isFalse();
         });
+    }
+
+    @Test
+    void shouldCoverEveryMethodWithADiagnosticProfile() {
+        AutomationOperationCatalog catalog = catalog();
+        assertThat(catalog.getDiagnosticProfiles())
+            .containsKeys("navigation", "element_interaction", "dialog", "assertion", "wait", "variable", "script", "infrastructure");
+        assertThat(catalog.getDiagnosticProfiles().values().stream().mapToInt(List::size).sum()).isEqualTo(63);
+        assertThat(catalog.getDiagnosticProfiles().values().stream().flatMap(List::stream).distinct()).hasSize(63);
+    }
+
+    @Test
+    void shouldExposeCompleteAndSafeFormPresentationMetadata() {
+        List<AutomationOperationCatalog.OperationMethod> methods = methods();
+        List<Map<String, Object>> fields = methods.stream().flatMap(method -> method.getFormSchema().stream()).toList();
+
+        assertThat(fields).hasSize(117);
+        assertThat(catalog().getDiagnosticFieldDefaults()).hasSize(44);
+        assertThat(fields.stream().filter(field -> field.containsKey("default"))).hasSize(16);
+        for (AutomationOperationCatalog.OperationMethod method : methods) {
+            Set<String> fieldNames = new HashSet<>();
+            for (Map<String, Object> field : method.getFormSchema()) {
+                assertThat(field.get("name")).as(method.getMethodCode()).isInstanceOf(String.class);
+                assertThat(String.valueOf(field.get("name"))).as(method.getMethodCode()).isNotBlank();
+                assertThat(String.valueOf(field.get("label"))).as(method.getMethodCode()).isNotBlank();
+                assertThat(String.valueOf(field.get("component"))).as(method.getMethodCode()).isNotBlank();
+                assertThat(fieldNames.add(String.valueOf(field.get("name")))).as(method.getMethodCode()).isTrue();
+                assertThat(field).containsKeys("diagnostic_role", "sensitivity", "result_display");
+                assertThat(String.valueOf(field.get("diagnostic_role")))
+                    .isIn("target", "input", "expected", "definition", "binding", "control");
+                assertThat(String.valueOf(field.get("sensitivity")))
+                    .isIn("public", "inherit", "sensitive", "restricted");
+                assertThat(String.valueOf(field.get("result_display")))
+                    .isIn("effective_preview", "configured_preview", "basename", "summary", "definition_endpoint", "omit");
+                assertFieldPresentation(method, field);
+                assertConditionsReferenceDeclaredFields(method, field);
+            }
+        }
+    }
+
+    @Test
+    void shouldExposeConditionalDefaultsForGlobalVariableMethods() {
+        AutomationOperationCatalog.OperationMethod date = findMethod(catalog(), "global.variable.date");
+        assertThat(field(date, "date_mode")).containsEntry("default", "current_datetime");
+        assertThat(field(date, "format")).containsEntry("default", "yyyy-MM-dd HH:mm:ss")
+            .containsEntry("visible_when", Map.of("date_mode", List.of("current_datetime", "custom_datetime")));
+        assertThat(field(date, "datetime")).containsEntry("visible_when", Map.of("date_mode", "custom_datetime"))
+            .containsEntry("required_when", Map.of("date_mode", "custom_datetime"));
+        assertThat(field(date, "timestamp_unit")).containsEntry("default", "milliseconds")
+            .containsEntry("visible_when", Map.of("date_mode", "timestamp"));
+
+        AutomationOperationCatalog.OperationMethod set = findMethod(catalog(), "global.variable.set");
+        assertThat(field(set, "source_type")).containsEntry("default", "literal");
+        assertThat(field(set, "value")).containsEntry("visible_when", Map.of("source_type", List
+            .of("literal", "script")))
+            .containsEntry("required_when", Map.of("source_type", List.of("literal", "script")));
+        assertThat(field(set, "target_ref")).containsEntry("visible_when", Map.of("source_type", "locator"))
+            .containsEntry("required_when", Map.of("source_type", "locator"));
     }
 
     @Test
@@ -121,9 +182,9 @@ class AutomationOperationCatalogServiceImplTest {
     @Test
     void shouldMatchEveryCatalogMethodWithTheCrossExecutorFixture() throws Exception {
         JsonNode fixture = objectMapper.readTree(getClass()
-            .getResourceAsStream("/automation/automation-operation-62-fixture.json"));
-        assertThat(fixture.path("catalog_version").asText()).isEqualTo("2026-07-30.1");
-        assertThat(fixture.path("methods").size()).isEqualTo(62);
+            .getResourceAsStream("/automation/automation-operation-63-fixture.json"));
+        assertThat(fixture.path("catalog_version").asText()).isEqualTo("2026-08-07.1");
+        assertThat(fixture.path("methods").size()).isEqualTo(63);
 
         List<AutomationOperationCatalog.OperationMethod> catalogMethods = catalog().getTypes()
             .stream()
@@ -200,6 +261,46 @@ class AutomationOperationCatalogServiceImplTest {
             .of());
     }
 
+    private List<AutomationOperationCatalog.OperationMethod> methods() {
+        return catalog().getTypes().stream().flatMap(type -> type.getMethods().stream()).toList();
+    }
+
+    private void assertFieldPresentation(AutomationOperationCatalog.OperationMethod method, Map<String, Object> field) {
+        String component = String.valueOf(field.get("component"));
+        String name = String.valueOf(field.get("name"));
+        if ("select".equals(component)) {
+            assertThat(field.get("options")).as(method.getMethodCode() + "." + name).isInstanceOf(Collection.class);
+            Collection<?> options = (Collection<?>)field.get("options");
+            assertThat(options).isNotEmpty();
+            assertThat(options.stream().map(option -> String.valueOf(((Map<?, ?>)option).get("value"))).toList())
+                .doesNotHaveDuplicates();
+        } else {
+            assertThat(String.valueOf(field.getOrDefault("placeholder", "")) + String.valueOf(field
+                .getOrDefault("help", ""))).as(method.getMethodCode() + "." + name).isNotBlank();
+        }
+        if (field.containsKey("default")) {
+            assertThat(name).as(method.getMethodCode())
+                .doesNotMatch("(?i).*(url|sql|command|path|file_ref|target_ref|certificate|variable_name|value|expect|script).*");
+        }
+    }
+
+    private void assertConditionsReferenceDeclaredFields(AutomationOperationCatalog.OperationMethod method,
+                                                         Map<String, Object> field) {
+        Set<String> names = method.getFormSchema()
+            .stream()
+            .map(item -> String.valueOf(item.get("name")))
+            .collect(java.util.stream.Collectors.toSet());
+        for (String conditionName : List.of("visible_when", "required_when")) {
+            if (field.get(conditionName) instanceof Map<?, ?> condition) {
+                assertThat(condition.keySet().stream().map(String::valueOf)).allMatch(names::contains);
+            }
+        }
+    }
+
+    private Map<String, Object> field(AutomationOperationCatalog.OperationMethod method, String name) {
+        return method.getFormSchema().stream().filter(item -> name.equals(item.get("name"))).findFirst().orElseThrow();
+    }
+
     private AutomationOperationCatalog.OperationMethod findMethod(AutomationOperationCatalog source, String code) {
         return source.getTypes()
             .stream()
@@ -224,7 +325,7 @@ class AutomationOperationCatalogServiceImplTest {
         request.setExecutor(executor);
         request.setExecutorInstanceId(executor + "-node-1");
         request.setExecutorVersion("1.0.0");
-        request.setCatalogVersion("2026-07-30.1");
+        request.setCatalogVersion("2026-08-07.1");
         request.setProjectEnvironmentId(ENVIRONMENT_ID);
         request.setSessionId("cuecast".equals(executor) ? SESSION_ID : null);
         request.setActions(actions);

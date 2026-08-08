@@ -106,6 +106,47 @@ class AutomationPlaywrightStepExtractorTest {
             .doesNotContainValue("https://stale.example");
     }
 
+    @Test
+    void shouldAttachCatalogDiagnosticFieldsToRunnerStep() {
+        AutomationOperationCatalog.OperationMethod method = new AutomationOperationCatalog.OperationMethod();
+        method.setMethodCode("input.text");
+        method.setMethodVersion(1);
+        method.setLabel("输入文本");
+        method.setActionType("input");
+        method.setDiagnosticProfile("element_interaction");
+        method.setFormSchema(List.of(Map
+            .of("name", "value", "label", "输入值", "diagnostic_role", "input", "sensitivity", "inherit", "result_display", "effective_preview")));
+        when(catalogService.findOperation("input.text")).thenReturn(Optional
+            .of(new AutomationOperationCatalogService.OperationDescriptor("browser", "浏览器操作", method)));
+
+        StepDO stepDO = new StepDO();
+        stepDO.setId("STEP_006");
+        stepDO.setName("输入用户名");
+        stepDO.setConfigList(List.of(config("method_code", "input.text"), config("value", "sysadmin")));
+
+        Map<String, Object> extracted = extractor.extract(stepDO, 0);
+
+        assertThat(extracted).containsEntry("diagnostic_profile", "element_interaction");
+        assertThat((List<?>)extracted.get("diagnostic_fields")).singleElement()
+            .isEqualTo(Map
+                .of("name", "value", "label", "输入值", "diagnostic_role", "input", "sensitivity", "inherit", "result_display", "effective_preview"));
+    }
+
+    @Test
+    void shouldKeepCatalogIdentityMetadataOutOfLegacyFallbackExecutionParameters() {
+        StepDO stepDO = new StepDO();
+        stepDO.setId("STEP_007");
+        stepDO.setName("旧步骤");
+        stepDO.setOperationValue("web-click");
+        stepDO.setConfigList(List
+            .of(config("type_code", "click"), config("type_label", "点击操作"), config("method_code", "click.element"), config("method_version", "1"), config("method_label", "元素点击"), config("diagnostic_profile", "element_interaction"), config("target_ref", "#login")));
+
+        Map<String, Object> extracted = extractor.extract(stepDO, 0);
+
+        assertThat(extracted).containsEntry("target_ref", "#login")
+            .doesNotContainKeys("type_code", "type_label", "method_code", "method_version", "method_label", "diagnostic_profile");
+    }
+
     private StepDO.Config config(String name, String value) {
         StepDO.Config config = new StepDO.Config();
         config.setParamsName(name);

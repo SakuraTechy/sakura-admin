@@ -53,6 +53,7 @@ import top.continew.admin.automation.model.entity.ui.CaseDO;
 import top.continew.admin.automation.model.entity.ui.StepDO;
 import top.continew.admin.automation.model.req.infrastructure.AutomationInfrastructureTaskCreateReq;
 import top.continew.admin.automation.model.req.infrastructure.AutomationInfrastructureTaskDispositionReq;
+import top.continew.admin.automation.model.resp.infrastructure.AutomationInfrastructureStatementResp;
 import top.continew.admin.automation.model.resp.infrastructure.AutomationInfrastructureTaskResp;
 import top.continew.admin.automation.model.resp.infrastructure.AutomationInfrastructureTargetResp;
 import top.continew.admin.automation.service.AutomationInfrastructureTaskService;
@@ -77,7 +78,7 @@ import top.continew.starter.core.exception.BusinessException;
  * 基础设施任务控制面实现。
  *
  * <p>这里不执行 SSH/JDBC，也不保存凭据；执行节点根据任务身份领取受控执行快照。
- * 这样浏览器回放端只能创建、查询和取消任务，无法篡改或读取真实命令、SQL、连接信息。</p>
+ * SQL 和服务器命令仅通过任务所有者受控接口从不可变定义快照读取，连接信息和运行时参数始终不回传浏览器。</p>
  */
 @Service
 @RequiredArgsConstructor
@@ -256,6 +257,50 @@ public class AutomationInfrastructureTaskServiceImpl implements AutomationInfras
         requireTaskAccess(task, executionCapability);
         Map<String, Object> agentResponse = task.getDisposition() == null ? refreshFromAgent(task) : Map.of();
         return toResp(task, logsAfter(taskId, afterSequence), safeAgentResult(task.getActionType(), agentResponse));
+    }
+
+    @Override
+    public AutomationInfrastructureStatementResp getStatement(String taskId) {
+        AutomationInfrastructureTaskDO task = requireTask(taskId);
+        // SQL/命令读取不接受 Runner capability，必须由登录任务所有者通过独立权限接口访问。
+        requireTaskAccess(task);
+        String actionType = task.getActionType();
+        if (!"database_sql".equals(actionType) && !"server_command".equals(actionType)) {
+            throw new BusinessException("当前任务不支持读取 SQL 或命令定义快照");
+        }
+        List<String> definitions = jdbcTemplate
+            .query("SELECT definition_json FROM automation_ui_scene_definition_revision WHERE id = ? LIMIT 1", (rs,
+                                                                                                                rowNum) -> rs
+                                                                                                                    .getString("definition_json"), task
+                                                                                                                        .getDefinitionRevisionId());
+        if (definitions.isEmpty()) {
+            throw new BusinessException("DEFINITION_REVISION_NOT_FOUND：未找到任务绑定的定义 revision");
+        }
+        String[] caseKeyParts = splitCaseKey(task.getCaseKey());
+        Map<String, Object> rawStep = extractFrozenRawStep(definitions.get(0), caseKeyParts[1], task.getStepId());
+        if (!actionType.equals(stringValue(rawStep.get("action_type")))) {
+            throw new BusinessException("DEFINITION_REVISION_INVALID：任务步骤类型与 definition revision 不一致");
+        }
+        AutomationInfrastructureStatementResp resp = new AutomationInfrastructureStatementResp();
+        resp.setTaskId(task.getTaskId());
+        resp.setStepId(task.getStepId());
+        resp.setActionType(actionType);
+        resp.setDefinitionVersion(task.getDefinitionVersion());
+        if ("database_sql".equals(actionType)) {
+            String sql = stringValue(rawStep.get("sql"));
+            if (sql == null || sql.isBlank()) {
+                throw new BusinessException("DEFINITION_REVISION_INVALID：SQL 定义为空");
+            }
+            resp.setSqlMode(stringValue(rawStep.getOrDefault("sql_mode", "query")));
+            resp.setSql(sql);
+        } else {
+            String command = stringValue(rawStep.get("command"));
+            if (command == null || command.isBlank()) {
+                throw new BusinessException("DEFINITION_REVISION_INVALID：服务器命令定义为空");
+            }
+            resp.setCommand(command);
+        }
+        return resp;
     }
 
     @Override
@@ -443,29 +488,7 @@ public class AutomationInfrastructureTaskServiceImpl implements AutomationInfras
     }
 
     private ResolvedStep resolveInfrastructureStep(ExecutionContextRef context, String stepId) {
-        List<CaseDO> frozenCases;
-        try {
-            frozenCases = objectMapper.readValue(context.definitionJson(), new TypeReference<List<CaseDO>>() {
-            });
-        } catch (Exception e) {
-            throw new BusinessException("DEFINITION_REVISION_INVALID：定义 revision JSON 无法解析");
-        }
-        CaseDO caseDO = frozenCases.stream()
-            .filter(item -> Objects.equals(context.caseId(), item.getId()))
-            .findFirst()
-            .orElse(null);
-        if (caseDO == null || caseDO.getStepList() == null) {
-            throw new BusinessException("DEFINITION_REVISION_NOT_FOUND：revision 中不存在目标用例");
-        }
-        StepDO step = caseDO.getStepList()
-            .stream()
-            .filter(item -> stepId.equals(item.getId()))
-            .findFirst()
-            .orElse(null);
-        if (step == null) {
-            throw new BusinessException("DEFINITION_REVISION_NOT_FOUND：revision 中不存在目标步骤");
-        }
-        Map<String, Object> rawStep = stepExtractor.extract(step, 0);
+        Map<String, Object> rawStep = extractFrozenRawStep(context.definitionJson(), context.caseId(), stepId);
         runtimeBindingResolver.rejectVariablesInRoutingFields(rawStep);
         String actionType = String.valueOf(rawStep.get("action_type"));
         if (!INFRASTRUCTURE_ACTIONS.contains(actionType)) {
@@ -490,6 +513,32 @@ public class AutomationInfrastructureTaskServiceImpl implements AutomationInfras
             throw new BusinessException("INFRA_TARGET_REF_INVALID：target_ref 必须包含正数 config_id 或 binding_key");
         }
         return new ResolvedStep(context, actionType, targetKind, configId, bindingKey, rawStep);
+    }
+
+    private Map<String, Object> extractFrozenRawStep(String definitionJson, String caseId, String stepId) {
+        List<CaseDO> frozenCases;
+        try {
+            frozenCases = objectMapper.readValue(definitionJson, new TypeReference<List<CaseDO>>() {
+            });
+        } catch (Exception e) {
+            throw new BusinessException("DEFINITION_REVISION_INVALID：定义 revision JSON 无法解析");
+        }
+        CaseDO caseDO = frozenCases.stream()
+            .filter(item -> Objects.equals(caseId, item.getId()))
+            .findFirst()
+            .orElse(null);
+        if (caseDO == null || caseDO.getStepList() == null) {
+            throw new BusinessException("DEFINITION_REVISION_NOT_FOUND：revision 中不存在目标用例");
+        }
+        StepDO step = caseDO.getStepList()
+            .stream()
+            .filter(item -> stepId.equals(item.getId()))
+            .findFirst()
+            .orElse(null);
+        if (step == null) {
+            throw new BusinessException("DEFINITION_REVISION_NOT_FOUND：revision 中不存在目标步骤");
+        }
+        return stepExtractor.extract(step, 0);
     }
 
     /** Runner 的 caseKey 同时兼容场景数据库主键和业务 sceneId。 */

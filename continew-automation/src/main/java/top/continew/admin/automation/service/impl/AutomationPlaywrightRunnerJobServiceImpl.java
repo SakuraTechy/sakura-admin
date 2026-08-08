@@ -18,6 +18,7 @@ package top.continew.admin.automation.service.impl;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
+import java.net.InetAddress;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -54,6 +55,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import top.continew.admin.automation.model.req.playwright.AutomationPlaywrightRunnerJobReq;
+import top.continew.admin.automation.model.req.catalog.AutomationExecutorRegistrationReq;
 import top.continew.admin.automation.mapper.AutomationPlaywrightJobMapper;
 import top.continew.admin.automation.mapper.AutomationUiSceneMapper;
 import top.continew.admin.automation.model.entity.AutomationPlaywrightJobDO;
@@ -63,9 +65,11 @@ import top.continew.admin.automation.model.resp.playwright.AutomationPlaywrightC
 import top.continew.admin.automation.model.resp.playwright.AutomationPlaywrightRunnerJobResp;
 import top.continew.admin.automation.model.resp.playwright.AutomationPlaywrightRunnerLogResp;
 import top.continew.admin.automation.service.AutomationPlaywrightCaseService;
+import top.continew.admin.automation.service.AutomationPlaywrightBrowserSessionService;
 import top.continew.admin.automation.service.AutomationPlaywrightRunnerJobService;
 import top.continew.admin.automation.service.AutomationPlaywrightSessionStateService;
 import top.continew.admin.automation.service.AutomationPlaywrightSessionStateService.SessionFiles;
+import top.continew.admin.automation.service.AutomationExecutorRegistrationService;
 import top.continew.admin.automation.support.AutomationStoragePressureGuard;
 import top.continew.starter.core.exception.BusinessException;
 import top.continew.starter.core.validation.CheckUtils;
@@ -94,7 +98,7 @@ public class AutomationPlaywrightRunnerJobServiceImpl implements AutomationPlayw
         .ofPattern("yyyy-MM-dd HH:mm:ss.SSS");
     private static final List<String> TERMINAL_STATUSES = List.of("passed", "failed", "cancelled", "interrupted");
     private static final Set<String> BROWSERS = Set.of("chromium", "firefox", "webkit");
-    private static final Set<String> SESSION_MODES = Set.of("isolated", "reuse-auth");
+    private static final Set<String> SESSION_MODES = Set.of("isolated", "reuse-auth", "reuse-browser");
     private static final Set<String> LIVE_FRAME_QUALITIES = Set.of("smooth", "high", "ultra", "8k");
     private static final Set<String> ARTIFACT_POLICIES = Set.of("off", "on", "retain-on-failure");
 
@@ -116,6 +120,12 @@ public class AutomationPlaywrightRunnerJobServiceImpl implements AutomationPlayw
 
     @Resource
     private AutomationStoragePressureGuard storagePressureGuard;
+
+    @Resource
+    private AutomationPlaywrightBrowserSessionService browserSessionService;
+
+    @Resource
+    private AutomationExecutorRegistrationService executorRegistrationService;
 
     @Value("${automation.playwright-runner.enabled:true}")
     private boolean enabled;
@@ -143,6 +153,9 @@ public class AutomationPlaywrightRunnerJobServiceImpl implements AutomationPlayw
 
     @Value("${automation.playwright-runner.executor-node:local}")
     private String executorNode;
+
+    @Value("${automation.playwright-runner.executor-instance-id:}")
+    private String executorInstanceId;
 
     public AutomationPlaywrightRunnerJobServiceImpl(AutomationPlaywrightCaseService caseService,
                                                     ObjectMapper objectMapper,
@@ -198,11 +211,13 @@ public class AutomationPlaywrightRunnerJobServiceImpl implements AutomationPlayw
         CheckUtils.throwIfNull(req.getProjectEnvironmentId(), "Playwright Runner 产品环境不能为空");
         AutomationPlaywrightRunnerJobReq normalizedRequest = normalizeRequest(req);
         validateOptions(normalizedRequest.getOptions());
-        boolean reuseAuth = "reuse-auth".equals(normalizedRequest.getOptions().getSessionMode());
-        CheckUtils.throwIf(reuseAuth && StringUtils.isBlank(normalizedRequest
-            .getBatchId()), "Playwright Runner reuse-auth 模式必须提供 batchId");
+        String sessionMode = normalizedRequest.getOptions().getSessionMode();
+        boolean reuseAuth = "reuse-auth".equals(sessionMode);
+        boolean reusableSession = reuseAuth || "reuse-browser".equals(sessionMode);
+        CheckUtils.throwIf(reusableSession && StringUtils.isBlank(normalizedRequest
+            .getBatchId()), "Playwright Runner " + sessionMode + " 模式必须提供 batchId");
         ensureBatchCaseNotCancelled(normalizedRequest, caseKey);
-        if (reuseAuth) {
+        if (reusableSession) {
             caseService.validateReusableBatchCase(sceneKey(caseKey), normalizedRequest
                 .getBatchId(), caseId(caseKey), normalizedRequest.getProjectEnvironmentId());
         }
@@ -229,8 +244,8 @@ public class AutomationPlaywrightRunnerJobServiceImpl implements AutomationPlayw
         JobRuntime runtime;
         try {
             synchronized (jobs) {
-                CheckUtils.throwIf(reuseAuth && hasActiveBatchJob(normalizedRequest
-                    .getBatchId()), "Playwright Runner reuse-auth 批次仅允许串行执行");
+                CheckUtils.throwIf(reusableSession && hasActiveBatchJob(normalizedRequest
+                    .getBatchId()), "Playwright Runner " + sessionMode + " 批次仅允许串行执行");
                 SessionFiles sessionFiles = reuseAuth
                     ? sessionStateService.prepare(normalizedRequest.getBatchId(), normalizedRequest
                         .getProjectEnvironmentId(), jobId)
@@ -321,6 +336,7 @@ public class AutomationPlaywrightRunnerJobServiceImpl implements AutomationPlayw
             .filter(runtime -> batchId.equals(runtime.request.getBatchId()))
             .forEach(this::cancelRuntime);
         sessionStateService.cleanupBatch(batchId);
+        releaseBrowserSession(batchId);
     }
 
     @Override
@@ -405,6 +421,13 @@ public class AutomationPlaywrightRunnerJobServiceImpl implements AutomationPlayw
             CheckUtils.throwIf(!Files.isRegularFile(root.resolve("src/index.js")), "Playwright Runner 入口不存在：" + root
                 .resolve("src/index.js"));
 
+            String browserSessionEndpoint = "";
+            if (isReuseBrowser(runtime.request)) {
+                CheckUtils.throwIfNull(browserSessionService, "Playwright 共享浏览器服务未初始化");
+                browserSessionEndpoint = browserSessionService.acquire(runtime.request.getBatchId(), runtime.request
+                    .getProjectEnvironmentId(), runtime.request.getOptions(), root, nodeCommand);
+                recordSessionEvent(runtime, "info", "Runner 已接入当前批次的共享浏览器窗口");
+            }
             List<String> command = buildCommand(runtime.request, runtime.caseKey, runtime.jobId, runtime.sessionFiles);
             if (runtime.sessionFiles != null) {
                 recordSessionEvent(runtime, "info", "Runner 启动，输入登录态=" + (sessionStateService
@@ -416,6 +439,13 @@ public class AutomationPlaywrightRunnerJobServiceImpl implements AutomationPlayw
             ProcessBuilder processBuilder = new ProcessBuilder(command).directory(root.toFile())
                 .redirectErrorStream(true);
             Map<String, String> environment = processBuilder.environment();
+            String effectiveExecutorInstanceId = ensureExecutorRegistration();
+            // Admin 托管模式把受控实例身份注入子进程，避免 Runner 回退到不稳定的主机名。
+            environment.put("SAKURA_PLAYWRIGHT_EXECUTOR_INSTANCE_ID", effectiveExecutorInstanceId);
+            // 共享浏览器端点等同于控制凭据，只能通过子进程环境变量传递，禁止写入命令和日志。
+            if (StringUtils.isNotBlank(browserSessionEndpoint)) {
+                environment.put("SAKURA_PLAYWRIGHT_BROWSER_SESSION_ENDPOINT", browserSessionEndpoint);
+            }
             // API 地址、浏览器和产物策略均由 Runner .env 统一管理；这里只注入当前用户的短期凭证。
             if (StringUtils.isNotBlank(token)) {
                 environment.put("CUECAST_TOKEN", token);
@@ -462,10 +492,11 @@ public class AutomationPlaywrightRunnerJobServiceImpl implements AutomationPlayw
                 }
                 runtime.heartbeatAt = LocalDateTime.now(PLATFORM_ZONE_ID);
             }
-            if ("passed".equals(runtime.status) && StringUtils.isNotBlank(runtime.request.getBatchId()) && caseService
+            if (StringUtils.isNotBlank(runtime.request.getBatchId()) && caseService
                 .isBatchTerminal(sceneKey(runtime.caseKey), runtime.request.getBatchId())) {
                 sessionStateService.cleanupBatch(runtime.request.getBatchId());
-                recordSessionEvent(runtime, "info", "批次已进入终态，登录态目录已清理");
+                releaseBrowserSession(runtime.request.getBatchId());
+                recordSessionEvent(runtime, "info", "批次已进入终态，会话资源已清理");
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -478,6 +509,10 @@ public class AutomationPlaywrightRunnerJobServiceImpl implements AutomationPlayw
         } finally {
             if (runtime.sessionFiles != null && !"passed".equals(runtime.status)) {
                 recordSessionEvent(runtime, "warning", "Runner 状态=" + runtime.status + "，登录态候选不提交");
+            }
+            if (isReuseBrowser(runtime.request) && !"passed".equals(runtime.status)) {
+                // 失败或取消后的页面状态不可作为下一条用例的可靠前置条件，立即销毁本批次宿主。
+                releaseBrowserSession(runtime.request.getBatchId());
             }
             sessionStateService.discardCandidate(runtime.sessionFiles);
             if (runtime.process != null && runtime.process.isAlive()) {
@@ -628,6 +663,17 @@ public class AutomationPlaywrightRunnerJobServiceImpl implements AutomationPlayw
         CheckUtils.throwIf(options.getCaseTimeoutMs() < options.getStepTimeoutMs(), "Playwright Runner 用例超时不能小于步骤超时");
     }
 
+    private boolean isReuseBrowser(AutomationPlaywrightRunnerJobReq request) {
+        return request != null && request.getOptions() != null && "reuse-browser".equals(request.getOptions()
+            .getSessionMode());
+    }
+
+    private void releaseBrowserSession(String batchId) {
+        if (browserSessionService != null) {
+            browserSessionService.release(batchId);
+        }
+    }
+
     private void addCommandOption(List<String> command, String name, Object value) {
         command.add(name);
         command.add(String.valueOf(value));
@@ -659,6 +705,23 @@ public class AutomationPlaywrightRunnerJobServiceImpl implements AutomationPlayw
             }
         }
         return userDir.resolve(configured).normalize();
+    }
+
+    private String ensureExecutorRegistration() {
+        String instanceId = StringUtils.trimToNull(executorInstanceId);
+        if (instanceId == null) {
+            try {
+                instanceId = "playwright-" + InetAddress.getLocalHost().getHostName();
+            } catch (Exception ignored) {
+                instanceId = "playwright-local";
+            }
+        }
+        AutomationExecutorRegistrationReq req = new AutomationExecutorRegistrationReq();
+        req.setExecutorType("playwright");
+        req.setExecutorInstanceId(instanceId);
+        req.setDescription("Admin 托管 Playwright Runner");
+        executorRegistrationService.register(req);
+        return instanceId;
     }
 
     private String runnerRootError(Path root) {

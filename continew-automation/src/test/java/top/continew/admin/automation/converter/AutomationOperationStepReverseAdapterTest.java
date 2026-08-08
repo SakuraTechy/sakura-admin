@@ -38,13 +38,14 @@ class AutomationOperationStepReverseAdapterTest {
     void setUp() {
         AutomationOperationCatalogServiceImpl catalogService = new AutomationOperationCatalogServiceImpl(objectMapper);
         catalogService.initialize();
-        adapter = new AutomationOperationStepReverseAdapter(objectMapper, catalogService);
+        CuecastRecordingOperationProjector projector = new CuecastRecordingOperationProjector(objectMapper, catalogService, new AutomationOperationConfigValidator());
+        adapter = new AutomationOperationStepReverseAdapter(objectMapper, catalogService, projector);
     }
 
     @Test
-    void shouldRecognizeEveryLegacyActionInThe62MethodFixture() throws Exception {
+    void shouldRecognizeEveryLegacyActionInThe63MethodFixture() throws Exception {
         JsonNode fixture = objectMapper.readTree(getClass()
-            .getResourceAsStream("/automation/automation-operation-62-fixture.json"));
+            .getResourceAsStream("/automation/automation-operation-63-fixture.json"));
         for (JsonNode expected : fixture.path("methods")) {
             StepDO step = step(expected.path("legacy_action").asText());
             AutomationOperationStepReverseAdapter.ReverseResult result = adapter.adapt(step);
@@ -87,6 +88,17 @@ class AutomationOperationStepReverseAdapterTest {
         AutomationOperationStepReverseAdapter.ReverseResult result = adapter.adapt(step);
         assertThat(result.methodConfig()).doesNotContainKey("password");
         assertThat(result.warnings()).anyMatch(item -> item.contains("敏感"));
+    }
+
+    @Test
+    void shouldNormalizeLegacyDateModeToCurrentCatalogOption() {
+        StepDO currentDate = step("web-setdate");
+        currentDate.setConfigList(List.of(config("date_mode", "today")));
+        StepDO customDate = step("web-setdate");
+        customDate.setConfigList(List.of(config("date_mode", "获取自定义时间")));
+
+        assertThat(adapter.adapt(currentDate).methodConfig()).containsEntry("date_mode", "current_datetime");
+        assertThat(adapter.adapt(customDate).methodConfig()).containsEntry("date_mode", "custom_datetime");
     }
 
     private StepDO step(String operationValue) {

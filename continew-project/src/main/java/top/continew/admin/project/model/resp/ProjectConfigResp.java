@@ -121,4 +121,7 @@ public class ProjectConfigResp extends BaseDetailResp {
 
     @Schema(description = "UI 自动化操作目录 v2 灰度开关")
     private Boolean automationOperationCatalogV2;
+
+    @Schema(description = "UI 自动化统一执行详情 v1 灰度开关")
+    private Boolean operationDiagnosticV1;
 }

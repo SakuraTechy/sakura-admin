@@ -58,11 +58,11 @@ import top.continew.admin.common.util.StringUtils;
 public final class AutomationUiSceneXmlUtils {
 
     /**
-     * 仅供 Admin/Playwright/CueCast 使用的配置不能透传到旧 Selenium XML。
-     * 旧链路仍通过 operationValue 和 legacy configList 执行。
+     * 原始 Playwright 数据和敏感配置不能透传到 Selenium XML；目录身份单独透传，
+     * 让旧 Selenium 报告也能使用 canonical method_code/action_type 生成统一执行详情。
      */
     private static final Set<String> NON_LEGACY_XML_CONFIGS = Set
-        .of("playwright_step", "locator_meta", "method_code", "method_version", "method_config", "action_type", "source", "schema_version", "catalog_version", "canonical_digest", "target_ref", "value_ref", "value_masked", "original_case_id", "original_step_id", "recording_id", "screenshot", "screenshot_url", "screenshot_file_id", "screenshot_path", "screenshot_present");
+        .of("playwright_step", "locator_meta", "type_code", "type_label", "method_code", "method_version", "method_label", "diagnostic_profile", "method_config", "action_type", "source", "schema_version", "catalog_version", "canonical_digest", "target_ref", "value_ref", "value_masked", "original_case_id", "original_step_id", "recording_id", "screenshot", "screenshot_url", "screenshot_file_id", "screenshot_path", "screenshot_present");
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
@@ -252,6 +252,13 @@ public final class AutomationUiSceneXmlUtils {
                 putIfNotBlank(orderedAttributes, "operationType", stepDO.getOperationType());
                 putIfNotBlank(orderedAttributes, "operationName", stepDO.getOperationName());
                 putIfNotBlank(orderedAttributes, "operationValue", stepDO.getOperationValue());
+                putIfNotBlank(orderedAttributes, "typeCode", configValue(stepDO, "type_code"));
+                putIfNotBlank(orderedAttributes, "typeLabel", configValue(stepDO, "type_label"));
+                putIfNotBlank(orderedAttributes, "methodCode", configValue(stepDO, "method_code"));
+                putIfNotBlank(orderedAttributes, "methodVersion", configValue(stepDO, "method_version"));
+                putIfNotBlank(orderedAttributes, "methodLabel", configValue(stepDO, "method_label"));
+                putIfNotBlank(orderedAttributes, "diagnosticProfile", configValue(stepDO, "diagnostic_profile"));
+                putIfNotBlank(orderedAttributes, "actionType", configValue(stepDO, "action_type"));
                 putIfNotBlank(orderedAttributes, "action", chooseValue(resolveAction(stepDO), dynamicAttributes
                     .remove("action")));
                 putIfNotBlank(orderedAttributes, "setting", chooseValue(stepDO.getSetting(), dynamicAttributes
@@ -331,6 +338,19 @@ public final class AutomationUiSceneXmlUtils {
             return stepDO.getOperationValue();
         }
         return "";
+    }
+
+    private static String configValue(StepDO stepDO, String name) {
+        if (stepDO == null || stepDO.getConfigList() == null || StringUtils.isBlank(name)) {
+            return "";
+        }
+        return stepDO.getConfigList()
+            .stream()
+            .filter(config -> config != null && name.equals(config.getParamsName()))
+            .map(StepDO.Config::getParamsValue)
+            .filter(StringUtils::isNotBlank)
+            .findFirst()
+            .orElse("");
     }
 
     private static String resolveConfigValue(StepDO stepDO, StepDO.Config config, String domain, String serverEth) {

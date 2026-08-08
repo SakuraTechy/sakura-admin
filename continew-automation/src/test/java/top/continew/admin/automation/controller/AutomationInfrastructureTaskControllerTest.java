@@ -36,6 +36,7 @@ class AutomationInfrastructureTaskControllerTest {
     void allTaskEndpointsDeclareTheirDedicatedPermissions() throws Exception {
         assertPermission("create", "automation:automationUiScene:execute-infrastructure", AutomationInfrastructureTaskCreateReq.class, String.class);
         assertPermission("get", "automation:automationUiScene:get", String.class, Long.class, String.class);
+        assertPermission("getStatement", "automation:automationUiScene:get", String.class);
         assertPermission("cancel", "automation:automationUiScene:execute-infrastructure", String.class, String.class);
         assertPermission("downloadArtifact", "automation:automationUiScene:download-infrastructure-artifact", String.class, String.class);
     }

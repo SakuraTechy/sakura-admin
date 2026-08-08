@@ -157,13 +157,15 @@ if ($WithSchedule) {
         Write-Host "Using the existing schedule server on port $ScheduleHttpPort"
     }
 }
+$logPath = "$root\logs"
 
 # Use a Java @argfile to avoid the Windows command-line length limit.
 @(
     "-cp",
     $classPath,
     "top.continew.admin.ContiNewAdminApplication",
-    "--server.port=$Port"
+    "--server.port=$Port",
+    "--logging.file.path=$logPath"
 ) | Set-Content -LiteralPath $argFile -Encoding ASCII
 
 Write-Host "Starting Sakura Admin dev mode: http://localhost:$Port/doc.html"
@@ -172,6 +174,8 @@ if ($WithSchedule) {
 } else {
     Write-Host "For live restart, enable IDE auto-build or run: mvn -pl continew-webapi -am compile -DskipTests '-Dspotless.apply.skip=true'"
 }
+Write-Host "Log file: $logPath\sakura-admin.log"
+Write-Host "Press Ctrl+C to stop"
 
 try {
     & $javaExecutable "@$argFile"

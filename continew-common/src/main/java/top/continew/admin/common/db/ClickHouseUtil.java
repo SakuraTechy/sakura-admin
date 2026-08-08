@@ -156,12 +156,12 @@ public class ClickHouseUtil {
             List<Map<String, Object>> results = executeQueryViaSSH("172.19.5.45",          // SSH 主机
                 22,                     // SSH 端口
                 "root",                 // SSH 用户名
-                "@nKk1^2Oe38&8!~!",    // SSH 密码
+                "${SSH_PASSWORD}",      // SSH 密码
                 "172.19.5.45",          // ClickHouse 主机
                 8123,                   // ClickHouse HTTP 端口（改为 8123）
                 "default",              // 数据库名
                 "root",                 // ClickHouse 用户
-                "Ankki_cK123",          // ClickHouse 密码
+                "${CLICKHOUSE_PASSWORD}", // ClickHouse 密码
                 sql                     // SQL 查询
             );
 

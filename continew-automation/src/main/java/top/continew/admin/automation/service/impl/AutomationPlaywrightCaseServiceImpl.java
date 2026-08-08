@@ -694,6 +694,7 @@ public class AutomationPlaywrightCaseServiceImpl implements AutomationPlaywright
     }
 
     private List<Object> enrichStepResults(CaseDO caseDO, List<Object> rawResults) {
+        boolean hasStructuredResults = !rawResults.isEmpty();
         List<Map<String, Object>> pendingResults = new ArrayList<>();
         for (Object item : rawResults) {
             pendingResults.add(asObjectMap(item));
@@ -723,7 +724,14 @@ public class AutomationPlaywrightCaseServiceImpl implements AutomationPlaywright
                 .get("description")), sourceStep.getName(), "-"));
             step.put("action_type", StringUtils.firstNonBlank(stringValue(step.get("action_type")), stringValue(source
                 .get("action_type")), "unknown"));
-            step.putIfAbsent("status", "skipped");
+            if (result == null && hasStructuredResults) {
+                // 有结构化结果但没有当前步骤时，不能伪装成正常跳过；这通常表示 Runner 回传不完整或索引错位。
+                step.putIfAbsent("status", "failed");
+                step.putIfAbsent("error", "执行结果缺失：Runner 未回传该步骤结果");
+                step.put("result_incomplete", true);
+            } else {
+                step.putIfAbsent("status", "skipped");
+            }
             step.putIfAbsent("duration_ms", 0);
             copySourceField(step, source, "target_selector");
             copySourceField(step, source, "target_xpath");

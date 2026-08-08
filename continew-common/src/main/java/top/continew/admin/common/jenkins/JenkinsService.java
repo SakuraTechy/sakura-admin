@@ -32,18 +32,25 @@ import lombok.extern.slf4j.Slf4j;
 import top.continew.admin.common.util.StringUtils;
 
 import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import static io.restassured.RestAssured.given;
 
 @Slf4j
 public class JenkinsService {
+
+    private static final int QUEUE_POLL_TIMEOUT_SECONDS = 60;
+    private static final int QUEUE_POLL_INTERVAL_MILLIS = 1000;
 
     static JenkinsServer connection;
 
@@ -58,30 +65,148 @@ public class JenkinsService {
             connection = JenkinsConnect.connection(url, userName, passWord);
             log.info("发起Jenkins构建请求...");
             JobWithDetails job = connection.getJob(jobName);
-            // Jenkins 参数包含服务器和数据库凭据，日志只能输出脱敏副本。
-            log.info("Jenkins构建参数：{}", redactSensitiveParams(params));
-            if (params.size() > 0) {
-                job.build(params);
-            } else {
-                job.build();
+            Map<String, String> declaredParams = params;
+            if (params != null && !params.isEmpty()) {
+                Set<String> declaredNames = getDeclaredJobParameterNames(url, userName, passWord, jobName);
+                declaredParams = filterDeclaredParameters(params, declaredNames);
+                if (declaredParams.size() != params.size()) {
+                    log.warn("Jenkins Job 已过滤未声明参数：{}", params.keySet()
+                        .stream()
+                        .filter(key -> !declaredNames.contains(key))
+                        .toList());
+                }
             }
-            //            TimeUnit.SECONDS.sleep(10);
-            //            buildNumber = job.details().getLastBuild().getNumber();
-            //            buildNumber = job.details().getNextBuildNumber();
-            buildNumber = job.getNextBuildNumber();
+            // Jenkins 参数包含服务器和数据库凭据，日志只能输出脱敏副本。
+            log.info("Jenkins构建参数：{}", redactSensitiveParams(declaredParams));
+            QueueReference queueReference;
+            if (declaredParams.size() > 0) {
+                queueReference = job.build(declaredParams);
+            } else {
+                queueReference = job.build();
+            }
+            // build 返回队列引用，必须等待队列项产生 executable 后再记录真实构建号。
+            buildNumber = waitForBuildNumber(queueReference);
             log.info("***************************************************************");
             log.info("Job:{} launch success!", jobName);
             log.info("BUILD NUMBER:{}", buildNumber);
-            //            log.info(String.valueOf(job.details().getLastBuild().getNumber()));
-            //            log.info(String.valueOf(job.getLastBuild().details().getNumber()));
-            //            log.info(String.valueOf(job.details().getNextBuildNumber()));
-            TimeUnit.SECONDS.sleep(10);
         } catch (Exception e) {
             // 第三方异常消息可能回显请求参数，生产日志只记录异常类型。
             log.error("Jenkins构建失败，异常类型：{}", e.getClass().getSimpleName());
         }
         //        connection.close();
         return buildNumber;
+    }
+
+    private static int waitForBuildNumber(QueueReference queueReference) throws IOException, InterruptedException {
+        if (queueReference == null) {
+            throw new IllegalStateException("Jenkins 未返回构建队列引用");
+        }
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(QUEUE_POLL_TIMEOUT_SECONDS);
+        while (System.nanoTime() < deadline) {
+            QueueItem queueItem = connection.getQueueItem(queueReference);
+            if (queueItem != null) {
+                if (queueItem.isCancelled()) {
+                    throw new IllegalStateException("Jenkins 构建已从队列取消");
+                }
+                if (queueItem.isStuck()) {
+                    throw new IllegalStateException("Jenkins 构建队列已阻塞");
+                }
+                Executable executable = queueItem.getExecutable();
+                if (executable != null && executable.getNumber() != null) {
+                    long number = executable.getNumber();
+                    if (number > Integer.MAX_VALUE) {
+                        throw new IllegalStateException("Jenkins 构建号超出系统支持范围");
+                    }
+                    return (int)number;
+                }
+            }
+            Thread.sleep(QUEUE_POLL_INTERVAL_MILLIS);
+        }
+        throw new IllegalStateException("等待 Jenkins 构建进入执行状态超时");
+    }
+
+    /**
+     * 读取 Job 声明的参数名，构建前只使用 Job 合同允许的参数。
+     * 不复用通用 GET 方法，避免把 Job API 响应中的默认值写入日志。
+     */
+    public static Set<String> getDeclaredJobParameterNames(String url,
+                                                           String userName,
+                                                           String passWord,
+                                                           String jobName) {
+        String auth = userName + ":" + passWord;
+        String encodedAuth = Base64.getEncoder().encodeToString(auth.getBytes(StandardCharsets.UTF_8));
+        Response response = given().config(RestAssured.config().sslConfig(new SSLConfig().relaxedHTTPSValidation()))
+            .header("Authorization", "Basic " + encodedAuth)
+            .accept("application/json")
+            .when()
+            .get(buildJobApiUrl(url, jobName));
+        if (response.getStatusCode() != 200) {
+            throw new IllegalStateException("读取 Jenkins Job 参数声明失败，HTTP " + response.getStatusCode());
+        }
+        return extractDeclaredParameterNames(response.asString());
+    }
+
+    /** 从 Jenkins Job API 的 property.parameterDefinitions 中提取参数名。 */
+    public static Set<String> extractDeclaredParameterNames(String json) {
+        try {
+            JsonNode properties = new ObjectMapper().readTree(json).path("property");
+            Set<String> names = new LinkedHashSet<>();
+            if (!properties.isArray()) {
+                return names;
+            }
+            for (JsonNode property : properties) {
+                JsonNode definitions = property.path("parameterDefinitions");
+                if (!definitions.isArray()) {
+                    continue;
+                }
+                for (JsonNode definition : definitions) {
+                    String name = definition.path("name").asText("").trim();
+                    if (!name.isEmpty()) {
+                        names.add(name);
+                    }
+                }
+            }
+            return names;
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("Jenkins Job 参数声明不是合法 JSON", e);
+        }
+    }
+
+    /**
+     * 只保留 Job 已声明的参数，并保持 Admin 生成参数的顺序和原始值。
+     * 空声明或零交集不能证明参数合同，禁止静默发送未声明参数或退化为默认构建。
+     */
+    public static Map<String, String> filterDeclaredParameters(Map<String, String> params, Set<String> declaredNames) {
+        if (params == null || params.isEmpty()) {
+            return Map.of();
+        }
+        if (declaredNames == null || declaredNames.isEmpty()) {
+            throw new IllegalStateException("Jenkins Job 未声明可用参数，拒绝发送执行参数");
+        }
+        Map<String, String> filtered = new LinkedHashMap<>();
+        params.forEach((key, value) -> {
+            if (declaredNames.contains(key)) {
+                filtered.put(key, value);
+            }
+        });
+        if (filtered.isEmpty()) {
+            throw new IllegalStateException("Jenkins Job 参数声明与执行参数无交集，拒绝默认构建");
+        }
+        return filtered;
+    }
+
+    private static String buildJobApiUrl(String url, String jobName) {
+        String baseUrl = url == null ? "" : url.trim();
+        while (baseUrl.endsWith("/")) {
+            baseUrl = baseUrl.substring(0, baseUrl.length() - 1);
+        }
+        StringBuilder jobUrl = new StringBuilder(baseUrl);
+        for (String segment : jobName == null ? new String[0] : jobName.split("/")) {
+            if (!segment.isBlank()) {
+                jobUrl.append("/job/").append(URLEncoder.encode(segment, StandardCharsets.UTF_8).replace("+", "%20"));
+            }
+        }
+        return jobUrl.append("/api/json?tree=property[parameterDefinitions[name]]").toString();
     }
 
     public static Map<String, String> redactSensitiveParams(Map<String, String> params) {

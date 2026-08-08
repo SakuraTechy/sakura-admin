@@ -20,6 +20,7 @@ import static top.continew.admin.automation.util.AutomationUiSceneStatusCodes.RE
 import static top.continew.admin.automation.util.AutomationUiSceneStatusCodes.STATUS_NOT_STARTED;
 
 import cn.dev33.satoken.stp.StpUtil;
+import java.net.URI;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -37,6 +38,7 @@ import top.continew.admin.automation.mapper.AutomationPlaywrightJobMapper;
 import top.continew.admin.automation.mapper.AutomationUiSceneMapper;
 import top.continew.admin.automation.model.entity.AutomationUiSceneDO;
 import top.continew.admin.automation.model.entity.ui.CaseDO;
+import top.continew.admin.automation.model.entity.ui.CaseExecutionConfigDO;
 import top.continew.admin.automation.model.entity.ui.StepDO;
 import top.continew.admin.automation.model.req.recording.AutomationRecordingImportReq;
 import top.continew.admin.automation.model.req.recording.PlaywrightRecordedCaseReq;
@@ -150,6 +152,7 @@ public class AutomationRecordingImportServiceImpl implements AutomationRecording
             .getProjectId(), scene.getProjectName(), scene.getVersionName(), scene.getSceneId());
         CaseDO replacement = playwrightRecordingAssembler.toCase(recordedCase, targetCase.getId(), targetCase
             .getOrder(), context);
+        synchronizeReplacementStartUrl(replacement);
         preserveCaseIdentity(targetCase, replacement);
         assignNewStepIds(scene, replacement, targetCase.getStepList() == null
             ? new ArrayList<>()
@@ -171,6 +174,7 @@ public class AutomationRecordingImportServiceImpl implements AutomationRecording
         PlaywrightRecordingAssembler.RecordingImportContext context = newContext(req, recordingId, scene
             .getProjectId(), scene.getProjectName(), scene.getVersionName(), scene.getSceneId());
         targetCase.setStepList(playwrightRecordingAssembler.toSteps(recordedCase, targetCase.getId(), context));
+        synchronizeReplacementStartUrl(targetCase);
         assignNewStepIds(scene, targetCase, new ArrayList<>(), mutableStepList(targetCase), null);
         // 兼容模式只替换步骤，保留原用例名称、备注、顺序和状态，避免旧客户端覆盖中台业务元信息。
         normalizeOrderAndPid(mutableCaseList(scene));
@@ -321,6 +325,59 @@ public class AutomationRecordingImportServiceImpl implements AutomationRecording
         replacement.setStatus(targetCase.getStatus());
         // replaceCase replaces executable content; remarks remain unless explicitly supported by the form.
         replacement.setRemark(targetCase.getRemark());
+    }
+
+    private void synchronizeReplacementStartUrl(CaseDO targetCase) {
+        String firstRecordedPageUrl = firstRecordedPageUrl(targetCase.getStepList());
+        if (!hasText(firstRecordedPageUrl)) {
+            return;
+        }
+        if (targetCase.getExecutionConfig() == null) {
+            targetCase.setExecutionConfig(new CaseExecutionConfigDO());
+        }
+        // 完整替换后，第一条录制操作所在页面才是新用例的实际回放起点。
+        // 在导入时固化为用例级配置，执行阶段不再从步骤反推；原始 playwright_step 保持不变。
+        targetCase.getExecutionConfig().setStartUrl(firstRecordedPageUrl);
+        for (StepDO step : targetCase.getStepList()) {
+            if (step == null || step.getConfigList() == null) {
+                continue;
+            }
+            for (StepDO.Config config : step.getConfigList()) {
+                if (config != null && "start_url".equals(config.getParamsName())) {
+                    config.setParamsValue(firstRecordedPageUrl);
+                }
+            }
+        }
+    }
+
+    private String firstRecordedPageUrl(List<StepDO> steps) {
+        if (steps == null) {
+            return null;
+        }
+        for (StepDO step : steps) {
+            if (step == null || step.getConfigList() == null) {
+                continue;
+            }
+            for (StepDO.Config config : step.getConfigList()) {
+                if (config != null && "url".equals(config.getParamsName()) && isHttpUrl(config.getParamsValue())) {
+                    return config.getParamsValue().trim();
+                }
+            }
+        }
+        return null;
+    }
+
+    private boolean isHttpUrl(String value) {
+        if (!hasText(value)) {
+            return false;
+        }
+        try {
+            URI uri = URI.create(value.trim());
+            return ("http".equalsIgnoreCase(uri.getScheme()) || "https".equalsIgnoreCase(uri.getScheme())) && uri
+                .getHost() != null;
+        } catch (IllegalArgumentException ignored) {
+            return false;
+        }
     }
 
     private void refreshSceneCounts(AutomationUiSceneDO scene, List<CaseDO> caseList) {

@@ -19,6 +19,8 @@ package top.continew.admin.automation.service.impl;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -32,6 +34,7 @@ import java.util.Map;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
 import top.continew.admin.automation.converter.AutomationInfrastructureRuntimeBindingResolver;
 import top.continew.admin.automation.converter.AutomationPlaywrightStepExtractor;
 import top.continew.admin.automation.mapper.AutomationInfrastructureTaskLogMapper;
@@ -41,6 +44,7 @@ import top.continew.admin.automation.model.entity.AutomationInfrastructureTaskLo
 import top.continew.admin.automation.model.entity.AutomationInfrastructureTaskDO;
 import top.continew.admin.automation.model.req.infrastructure.AutomationInfrastructureTaskCreateReq;
 import top.continew.admin.automation.model.req.infrastructure.AutomationInfrastructureTaskDispositionReq;
+import top.continew.admin.automation.model.resp.infrastructure.AutomationInfrastructureStatementResp;
 import top.continew.admin.automation.service.AutomationUiExecutionRecordService;
 import top.continew.admin.automation.support.AutomationExecutionAgentClient;
 import top.continew.admin.automation.support.AutomationInfrastructureResultSanitizer;
@@ -53,6 +57,60 @@ import top.continew.admin.project.mapper.ProjectServerConfigMapper;
 import top.continew.starter.core.exception.BusinessException;
 
 class AutomationInfrastructureTaskUncertainOutcomeTest {
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void sqlAndServerCommandShouldComeFromBoundDefinitionRevision() {
+        ObjectMapper objectMapper = new ObjectMapper();
+        AutomationInfrastructureTaskMapper taskMapper = mock(AutomationInfrastructureTaskMapper.class);
+        AutomationPlaywrightStepExtractor stepExtractor = mock(AutomationPlaywrightStepExtractor.class);
+        AutomationInfrastructureRuntimeBindingResolver bindingResolver = mock(AutomationInfrastructureRuntimeBindingResolver.class);
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        AutomationInfrastructureTaskDO task = new AutomationInfrastructureTaskDO();
+        task.setTaskId("INFRA_SQL");
+        task.setCaseKey("SCENE_1:CASE_1");
+        task.setStepId("STEP_1");
+        task.setActionType("database_sql");
+        task.setOwnerUserId(101L);
+        task.setDefinitionRevisionId(88L);
+        task.setDefinitionVersion(7L);
+        when(taskMapper.selectOne(any())).thenReturn(task);
+        when(jdbcTemplate.query(anyString(), any(RowMapper.class), any(Object[].class))).thenReturn(List
+            .of("[{\"id\":\"CASE_1\",\"stepList\":[{\"id\":\"STEP_1\"}]}]"));
+        when(stepExtractor.extract(any(), eq(0))).thenReturn(Map
+            .of("action_type", "database_sql", "sql_mode", "query", "sql", "SELECT user_id FROM sys_user", "target_ref", Map
+                .of("scope", "project_config", "kind", "database", "config_id", 1)));
+        AutomationInfrastructureTaskServiceImpl service = new AutomationInfrastructureTaskServiceImpl(taskMapper, mock(AutomationInfrastructureTaskLogMapper.class), mock(AutomationUiSceneMapper.class), mock(ProjectEnvironmentConfigMapper.class), mock(ProjectServerConfigMapper.class), mock(ProjectDataBaseConfigMapper.class), stepExtractor, bindingResolver, objectMapper, mock(AutomationExecutionAgentClient.class), mock(AutomationUiExecutionRecordService.class), jdbcTemplate, new AutomationInfrastructureResultSanitizer(objectMapper), new AutomationInfrastructureRiskPolicy(""));
+        try {
+            UserContext owner = new UserContext();
+            owner.setId(101L);
+            UserContextHolder.setContext(owner, false);
+
+            AutomationInfrastructureStatementResp statement = service.getStatement("INFRA_SQL");
+
+            assertThat(statement.getSql()).isEqualTo("SELECT user_id FROM sys_user");
+            assertThat(statement.getSqlMode()).isEqualTo("query");
+            assertThat(statement.getDefinitionVersion()).isEqualTo(7L);
+
+            task.setActionType("server_command");
+            when(stepExtractor.extract(any(), eq(0))).thenReturn(Map
+                .of("action_type", "server_command", "command", "sudo systemctl restart sakura-agent", "target_ref", Map
+                    .of("scope", "project_config", "kind", "server", "config_id", 2)));
+
+            statement = service.getStatement("INFRA_SQL");
+
+            assertThat(statement.getCommand()).isEqualTo("sudo systemctl restart sakura-agent");
+            assertThat(statement.getSql()).isNull();
+            assertThat(statement.getSqlMode()).isNull();
+
+            UserContext anotherUser = new UserContext();
+            anotherUser.setId(202L);
+            UserContextHolder.setContext(anotherUser, false);
+            assertThatThrownBy(() -> service.getStatement("INFRA_SQL")).hasMessageContaining("EXECUTION_SCOPE_DENIED");
+        } finally {
+            UserContextHolder.clearContext();
+        }
+    }
 
     @Test
     @SuppressWarnings("unchecked")

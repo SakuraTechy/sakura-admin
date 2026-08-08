@@ -289,6 +289,9 @@ powershell.exe -ExecutionPolicy Bypass -File .\dev-start.ps1
 #       如果未开启 IDE 自动编译，可另开终端手动执行以下命令触发重启：
 mvn -pl continew-webapi -am compile -DskipTests '-Dspotless.apply.skip=true'
 
+# 4.1.4 dev-start.ps1 会将日志固定输出到：
+#       D:\King\sakura\sakura-admin\logs\sakura-admin.log
+
 # 4.2 普通打包启动（部署或验证完整产物时使用）
 cd D:\King\sakura\sakura-admin
 mvn clean package -DskipTests '-Dspotless.apply.skip=true'

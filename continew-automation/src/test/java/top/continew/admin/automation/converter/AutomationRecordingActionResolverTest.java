@@ -35,7 +35,8 @@ class AutomationRecordingActionResolverTest {
         ObjectMapper objectMapper = new ObjectMapper();
         AutomationOperationCatalogServiceImpl catalogService = new AutomationOperationCatalogServiceImpl(objectMapper);
         catalogService.initialize();
-        resolver = new AutomationRecordingActionResolver(new AutomationOperationStepReverseAdapter(objectMapper, catalogService));
+        CuecastRecordingOperationProjector projector = new CuecastRecordingOperationProjector(objectMapper, catalogService, new AutomationOperationConfigValidator());
+        resolver = new AutomationRecordingActionResolver(new AutomationOperationStepReverseAdapter(objectMapper, catalogService, projector));
     }
 
     @Test

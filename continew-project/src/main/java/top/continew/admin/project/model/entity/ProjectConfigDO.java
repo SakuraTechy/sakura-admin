@@ -104,4 +104,7 @@ public class ProjectConfigDO extends BaseDO {
 
     /** UI 自动化操作目录 v2 灰度开关；历史项目默认开启，关闭时前端走旧表单。 */
     private Boolean automationOperationCatalogV2 = Boolean.TRUE;
+
+    /** UI 自动化统一执行详情 v1 灰度开关；关闭时保留旧 typed facet，不写入统一 operation 对象。 */
+    private Boolean operationDiagnosticV1 = Boolean.TRUE;
 }

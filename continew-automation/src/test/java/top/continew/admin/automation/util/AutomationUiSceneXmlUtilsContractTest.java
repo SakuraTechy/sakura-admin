@@ -43,8 +43,16 @@ class AutomationUiSceneXmlUtilsContractTest {
         String sceneXml = Files.readString(bundle.testCaseDir().resolve("SCENE_LOGIN.xml"), StandardCharsets.UTF_8);
         assertThat(sceneXml).contains("<unit id=\"SCENE_LOGIN\" name=\"登录场景\" version=\"V1.0\">")
             .contains("operationValue=\"web-geturl\"")
+            .contains("methodCode=\"browser.navigate.default\"")
+            .contains("actionType=\"navigate\"")
+            .contains("diagnosticProfile=\"navigation\"")
             .contains("action=\"web-geturl\"")
             .contains("url=\"https://frozen.example/login\"")
+            .contains("action=\"web-assert-element-match\"")
+            .contains("locator=\"cssSelector=#title\"")
+            .contains("read_mode=\"value\"")
+            .contains("match_mode=\"equals\"")
+            .contains("expect=\"系统管理平台\"")
             .doesNotContain("url=\"https://target.example/login\"")
             .doesNotContain("playwright_step", "locator_meta", "raw-secret");
         assertThat(sceneXml.indexOf("CASE_FIRST")).isLessThan(sceneXml.indexOf("CASE_SECOND"));
@@ -76,7 +84,7 @@ class AutomationUiSceneXmlUtilsContractTest {
         scene.setName("登录场景");
         scene.setVersionName("V1.0");
         scene.setCaseList(List.of(caseFixture("CASE_SECOND", "提交登录", 2, List
-            .of()), caseFixture("CASE_FIRST", "打开登录页", 1, List.of(openUrlStep()))));
+            .of(unifiedAssertionStep())), caseFixture("CASE_FIRST", "打开登录页", 1, List.of(openUrlStep()))));
         return scene;
     }
 
@@ -99,7 +107,21 @@ class AutomationUiSceneXmlUtilsContractTest {
         step.setOperationName("访问地址");
         step.setOperationValue("web-geturl");
         step.setConfigList(List
-            .of(config("url", "https://old.example/login"), config("playwright_step", "raw-secret"), config("locator_meta", "raw-secret")));
+            .of(config("url", "https://old.example/login"), config("method_code", "browser.navigate.default"), config("method_version", "1"), config("type_code", "browser"), config("type_label", "浏览器操作"), config("method_label", "打开默认网页"), config("diagnostic_profile", "navigation"), config("action_type", "navigate"), config("playwright_step", "raw-secret"), config("locator_meta", "raw-secret")));
+        return step;
+    }
+
+    private StepDO unifiedAssertionStep() {
+        StepDO step = new StepDO();
+        step.setId("STEP_ASSERT");
+        step.setOrder(1);
+        step.setType("web");
+        step.setName("检查页面元素");
+        step.setOperationType("检查操作");
+        step.setOperationName("检查页面元素");
+        step.setOperationValue("web-assert-element-match");
+        step.setConfigList(List
+            .of(config("locator", "cssSelector=#title"), config("read_mode", "value"), config("match_mode", "equals"), config("expect", "系统管理平台"), config("method_code", "assertion.element.match"), config("method_version", "1"), config("diagnostic_profile", "assertion"), config("action_type", "assert_element_match"), config("playwright_step", "raw-secret"), config("locator_meta", "raw-secret")));
         return step;
     }
 

@@ -17,9 +17,11 @@
 package top.continew.admin.automation.support;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 import top.continew.admin.common.jenkins.JenkinsService;
@@ -42,5 +44,41 @@ class JenkinsServiceSecurityTest {
             .containsEntry("api_token", "******");
         assertThat(params).containsEntry("ServerPassWord", "server-secret")
             .containsEntry("DataBasePassWord", "database-secret");
+    }
+
+    @Test
+    void shouldFilterOnlyParametersDeclaredByJenkinsJob() {
+        Map<String, String> params = new LinkedHashMap<>();
+        params.put("Domain", "https://example.test");
+        params.put("sceneWorkspace", "D:/workspace");
+        params.put("ServerPassWord", "server-secret");
+
+        Map<String, String> filtered = JenkinsService.filterDeclaredParameters(params, Set
+            .of("Domain", "ServerPassWord"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("Domain", "https://example.test");
+        expected.put("ServerPassWord", "server-secret");
+        assertThat(filtered).containsExactlyEntriesOf(expected);
+        assertThat(params).containsEntry("sceneWorkspace", "D:/workspace");
+    }
+
+    @Test
+    void shouldExtractDeclaredParameterNamesWithoutReadingParameterValues() {
+        String response = "{\"property\":[{\"parameterDefinitions\":[" + "{\"name\":\"Domain\",\"defaultParameterValue\":{\"value\":\"secret\"}}," + "{\"name\":\"testReportId\"}]}]}";
+
+        assertThat(JenkinsService.extractDeclaredParameterNames(response)).containsExactly("Domain", "testReportId");
+    }
+
+    @Test
+    void shouldRejectParameterizedBuildWhenJobHasNoParameterDeclaration() {
+        assertThatThrownBy(() -> JenkinsService.filterDeclaredParameters(Map.of("Domain", "https://example.test"), Set
+            .of())).isInstanceOf(IllegalStateException.class).hasMessageContaining("未声明可用参数");
+    }
+
+    @Test
+    void shouldRejectParameterizedBuildWhenDeclarationsHaveNoIntersection() {
+        assertThatThrownBy(() -> JenkinsService.filterDeclaredParameters(Map.of("Domain", "https://example.test"), Set
+            .of("Other"))).isInstanceOf(IllegalStateException.class).hasMessageContaining("无交集");
     }
 }

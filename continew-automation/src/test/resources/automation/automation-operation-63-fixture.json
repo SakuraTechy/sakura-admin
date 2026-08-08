@@ -1,5 +1,5 @@
 {
-  "catalog_version": "2026-07-30.1",
+  "catalog_version": "2026-08-07.1",
   "methods": [
     {"method_code":"browser.navigate.default","action_type":"navigate","legacy_action":"web-geturl"},
     {"method_code":"browser.navigate.explicit","action_type":"navigate","legacy_action":"web-geturls"},
@@ -27,6 +27,7 @@
     {"method_code":"input.clear","action_type":"clear","legacy_action":"web-inputclear"},
     {"method_code":"assertion.text","action_type":"assert_text","legacy_action":"web-check"},
     {"method_code":"assertion.text.not","action_type":"assert_text_not","legacy_action":"web-notcheck"},
+    {"method_code":"assertion.element.match","action_type":"assert_element_match","legacy_action":"web-assert-element-match"},
     {"method_code":"assertion.attribute","action_type":"assert_attribute","legacy_action":"web-checkvalue"},
     {"method_code":"assertion.script","action_type":"assert_script","legacy_action":"web-checkjs"},
     {"method_code":"assertion.database-value","action_type":"assert_database_value","legacy_action":"web-checklist"},

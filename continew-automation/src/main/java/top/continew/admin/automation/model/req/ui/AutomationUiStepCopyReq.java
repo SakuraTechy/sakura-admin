@@ -14,27 +14,29 @@
  * limitations under the License.
  */
 
-package top.continew.admin.automation.model.req;
+package top.continew.admin.automation.model.req.ui;
+
+import java.io.Serial;
+import java.io.Serializable;
+import java.util.List;
 
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotNull;
 import lombok.Data;
-import top.continew.admin.automation.model.enums.AutomationUiTreeMovePosition;
-import top.continew.admin.automation.model.req.ui.AutomationUiStepCopyReq;
+import top.continew.admin.common.enums.StatusTypeEnum;
 
+/** 复制步骤时允许覆盖的编辑字段；新 ID、父用例和原始录制事实仍由服务端控制。 */
 @Data
-public class AutomationUiTreeCopyReq {
-    @NotNull
-    @Valid
-    private AutomationUiTreeNodeRefReq source;
+public class AutomationUiStepCopyReq implements Serializable {
+
+    @Serial
+    private static final long serialVersionUID = 1L;
+
     private String name;
     private String remark;
+    private StatusTypeEnum status;
+    private String operationType;
+    private String operationName;
+    private String operationValue;
     @Valid
-    private AutomationUiStepCopyReq step;
-    @NotNull
-    private AutomationUiTreeMovePosition position;
-    @Valid
-    private AutomationUiTreeNodeRefReq anchor;
-    @NotNull
-    private Long expectedDefinitionVersion;
+    private List<AutomationUiStepConfigEditReq> configList;
 }

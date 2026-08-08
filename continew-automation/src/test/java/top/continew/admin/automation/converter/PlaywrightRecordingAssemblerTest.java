@@ -37,7 +37,9 @@ class PlaywrightRecordingAssemblerTest {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final AutomationOperationCatalogServiceImpl catalogService = catalogService();
-    private final PlaywrightRecordingAssembler assembler = new PlaywrightRecordingAssembler(objectMapper, new NoopScreenshotService(), catalogService);
+    private final AutomationOperationConfigValidator configValidator = new AutomationOperationConfigValidator();
+    private final CuecastRecordingOperationProjector projector = new CuecastRecordingOperationProjector(objectMapper, catalogService, configValidator);
+    private final PlaywrightRecordingAssembler assembler = new PlaywrightRecordingAssembler(objectMapper, new NoopScreenshotService(), catalogService, projector);
 
     @Test
     void shouldPreserveRequiredConfigsAndMaskRawScreenshot() {
@@ -92,6 +94,40 @@ class PlaywrightRecordingAssemblerTest {
         assertThat(stepDO.getOperationValue()).isEqualTo("pw-custom");
         assertThat(configs).containsEntry("unknown_action_type", "custom_magic");
         assertThat(configs.get("playwright_step")).contains("\"action_type\":\"custom_magic\"");
+    }
+
+    @Test
+    void shouldProjectCuecastVariableAndKeepOriginalRawStep() {
+        PlaywrightRecordedStepReq step = new PlaywrightRecordedStepReq();
+        step.setId(1);
+        step.setActionType("set_variable");
+        step.setTargetSelector(".order-number");
+        step.setValue("order_number");
+        step.addExtra("value_text", "ORD-20260807");
+        step.setLocatorMeta(Map.of("candidates", List.of(Map
+            .of("type", "css_unique", "value", ".order-number")), "context", Map.of("variable", Map
+                .of("name", "order_number", "source", "text", "extract", Map.of("mode", "full")))));
+        PlaywrightRecordedCaseReq recordedCase = new PlaywrightRecordedCaseReq();
+        recordedCase.setSteps(List.of(step));
+
+        StepDO stepDO = assembler
+            .toCase(recordedCase, new PlaywrightRecordingAssembler.RecordingImportContext("rec-variable", "AAS_P", "V1", "SCENE", false, false))
+            .getStepList()
+            .get(0);
+        Map<String, String> configs = stepDO.getConfigList()
+            .stream()
+            .collect(Collectors.toMap(StepDO.Config::getParamsName, StepDO.Config::getParamsValue));
+
+        assertThat(stepDO.getOperationValue()).isEqualTo("web-set");
+        assertThat(configs).containsEntry("method_code", "global.variable.set")
+            .containsEntry("method_version", "1")
+            .containsEntry("catalog_version", "2026-08-07.1")
+            .doesNotContainKey("unknown_action_type");
+        assertThat(configs.get("method_config")).contains("\"variable_name\":\"order_number\"")
+            .doesNotContain("ORD-20260807");
+        assertThat(configs.get("playwright_step")).contains("\"action_type\":\"set_variable\"")
+            .contains("\"value_text\":\"ORD-20260807\"")
+            .contains("\"locator_meta\"");
     }
 
     @Test
@@ -153,7 +189,7 @@ class PlaywrightRecordingAssemblerTest {
                                             String screenshot) {
                 throw new ScreenshotStorageException("storage unavailable", new IllegalStateException("offline"));
             }
-        }, catalogService);
+        }, catalogService, projector);
 
         PlaywrightRecordedCaseReq recordedCase = new PlaywrightRecordedCaseReq();
         recordedCase.setSteps(List.of(recordedStep()));

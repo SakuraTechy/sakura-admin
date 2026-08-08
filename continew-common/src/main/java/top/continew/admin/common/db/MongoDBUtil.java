@@ -117,7 +117,7 @@ public class MongoDBUtil {
     }
 
     public static void main(String[] args) {
-        MongoDBUtil mongoDBUtil = new MongoDBUtil("172.19.1.250", "27017", "test", "root", "Ceshi123");
+        MongoDBUtil mongoDBUtil = new MongoDBUtil("172.19.1.250", "27017", "test", "root", "${MONGODB_PASSWORD}");
         // 创建集合
         //        mongoDBUtil.createCollection("test");
         //

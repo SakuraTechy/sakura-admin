@@ -47,9 +47,13 @@ import top.continew.admin.automation.model.entity.ui.CaseOriginDO;
 import top.continew.admin.automation.model.entity.ui.StepDO;
 import top.continew.admin.automation.model.enums.AutomationUiTreeMovePosition;
 import top.continew.admin.automation.model.enums.AutomationUiTreeNodeType;
+import top.continew.admin.automation.model.req.AutomationUiTreeCopyReq;
 import top.continew.admin.automation.model.req.AutomationUiTreeMoveReq;
 import top.continew.admin.automation.model.req.AutomationUiTreeNodeRefReq;
+import top.continew.admin.automation.model.req.ui.AutomationUiStepConfigEditReq;
+import top.continew.admin.automation.model.req.ui.AutomationUiStepCopyReq;
 import top.continew.admin.automation.model.resp.AutomationUiTreeMutationResp;
+import top.continew.admin.common.enums.StatusTypeEnum;
 import top.continew.starter.core.exception.BusinessException;
 
 @ExtendWith(MockitoExtension.class)
@@ -191,6 +195,56 @@ class AutomationUiCaseTreeServiceImplTest {
         StepDO saved = cases.getValue().get(0).getStepList().get(0);
         assertThat(configValue(saved, "playwright_step")).contains("SELECT new_column");
         assertThat(configValue(saved, "sql")).isEqualTo("SELECT new_column");
+    }
+
+    @Test
+    void shouldApplyEditableFieldsWhenCopyingStep() {
+        CaseDO parent = caseDO("CASE_001", 1);
+        StepDO source = step("STEP_001", parent.getId(), 1);
+        source.setOperationType("旧操作类型");
+        source.setOperationName("旧操作方法");
+        source.setOperationValue("old_action");
+        source.setStatus(StatusTypeEnum.ENABLE);
+        source.setConfigList(new ArrayList<>(List.of(config("custom", "old"))));
+        parent.setStepList(new ArrayList<>(List.of(source)));
+        AutomationUiSceneDO scene = scene(parent);
+        prepareMutation(scene);
+
+        AutomationUiStepCopyReq stepOverride = new AutomationUiStepCopyReq();
+        stepOverride.setName("复制后步骤");
+        stepOverride.setRemark("复制后备注");
+        stepOverride.setOperationType("新操作类型");
+        stepOverride.setOperationName("新操作方法");
+        stepOverride.setOperationValue("new_action");
+        stepOverride.setStatus(StatusTypeEnum.DISABLE);
+        AutomationUiStepConfigEditReq config = new AutomationUiStepConfigEditReq();
+        config.setParamsName("custom");
+        config.setParamsValue("new");
+        stepOverride.setConfigList(List.of(config));
+
+        AutomationUiTreeCopyReq request = new AutomationUiTreeCopyReq();
+        request.setSource(stepRef(parent.getId(), source.getId()));
+        request.setPosition(AutomationUiTreeMovePosition.INSIDE_LAST);
+        request.setAnchor(caseRef(parent.getId()));
+        request.setExpectedDefinitionVersion(0L);
+        request.setStep(stepOverride);
+        service.copy(scene.getId(), request);
+
+        ArgumentCaptor<List<CaseDO>> cases = caseListCaptor();
+        verify(sceneMapper).updateDefinition(anyLong(), anyLong(), cases.capture(), anyInt(), anyInt());
+        List<StepDO> savedSteps = cases.getValue().get(0).getStepList();
+        assertThat(savedSteps).hasSize(2);
+        assertThat(savedSteps.get(0).getName()).isEqualTo("STEP_001");
+        StepDO copied = savedSteps.get(1);
+        assertThat(copied.getId()).isEqualTo("STEP_002");
+        assertThat(copied.getPid()).isEqualTo(parent.getId());
+        assertThat(copied.getName()).isEqualTo("复制后步骤");
+        assertThat(copied.getRemark()).isEqualTo("复制后备注");
+        assertThat(copied.getOperationType()).isEqualTo("新操作类型");
+        assertThat(copied.getOperationName()).isEqualTo("新操作方法");
+        assertThat(copied.getOperationValue()).isEqualTo("new_action");
+        assertThat(copied.getStatus()).isEqualTo(StatusTypeEnum.DISABLE);
+        assertThat(configValue(copied, "custom")).isEqualTo("new");
     }
 
     @Test

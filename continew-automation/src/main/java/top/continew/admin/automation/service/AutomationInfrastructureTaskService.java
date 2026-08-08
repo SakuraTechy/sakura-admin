@@ -18,6 +18,7 @@ package top.continew.admin.automation.service;
 
 import top.continew.admin.automation.model.req.infrastructure.AutomationInfrastructureTaskCreateReq;
 import top.continew.admin.automation.model.req.infrastructure.AutomationInfrastructureTaskDispositionReq;
+import top.continew.admin.automation.model.resp.infrastructure.AutomationInfrastructureStatementResp;
 import top.continew.admin.automation.model.resp.infrastructure.AutomationInfrastructureTaskResp;
 import top.continew.admin.automation.model.resp.infrastructure.AutomationInfrastructureTargetResp;
 
@@ -32,6 +33,8 @@ public interface AutomationInfrastructureTaskService {
     AutomationInfrastructureTaskResp get(String taskId, Long afterSequence);
 
     AutomationInfrastructureTaskResp get(String taskId, Long afterSequence, String executionCapability);
+
+    AutomationInfrastructureStatementResp getStatement(String taskId);
 
     AutomationInfrastructureTaskResp cancel(String taskId);
 

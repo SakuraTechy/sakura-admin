@@ -63,6 +63,7 @@ public class PlaywrightRecordingAssembler {
     private final ObjectMapper objectMapper;
     private final AutomationRecordingScreenshotService screenshotService;
     private final AutomationOperationCatalogService operationCatalogService;
+    private final CuecastRecordingOperationProjector recordingOperationProjector;
 
     public CaseDO toCase(PlaywrightRecordedCaseReq recordedCase, RecordingImportContext context) {
         return toCase(recordedCase, DEFAULT_CASE_ID, 1, context);
@@ -115,7 +116,9 @@ public class PlaywrightRecordingAssembler {
                          int order,
                          RecordingImportContext context) {
         String actionType = normalizeActionType(step.getActionType());
-        PlaywrightActionMapping.ActionDisplay display = resolveDisplay(actionType);
+        CuecastRecordingOperationProjector.RecordedOperationProjection projection = recordingOperationProjector
+            .project(step);
+        PlaywrightActionMapping.ActionDisplay display = resolveDisplay(actionType, projection);
 
         StepDO stepDO = new StepDO();
         stepDO.setPid(caseId);
@@ -128,11 +131,20 @@ public class PlaywrightRecordingAssembler {
         stepDO.setOperationValue(display.operationValue());
         stepDO.setOrder(order);
         stepDO.setStatus(StatusTypeEnum.ENABLE);
-        stepDO.setConfigList(buildConfigList(recordedCase, step, actionType, caseId, stepDO.getId(), order, context));
+        stepDO.setConfigList(buildConfigList(recordedCase, step, actionType, projection, caseId, stepDO
+            .getId(), order, context));
         return stepDO;
     }
 
-    private PlaywrightActionMapping.ActionDisplay resolveDisplay(String actionType) {
+    private PlaywrightActionMapping.ActionDisplay resolveDisplay(String actionType,
+                                                                 CuecastRecordingOperationProjector.RecordedOperationProjection projection) {
+        if (projection.recognized()) {
+            return new PlaywrightActionMapping.ActionDisplay(projection.typeLabel(), projection
+                .methodLabel(), projection.legacyAction());
+        }
+        if (projection.attempted()) {
+            return PlaywrightActionMapping.resolve("__recording_projection_failed__");
+        }
         return operationCatalogService.findOperation(actionType)
             .map(operation -> new PlaywrightActionMapping.ActionDisplay(operation.typeLabel(), operation.method()
                 .getLabel(), operation.method().getLegacyAction()))
@@ -142,6 +154,7 @@ public class PlaywrightRecordingAssembler {
     private List<StepDO.Config> buildConfigList(PlaywrightRecordedCaseReq recordedCase,
                                                 PlaywrightRecordedStepReq step,
                                                 String actionType,
+                                                CuecastRecordingOperationProjector.RecordedOperationProjection projection,
                                                 String caseId,
                                                 String adminStepId,
                                                 int order,
@@ -155,6 +168,19 @@ public class PlaywrightRecordingAssembler {
         addConfig(configList, "playwright_step", toJson(rawStep));
         addConfig(configList, "action_type", actionType);
         addConfig(configList, "source", SOURCE);
+        if (projection.recognized()) {
+            addConfig(configList, "method_code", projection.methodCode());
+            addConfig(configList, "method_version", valueToString(projection.methodVersion()));
+            addConfig(configList, "method_config", toJson(projection.methodConfig()));
+            addConfig(configList, "catalog_version", "2026-08-07.1");
+            addConfig(configList, "type_code", projection.typeCode());
+            addConfig(configList, "type_label", projection.typeLabel());
+            addConfig(configList, "method_label", projection.methodLabel());
+            addConfig(configList, "diagnostic_profile", projection.diagnosticProfile());
+        }
+        if (!projection.warnings().isEmpty()) {
+            addConfig(configList, "projection_warnings", toJson(projection.warnings()));
+        }
         addConfig(configList, "recording_id", context.recordingId());
         addConfig(configList, "original_case_id", valueToString(recordedCase.getId()));
         addConfig(configList, "original_step_id", valueToString(step.getId()));
@@ -194,7 +220,9 @@ public class PlaywrightRecordingAssembler {
         if (step.getScreenshotFocusRect() != null) {
             addConfig(configList, "screenshot_focus_rect", toJson(step.getScreenshotFocusRect()));
         }
-        if (!PlaywrightActionMapping.isKnown(actionType)) {
+        boolean knownAction = projection.recognized() || !projection.attempted() && (PlaywrightActionMapping
+            .isKnown(actionType) || operationCatalogService.findOperation(actionType).isPresent());
+        if (!knownAction) {
             // 未识别 action 降级为 pw-custom，但完整 step 仍保留，避免录制能力丢失。
             addConfig(configList, "unknown_action_type", actionType);
         }

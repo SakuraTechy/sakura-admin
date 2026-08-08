@@ -33,6 +33,7 @@ databaseChangeLog:
       file: db/changelog/mysql/automation_operation_catalog_v2.sql
   - include:
       file: db/changelog/mysql/test_metric_v2.sql
+      file: db/changelog/mysql/automation_executor_registration.sql
   - include:
       file: db/changelog/mysql/plugin/plugin_schedule.sql
   - include:

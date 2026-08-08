@@ -39,7 +39,7 @@ public class AutomationPlaywrightRunnerOptionsReq implements Serializable {
     @Pattern(regexp = "smooth|high|ultra|8k", message = "Runner 实时画面质量配置无效")
     private String liveFrameQuality = "smooth";
 
-    @Pattern(regexp = "isolated|reuse-auth", message = "Runner 用例会话模式配置无效")
+    @Pattern(regexp = "isolated|reuse-auth|reuse-browser", message = "Runner 用例会话模式配置无效")
     private String sessionMode = "isolated";
 
     private Boolean headed = false;

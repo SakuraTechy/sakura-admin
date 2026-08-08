@@ -21,6 +21,7 @@ import com.offbytwo.jenkins.client.JenkinsHttpClient;
 
 import java.net.URI;
 import java.net.URISyntaxException;
+import org.apache.commons.lang3.StringUtils;
 
 /**
  * 连接 Jenkins
@@ -29,11 +30,6 @@ public class JenkinsConnect {
 
     private JenkinsConnect() {
     }
-
-    // 连接 Jenkins 需要设置的信息
-    static final String JENKINS_URL = "http://172.19.5.222:8080/";
-    static final String JENKINS_USERNAME = "sakura";
-    static final String JENKINS_PASSWORD = "3edc$RFV";
 
     /**
      * Http 客户端工具
@@ -45,9 +41,9 @@ public class JenkinsConnect {
     public static JenkinsHttpClient getClient() {
         JenkinsHttpClient jenkinsHttpClient = null;
         try {
-            jenkinsHttpClient = new JenkinsHttpClient(new URI(JENKINS_URL), JENKINS_USERNAME, JENKINS_PASSWORD);
+            jenkinsHttpClient = new JenkinsHttpClient(new URI(configuredUrl()), configuredUsername(), configuredPassword());
         } catch (URISyntaxException e) {
-            e.printStackTrace();
+            throw new IllegalStateException("Jenkins URL 配置无效", e);
         }
         return jenkinsHttpClient;
     }
@@ -58,9 +54,9 @@ public class JenkinsConnect {
     public static JenkinsServer connection() {
         JenkinsServer jenkinsServer = null;
         try {
-            jenkinsServer = new JenkinsServer(new URI(JENKINS_URL), JENKINS_USERNAME, JENKINS_PASSWORD);
+            jenkinsServer = new JenkinsServer(new URI(configuredUrl()), configuredUsername(), configuredPassword());
         } catch (URISyntaxException e) {
-            e.printStackTrace();
+            throw new IllegalStateException("Jenkins URL 配置无效", e);
         }
         return jenkinsServer;
     }
@@ -73,8 +69,31 @@ public class JenkinsConnect {
         try {
             jenkinsServer = new JenkinsServer(new URI(url), userName, passWord);
         } catch (URISyntaxException e) {
-            e.printStackTrace();
+            throw new IllegalArgumentException("Jenkins URL 配置无效", e);
         }
         return jenkinsServer;
+    }
+
+    private static String configuredUrl() {
+        return requiredSetting("sakura.jenkins.url", "SAKURA_JENKINS_URL");
+    }
+
+    private static String configuredUsername() {
+        return requiredSetting("sakura.jenkins.username", "SAKURA_JENKINS_USERNAME");
+    }
+
+    private static String configuredPassword() {
+        return requiredSetting("sakura.jenkins.password", "SAKURA_JENKINS_PASSWORD");
+    }
+
+    private static String requiredSetting(String propertyName, String environmentName) {
+        String value = System.getProperty(propertyName);
+        if (StringUtils.isBlank(value)) {
+            value = System.getenv(environmentName);
+        }
+        if (StringUtils.isBlank(value)) {
+            throw new IllegalStateException("缺少 Jenkins 配置：" + propertyName + " 或环境变量 " + environmentName);
+        }
+        return value.trim();
     }
 }

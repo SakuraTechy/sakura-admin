@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -51,8 +52,21 @@ public class AutomationOperationCatalogServiceImpl implements AutomationOperatio
 
     private static final String CATALOG_RESOURCE = "automation/automation-operation-catalog.json";
     private static final Set<String> EXECUTORS = Set.of("selenium", "playwright", "cuecast");
+    private static final Set<String> FORM_COMPONENTS = Set
+        .of("input", "number", "select", "switch", "textarea", "code", "locator", "target_ref", "file_ref", "key_value");
+    private static final Set<String> DIAGNOSTIC_PROFILES = Set
+        .of("navigation", "element_interaction", "dialog", "assertion", "wait", "variable", "script", "infrastructure");
+    private static final Set<String> DIAGNOSTIC_ROLES = Set
+        .of("target", "input", "expected", "definition", "binding", "control");
+    private static final Set<String> DIAGNOSTIC_SENSITIVITIES = Set.of("public", "inherit", "sensitive", "restricted");
+    private static final Set<String> DIAGNOSTIC_DISPLAYS = Set
+        .of("effective_preview", "configured_preview", "basename", "summary", "definition_endpoint", "omit");
+    private static final Set<String> TEXT_DEFAULT_COMPONENTS = Set
+        .of("input", "textarea", "code", "locator", "target_ref", "file_ref");
+    private static final Set<String> DEFAULT_FORBIDDEN_FIELDS = Set
+        .of("url", "target_ref", "sql", "command", "path", "file_ref", "certificate_ref", "variable_name", "value", "expect", "script");
     private static final int EXPECTED_TYPE_COUNT = 13;
-    private static final int EXPECTED_METHOD_COUNT = 62;
+    private static final int EXPECTED_METHOD_COUNT = 63;
     // 能力上报是短租约：Runner 或扩展升级、退出后不能继续以历史能力开放手工步骤。
     private static final Duration CAPABILITY_SNAPSHOT_TTL = Duration.ofMinutes(5);
 
@@ -197,6 +211,39 @@ public class AutomationOperationCatalogServiceImpl implements AutomationOperatio
         if (methodCount != EXPECTED_METHOD_COUNT) {
             throw new IllegalStateException("自动化操作目录必须包含 " + EXPECTED_METHOD_COUNT + " 个方法，当前为 " + methodCount);
         }
+        validateDiagnosticProfiles(source);
+    }
+
+    private void validateDiagnosticProfiles(AutomationOperationCatalog source) {
+        Map<String, List<String>> profiles = source.getDiagnosticProfiles();
+        if (profiles == null || profiles.isEmpty()) {
+            throw new IllegalStateException("自动化操作目录缺少 diagnostic_profiles");
+        }
+        Map<String, String> methodProfiles = new HashMap<>();
+        for (Map.Entry<String, List<String>> entry : profiles.entrySet()) {
+            if (!DIAGNOSTIC_PROFILES.contains(normalize(entry.getKey())) || entry.getValue() == null) {
+                throw new IllegalStateException("自动化操作目录包含无效诊断模板：" + entry.getKey());
+            }
+            for (String methodCode : entry.getValue()) {
+                String normalizedMethod = normalize(methodCode);
+                if (normalizedMethod.isBlank() || methodProfiles.putIfAbsent(normalizedMethod, entry
+                    .getKey()) != null) {
+                    throw new IllegalStateException("自动化操作目录诊断模板存在空或重复方法：" + methodCode);
+                }
+            }
+        }
+        for (AutomationOperationCatalog.OperationType type : source.getTypes()) {
+            for (AutomationOperationCatalog.OperationMethod method : type.getMethods()) {
+                String profile = methodProfiles.get(normalize(method.getMethodCode()));
+                if (profile == null) {
+                    throw new IllegalStateException("操作方法缺少诊断模板：" + method.getMethodCode());
+                }
+                method.setDiagnosticProfile(profile);
+            }
+        }
+        if (methodProfiles.size() != EXPECTED_METHOD_COUNT) {
+            throw new IllegalStateException("诊断模板必须覆盖 " + EXPECTED_METHOD_COUNT + " 个方法，当前为 " + methodProfiles.size());
+        }
     }
 
     private void validateMethod(AutomationOperationCatalog.OperationMethod method) {
@@ -212,9 +259,220 @@ public class AutomationOperationCatalogServiceImpl implements AutomationOperatio
         if (method.getFormSchema() == null) {
             throw new IllegalStateException("自动化操作方法缺少 form_schema：" + method.getMethodCode());
         }
+        validateFormSchema(method);
         if (method.getCapabilities() == null || !method.getCapabilities().keySet().containsAll(EXECUTORS)) {
             throw new IllegalStateException("自动化操作方法缺少三执行器能力声明：" + method.getMethodCode());
         }
+    }
+
+    private void validateFormSchema(AutomationOperationCatalog.OperationMethod method) {
+        Map<String, Map<String, Object>> fields = new HashMap<>();
+        for (Map<String, Object> field : method.getFormSchema()) {
+            String name = text(field.get("name"));
+            String label = text(field.get("label"));
+            String component = text(field.get("component"));
+            if (name.isBlank() || label.isBlank() || !FORM_COMPONENTS.contains(component)) {
+                throw catalogFieldError(method, name, "缺少 name/label 或 component 不受支持");
+            }
+            if (fields.putIfAbsent(name, field) != null) {
+                throw catalogFieldError(method, name, "字段名重复");
+            }
+            validateFieldPresentation(method, field, name, component);
+            validateFieldOptions(method, field, name, component);
+            validateFieldRange(method, field, name);
+            validateFieldDefault(method, field, name, component);
+            applyDiagnosticFieldMetadata(method, field, name);
+        }
+        for (Map<String, Object> field : method.getFormSchema()) {
+            validateFieldCondition(method, fields, field, "visible_when");
+            validateFieldCondition(method, fields, field, "required_when");
+        }
+    }
+
+    private void applyDiagnosticFieldMetadata(AutomationOperationCatalog.OperationMethod method,
+                                              Map<String, Object> field,
+                                              String name) {
+        Map<String, String> defaults = catalog.getDiagnosticFieldDefaults().get(name);
+        if (defaults == null) {
+            throw catalogFieldError(method, name, "缺少 diagnostic_role/sensitivity/result_display");
+        }
+        for (String key : List.of("diagnostic_role", "sensitivity", "result_display")) {
+            String value = text(field.get(key));
+            if (value.isBlank()) {
+                value = text(defaults.get(key));
+                field.put(key, value);
+            }
+            if (value.isBlank()) {
+                throw catalogFieldError(method, name, "缺少字段诊断元数据：" + key);
+            }
+        }
+        if (!DIAGNOSTIC_ROLES.contains(text(field.get("diagnostic_role"))) || !DIAGNOSTIC_SENSITIVITIES
+            .contains(text(field.get("sensitivity"))) || !DIAGNOSTIC_DISPLAYS.contains(text(field
+                .get("result_display")))) {
+            throw catalogFieldError(method, name, "字段诊断元数据取值无效");
+        }
+        if (Set.of("sql", "command", "script").contains(name) && !Set.of("restricted", "sensitive")
+            .contains(text(field.get("sensitivity")))) {
+            throw catalogFieldError(method, name, "受限定义字段不能声明普通敏感级别");
+        }
+    }
+
+    private void validateFieldPresentation(AutomationOperationCatalog.OperationMethod method,
+                                           Map<String, Object> field,
+                                           String name,
+                                           String component) {
+        if (!"select".equals(component) && text(field.get("placeholder")).isBlank() && text(field.get("help"))
+            .isBlank()) {
+            throw catalogFieldError(method, name, "非选择字段必须声明 placeholder 或 help");
+        }
+    }
+
+    private void validateFieldOptions(AutomationOperationCatalog.OperationMethod method,
+                                      Map<String, Object> field,
+                                      String name,
+                                      String component) {
+        if (!"select".equals(component)) {
+            return;
+        }
+        List<Map<String, Object>> options = options(method, field, name);
+        if (options.isEmpty()) {
+            throw catalogFieldError(method, name, "select 字段缺少 options");
+        }
+        Set<String> values = new HashSet<>();
+        for (Map<String, Object> option : options) {
+            String label = text(option.get("label"));
+            String value = text(option.get("value"));
+            if (label.isBlank() || value.isBlank() || !values.add(value)) {
+                throw catalogFieldError(method, name, "option 缺少 label/value 或 value 重复");
+            }
+        }
+    }
+
+    private void validateFieldRange(AutomationOperationCatalog.OperationMethod method,
+                                    Map<String, Object> field,
+                                    String name) {
+        Object minimum = field.get("min");
+        Object maximum = field.get("max");
+        if (minimum != null && !(minimum instanceof Number) || maximum != null && !(maximum instanceof Number)) {
+            throw catalogFieldError(method, name, "min/max 必须是数字");
+        }
+        if (minimum instanceof Number min && maximum instanceof Number max && min.doubleValue() > max.doubleValue()) {
+            throw catalogFieldError(method, name, "min 不能大于 max");
+        }
+    }
+
+    private void validateFieldDefault(AutomationOperationCatalog.OperationMethod method,
+                                      Map<String, Object> field,
+                                      String name,
+                                      String component) {
+        if (!field.containsKey("default")) {
+            return;
+        }
+        Object value = field.get("default");
+        if (value == null || isDefaultForbiddenField(name, component)) {
+            throw catalogFieldError(method, name, "不允许声明默认值");
+        }
+        if ("number".equals(component) && !(value instanceof Number)) {
+            throw catalogFieldError(method, name, "number 默认值必须是数字");
+        }
+        if (value instanceof Number number) {
+            if (field.get("min") instanceof Number min && number.doubleValue() < min.doubleValue() || field
+                .get("max") instanceof Number max && number.doubleValue() > max.doubleValue()) {
+                throw catalogFieldError(method, name, "number 默认值超出 min/max 范围");
+            }
+        }
+        if (TEXT_DEFAULT_COMPONENTS.contains(component) && !(value instanceof String)) {
+            throw catalogFieldError(method, name, component + " 默认值必须是字符串");
+        }
+        if ("switch".equals(component) && !(value instanceof Boolean)) {
+            throw catalogFieldError(method, name, "switch 默认值必须是布尔值");
+        }
+        if ("key_value".equals(component) && !(value instanceof Map<?, ?>)) {
+            throw catalogFieldError(method, name, "key_value 默认值必须是对象");
+        }
+        if ("select".equals(component) && options(method, field, name).stream()
+            .noneMatch(option -> text(option.get("value")).equals(text(value)))) {
+            throw catalogFieldError(method, name, "默认值不在 options 中");
+        }
+    }
+
+    private boolean isDefaultForbiddenField(String name, String component) {
+        String normalized = name.toLowerCase(java.util.Locale.ROOT);
+        return DEFAULT_FORBIDDEN_FIELDS.contains(normalized) || Set.of("locator", "target_ref", "file_ref")
+            .contains(component) || normalized.endsWith("_path") || normalized.contains("password") || normalized
+                .contains("secret") || normalized.contains("token") || normalized.contains("certificate");
+    }
+
+    private void validateFieldCondition(AutomationOperationCatalog.OperationMethod method,
+                                        Map<String, Map<String, Object>> fields,
+                                        Map<String, Object> field,
+                                        String conditionName) {
+        Object rawCondition = field.get(conditionName);
+        if (rawCondition == null) {
+            return;
+        }
+        if (!(rawCondition instanceof Map<?, ?> condition) || condition.isEmpty()) {
+            throw catalogFieldError(method, text(field.get("name")), conditionName + " 必须是非空对象");
+        }
+        for (Map.Entry<?, ?> entry : condition.entrySet()) {
+            String referencedName = text(entry.getKey());
+            Map<String, Object> referencedField = fields.get(referencedName);
+            if (referencedField == null) {
+                throw catalogFieldError(method, text(field.get("name")), conditionName + " 引用了未知字段 " + referencedName);
+            }
+            if (entry.getValue() == null || entry.getValue() instanceof Collection<?> values && values.isEmpty()) {
+                throw catalogFieldError(method, text(field.get("name")), conditionName + " 的条件值不能为空");
+            }
+            String referencedComponent = text(referencedField.get("component"));
+            if ("select".equals(referencedComponent)) {
+                Set<String> optionValues = new HashSet<>();
+                for (Map<String, Object> option : options(method, referencedField, referencedName)) {
+                    optionValues.add(text(option.get("value")));
+                }
+                for (Object expected : conditionValues(entry.getValue())) {
+                    if (!optionValues.contains(text(expected))) {
+                        throw catalogFieldError(method, text(field.get("name")), conditionName + " 包含无效选项 " + expected);
+                    }
+                }
+            } else {
+                for (Object expected : conditionValues(entry.getValue())) {
+                    boolean validType = switch (referencedComponent) {
+                        case "number" -> expected instanceof Number;
+                        case "switch" -> expected instanceof Boolean;
+                        default -> expected instanceof String;
+                    };
+                    if (!validType) {
+                        throw catalogFieldError(method, text(field
+                            .get("name")), conditionName + " 的条件值类型与 " + referencedName + " 不一致");
+                    }
+                }
+            }
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Map<String, Object>> options(AutomationOperationCatalog.OperationMethod method,
+                                              Map<String, Object> field,
+                                              String name) {
+        Object rawOptions = field.get("options");
+        if (!(rawOptions instanceof List<?> list) || list.stream().anyMatch(item -> !(item instanceof Map<?, ?>))) {
+            throw catalogFieldError(method, name, "options 必须是对象数组");
+        }
+        return (List<Map<String, Object>>)(List<?>)list;
+    }
+
+    private Collection<?> conditionValues(Object value) {
+        return value instanceof Collection<?> collection ? collection : List.of(value);
+    }
+
+    private IllegalStateException catalogFieldError(AutomationOperationCatalog.OperationMethod method,
+                                                    String field,
+                                                    String reason) {
+        return new IllegalStateException("自动化操作目录字段无效：" + method.getMethodCode() + "." + field + "，" + reason);
+    }
+
+    private String text(Object value) {
+        return value == null ? "" : String.valueOf(value).trim();
     }
 
     private void index(String key, AutomationOperationCatalog.OperationMethod method) {

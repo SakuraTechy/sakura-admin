@@ -73,6 +73,7 @@ public class TestPlanExecutionDispatchService {
     private final AutomationPlaywrightRunnerJobService runnerJobService;
     private final AutomationPlanReportProgressService reportProgressService;
     private final TestPlanMapper testPlanMapper;
+    private final TestPlanRunnerTokenService runnerTokenService;
     private final ExecutorService planExecutor = Executors.newCachedThreadPool();
     private final Map<String, ExecutionControl> activeExecutions = new ConcurrentHashMap<>();
 
@@ -113,9 +114,23 @@ public class TestPlanExecutionDispatchService {
                                TestPlanExecuteReq req,
                                List<TestPlanExecuteResp.SceneExecution> manifest,
                                String token) {
+        TestPlanRunnerTokenService.TokenLease tokenLease = null;
+        String effectiveToken = token;
+        if (StringUtils.isBlank(effectiveToken)) {
+            tokenLease = runnerTokenService.issue(plan.getCreateUser(), reportId);
+            effectiveToken = tokenLease.token();
+        }
         ExecutionControl control = new ExecutionControl(String.valueOf(plan.getId()), reportId);
         activeExecutions.put(reportId, control);
-        planExecutor.submit(() -> runPlan(control, req, manifest, token));
+        TestPlanRunnerTokenService.TokenLease issuedTokenLease = tokenLease;
+        String runnerToken = effectiveToken;
+        try {
+            planExecutor.submit(() -> runPlan(control, req, manifest, runnerToken, issuedTokenLease));
+        } catch (RuntimeException e) {
+            activeExecutions.remove(reportId);
+            releaseToken(issuedTokenLease, reportId);
+            throw e;
+        }
     }
 
     public void cancel(String testPlanId, String reportId) {
@@ -146,7 +161,8 @@ public class TestPlanExecutionDispatchService {
     private void runPlan(ExecutionControl control,
                          TestPlanExecuteReq req,
                          List<TestPlanExecuteResp.SceneExecution> manifest,
-                         String token) {
+                         String token,
+                         TestPlanRunnerTokenService.TokenLease tokenLease) {
         try {
             for (TestPlanExecuteResp.SceneExecution scene : manifest) {
                 if (control.cancelled) {
@@ -167,6 +183,18 @@ public class TestPlanExecutionDispatchService {
             }
             reportProgressService.onProgressChanged(control.testPlanId, control.reportId);
             activeExecutions.remove(control.reportId);
+            releaseToken(tokenLease, control.reportId);
+        }
+    }
+
+    private void releaseToken(TestPlanRunnerTokenService.TokenLease tokenLease, String reportId) {
+        if (tokenLease == null) {
+            return;
+        }
+        try {
+            runnerTokenService.release(tokenLease);
+        } catch (Exception e) {
+            log.warn("回收 Runner 临时调度凭据失败，reportId={}", reportId, e);
         }
     }
 
@@ -210,14 +238,65 @@ public class TestPlanExecutionDispatchService {
                 continue;
             }
             AutomationPlaywrightBatchResp.CaseExecution execution = executions.get(caseId);
-            runCase(control, req, scene, batch.getBatchId(), caseId, execution, options, token);
+            if (execution == null || "failed".equalsIgnoreCase(execution.getStatus()) || "cancelled"
+                .equalsIgnoreCase(execution.getStatus())) {
+                // 批次创建阶段已记录该用例的配置错误或取消事实，不能再次启动 Runner 覆盖失败原因。
+                continue;
+            }
+            AutomationPlaywrightRunnerOptionsReq effectiveOptions = toRunnerOptions(execution
+                .getEffectiveExecutionConfig(), options);
+            runCase(control, req, scene, batch.getBatchId(), batch
+                .getExecutionCapability(), caseId, execution, effectiveOptions, token);
         }
+    }
+
+    private AutomationPlaywrightRunnerOptionsReq toRunnerOptions(Map<String, Object> effectiveConfig,
+                                                                 AutomationPlaywrightRunnerOptionsReq fallback) {
+        AutomationPlaywrightRunnerOptionsReq options = fallback == null
+            ? new AutomationPlaywrightRunnerOptionsReq()
+            : BeanUtil.copyProperties(fallback, AutomationPlaywrightRunnerOptionsReq.class);
+        if (effectiveConfig == null || effectiveConfig.isEmpty() || effectiveConfig.containsKey("error")) {
+            return options;
+        }
+        // 使用批次冻结的配置，避免测试计划入口与调试入口各自合并出不同执行事实。
+        setIfPresent(effectiveConfig, "browser", value -> options.setBrowser(String.valueOf(value)));
+        setIfPresent(effectiveConfig, "live_frame_quality", value -> options.setLiveFrameQuality(String
+            .valueOf(value)));
+        setIfPresent(effectiveConfig, "session_mode", value -> options.setSessionMode(String.valueOf(value)));
+        setIfPresent(effectiveConfig, "headed", value -> options.setHeaded(booleanValue(value)));
+        setIfPresent(effectiveConfig, "ignore_https_errors", value -> options
+            .setIgnoreHttpsErrors(booleanValue(value)));
+        setIfPresent(effectiveConfig, "page_error_check_enabled", value -> options
+            .setPageErrorCheckEnabled(booleanValue(value)));
+        setIfPresent(effectiveConfig, "trace", value -> options.setTrace(String.valueOf(value)));
+        setIfPresent(effectiveConfig, "video", value -> options.setVideo(String.valueOf(value)));
+        setIfPresent(effectiveConfig, "step_timeout_ms", value -> options.setStepTimeoutMs(intValue(value)));
+        setIfPresent(effectiveConfig, "case_timeout_ms", value -> options.setCaseTimeoutMs(intValue(value)));
+        setIfPresent(effectiveConfig, "slow_mo_ms", value -> options.setSlowMoMs(intValue(value)));
+        setIfPresent(effectiveConfig, "finish_delay_ms", value -> options.setFinishDelayMs(intValue(value)));
+        return options;
+    }
+
+    private void setIfPresent(Map<String, Object> config, String key, java.util.function.Consumer<Object> setter) {
+        Object value = config.get(key);
+        if (value != null) {
+            setter.accept(value);
+        }
+    }
+
+    private boolean booleanValue(Object value) {
+        return value instanceof Boolean ? (Boolean)value : Boolean.parseBoolean(String.valueOf(value));
+    }
+
+    private int intValue(Object value) {
+        return value instanceof Number ? ((Number)value).intValue() : Integer.parseInt(String.valueOf(value));
     }
 
     private void runCase(ExecutionControl control,
                          TestPlanExecuteReq req,
                          TestPlanExecuteResp.SceneExecution scene,
                          String batchId,
+                         String executionCapability,
                          String caseId,
                          AutomationPlaywrightBatchResp.CaseExecution execution,
                          AutomationPlaywrightRunnerOptionsReq options,
@@ -231,6 +310,7 @@ public class TestPlanExecutionDispatchService {
             jobReq.setCaseKey(scene.getSceneKey() + ":" + caseId);
             jobReq.setBatchId(batchId);
             jobReq.setExecutionId(execution == null ? null : execution.getExecutionId());
+            jobReq.setExecutionCapability(executionCapability);
             jobReq.setProjectEnvironmentId(req.getProjectEnvironmentId());
             jobReq.setOptions(options);
             AutomationPlaywrightRunnerJobResp job = runnerJobService.create(jobReq, token);

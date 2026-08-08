@@ -17,6 +17,7 @@
 package top.continew.admin.test.service;
 
 import top.continew.admin.test.model.entity.TestReportDO;
+import top.continew.admin.test.model.entity.TestTimedTaskDO;
 import top.continew.admin.test.model.entity.TestTimedTaskRunDO;
 import top.continew.admin.test.model.query.TestTimedTaskRunQuery;
 import top.continew.admin.test.model.resp.TestPlanExecuteResp;
@@ -38,10 +39,18 @@ public interface TestTimedTaskRunService {
 
     void completeByReport(TestReportDO report);
 
+    int recoverStaleRuns();
+
+    int cleanupExpiredRuns(int retentionDays, int batchSize, int maxBatches);
+
     PageResp<TestTimedTaskRunResp> page(Long taskId, TestTimedTaskRunQuery query, PageQuery pageQuery);
 
     Map<Long, TestTimedTaskRunSummaryResp> latestByTaskIds(Collection<Long> taskIds);
 
-    record StartResult(TestTimedTaskRunDO run, boolean skipped) {
+    record StartResult(TestTimedTaskRunDO run, boolean skipped, TestTimedTaskDO task) {
+
+        public StartResult(TestTimedTaskRunDO run, boolean skipped) {
+            this(run, skipped, null);
+        }
     }
 }

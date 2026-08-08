@@ -1,4 +1,3 @@
-version: '3'
 services:
   mysql:
     image: mysql:8.0.33
@@ -66,17 +65,28 @@ services:
       REDIS_PORT: 6379
       REDIS_PWD: 你的 Redis 密码
       REDIS_DB: 0
-      SCHEDULE_HOST: 172.17.0.1
+      SCHEDULE_ENABLED: 'true'
+      SCHEDULE_HOST: schedule-server
       SCHEDULE_PORT: 1788
+      SCHEDULE_CLIENT_PORT: 1789
+      SCHEDULE_API_URL: http://schedule-server:18001/snail-job
+      SCHEDULE_NAMESPACE: 764d604ec6fc45f68cd92514c40e9e1a
+      SCHEDULE_GROUP: continew-admin
       SCHEDULE_TOKEN: 任务调度服务端 Token
+      SCHEDULE_USERNAME: admin
+      SCHEDULE_PASSWORD: admin
     volumes:
       - /docker/continew-admin/config/:/app/config/
       - /docker/continew-admin/data/file/:/app/data/file/
       - /docker/continew-admin/logs/:/app/logs/
       - /docker/continew-admin/lib/:/app/lib/
     depends_on:
-      - redis
-      - mysql
+      redis:
+        condition: service_started
+      mysql:
+        condition: service_started
+      schedule-server:
+        condition: service_healthy
   schedule-server:
     build: ./schedule-server
     restart: always
@@ -93,6 +103,12 @@ services:
       DB_NAME: continew_admin_job
     volumes:
       - /docker/schedule-server/logs/:/app/logs/
+    healthcheck:
+      test: ['CMD-SHELL', "bash -c 'exec 3<>/dev/tcp/127.0.0.1/18001 && exec 4<>/dev/tcp/127.0.0.1/1788'"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
     depends_on:
       - mysql
   nginx:

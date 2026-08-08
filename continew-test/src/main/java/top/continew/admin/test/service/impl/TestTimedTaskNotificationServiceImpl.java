@@ -43,6 +43,9 @@ public class TestTimedTaskNotificationServiceImpl implements TestTimedTaskNotifi
     @Async
     @Override
     public void send(Long runId) {
+        if (runId == null || runMapper.claimNotification(runId) != 1) {
+            return;
+        }
         TestTimedTaskRunDO run = runMapper.selectById(runId);
         if (run == null) {
             return;
@@ -112,16 +115,13 @@ public class TestTimedTaskNotificationServiceImpl implements TestTimedTaskNotifi
         return switch (status == null ? "" : status) {
             case "PASSED" -> "通过";
             case "SKIPPED" -> "已跳过";
+            case "CANCELLED" -> "已取消";
             case "RUNNING" -> "执行中";
             default -> "失败";
         };
     }
 
     private void updateStatus(Long runId, String status, String error) {
-        runMapper.lambdaUpdate()
-            .eq(TestTimedTaskRunDO::getId, runId)
-            .set(TestTimedTaskRunDO::getNotificationStatus, status)
-            .set(TestTimedTaskRunDO::getNotificationError, error)
-            .update();
+        runMapper.finishNotification(runId, status, error);
     }
 }

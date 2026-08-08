@@ -17,11 +17,13 @@
 package top.continew.admin.test.job;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.aizuda.snailjob.client.job.core.dto.JobArgs;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -32,11 +34,14 @@ import top.continew.admin.common.json.JsonUtil;
 import top.continew.admin.test.mapper.TestTimedTaskMapper;
 import top.continew.admin.test.model.entity.TestTimedTaskDO;
 import top.continew.admin.test.model.entity.TestTimedTaskRunDO;
+import top.continew.admin.test.model.exception.TestPlanDispatchException;
 import top.continew.admin.test.model.req.TestPlanExecuteReq;
 import top.continew.admin.test.model.req.TestTimedTaskExecutePayload;
 import top.continew.admin.test.model.resp.TestPlanExecuteResp;
 import top.continew.admin.test.service.TestPlanService;
 import top.continew.admin.test.service.TestTimedTaskRunService;
+
+import java.util.Map;
 
 @ExtendWith(MockitoExtension.class)
 class TestPlanJobExecutorTest {
@@ -93,15 +98,76 @@ class TestPlanJobExecutorTest {
     }
 
     @Test
-    void shouldNotExecutePlanWhenOverlapIsSkipped() throws Exception {
+    void shouldApplyPlaywrightExecutionConfigFromLockedTask() throws Exception {
         TestTimedTaskDO task = task();
-        when(timedTaskMapper.selectById(1L)).thenReturn(task);
+        task.setExecutionEngine("PLAYWRIGHT_RUNNER");
+        task.setExecutionConfig(Map
+            .of("browser", "chromium", "stepTimeoutMs", 4_000, "caseTimeoutMs", 10_000, "pageErrorCheckEnabled", false));
+        TestTimedTaskRunDO run = new TestTimedTaskRunDO();
+        run.setId(99L);
         when(timedTaskRunService.start(1L, "SCHEDULE"))
-            .thenReturn(new TestTimedTaskRunService.StartResult(new TestTimedTaskRunDO(), true));
+            .thenReturn(new TestTimedTaskRunService.StartResult(run, false, task));
+        when(testPlanService.execute(any(), any())).thenReturn(new TestPlanExecuteResp());
 
         executor.executeTestPlan(payload("SCHEDULE"));
 
+        ArgumentCaptor<TestPlanExecuteReq> reqCaptor = ArgumentCaptor.forClass(TestPlanExecuteReq.class);
+        verify(testPlanService).execute(org.mockito.ArgumentMatchers.eq(10L), reqCaptor.capture());
+        assertThat(reqCaptor.getValue().getRunnerOptions().getBrowser()).isEqualTo("chromium");
+        assertThat(reqCaptor.getValue().getRunnerOptions().getStepTimeoutMs()).isEqualTo(4_000);
+        assertThat(reqCaptor.getValue().getRunnerOptions().getCaseTimeoutMs()).isEqualTo(10_000);
+        assertThat(reqCaptor.getValue().getRunnerOptions().getPageErrorCheckEnabled()).isFalse();
+    }
+
+    @Test
+    void shouldAcceptStructuredJobParamsFromSnailJob() throws Exception {
+        TestTimedTaskDO task = task();
+        TestTimedTaskRunDO run = new TestTimedTaskRunDO();
+        run.setId(99L);
+        when(timedTaskMapper.selectById(1L)).thenReturn(task);
+        when(timedTaskRunService.start(1L, "MANUAL")).thenReturn(new TestTimedTaskRunService.StartResult(run, false));
+        when(testPlanService.execute(any(), any())).thenReturn(new TestPlanExecuteResp());
+        JobArgs jobArgs = new JobArgs();
+        jobArgs.setJobParams(java.util.Map.of("taskId", 1L, "triggerMode", "MANUAL"));
+
+        executor.executeTestPlan(jobArgs);
+
+        verify(testPlanService).execute(org.mockito.ArgumentMatchers.eq(10L), any());
+    }
+
+    @Test
+    void shouldNotExecutePlanWhenOverlapIsSkipped() throws Exception {
+        TestTimedTaskRunDO skipped = new TestTimedTaskRunDO();
+        skipped.setFailureReason("测试定时任务已禁用");
+        when(timedTaskRunService.start(1L, "SCHEDULE"))
+            .thenReturn(new TestTimedTaskRunService.StartResult(skipped, true));
+
+        JobArgs jobArgs = new JobArgs();
+        jobArgs.setJobParams(payload("SCHEDULE"));
+        executor.executeTestPlan(jobArgs);
+
         verify(testPlanService, never()).execute(any(), any());
+        verify(timedTaskMapper, never()).selectById(any());
+    }
+
+    @Test
+    void shouldAttachReportWhenPlanDispatchFails() throws Exception {
+        TestTimedTaskDO task = task();
+        TestTimedTaskRunDO run = new TestTimedTaskRunDO();
+        run.setId(99L);
+        when(timedTaskRunService.start(1L, "SCHEDULE"))
+            .thenReturn(new TestTimedTaskRunService.StartResult(run, false, task));
+        when(testPlanService.execute(any(), any()))
+            .thenThrow(new TestPlanDispatchException(101L, new IllegalStateException("Runner 不可用")));
+
+        assertThatThrownBy(() -> executor.executeTestPlan(payload("SCHEDULE")))
+            .isInstanceOf(TestPlanDispatchException.class)
+            .hasMessageContaining("Runner 不可用");
+
+        ArgumentCaptor<TestPlanExecuteResp> respCaptor = ArgumentCaptor.forClass(TestPlanExecuteResp.class);
+        verify(timedTaskRunService).attachExecution(org.mockito.ArgumentMatchers.eq(99L), respCaptor.capture());
+        assertThat(respCaptor.getValue().getTestReportId()).isEqualTo("101");
+        verify(timedTaskRunService).fail(99L, "Runner 不可用");
     }
 
     private TestTimedTaskDO task() {

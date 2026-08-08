@@ -41,4 +41,12 @@ public interface AutomationRecordingScreenshotService {
 
     record ScreenshotResource(Path path, String contentType) {
     }
+
+    /** 截图内容已解析，但文件存储后端失败；导入层可降级为只保存存在标记。 */
+    class ScreenshotStorageException extends RuntimeException {
+
+        public ScreenshotStorageException(String message, Throwable cause) {
+            super(message, cause);
+        }
+    }
 }

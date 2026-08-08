@@ -24,17 +24,23 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
 import cn.dev33.satoken.stp.StpUtil;
+import cn.hutool.crypto.digest.DigestUtil;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.dao.DuplicateKeyException;
+import org.springframework.jdbc.core.JdbcTemplate;
 import top.continew.admin.automation.converter.AutomationPlaywrightStepExtractor;
 import top.continew.admin.automation.converter.AutomationInfrastructureRuntimeBindingResolver;
 import top.continew.admin.automation.mapper.AutomationInfrastructureTaskLogMapper;
@@ -46,10 +52,17 @@ import top.continew.admin.automation.model.entity.AutomationUiSceneDO;
 import top.continew.admin.automation.model.entity.ui.CaseDO;
 import top.continew.admin.automation.model.entity.ui.StepDO;
 import top.continew.admin.automation.model.req.infrastructure.AutomationInfrastructureTaskCreateReq;
+import top.continew.admin.automation.model.req.infrastructure.AutomationInfrastructureTaskDispositionReq;
 import top.continew.admin.automation.model.resp.infrastructure.AutomationInfrastructureTaskResp;
 import top.continew.admin.automation.model.resp.infrastructure.AutomationInfrastructureTargetResp;
 import top.continew.admin.automation.service.AutomationInfrastructureTaskService;
+import top.continew.admin.automation.service.AutomationUiExecutionRecordService;
 import top.continew.admin.automation.support.AutomationExecutionAgentClient;
+import top.continew.admin.automation.support.AutomationExecutionCapability;
+import top.continew.admin.automation.support.AutomationInfrastructureResultSanitizer;
+import top.continew.admin.automation.support.AutomationInfrastructureRiskPolicy;
+import top.continew.admin.automation.support.AutomationInfrastructureRiskPolicy.Assessment;
+import top.continew.admin.common.context.UserContextHolder;
 import top.continew.admin.common.enums.DisEnableStatusEnum;
 import top.continew.admin.common.enums.StatusTypeEnum;
 import top.continew.admin.project.mapper.ProjectDataBaseConfigMapper;
@@ -92,6 +105,10 @@ public class AutomationInfrastructureTaskServiceImpl implements AutomationInfras
     private final AutomationInfrastructureRuntimeBindingResolver runtimeBindingResolver;
     private final ObjectMapper objectMapper;
     private final AutomationExecutionAgentClient executionAgentClient;
+    private final AutomationUiExecutionRecordService executionRecordService;
+    private final JdbcTemplate jdbcTemplate;
+    private final AutomationInfrastructureResultSanitizer infrastructureResultSanitizer;
+    private final AutomationInfrastructureRiskPolicy infrastructureRiskPolicy;
 
     @Override
     public List<AutomationInfrastructureTargetResp> listTargets(Long projectId, String kind) {
@@ -118,57 +135,99 @@ public class AutomationInfrastructureTaskServiceImpl implements AutomationInfras
     public AutomationInfrastructureTaskResp create(AutomationInfrastructureTaskCreateReq req) {
         String stage = "初始化任务参数";
         try {
-            String executionId = req.getExecutionId();
-            if (executionId == null || executionId.isBlank()) {
-                executionId = "interactive-" + UUID.randomUUID();
+            Long ownerUserId = UserContextHolder.getUserId();
+            String requestedCorrelation = normalizeExecutionCorrelation(req.getExecutionId());
+            stage = "解析执行上下文";
+            ExecutionContextRef executionContext = findExecutionContext(requestedCorrelation, req.getCaseKey(), req
+                .getStepId());
+            if (executionContext == null && ownerUserId != null) {
+                String interactiveCorrelation = interactiveExecutionCorrelation(ownerUserId, requestedCorrelation);
+                executionContext = findExecutionContext(interactiveCorrelation, req.getCaseKey(), req.getStepId());
+                if (executionContext == null) {
+                    executionContext = createInteractiveExecutionContext(req, interactiveCorrelation, ownerUserId);
+                }
             }
-            String idempotencyKey = executionId + ":" + req.getStepId() + ":" + req.getAttempt();
-            stage = "查询幂等任务";
-            AutomationInfrastructureTaskDO existing = taskMapper.selectOne(Wrappers
-                .<AutomationInfrastructureTaskDO>lambdaQuery()
-                .eq(AutomationInfrastructureTaskDO::getIdempotencyKey, idempotencyKey));
-            if (existing != null) {
-                Map<String, Object> agentResponse = refreshFromAgent(existing);
-                return toResp(existing, null, safeAgentResult(existing.getActionType(), agentResponse));
+            if (executionContext == null) {
+                throw new BusinessException("EXECUTION_SCOPE_DENIED：未找到 capability 授权的 ExecutionContext");
             }
-
+            requireExecutionContextAccess(executionContext, ownerUserId, req.getExecutionCapability());
+            if (ownerUserId == null) {
+                ownerUserId = executionContext.ownerUserId();
+            }
             stage = "解析基础设施步骤";
-            ResolvedStep resolved = resolveInfrastructureStep(req.getCaseKey(), req.getStepId());
+            ResolvedStep resolved = resolveInfrastructureStep(executionContext, req.getStepId());
             // runtimeBindings 只在本次内存执行载荷中展开；任务表和日志均不会接触具体值。
             Map<String, Object> resolvedRawStep = runtimeBindingResolver.resolve(resolved.rawStep(), req
                 .getRuntimeBindings());
             resolved = resolved.withRawStep(resolvedRawStep);
             if (req.getDefinitionVersion() != null && !req.getDefinitionVersion()
-                .equals(resolved.scene().getDefinitionVersion())) {
-                throw new BusinessException("场景定义已变更，请重新加载后执行");
+                .equals(executionContext.definitionVersion())) {
+                throw new BusinessException("DEFINITION_REVISION_CONFLICT：请求版本与执行上下文 revision 不一致");
             }
             stage = "校验操作权限";
-            validateDangerousOperation(resolved.actionType(), resolved.rawStep());
+            Assessment risk = infrastructureRiskPolicy.assess(resolved.actionType(), resolved.rawStep());
+            authorizeRisk(resolved.actionType(), risk);
             stage = "校验产品环境";
-            validateProjectEnvironment(resolved.scene(), req.getProjectEnvironmentId());
+            validateExecutionEnvironment(executionContext, req.getProjectEnvironmentId());
             stage = "解析目标配置";
-            ResolvedTarget target = resolveTarget(resolved.scene().getProjectId(), resolved.targetKind(), resolved
+            ResolvedTarget target = resolveTarget(executionContext.projectId(), resolved.targetKind(), resolved
                 .configId(), resolved.bindingKey());
+            int attempt = 1;
+            String idempotencyKey = executionContext.executionId() + ":" + executionContext
+                .stepExecutionId() + ":" + attempt;
+            String payloadDigest = taskPayloadDigest(resolved, req.getProjectEnvironmentId(), req
+                .getRuntimeBindings(), req.getRuntimeInput());
+            stage = "查询幂等任务";
+            AutomationInfrastructureTaskDO existing = findByIdempotencyKey(idempotencyKey);
+            if (existing != null) {
+                requireTaskAccess(existing, req.getExecutionCapability());
+                requireMatchingPayload(existing, payloadDigest);
+                Map<String, Object> agentResponse = refreshFromAgent(existing);
+                return toResp(existing, null, safeAgentResult(existing.getActionType(), agentResponse));
+            }
 
             AutomationInfrastructureTaskDO task = new AutomationInfrastructureTaskDO();
             task.setTaskId("INFRA_" + UUID.randomUUID().toString().replace("-", ""));
             task.setCaseKey(req.getCaseKey());
             task.setStepId(req.getStepId());
             task.setActionType(resolved.actionType());
-            task.setExecutionId(executionId);
+            task.setExecutionId(String.valueOf(executionContext.executionId()));
+            task.setOwnerUserId(ownerUserId);
             task.setProjectEnvironmentId(req.getProjectEnvironmentId());
-            task.setSceneId(resolved.scene().getId());
-            task.setDefinitionVersion(resolved.scene().getDefinitionVersion());
+            task.setSceneId(executionContext.sceneId());
+            task.setDefinitionVersion(executionContext.definitionVersion());
+            task.setDefinitionRevisionId(executionContext.definitionRevisionId());
+            task.setStepExecutionId(executionContext.stepExecutionId());
             task.setTargetKind(resolved.targetKind());
             task.setTargetConfigId(target.configId());
             task.setTargetBindingKey(resolved.bindingKey());
-            task.setAttempt(req.getAttempt());
+            task.setAttempt(attempt);
             task.setIdempotencyKey(idempotencyKey);
+            task.setPayloadDigest(payloadDigest);
+            task.setRiskLevel(risk.riskLevel());
+            task.setCommandTemplateId(risk.commandTemplateId());
+            task.setReadOnlyTransaction(risk.readOnlyTransaction() ? 1 : 0);
+            LocalDateTime approvalAt = risk.approvalRequired() ? LocalDateTime.now() : null;
+            task.setApprovalAt(approvalAt);
+            task.setApprovalDigest(risk.approvalRequired()
+                ? approvalDigest(executionContext, ownerUserId, req
+                    .getProjectEnvironmentId(), payloadDigest, risk, approvalAt)
+                : null);
             task.setStatus("queued");
             // BaseDO 的 updateTime 仅在更新时自动填充；新建任务也必须满足表的非空审计约束。
             task.setUpdateTime(LocalDateTime.now());
             stage = "写入基础设施任务";
-            taskMapper.insert(task);
+            try {
+                taskMapper.insert(task);
+            } catch (DuplicateKeyException ignored) {
+                AutomationInfrastructureTaskDO raced = findByIdempotencyKey(idempotencyKey);
+                if (raced == null) {
+                    throw new BusinessException("INFRA_TASK_IDEMPOTENCY_CONFLICT：并发创建后未找到任务");
+                }
+                requireTaskAccess(raced, req.getExecutionCapability());
+                requireMatchingPayload(raced, payloadDigest);
+                return toResp(raced, logsAfter(raced.getTaskId(), null), Map.of());
+            }
             stage = "写入任务审计日志";
             appendLog(task.getTaskId(), "INFO", "任务已创建，等待执行节点领取");
             stage = "提交执行 Agent";
@@ -188,21 +247,30 @@ public class AutomationInfrastructureTaskServiceImpl implements AutomationInfras
 
     @Override
     public AutomationInfrastructureTaskResp get(String taskId, Long afterSequence) {
+        return get(taskId, afterSequence, null);
+    }
+
+    @Override
+    public AutomationInfrastructureTaskResp get(String taskId, Long afterSequence, String executionCapability) {
         AutomationInfrastructureTaskDO task = requireTask(taskId);
-        Map<String, Object> agentResponse = refreshFromAgent(task);
+        requireTaskAccess(task, executionCapability);
+        Map<String, Object> agentResponse = task.getDisposition() == null ? refreshFromAgent(task) : Map.of();
         return toResp(task, logsAfter(taskId, afterSequence), safeAgentResult(task.getActionType(), agentResponse));
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public AutomationInfrastructureTaskResp cancel(String taskId) {
+        return cancel(taskId, null);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public AutomationInfrastructureTaskResp cancel(String taskId, String executionCapability) {
         AutomationInfrastructureTaskDO task = requireTask(taskId);
+        requireTaskAccess(task, executionCapability);
         if (!isTerminal(task.getStatus())) {
             task.setCancelRequestedAt(LocalDateTime.now());
-            if ("queued".equals(task.getStatus())) {
-                task.setStatus("cancelled");
-                task.setFinishedAt(LocalDateTime.now());
-            }
             taskMapper.updateById(task);
             appendLog(taskId, "INFO", "已请求取消基础设施任务");
             try {
@@ -210,26 +278,184 @@ public class AutomationInfrastructureTaskServiceImpl implements AutomationInfras
                 applyAgentResponse(task, agentResponse);
                 return toResp(task, logsAfter(taskId, null), safeAgentResult(task.getActionType(), agentResponse));
             } catch (BusinessException e) {
-                appendLog(taskId, "WARN", "执行 Agent 取消请求未送达");
+                markUnknownOutcome(task, "执行 Agent 取消响应未确认，任务是否停止未知");
             }
         }
         return toResp(task, logsAfter(taskId, null), Map.of());
     }
 
-    private ResolvedStep resolveInfrastructureStep(String caseKey, String stepId) {
-        String[] parts = caseKey.split(":", 2);
-        if (parts.length != 2) {
-            throw new BusinessException("caseKey 必须为 sceneId:caseId 格式");
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public AutomationInfrastructureTaskResp disposeUnknownOutcome(String taskId,
+                                                                  AutomationInfrastructureTaskDispositionReq req,
+                                                                  String executionCapability) {
+        AutomationInfrastructureTaskDO task = requireTask(taskId);
+        requireTaskAccess(task, executionCapability);
+        if (!"unknown_outcome".equals(task.getStatus()) || task.getDisposition() != null) {
+            throw new BusinessException("TASK_DISPOSITION_NOT_ALLOWED：仅允许处置尚未核验的 UNKNOWN_OUTCOME 任务");
         }
-        AutomationUiSceneDO scene = resolveScene(parts[0]);
+        String resolution = req.getResolution();
+        String noteDigest = DigestUtil.sha256Hex(req.getVerificationNote().trim());
+        Long dispositionUserId = UserContextHolder.getUserId();
+        task.setDisposition(resolution);
+        task.setDispositionUserId(dispositionUserId);
+        task.setDispositionAt(LocalDateTime.now());
+        task.setDispositionNoteDigest(noteDigest);
+        task.setFinishedAt(LocalDateTime.now());
+        if ("confirmed_succeeded".equals(resolution)) {
+            task.setStatus("passed");
+            task.setErrorCode("TASK_OUTCOME_CONFIRMED_PASSED");
+            task.setErrorMessage(null);
+        } else if ("confirmed_failed".equals(resolution)) {
+            task.setStatus("failed");
+            task.setErrorCode("TASK_OUTCOME_CONFIRMED_FAILED");
+            task.setErrorMessage("人工核验任务未成功完成，核验说明摘要=" + noteDigest);
+        } else {
+            throw new BusinessException("TASK_DISPOSITION_INVALID：不支持的人工核验结论");
+        }
+        taskMapper.updateById(task);
+        appendLog(taskId, "WARN", "UNKNOWN_OUTCOME 已由主体 " + dispositionUserId + " 核验为 " + resolution + "，说明摘要=" + noteDigest);
+        return toResp(task, logsAfter(taskId, null), Map.of());
+    }
+
+    @Override
+    public ArtifactDownload downloadArtifact(String taskId, String executionCapability) {
+        AutomationInfrastructureTaskDO task = requireTask(taskId);
+        requireTaskAccess(task, executionCapability);
+        AutomationExecutionAgentClient.ArtifactDownload artifact = executionAgentClient.downloadArtifact(taskId);
+        return new ArtifactDownload(artifact.fileName(), artifact.contentType(), artifact.bytes(), artifact.sha256());
+    }
+
+    private ExecutionContextRef createInteractiveExecutionContext(AutomationInfrastructureTaskCreateReq req,
+                                                                  String executionCorrelation,
+                                                                  Long ownerUserId) {
+        String[] caseKeyParts = splitCaseKey(req.getCaseKey());
+        AutomationUiSceneDO scene = resolveScene(caseKeyParts[0]);
         if (scene == null) {
-            throw new BusinessException("未找到基础设施步骤所属场景，sceneKey=" + parts[0]);
+            throw new BusinessException("DEFINITION_REVISION_NOT_FOUND：未找到交互回放场景");
         }
         CaseDO caseDO = scene.getCaseList() == null
             ? null
-            : scene.getCaseList().stream().filter(item -> parts[1].equals(item.getId())).findFirst().orElse(null);
+            : scene.getCaseList()
+                .stream()
+                .filter(item -> Objects.equals(caseKeyParts[1], item.getId()))
+                .findFirst()
+                .orElse(null);
+        if (caseDO == null) {
+            throw new BusinessException("DEFINITION_REVISION_NOT_FOUND：未找到交互回放用例");
+        }
+        validateProjectEnvironment(scene, req.getProjectEnvironmentId());
+
+        Map<String, Object> caseResult = new LinkedHashMap<>();
+        caseResult.put("case_key", req.getCaseKey());
+        caseResult.put("case_id", caseDO.getId());
+        caseResult.put("case_name", caseDO.getName());
+        caseResult.put("execution_id", executionCorrelation);
+        caseResult.put("status", "running");
+        caseResult.put("step_total", caseDO.getStepList() == null ? 0 : caseDO.getStepList().size());
+        caseResult.put("steps", List.of());
+
+        String contextKey = "interactive-" + ownerUserId + "-" + DigestUtil.sha256Hex(executionCorrelation)
+            .substring(0, 32);
+        Map<String, Object> record = new LinkedHashMap<>();
+        record.put("recordType", "interactive-execution-context");
+        record.put("executionId", contextKey);
+        record.put("batchId", contextKey);
+        record.put("executionType", "extension-cdp");
+        record.put("executeUserId", ownerUserId);
+        record.put("projectEnvironmentId", req.getProjectEnvironmentId());
+        record.put("executeStatus", "running");
+        record.put("executeResult", "pending");
+        record.put("caseResults", List.of(caseResult));
+        executionRecordService.saveRecord(scene, record, null);
+
+        ExecutionContextRef created = findExecutionContext(executionCorrelation, req.getCaseKey(), req.getStepId());
+        if (created == null) {
+            throw new BusinessException("DEFINITION_REVISION_NOT_FOUND：轻量 ExecutionContext 创建失败");
+        }
+        return created;
+    }
+
+    private ExecutionContextRef findExecutionContext(String executionCorrelation, String caseKey, String stepId) {
+        List<ExecutionContextRef> matches = jdbcTemplate
+            .query("SELECT e.id AS execution_id," + " e.definition_revision_id, e.execute_user_id, e.project_environment_id, e.scene_id," + " e.execution_capability_digest, e.execution_capability_expires_at," + " scene.project_id, revision.definition_version, revision.definition_json," + " execution_case.id AS execution_case_id, execution_case.case_id," + " execution_step.id AS step_execution_id" + " FROM automation_ui_execution_case execution_case" + " JOIN automation_ui_execution e ON e.id = execution_case.execution_id" + " JOIN automation_ui_scene_definition_revision revision ON revision.id = e.definition_revision_id" + " JOIN automation_ui_scene scene ON scene.id = e.scene_id" + " JOIN automation_ui_execution_step execution_step" + "   ON execution_step.execution_case_id = execution_case.id" + "  AND execution_step.step_id = ? AND execution_step.attempt_no = 1" + " WHERE execution_case.case_execution_key = ? AND execution_case.case_key = ?" + " ORDER BY e.create_time DESC LIMIT 1", (rs,
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          rowNum) -> new ExecutionContextRef(rs
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              .getLong("execution_id"), rs
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  .getLong("definition_revision_id"), rs
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      .getLong("execute_user_id"), rs
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          .getLong("project_environment_id"), rs
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              .getLong("scene_id"), rs
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  .getLong("project_id"), rs
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      .getLong("definition_version"), rs
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          .getString("definition_json"), rs
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              .getLong("execution_case_id"), rs
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  .getString("case_id"), rs
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      .getLong("step_execution_id"), rs
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          .getString("execution_capability_digest"), rs
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              .getTimestamp("execution_capability_expires_at") == null
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  ? null
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  : rs.getTimestamp("execution_capability_expires_at")
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      .toLocalDateTime()), stepId, executionCorrelation, caseKey);
+        return matches.stream().findFirst().orElse(null);
+    }
+
+    private void requireExecutionContextAccess(ExecutionContextRef context, Long ownerUserId, String capability) {
+        if (Objects.equals(context.ownerUserId(), ownerUserId)) {
+            return;
+        }
+        if (!AutomationExecutionCapability.matches(capability, context.capabilityDigest(), context
+            .capabilityExpiresAt())) {
+            throw new BusinessException("EXECUTION_SCOPE_DENIED：当前主体不属于该 ExecutionContext");
+        }
+    }
+
+    private void validateExecutionEnvironment(ExecutionContextRef context, Long requestedEnvironmentId) {
+        if (!Objects.equals(context.projectEnvironmentId(), requestedEnvironmentId)) {
+            throw new BusinessException("EXECUTION_SCOPE_DENIED：任务环境与 ExecutionContext 不一致");
+        }
+        ProjectEnvironmentConfigDO environment = environmentMapper.selectById(requestedEnvironmentId);
+        if (environment == null || !Objects.equals(context.projectId(), environment.getProjectId())) {
+            throw new BusinessException("EXECUTION_SCOPE_DENIED：任务环境不属于执行项目");
+        }
+        if (environment.getStatus() != DisEnableStatusEnum.ENABLE) {
+            throw new BusinessException("产品环境已禁用");
+        }
+    }
+
+    private String normalizeExecutionCorrelation(String executionId) {
+        String value = executionId == null || executionId.isBlank()
+            ? "interaction-" + UUID.randomUUID()
+            : executionId.trim();
+        return value.length() <= 128 ? value : "sha256:" + DigestUtil.sha256Hex(value);
+    }
+
+    private String interactiveExecutionCorrelation(Long ownerUserId, String requestedCorrelation) {
+        String value = "user:" + ownerUserId + ":" + requestedCorrelation;
+        return value.length() <= 128 ? value : "user:" + ownerUserId + ":sha256:" + DigestUtil.sha256Hex(value);
+    }
+
+    private String[] splitCaseKey(String caseKey) {
+        String[] parts = caseKey == null ? new String[0] : caseKey.split(":", 2);
+        if (parts.length != 2 || parts[0].isBlank() || parts[1].isBlank()) {
+            throw new BusinessException("caseKey 必须为 sceneId:caseId 格式");
+        }
+        return parts;
+    }
+
+    private ResolvedStep resolveInfrastructureStep(ExecutionContextRef context, String stepId) {
+        List<CaseDO> frozenCases;
+        try {
+            frozenCases = objectMapper.readValue(context.definitionJson(), new TypeReference<List<CaseDO>>() {
+            });
+        } catch (Exception e) {
+            throw new BusinessException("DEFINITION_REVISION_INVALID：定义 revision JSON 无法解析");
+        }
+        CaseDO caseDO = frozenCases.stream()
+            .filter(item -> Objects.equals(context.caseId(), item.getId()))
+            .findFirst()
+            .orElse(null);
         if (caseDO == null || caseDO.getStepList() == null) {
-            throw new BusinessException("未找到基础设施步骤所属用例");
+            throw new BusinessException("DEFINITION_REVISION_NOT_FOUND：revision 中不存在目标用例");
         }
         StepDO step = caseDO.getStepList()
             .stream()
@@ -237,7 +463,7 @@ public class AutomationInfrastructureTaskServiceImpl implements AutomationInfras
             .findFirst()
             .orElse(null);
         if (step == null) {
-            throw new BusinessException("未找到基础设施步骤");
+            throw new BusinessException("DEFINITION_REVISION_NOT_FOUND：revision 中不存在目标步骤");
         }
         Map<String, Object> rawStep = stepExtractor.extract(step, 0);
         runtimeBindingResolver.rejectVariablesInRoutingFields(rawStep);
@@ -246,7 +472,7 @@ public class AutomationInfrastructureTaskServiceImpl implements AutomationInfras
             throw new BusinessException("当前步骤不是基础设施操作");
         }
         if (!SERVER_TARGET_ACTIONS.contains(actionType) && !DATABASE_TARGET_ACTIONS.contains(actionType)) {
-            return new ResolvedStep(scene, actionType, "agent", null, null, rawStep);
+            return new ResolvedStep(context, actionType, "agent", null, null, rawStep);
         }
         Map<String, Object> targetRef = readMap(rawStep.get("target_ref"));
         String targetScope = stringValue(targetRef.get("scope"));
@@ -263,7 +489,7 @@ public class AutomationInfrastructureTaskServiceImpl implements AutomationInfras
         if (configId == null && (bindingKey == null || bindingKey.isBlank())) {
             throw new BusinessException("INFRA_TARGET_REF_INVALID：target_ref 必须包含正数 config_id 或 binding_key");
         }
-        return new ResolvedStep(scene, actionType, targetKind, configId, bindingKey, rawStep);
+        return new ResolvedStep(context, actionType, targetKind, configId, bindingKey, rawStep);
     }
 
     /** Runner 的 caseKey 同时兼容场景数据库主键和业务 sceneId。 */
@@ -290,36 +516,17 @@ public class AutomationInfrastructureTaskServiceImpl implements AutomationInfras
         }
     }
 
-    private void validateDangerousOperation(String actionType, Map<String, Object> rawStep) {
-        if ("server_command".equals(actionType) || "host_command".equals(actionType)) {
-            String command = stringValue(rawStep.get("command"));
-            if (isDangerousCommand(command)) {
-                requirePermission("automation:automationUiScene:execute-dangerous-command", "危险命令");
-            }
+    private void authorizeRisk(String actionType, Assessment risk) {
+        if (!risk.approvalRequired())
             return;
-        }
         if ("host_file_delete".equals(actionType)) {
             requirePermission("automation:automationUiScene:execute-host-file-delete", "本机文件删除");
-            return;
-        }
-        if (!"database_sql".equals(actionType)) {
-            return;
-        }
-        String sql = stringValue(rawStep.get("sql"));
-        if (sql == null) {
-            return;
-        }
-        String normalized = sql.replaceAll("(?s)/\\*.*?\\*/|--[^\\n]*", " ").trim().toLowerCase();
-        if (normalized.contains(";")) {
-            requirePermission("automation:automationUiScene:execute-dangerous-sql", "多语句 SQL");
-            return;
-        }
-        boolean destructive = normalized
-            .matches("(?s).*(\\bdrop\\b|\\btruncate\\b|\\balter\\b|\\bdelete\\b).*") || (normalized
-                .startsWith("update") && !normalized.matches("(?s).*\\bwhere\\b.*")) || (normalized
-                    .startsWith("delete") && !normalized.matches("(?s).*\\bwhere\\b.*"));
-        if (destructive) {
-            requirePermission("automation:automationUiScene:execute-dangerous-sql", "危险 SQL");
+        } else if ("server_command".equals(actionType) || "host_command".equals(actionType)) {
+            requirePermission("automation:automationUiScene:execute-dangerous-command", "服务器或本机命令");
+        } else if ("destructive".equals(risk.riskLevel())) {
+            requirePermission("automation:automationUiScene:execute-dangerous-sql", "破坏性数据库操作");
+        } else {
+            requirePermission("automation:automationUiScene:execute-infrastructure-write", "写入型基础设施操作");
         }
     }
 
@@ -449,19 +656,19 @@ public class AutomationInfrastructureTaskServiceImpl implements AutomationInfras
             String failureMessage = detail == null || detail.isBlank() ? "未收到 Agent 具体错误" : detail;
             log.warn("基础设施任务提交 Agent 失败，taskId={}，actionType={}，error={}", task.getTaskId(), task
                 .getActionType(), failureMessage);
-            task.setStatus("failed");
-            task.setErrorCode("AGENT_UNAVAILABLE");
-            task.setErrorMessage(limit("执行 Agent 不可用：" + failureMessage));
-            task.setFinishedAt(LocalDateTime.now());
-            taskMapper.updateById(task);
-            appendLog(task.getTaskId(), "ERROR", "基础设施任务提交 Agent 失败：" + failureMessage);
+            // POST 连接半关闭时 Agent 可能已经接收并开始执行，不能把未知结果伪装成确定失败后自动重试。
+            markUnknownOutcome(task, "执行 Agent 提交响应未确认：" + failureMessage);
             return Map.of();
         }
     }
 
-    private boolean isDangerousCommand(String command) {
-        return command != null && command.toLowerCase()
-            .matches("(?s).*\\b(rm\\s+-[^\\n]*r|remove-item|del\\s+/[fs]|erase\\s+|rmdir\\s+/[sq]|sudo|mkfs|dd\\s+if=|shutdown|reboot|format)\\b.*");
+    private void markUnknownOutcome(AutomationInfrastructureTaskDO task, String message) {
+        task.setStatus("unknown_outcome");
+        task.setErrorCode("TASK_UNKNOWN_OUTCOME");
+        task.setErrorMessage(limit(sanitize(message)));
+        task.setFinishedAt(LocalDateTime.now());
+        taskMapper.updateById(task);
+        appendLog(task.getTaskId(), "WARN", task.getErrorMessage());
     }
 
     private Map<String, Object> buildAgentPayload(AutomationInfrastructureTaskDO task,
@@ -593,19 +800,18 @@ public class AutomationInfrastructureTaskServiceImpl implements AutomationInfras
     private void addAgentApprovalPayload(Map<String, Object> payload,
                                          AutomationInfrastructureTaskDO task,
                                          Map<String, Object> rawStep) {
+        payload.put("riskLevel", task.getRiskLevel());
+        payload.put("readOnlyEnforced", Objects.equals(task.getReadOnlyTransaction(), 1));
+        payload.put("commandTemplateId", task.getCommandTemplateId());
+        if (task.getApprovalDigest() != null) {
+            payload.put("approvalGranted", true);
+            payload.put("approvalId", "admin-approval:" + task.getTaskId());
+            payload.put("approvalDigest", task.getApprovalDigest());
+        }
         switch (task.getActionType()) {
-            case "host_command" -> {
-                addCapability(payload, "host_command");
-                boolean dangerous = isDangerousCommand(stringValue(rawStep.get("command")));
-                payload.put("approvalGranted", dangerous);
-                if (dangerous) {
-                    payload.put("approvalId", "admin-permission:" + task.getTaskId());
-                }
-            }
+            case "host_command" -> addCapability(payload, "host_command");
             case "host_file_delete" -> {
                 addCapability(payload, "host_file_delete");
-                payload.put("approvalGranted", true);
-                payload.put("approvalId", "admin-permission:" + task.getTaskId());
             }
             case "host_file_lookup" -> addCapability(payload, "host_file_lookup");
             case "server_file_upload" -> addCapability(payload, "server_file_upload");
@@ -649,6 +855,10 @@ public class AutomationInfrastructureTaskServiceImpl implements AutomationInfras
         task.setErrorCode(limit(stringValue(response.get("errorCode"))));
         task.setErrorMessage(sanitize(stringValue(response.get("error"))));
         task.setResultSummary(sanitize(agentSummary(response)));
+        Map<String, Object> safeResult = safeAgentResult(task.getActionType(), response);
+        if (safeResult.get("infrastructure") instanceof Map<?, ?> infrastructure) {
+            task.setResultJson(infrastructureResultSanitizer.serializePreview(readMap(infrastructure)));
+        }
         if (task.getStartedAt() == null && !"queued".equals(status)) {
             task.setStartedAt(LocalDateTime.now());
         }
@@ -669,12 +879,19 @@ public class AutomationInfrastructureTaskServiceImpl implements AutomationInfras
      * 任务记录不保存 Agent result。仅向当前调用方返回动作白名单中的摘要，使全局变量动作可被 Runner/CDP 接续使用。
      */
     private Map<String, Object> safeAgentResult(String actionType, Map<String, Object> response) {
-        if (!SAFE_RESULT_ACTIONS.contains(actionType) || response == null || !(response
-            .get("result") instanceof Map<?, ?> raw)) {
+        if (response == null || !(response.get("result") instanceof Map<?, ?> raw)) {
             return Map.of();
         }
         Map<String, Object> result = readMap(raw);
-        return switch (actionType) {
+        Map<String, Object> safeResult = new LinkedHashMap<>();
+        Map<String, Object> infrastructure = infrastructureResultSanitizer.sanitize(result.get("infrastructure"));
+        if (!infrastructure.isEmpty()) {
+            safeResult.put("infrastructure", infrastructure);
+        }
+        if (!SAFE_RESULT_ACTIONS.contains(actionType)) {
+            return safeResult;
+        }
+        Map<String, Object> variables = switch (actionType) {
             case "database_sql" -> safeDatabaseVariables(result.get("variables"));
             case "global_variable_system_info", "global_variable_available_ip", "global_variable_property",
                 "captcha_ocr" -> safeVariables(result.get("variables"));
@@ -683,6 +900,8 @@ public class AutomationInfrastructureTaskServiceImpl implements AutomationInfras
             case "server_file_upload" -> safeNumberResult(result, "uploaded_bytes", "uploadedBytes");
             default -> Map.of();
         };
+        safeResult.putAll(variables);
+        return safeResult;
     }
 
     private Map<String, Object> safeVariables(Object source) {
@@ -906,6 +1125,106 @@ public class AutomationInfrastructureTaskServiceImpl implements AutomationInfras
         return task;
     }
 
+    private AutomationInfrastructureTaskDO findByIdempotencyKey(String idempotencyKey) {
+        return taskMapper.selectOne(Wrappers.<AutomationInfrastructureTaskDO>lambdaQuery()
+            .eq(AutomationInfrastructureTaskDO::getIdempotencyKey, idempotencyKey));
+    }
+
+    private void requireTaskAccess(AutomationInfrastructureTaskDO task) {
+        requireTaskAccess(task, null);
+    }
+
+    private void requireTaskAccess(AutomationInfrastructureTaskDO task, String executionCapability) {
+        Long currentUserId = UserContextHolder.getUserId();
+        if (currentUserId != null && Objects.equals(task.getOwnerUserId(), currentUserId))
+            return;
+        if (matchesExecutionCapability(task, executionCapability))
+            return;
+        if (currentUserId == null) {
+            throw new BusinessException("EXECUTION_SCOPE_DENIED：无法识别当前执行主体");
+        }
+        throw new BusinessException("EXECUTION_SCOPE_DENIED：当前主体无权访问该基础设施任务");
+    }
+
+    private boolean matchesExecutionCapability(AutomationInfrastructureTaskDO task, String executionCapability) {
+        if (executionCapability == null || executionCapability.isBlank() || task.getExecutionId() == null)
+            return false;
+        Long executionId;
+        try {
+            executionId = Long.valueOf(task.getExecutionId());
+        } catch (NumberFormatException e) {
+            return false;
+        }
+        List<ExecutionContextRef> contexts = jdbcTemplate
+            .query("SELECT execution_capability_digest, execution_capability_expires_at FROM automation_ui_execution WHERE id = ?", (rs,
+                                                                                                                                     rowNum) -> new ExecutionContextRef(executionId, null, null, null, null, null, null, null, null, null, null, rs
+                                                                                                                                         .getString("execution_capability_digest"), rs
+                                                                                                                                             .getTimestamp("execution_capability_expires_at") == null
+                                                                                                                                                 ? null
+                                                                                                                                                 : rs.getTimestamp("execution_capability_expires_at")
+                                                                                                                                                     .toLocalDateTime()), executionId);
+        if (contexts.isEmpty())
+            return false;
+        ExecutionContextRef context = contexts.get(0);
+        return AutomationExecutionCapability.matches(executionCapability, context.capabilityDigest(), context
+            .capabilityExpiresAt());
+    }
+
+    private void requireMatchingPayload(AutomationInfrastructureTaskDO task, String payloadDigest) {
+        if (!Objects.equals(task.getPayloadDigest(), payloadDigest)) {
+            throw new BusinessException("TASK_PAYLOAD_DIGEST_MISMATCH：相同幂等键对应不同任务输入");
+        }
+    }
+
+    private String taskPayloadDigest(ResolvedStep resolved,
+                                     Long projectEnvironmentId,
+                                     Map<String, Object> runtimeBindings,
+                                     Map<String, Object> runtimeInput) {
+        Map<String, Object> payloadIdentity = new LinkedHashMap<>();
+        payloadIdentity.put("execution_id", resolved.context().executionId());
+        payloadIdentity.put("step_execution_id", resolved.context().stepExecutionId());
+        payloadIdentity.put("definition_revision_id", resolved.context().definitionRevisionId());
+        payloadIdentity.put("action_type", resolved.actionType());
+        payloadIdentity.put("raw_step", resolved.rawStep());
+        payloadIdentity.put("project_environment_id", projectEnvironmentId);
+        payloadIdentity.put("runtime_bindings", runtimeBindings == null ? Map.of() : runtimeBindings);
+        payloadIdentity.put("runtime_input", runtimeInput == null ? Map.of() : runtimeInput);
+        try {
+            ObjectMapper canonicalMapper = objectMapper.copy()
+                .enable(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY)
+                .enable(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS);
+            return DigestUtil.sha256Hex(canonicalMapper.writeValueAsString(payloadIdentity));
+        } catch (Exception e) {
+            throw new BusinessException("无法计算基础设施任务 payload 摘要");
+        }
+    }
+
+    private String approvalDigest(ExecutionContextRef context,
+                                  Long ownerUserId,
+                                  Long projectEnvironmentId,
+                                  String payloadDigest,
+                                  Assessment risk,
+                                  LocalDateTime approvalAt) {
+        Map<String, Object> approval = new LinkedHashMap<>();
+        approval.put("principal_id", ownerUserId);
+        approval.put("project_id", context.projectId());
+        approval.put("project_environment_id", projectEnvironmentId);
+        approval.put("definition_revision_id", context.definitionRevisionId());
+        approval.put("step_execution_id", context.stepExecutionId());
+        approval.put("payload_digest", payloadDigest);
+        approval.put("risk_level", risk.riskLevel());
+        approval.put("command_template_id", risk.commandTemplateId());
+        approval.put("approval_at", approvalAt == null ? null : approvalAt.toString());
+        try {
+            ObjectMapper canonicalMapper = objectMapper.copy()
+                .enable(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY)
+                .enable(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS);
+            return DigestUtil.sha256Hex(canonicalMapper.writeValueAsString(approval));
+        } catch (Exception e) {
+            throw new BusinessException("无法计算基础设施任务审批摘要");
+        }
+    }
+
     private void appendLog(String taskId, String level, String message) {
         AutomationInfrastructureTaskLogDO log = new AutomationInfrastructureTaskLogDO();
         log.setTaskId(taskId);
@@ -954,10 +1273,20 @@ public class AutomationInfrastructureTaskServiceImpl implements AutomationInfras
         resp.setErrorCode(task.getErrorCode());
         resp.setErrorMessage(task.getErrorMessage());
         resp.setResultSummary(task.getResultSummary());
-        resp.setResult(result == null ? Map.of() : result);
+        Map<String, Object> responseResult = new LinkedHashMap<>(result == null ? Map.of() : result);
+        if (!responseResult.containsKey("infrastructure") && task.getResultJson() != null) {
+            try {
+                responseResult.put("infrastructure", objectMapper.readValue(task.getResultJson(), MAP_TYPE));
+            } catch (Exception ignored) {
+                // 历史结果损坏时仍返回任务状态，不能阻断执行历史页面。
+            }
+        }
+        resp.setResult(responseResult);
         resp.setStartedAt(format(task.getStartedAt()));
         resp.setFinishedAt(format(task.getFinishedAt()));
         resp.setCancelRequested(task.getCancelRequestedAt() != null);
+        resp.setDisposition(task.getDisposition());
+        resp.setDispositionAt(format(task.getDispositionAt()));
         resp.setLogs(logs == null ? List.of() : logs);
         return resp;
     }
@@ -1001,14 +1330,20 @@ public class AutomationInfrastructureTaskServiceImpl implements AutomationInfras
     }
 
     private boolean isTerminal(String status) {
-        return List.of("passed", "failed", "cancelled").contains(status);
+        return List.of("passed", "failed", "cancelled", "unknown_outcome").contains(status);
     }
 
-    private record ResolvedStep(AutomationUiSceneDO scene, String actionType, String targetKind, Long configId,
+    private record ResolvedStep(ExecutionContextRef context, String actionType, String targetKind, Long configId,
                                 String bindingKey, Map<String, Object> rawStep) {
         private ResolvedStep withRawStep(Map<String, Object> newRawStep) {
-            return new ResolvedStep(scene, actionType, targetKind, configId, bindingKey, newRawStep);
+            return new ResolvedStep(context, actionType, targetKind, configId, bindingKey, newRawStep);
         }
+    }
+
+    private record ExecutionContextRef(Long executionId, Long definitionRevisionId, Long ownerUserId,
+                                       Long projectEnvironmentId, Long sceneId, Long projectId, Long definitionVersion,
+                                       String definitionJson, Long caseExecutionId, String caseId, Long stepExecutionId,
+                                       String capabilityDigest, LocalDateTime capabilityExpiresAt) {
     }
 
     private record ResolvedTarget(Long configId, Map<String, Object> config) {

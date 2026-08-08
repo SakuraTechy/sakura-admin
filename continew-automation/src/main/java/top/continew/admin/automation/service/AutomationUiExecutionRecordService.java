@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 
 import top.continew.admin.automation.model.entity.AutomationUiSceneDO;
+import top.continew.admin.automation.model.entity.ui.CaseDO;
 
 /**
  * UI 自动化规范化执行记录服务。
@@ -29,9 +30,26 @@ import top.continew.admin.automation.model.entity.AutomationUiSceneDO;
  */
 public interface AutomationUiExecutionRecordService {
 
+    /**
+     * 以独立事务保存外部执行记录。
+     *
+     * <p>调用方必须在触发外部副作用前先写入 queued 记录，确保 execution 与不可变 revision 已提交。</p>
+     */
+    void saveExternalExecutionRecord(AutomationUiSceneDO scene, Map<String, Object> record);
+
     void saveRecord(AutomationUiSceneDO scene, Map<String, Object> record, String changedCaseId);
 
     Map<String, Object> findBatch(Long sceneId, String batchId);
+
+    /**
+     * 从执行创建时绑定的 revision 读取用例，禁止回读场景当前 caseList。
+     */
+    FrozenExecutionCase findFrozenCase(Long sceneId, String batchId, String caseId);
+
+    /**
+     * 校验短期 capability 是否仍匹配指定场景批次；数据库只保存摘要和过期时间。
+     */
+    boolean matchesExecutionCapability(Long sceneId, String batchId, String executionCapability);
 
     Map<String, Object> findReportRecord(Long sceneId, String testReportId);
 
@@ -58,4 +76,8 @@ public interface AutomationUiExecutionRecordService {
      * @return 已处理的旧记录数；所有记录验证成功后才会清空旧 JSON 列
      */
     int migrateLegacyScene(AutomationUiSceneDO scene);
+
+    record FrozenExecutionCase(CaseDO caseDO, Long definitionRevisionId, Long projectEnvironmentId,
+                               Map<String, Object> effectiveExecutionConfig) {
+    }
 }

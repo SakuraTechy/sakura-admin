@@ -29,10 +29,12 @@ import top.continew.admin.common.controller.BaseController;
 import top.continew.admin.test.model.query.TestTimedTaskQuery;
 import top.continew.admin.test.model.query.TestTimedTaskRunQuery;
 import top.continew.admin.test.model.req.TestTimedTaskReq;
+import top.continew.admin.test.model.resp.TestTimedTaskCapabilityResp;
 import top.continew.admin.test.model.resp.TestTimedTaskDetailResp;
 import top.continew.admin.test.model.resp.TestTimedTaskLogResp;
 import top.continew.admin.test.model.resp.TestTimedTaskResp;
 import top.continew.admin.test.model.resp.TestTimedTaskRunResp;
+import top.continew.admin.test.service.TestTimedTaskScheduleCapabilityService;
 import top.continew.admin.test.service.TestTimedTaskService;
 import top.continew.starter.core.validation.CheckUtils;
 import top.continew.starter.extension.crud.annotation.CrudRequestMapping;
@@ -54,6 +56,15 @@ import java.util.Objects;
 @CrudRequestMapping(value = "/test/timedTask", api = {Api.PAGE, Api.GET, Api.CREATE, Api.UPDATE, Api.DELETE,
     Api.EXPORT})
 public class TestTimedTaskController extends BaseController<TestTimedTaskService, TestTimedTaskResp, TestTimedTaskDetailResp, TestTimedTaskQuery, TestTimedTaskReq> {
+
+    private final TestTimedTaskScheduleCapabilityService capabilityService;
+
+    @Operation(summary = "查询测试定时任务调度能力")
+    @SaCheckPermission("test:timedTask:list")
+    @GetMapping("/capability")
+    public TestTimedTaskCapabilityResp capability() {
+        return capabilityService.probe();
+    }
 
     @Override
     @SaCheckPermission("test:timedTask:list")
@@ -111,6 +122,13 @@ public class TestTimedTaskController extends BaseController<TestTimedTaskService
     @PostMapping("/{id}/status")
     public void updateStatus(@PathVariable Long id, @RequestParam String status) {
         baseService.updateStatus(id, status);
+    }
+
+    @Operation(summary = "重试同步测试定时任务")
+    @SaCheckPermission("test:timedTask:update")
+    @PostMapping("/{id}/sync")
+    public void retrySync(@PathVariable Long id) {
+        baseService.retrySync(id);
     }
 
     @SaCheckPermission("test:timedTask:execute")

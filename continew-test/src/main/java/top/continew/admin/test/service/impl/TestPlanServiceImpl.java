@@ -17,7 +17,10 @@
 package top.continew.admin.test.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
+import cn.dev33.satoken.exception.NotWebContextException;
+import cn.dev33.satoken.exception.SaTokenContextException;
 import cn.dev33.satoken.stp.StpUtil;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
@@ -32,10 +35,10 @@ import top.continew.admin.automation.service.AutomationUiExecutionRecordService;
 import top.continew.admin.common.enums.StatusTypeEnum;
 import top.continew.admin.test.mapper.TestPlanMapper;
 import top.continew.admin.test.mapper.TestReportMapper;
-import top.continew.admin.test.mapper.TestTimedTaskMapper;
 import top.continew.admin.test.model.entity.TestPlanDO;
 import top.continew.admin.test.model.entity.TestReportDO;
 import top.continew.admin.test.model.enums.TestExecutionEngineEnum;
+import top.continew.admin.test.model.exception.TestPlanDispatchException;
 import top.continew.admin.test.model.query.TestPlanQuery;
 import top.continew.admin.test.model.req.TestPlanExecuteReq;
 import top.continew.admin.test.model.req.TestPlanReq;
@@ -44,6 +47,7 @@ import top.continew.admin.test.model.resp.TestPlanDetailResp;
 import top.continew.admin.test.model.resp.TestPlanResp;
 import top.continew.admin.test.model.resp.TestPlanExecuteResp;
 import top.continew.admin.test.service.TestPlanService;
+import top.continew.admin.test.service.TestTimedTaskService;
 import top.continew.starter.core.exception.BusinessException;
 import top.continew.starter.core.validation.CheckUtils;
 import top.continew.starter.extension.crud.service.BaseServiceImpl;
@@ -67,7 +71,7 @@ public class TestPlanServiceImpl extends BaseServiceImpl<TestPlanMapper, TestPla
     private final AutomationUiExecutionRecordService executionRecordService;
     private final AutomationUiSceneService automationUiSceneService;
     private final TestReportMapper testReportMapper;
-    private final TestTimedTaskMapper testTimedTaskMapper;
+    private final TestTimedTaskService testTimedTaskService;
     private final TestPlanExecutionDispatchService executionDispatchService;
     private final TestReportSceneSnapshotService reportSceneSnapshotService;
     private final TransactionTemplate transactionTemplate;
@@ -88,21 +92,16 @@ public class TestPlanServiceImpl extends BaseServiceImpl<TestPlanMapper, TestPla
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void deleteByIds(List<Long> ids) {
-        ids.forEach(id -> {
-            baseMapper.lambdaUpdate()
-                .eq(TestPlanDO::getId, id)
-                .set(TestPlanDO::getDelFlag, StatusTypeEnum.ABNORMAL)
-                .update();
-            testReportMapper.lambdaUpdate()
-                .eq(TestReportDO::getTestPlanId, id)
-                .set(TestReportDO::getDelFlag, StatusTypeEnum.ABNORMAL)
-                .update();
-            testTimedTaskMapper.lambdaUpdate()
-                .eq(top.continew.admin.test.model.entity.TestTimedTaskDO::getTestPlanId, id)
-                .set(top.continew.admin.test.model.entity.TestTimedTaskDO::getDelFlag, StatusTypeEnum.ABNORMAL)
-                .update();
-        });
+        if (ids == null || ids.isEmpty()) {
+            return;
+        }
+        testTimedTaskService.deleteByPlanIds(ids);
+        baseMapper.update(null, Wrappers.<TestPlanDO>update().in("id", ids).set("del_flag", StatusTypeEnum.ABNORMAL));
+        testReportMapper.update(null, Wrappers.<TestReportDO>update()
+            .in("test_plan_id", ids)
+            .set("del_flag", StatusTypeEnum.ABNORMAL));
     }
 
     @Override
@@ -165,7 +164,13 @@ public class TestPlanServiceImpl extends BaseServiceImpl<TestPlanMapper, TestPla
     @Override
     public TestPlanExecuteResp execute(Long id, TestPlanExecuteReq req) {
         TestPlanDO plan = baseMapper.selectById(id);
-        CheckUtils.throwIfNull(plan, "测试计划不存在");
+        if (plan == null) {
+            throw new BusinessException("测试计划不存在");
+        }
+        if (!StatusTypeEnum.NORMAL.equals(plan.getDelFlag())) {
+            throw new BusinessException("测试计划已删除");
+        }
+        reconcilePlanSceneReferences(plan);
         CheckUtils.throwIf(plan.getUiTestScene() == null || plan.getUiTestScene().isEmpty(), "测试计划未关联 UI 场景");
         List<Long> executionSceneIds = resolveExecutionSceneIds(plan, req.getSceneIds());
         List<AutomationUiSceneDO> executionScenes = reportSceneSnapshotService.loadAndValidate(plan.getProjectId(), plan
@@ -229,7 +234,7 @@ public class TestPlanServiceImpl extends BaseServiceImpl<TestPlanMapper, TestPla
             testReportMapper.updateById(report);
             plan.setStatus("COMPLETED");
             baseMapper.updateById(plan);
-            throw e;
+            throw new TestPlanDispatchException(report.getId(), e);
         }
     }
 
@@ -286,8 +291,8 @@ public class TestPlanServiceImpl extends BaseServiceImpl<TestPlanMapper, TestPla
         List<TestPlanExecuteResp.SceneExecution> manifest = executionDispatchService
             .initialize(plan, executionSceneIds, String.valueOf(report.getId()), engine, req);
         if (TestExecutionEngineEnum.PLAYWRIGHT_RUNNER.equals(engine)) {
-            executionDispatchService.dispatchRunner(plan, String.valueOf(report.getId()), req, manifest, StpUtil
-                .getTokenValue());
+            executionDispatchService.dispatchRunner(plan, String.valueOf(report
+                .getId()), req, manifest, currentTokenValue());
         }
         TestPlanExecuteResp resp = baseExecuteResp(report, engine);
         resp.setSceneExecutions(manifest);
@@ -295,6 +300,14 @@ public class TestPlanServiceImpl extends BaseServiceImpl<TestPlanMapper, TestPla
             resp.setStatus("FAILED");
         }
         return resp;
+    }
+
+    private String currentTokenValue() {
+        try {
+            return StpUtil.getTokenValue();
+        } catch (SaTokenContextException | NotWebContextException e) {
+            return null;
+        }
     }
 
     private TestPlanExecuteResp baseExecuteResp(TestReportDO report, TestExecutionEngineEnum engine) {
@@ -340,6 +353,26 @@ public class TestPlanServiceImpl extends BaseServiceImpl<TestPlanMapper, TestPla
         }
         ensureCondition(executionSceneIds.isEmpty(), "测试计划没有可执行的关联场景");
         return executionSceneIds;
+    }
+
+    private void reconcilePlanSceneReferences(TestPlanDO plan) {
+        List<Long> configuredSceneIds = plan.getUiTestScene() == null
+            ? List.of()
+            : plan.getUiTestScene().stream().filter(Objects::nonNull).distinct().toList();
+        List<AutomationUiSceneDO> existingScenes = configuredSceneIds.isEmpty()
+            ? List.of()
+            : automationUiSceneMapper.selectBatchIds(configuredSceneIds);
+        List<Long> existingSceneIds = existingScenes.stream().map(AutomationUiSceneDO::getId).toList();
+        List<Long> validSceneIds = configuredSceneIds.stream().filter(existingSceneIds::contains).toList();
+        if (Objects.equals(plan.getUiTestScene(), validSceneIds)) {
+            return;
+        }
+        plan.setUiTestScene(validSceneIds);
+        plan.setSceneCount(validSceneIds.size());
+        if (validSceneIds.isEmpty()) {
+            plan.setVersionId(null);
+        }
+        baseMapper.updateById(plan);
     }
 
     private void validateAndResolvePlanScope(TestPlanReq req) {

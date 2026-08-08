@@ -24,6 +24,12 @@
             <groupId>com.aizuda</groupId>
             <artifactId>snail-job-client-job-core</artifactId>
         </dependency>
+        <!-- SnailJob 1.4.0 的 gRPC 协议依赖 GeneratedMessageV3，避免被 Hadoop 的 protobuf 2.5.0 覆盖。 -->
+        <dependency>
+            <groupId>com.google.protobuf</groupId>
+            <artifactId>protobuf-java</artifactId>
+            <version>3.25.3</version>
+        </dependency>
 
         <!-- OpenFeign（一种基于 Spring Cloud 的声明式 REST 客户端，它简化了与 HTTP 服务交互的过程） -->
         <dependency>

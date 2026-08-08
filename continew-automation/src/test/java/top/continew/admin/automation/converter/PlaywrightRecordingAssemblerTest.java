@@ -29,11 +29,15 @@ import top.continew.admin.automation.model.entity.ui.StepDO;
 import top.continew.admin.automation.model.req.recording.PlaywrightRecordedCaseReq;
 import top.continew.admin.automation.model.req.recording.PlaywrightRecordedStepReq;
 import top.continew.admin.automation.service.AutomationRecordingScreenshotService;
+import top.continew.admin.automation.service.AutomationRecordingScreenshotService.ScreenshotStorageException;
+import top.continew.admin.automation.service.impl.AutomationOperationCatalogServiceImpl;
 import top.continew.admin.common.enums.StatusTypeEnum;
 
 class PlaywrightRecordingAssemblerTest {
 
-    private final PlaywrightRecordingAssembler assembler = new PlaywrightRecordingAssembler(new ObjectMapper(), new NoopScreenshotService());
+    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final AutomationOperationCatalogServiceImpl catalogService = catalogService();
+    private final PlaywrightRecordingAssembler assembler = new PlaywrightRecordingAssembler(objectMapper, new NoopScreenshotService(), catalogService);
 
     @Test
     void shouldPreserveRequiredConfigsAndMaskRawScreenshot() {
@@ -54,7 +58,9 @@ class PlaywrightRecordingAssemblerTest {
         assertThat(caseDO.getStatus()).isEqualTo(StatusTypeEnum.ENABLE);
         assertThat(stepDO.getId()).isEqualTo("CASE_STEP_001");
         assertThat(stepDO.getStatus()).isEqualTo(StatusTypeEnum.ENABLE);
-        assertThat(stepDO.getOperationValue()).isEqualTo("pw-click");
+        assertThat(stepDO.getOperationType()).isEqualTo("点击操作");
+        assertThat(stepDO.getOperationName()).isEqualTo("元素点击");
+        assertThat(stepDO.getOperationValue()).isEqualTo("web-click");
         assertThat(configs).containsEntry("action_type", "click")
             .containsEntry("source", "sakura-playwright")
             .containsEntry("recording_id", "rec-001")
@@ -88,6 +94,81 @@ class PlaywrightRecordingAssemblerTest {
         assertThat(configs.get("playwright_step")).contains("\"action_type\":\"custom_magic\"");
     }
 
+    @Test
+    void shouldFilterScreenshotBinaryVariantsFromExtraFields() {
+        PlaywrightRecordedStepReq step = recordedStep();
+        step.setScreenshot(null);
+        step.addExtra("screenshot", "raw-base64-payload");
+        step.addExtra("nested_payload", Map.of("screenshot", "nested-raw-base64-payload"));
+        step.addExtra("screenshot_base64", "data:image/png;base64,large-image");
+        step.addExtra("screenshot_meta", Map.of("base64", "large-image"));
+        step.addExtra("vendor_flag", "keep-me");
+        PlaywrightRecordedCaseReq recordedCase = new PlaywrightRecordedCaseReq();
+        recordedCase.setSteps(List.of(step));
+
+        StepDO stepDO = assembler
+            .toCase(recordedCase, new PlaywrightRecordingAssembler.RecordingImportContext("rec-003", "AAS_P", "V6.5B06D011", "REC_SCENE_003", false, false))
+            .getStepList()
+            .get(0);
+        Map<String, String> configs = stepDO.getConfigList()
+            .stream()
+            .collect(Collectors.toMap(StepDO.Config::getParamsName, StepDO.Config::getParamsValue));
+
+        assertThat(configs.get("playwright_step")).contains("\"screenshot_present\":true")
+            .contains("\"vendor_flag\":\"keep-me\"")
+            .doesNotContain("data:image/png;base64,large-image")
+            .doesNotContain("large-image")
+            .doesNotContain("raw-base64-payload")
+            .doesNotContain("nested-raw-base64-payload");
+    }
+
+    @Test
+    void shouldNeverKeepRawScreenshotEvenWhenCompatibilityFlagIsEnabled() {
+        PlaywrightRecordedCaseReq recordedCase = new PlaywrightRecordedCaseReq();
+        recordedCase.setSteps(List.of(recordedStep()));
+
+        StepDO stepDO = assembler
+            .toCase(recordedCase, new PlaywrightRecordingAssembler.RecordingImportContext("rec-004", "AAS_P", "V6.5B06D011", "REC_SCENE_004", false, true))
+            .getStepList()
+            .get(0);
+        Map<String, String> configs = stepDO.getConfigList()
+            .stream()
+            .collect(Collectors.toMap(StepDO.Config::getParamsName, StepDO.Config::getParamsValue));
+
+        assertThat(configs.get("playwright_step")).contains("\"screenshot_present\":true")
+            .doesNotContain("data:image/jpeg;base64,AAAA")
+            .doesNotContain("\"screenshot\"");
+    }
+
+    @Test
+    void shouldKeepImportableStepWhenScreenshotStorageFails() {
+        PlaywrightRecordingAssembler failingAssembler = new PlaywrightRecordingAssembler(objectMapper, new NoopScreenshotService() {
+            @Override
+            public ScreenshotArtifact store(String recordingId,
+                                            String projectShortName,
+                                            String versionName,
+                                            String sceneId,
+                                            String caseId,
+                                            String stepId,
+                                            String screenshot) {
+                throw new ScreenshotStorageException("storage unavailable", new IllegalStateException("offline"));
+            }
+        }, catalogService);
+
+        PlaywrightRecordedCaseReq recordedCase = new PlaywrightRecordedCaseReq();
+        recordedCase.setSteps(List.of(recordedStep()));
+        StepDO stepDO = failingAssembler
+            .toCase(recordedCase, new PlaywrightRecordingAssembler.RecordingImportContext("rec-storage", "AAS_P", "V1", "SCENE", true, false))
+            .getStepList()
+            .get(0);
+        Map<String, String> configs = stepDO.getConfigList()
+            .stream()
+            .collect(Collectors.toMap(StepDO.Config::getParamsName, StepDO.Config::getParamsValue));
+
+        assertThat(configs.get("playwright_step")).contains("\"screenshot_present\":true")
+            .doesNotContain("data:image/jpeg;base64,AAAA");
+    }
+
     private PlaywrightRecordedStepReq recordedStep() {
         PlaywrightRecordedStepReq step = new PlaywrightRecordedStepReq();
         step.setId(1);
@@ -103,6 +184,12 @@ class PlaywrightRecordingAssemblerTest {
         step.setIsOverlay(0);
         step.setScreenshot("data:image/jpeg;base64,AAAA");
         return step;
+    }
+
+    private static AutomationOperationCatalogServiceImpl catalogService() {
+        AutomationOperationCatalogServiceImpl service = new AutomationOperationCatalogServiceImpl(new ObjectMapper());
+        service.initialize();
+        return service;
     }
 
     private static class NoopScreenshotService implements AutomationRecordingScreenshotService {

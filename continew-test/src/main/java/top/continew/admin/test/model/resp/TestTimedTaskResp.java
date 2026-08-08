@@ -56,5 +56,11 @@ public class TestTimedTaskResp extends BaseDetailResp {
     private List<String> notificationEmails;
     private LocalDateTime nextExecuteTime;
     private String status;
+    private String scheduleSyncStatus;
+    private String scheduleSyncError;
+    private LocalDateTime scheduleSyncTime;
+    private Long scheduleSyncVersion;
+    private Integer scheduleSyncRetryCount;
+    private LocalDateTime scheduleSyncNextRetryTime;
     private TestTimedTaskRunSummaryResp lastRun;
 }

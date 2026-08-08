@@ -45,6 +45,7 @@ import top.continew.admin.automation.mapper.AutomationPlaywrightJobMapper;
 import top.continew.admin.automation.model.entity.AutomationPlaywrightJobDO;
 import top.continew.admin.automation.model.entity.AutomationUiSceneDO;
 import top.continew.admin.automation.model.entity.ui.CaseDO;
+import top.continew.admin.automation.model.entity.ui.CaseExecutionConfigDO;
 import top.continew.admin.automation.model.entity.ui.StepDO;
 import top.continew.admin.automation.model.req.playwright.AutomationPlaywrightBatchCaseStatusReq;
 import top.continew.admin.automation.model.req.playwright.AutomationPlaywrightBatchCreateReq;
@@ -55,7 +56,11 @@ import top.continew.admin.automation.model.resp.playwright.AutomationPlaywrightC
 import top.continew.admin.automation.service.AutomationPlaywrightCaseService;
 import top.continew.admin.automation.service.AutomationPlanReportProgressService;
 import top.continew.admin.automation.service.AutomationPlaywrightSessionStateService;
+import top.continew.admin.automation.service.AutomationCaseExecutionClassifier;
 import top.continew.admin.automation.service.AutomationUiExecutionRecordService;
+import top.continew.admin.automation.service.AutomationUiExecutionRecordService.FrozenExecutionCase;
+import top.continew.admin.automation.service.EffectiveExecutionConfigResolver;
+import top.continew.admin.automation.support.AutomationExecutionCapability;
 import top.continew.admin.automation.support.AutomationStoragePressureGuard;
 import top.continew.admin.automation.util.AutomationUiSceneStatusCodes;
 import top.continew.admin.common.context.UserContextHolder;
@@ -92,6 +97,8 @@ public class AutomationPlaywrightCaseServiceImpl implements AutomationPlaywright
     private final List<AutomationPlanReportProgressService> planReportProgressServices;
     private final AutomationPlaywrightSessionStateService sessionStateService;
     private final AutomationUiExecutionRecordService executionRecordService;
+    private final EffectiveExecutionConfigResolver effectiveExecutionConfigResolver;
+    private final AutomationCaseExecutionClassifier executionClassifier;
 
     @Resource
     private AutomationStoragePressureGuard storagePressureGuard;
@@ -107,7 +114,42 @@ public class AutomationPlaywrightCaseServiceImpl implements AutomationPlaywright
     @Override
     public AutomationPlaywrightCaseResp getCase(String caseKey, Long projectEnvironmentId) {
         ResolvedCase resolved = resolveCase(caseKey);
-        CaseDO caseDO = resolved.caseDO();
+        return getCase(caseKey, resolved, projectEnvironmentId, null, null);
+    }
+
+    @Override
+    public AutomationPlaywrightCaseResp getCase(String caseKey,
+                                                Long projectEnvironmentId,
+                                                String batchId,
+                                                String executionCapability) {
+        ResolvedCase resolved = resolveCaseIdentity(caseKey);
+        return getCase(caseKey, resolved, projectEnvironmentId, batchId, executionCapability);
+    }
+
+    private AutomationPlaywrightCaseResp getCase(String caseKey,
+                                                 ResolvedCase resolved,
+                                                 Long projectEnvironmentId,
+                                                 String batchId,
+                                                 String executionCapability) {
+        FrozenExecutionCase frozenExecution = null;
+        if (StringUtils.isNotBlank(batchId)) {
+            Map<String, Object> batchRecord = findBatch(resolved.scene(), batchId);
+            if (batchRecord == null) {
+                throw new BusinessException("执行批次不存在，batchId=" + batchId);
+            }
+            if (!hasExecutionScope(resolved.scene(), batchRecord, executionCapability)) {
+                throw new BusinessException("EXECUTION_SCOPE_DENIED：Runner 读取用例不属于当前执行批次");
+            }
+            if (!containsBatchCase(batchRecord, resolved.caseId())) {
+                throw new BusinessException("EXECUTION_SCOPE_DENIED：Runner 读取用例不属于当前执行批次");
+            }
+            frozenExecution = executionRecordService.findFrozenCase(resolved.scene().getId(), batchId, resolved
+                .caseId());
+            if (frozenExecution == null || frozenExecution.caseDO() == null) {
+                throw new BusinessException("DEFINITION_REVISION_NOT_FOUND：执行批次绑定的用例快照不存在");
+            }
+        }
+        CaseDO caseDO = frozenExecution == null ? resolved.caseDO() : frozenExecution.caseDO();
         AutomationPlaywrightCaseResp resp = new AutomationPlaywrightCaseResp();
         resp.setId(caseKey);
         resp.setSceneDbId(resolved.scene().getId());
@@ -116,6 +158,10 @@ public class AutomationPlaywrightCaseServiceImpl implements AutomationPlaywright
         resp.setScene_name(resolved.scene().getName());
         resp.setCaseId(caseDO.getId());
         resp.setName(caseDO.getName());
+        if (frozenExecution != null) {
+            resp.setDefinitionRevisionId(frozenExecution.definitionRevisionId());
+            resp.setEffectiveExecutionConfig(frozenExecution.effectiveExecutionConfig());
+        }
         fillArtifactPathMetadata(resp, resolved.scene());
 
         List<Map<String, Object>> steps = new ArrayList<>();
@@ -124,9 +170,15 @@ public class AutomationPlaywrightCaseServiceImpl implements AutomationPlaywright
             steps.add(stepExtractor.extract(adapters.get(i).step(), i));
         }
         resp.setSteps(steps);
-        fillCaseRuntimeFields(resp, steps);
-        if (projectEnvironmentId != null) {
-            applyProjectEnvironment(resp, resolved.scene(), projectEnvironmentId);
+        fillCaseRuntimeFields(resp, caseDO, steps);
+        Long effectiveEnvironmentId = frozenExecution == null
+            ? projectEnvironmentId
+            : frozenExecution.projectEnvironmentId();
+        if (effectiveEnvironmentId != null) {
+            applyProjectEnvironment(resp, resolved.scene(), effectiveEnvironmentId);
+        }
+        if (frozenExecution != null) {
+            applyEffectiveExecutionConfig(resp, frozenExecution.effectiveExecutionConfig());
         }
         return resp;
     }
@@ -165,6 +217,7 @@ public class AutomationPlaywrightCaseServiceImpl implements AutomationPlaywright
             throw new BusinessException("批次产品环境未启用，projectEnvironmentId=" + req.getProjectEnvironmentId());
         }
         String batchId = nextExecutionId();
+        String executionCapability = AutomationExecutionCapability.issue();
         String startedAt = now();
         String username = StringUtils.defaultString(UserContextHolder.getUsername(), "-");
         String executeName = StringUtils.firstNonBlank(UserContextHolder.getNickname(), "-".equals(username)
@@ -172,34 +225,67 @@ public class AutomationPlaywrightCaseServiceImpl implements AutomationPlaywright
             : username, req.getExecuteName(), "-");
 
         List<Object> caseResults = new ArrayList<>();
+        Map<String, Object> effectiveExecutionConfigs = new LinkedHashMap<>();
         List<AutomationPlaywrightBatchResp.CaseExecution> responseCases = new ArrayList<>();
         for (String caseId : req.getCaseIds()) {
             CaseDO caseDO = findCase(scene, caseId);
             if (caseDO == null) {
                 throw new BusinessException("批次目标用例不存在，caseId=" + caseId);
             }
-            String executionId = nextExecutionId();
             int stepTotal = stepAdapters(caseDO).size();
-            Map<String, Object> caseResult = new LinkedHashMap<>();
-            caseResult.put("case_key", req.getSceneKey() + ":" + caseId);
-            caseResult.put("case_id", caseId);
-            caseResult.put("case_name", caseDO.getName());
-            caseResult.put("execution_id", executionId);
-            caseResult.put("status", "queued");
-            applyCaseExecutionState(caseResult);
-            caseResult.put("step_total", stepTotal);
-            caseResult.put("step_pass", 0);
-            caseResult.put("step_fail", 0);
-            caseResult.put("step_skip", 0);
-            caseResult.put("steps", new ArrayList<>());
-            caseResults.add(caseResult);
-
             AutomationPlaywrightBatchResp.CaseExecution responseCase = new AutomationPlaywrightBatchResp.CaseExecution();
             responseCase.setCaseId(caseId);
             responseCase.setCaseName(caseDO.getName());
-            responseCase.setExecutionId(executionId);
-            responseCase.setStatus("queued");
             responseCase.setStepTotal(stepTotal);
+            try {
+                boolean hasBrowserSteps = executionClassifier.hasBrowserSteps(caseDO);
+                Map<String, Object> environmentDefaults = resolveEnvironmentExecutionDefaults(scene, caseDO, environment, hasBrowserSteps);
+                EffectiveExecutionConfigResolver.Resolved effectiveConfig = effectiveExecutionConfigResolver
+                    .resolve(caseDO, environment, environmentDefaults, req.getExecutionConfig(), hasBrowserSteps);
+                effectiveExecutionConfigs.put(caseId, effectiveConfig.values());
+                responseCase.setEffectiveExecutionConfig(effectiveConfig.values());
+                String executionId = nextExecutionId();
+                Map<String, Object> caseResult = new LinkedHashMap<>();
+                caseResult.put("case_key", req.getSceneKey() + ":" + caseId);
+                caseResult.put("case_id", caseId);
+                caseResult.put("case_name", caseDO.getName());
+                caseResult.put("execution_id", executionId);
+                caseResult.put("status", "queued");
+                applyCaseExecutionState(caseResult);
+                caseResult.put("step_total", stepTotal);
+                caseResult.put("step_pass", 0);
+                caseResult.put("step_fail", 0);
+                caseResult.put("step_skip", 0);
+                caseResult.put("steps", new ArrayList<>());
+                // 执行事实保存服务端最终配置及字段来源，避免不同入口自行合并默认值。
+                caseResult.put("executionConfig", effectiveConfig.values());
+                caseResults.add(caseResult);
+                responseCase.setExecutionId(executionId);
+                responseCase.setStatus("queued");
+            } catch (BusinessException e) {
+                if (!isCaseExecutionConfigError(e)) {
+                    throw e;
+                }
+                String error = StringUtils.defaultIfBlank(e.getMessage(), "用例执行配置无效");
+                Map<String, Object> failedCase = new LinkedHashMap<>();
+                failedCase.put("case_key", req.getSceneKey() + ":" + caseId);
+                failedCase.put("case_id", caseId);
+                failedCase.put("case_name", caseDO.getName());
+                failedCase.put("status", "failed");
+                failedCase.put("step_total", stepTotal);
+                failedCase.put("step_pass", 0);
+                failedCase.put("step_fail", stepTotal);
+                failedCase.put("step_skip", 0);
+                failedCase.put("steps", new ArrayList<>());
+                failedCase.put("error", error);
+                failedCase.put("executionConfig", Map.of("error", error));
+                failedCase.put("finished_at", now());
+                applyCaseExecutionState(failedCase);
+                caseResults.add(failedCase);
+                effectiveExecutionConfigs.put(caseId, Map.of("error", error));
+                responseCase.setEffectiveExecutionConfig(Map.of("error", error));
+                responseCase.setStatus("failed");
+            }
             responseCases.add(responseCase);
         }
 
@@ -208,6 +294,7 @@ public class AutomationPlaywrightCaseServiceImpl implements AutomationPlaywright
         record.put("batchId", batchId);
         record.put("executionId", batchId);
         record.put("executionType", executionType);
+        record.put("executionCapability", executionCapability);
         record.put("executor", executionType);
         record.put("executeUserId", UserContextHolder.getUserId());
         record.put("executeUsername", username);
@@ -219,7 +306,8 @@ public class AutomationPlaywrightCaseServiceImpl implements AutomationPlaywright
         record.put("duration", 0);
         record.put("projectEnvironmentId", req.getProjectEnvironmentId());
         record.put("projectEnvironmentName", environment.getName());
-        record.put("executionConfig", req.getExecutionConfig() == null ? Map.of() : req.getExecutionConfig());
+        record.put("executionConfig", Map.of("cases", effectiveExecutionConfigs, "resolutionOrder", List
+            .of("system-default", "case-default", "environment", "execution-override", "platform-policy")));
         record.put("caseResults", caseResults);
         if (StringUtils.isNotBlank(testPlanId)) {
             // 测试计划执行必须与调试记录隔离，避免计划历史混入场景详情的 debugRecord。
@@ -236,12 +324,43 @@ public class AutomationPlaywrightCaseServiceImpl implements AutomationPlaywright
 
         AutomationPlaywrightBatchResp response = new AutomationPlaywrightBatchResp();
         response.setBatchId(batchId);
+        response.setExecutionCapability(executionCapability);
         response.setExecutionType(executionType);
         response.setExecuteName(executeName);
         response.setExecuteEmail(StringUtils.defaultIfBlank(req.getExecuteEmail(), "-"));
         response.setStartedAt(startedAt);
         response.setCases(responseCases);
         return response;
+    }
+
+    private boolean isCaseExecutionConfigError(BusinessException exception) {
+        return StringUtils.defaultString(exception.getMessage()).startsWith("EXECUTION_CONFIG_INVALID：");
+    }
+
+    private Map<String, Object> resolveEnvironmentExecutionDefaults(AutomationUiSceneDO scene,
+                                                                    CaseDO caseDO,
+                                                                    ProjectEnvironmentConfigDO environment,
+                                                                    boolean hasBrowserSteps) {
+        if (!hasBrowserSteps) {
+            return Map.of();
+        }
+        String sourceStartUrl = caseDO.getExecutionConfig() == null
+            ? ""
+            : StringUtils.trimToEmpty(caseDO.getExecutionConfig().getStartUrl());
+        if (StringUtils.isBlank(sourceStartUrl)) {
+            List<Map<String, Object>> steps = new ArrayList<>();
+            List<StepDOAdapter> adapters = stepAdapters(caseDO);
+            for (int index = 0; index < adapters.size(); index++) {
+                steps.add(stepExtractor.extract(adapters.get(index).step(), index));
+            }
+            sourceStartUrl = firstPageUrl(steps);
+        }
+        String context = "sceneId=" + scene.getSceneId() + "，caseId=" + caseDO
+            .getId() + "，projectEnvironmentId=" + environment.getId();
+        PlaybackEnvironmentTarget target = resolvePlaybackTarget(environment, context);
+        String rewrittenStartUrl = playbackUrlRewriter.rewriteUrl(sourceStartUrl, target.address(), target
+            .frontendPort());
+        return StringUtils.isBlank(rewrittenStartUrl) ? Map.of() : Map.of("start_url", rewrittenStartUrl);
     }
 
     @Override
@@ -398,12 +517,33 @@ public class AutomationPlaywrightCaseServiceImpl implements AutomationPlaywright
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void saveResult(String caseKey, AutomationPlaywrightResultReq req) {
+        saveResultInternal(caseKey, req, null, false);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void saveResult(String caseKey, AutomationPlaywrightResultReq req, String executionCapability) {
+        saveResultInternal(caseKey, req, executionCapability, true);
+    }
+
+    private void saveResultInternal(String caseKey,
+                                    AutomationPlaywrightResultReq req,
+                                    String executionCapability,
+                                    boolean enforceExecutionScope) {
         ResolvedCase resolved = resolveCase(caseKey);
         AutomationUiSceneDO scene = resolved.scene();
         Map<String, Object> record = new LinkedHashMap<>();
         Map<String, Object> rawResult = sanitizeExecutionResult(normalizeExecutionTimes(asObjectMap(req.getRaw())));
         String batchId = stringValue(rawResult.get("batch_id"));
         Map<String, Object> batchRecord = findBatch(scene, batchId);
+        if (StringUtils.isNotBlank(batchId) && batchRecord == null) {
+            // 带批次标识的结果必须回写已创建批次，不能降级成独立历史快照污染其他记录。
+            throw new BusinessException("执行批次不存在，batchId=" + batchId);
+        }
+        if (enforceExecutionScope && StringUtils
+            .isNotBlank(batchId) && !hasExecutionScope(scene, batchRecord, executionCapability)) {
+            throw new BusinessException("EXECUTION_SCOPE_DENIED：Runner 结果不属于当前执行批次");
+        }
         Map<String, Object> caseResult = asObjectMap(rawResult.get("case_result"));
         List<Object> rawStepResults = readStepResults(rawResult, caseResult);
         List<Object> stepResults = enrichStepResults(resolved.caseDO(), rawStepResults);
@@ -527,12 +667,7 @@ public class AutomationPlaywrightCaseServiceImpl implements AutomationPlaywright
         record.put("stepPassRate", formatRate(stepPass, stepTotal));
         record.put("caseResults", List.of(caseResult));
         record.put("stepResults", stepResults);
-        if (!rawResult.isEmpty()) {
-            Object artifacts = rawResult.get("artifacts");
-            record.put("playwrightArtifacts", artifacts);
-            record.put("artifactUrls", artifacts);
-            record.put("artifactUploadErrors", rawResult.get("artifact_upload_errors"));
-        }
+        // 产物只写入 caseResults 的规范索引，避免独立记录再次复制同一份 JSON。
         scene.setExecuteStatus(AutomationUiSceneStatusCodes.STATUS_COMPLETED);
         scene.setExecuteResult(resultCode);
         scene.setLastResult(resultCode);
@@ -726,6 +861,26 @@ public class AutomationPlaywrightCaseServiceImpl implements AutomationPlaywright
         return debugBatch != null ? debugBatch : findBatch(scene.getTestRecord(), batchId);
     }
 
+    private boolean hasExecutionScope(AutomationUiSceneDO scene,
+                                      Map<String, Object> batchRecord,
+                                      String executionCapability) {
+        Long ownerUserId = nullableLong(batchRecord.get("executeUserId"));
+        Long currentUserId = UserContextHolder.getUserId();
+        if (ownerUserId != null && currentUserId != null && ownerUserId.equals(currentUserId)) {
+            return true;
+        }
+        // 服务端 Runner 没有交互用户上下文，只能使用 createBatch 返回的短期 capability。
+        return executionRecordService.matchesExecutionCapability(scene.getId(), stringValue(batchRecord
+            .get("batchId")), executionCapability);
+    }
+
+    private boolean containsBatchCase(Map<String, Object> batchRecord, String caseId) {
+        return listValue(batchRecord.get("caseResults")).stream()
+            .map(this::asObjectMap)
+            .anyMatch(item -> Objects.equals(caseId, stringValue(item.get("case_id"))) || Objects
+                .equals(caseId, stringValue(item.get("caseId"))));
+    }
+
     private Map<String, Object> findBatch(List<Object> records, String batchId) {
         if (records == null) {
             return null;
@@ -776,6 +931,12 @@ public class AutomationPlaywrightCaseServiceImpl implements AutomationPlaywright
     }
 
     private Object sanitizeExecutionResultValue(String key, Object value) {
+        String normalizedKey = StringUtils.defaultString(key).toLowerCase().replace('-', '_');
+        if (normalizedKey.contains("execution_capability") || normalizedKey
+            .equals("executioncapability") || normalizedKey.equals("x_execution_capability")) {
+            // capability 只通过请求头参与鉴权，禁止把短期明文令牌写入执行结果或历史 JSON。
+            return null;
+        }
         if (value instanceof Map<?, ?> map) {
             Map<String, Object> sanitized = new LinkedHashMap<>();
             map.forEach((childKey, childValue) -> {
@@ -800,7 +961,6 @@ public class AutomationPlaywrightCaseServiceImpl implements AutomationPlaywright
         if (!(value instanceof String text)) {
             return value;
         }
-        String normalizedKey = StringUtils.defaultString(key).toLowerCase().replace('-', '_');
         if (normalizedKey.contains("base64") || text.regionMatches(true, 0, "data:image/", 0, 11)) {
             // 截图二进制必须先文件化并只保存 URL，禁止撑大场景 testRecord JSON。
             return null;
@@ -1230,16 +1390,21 @@ public class AutomationPlaywrightCaseServiceImpl implements AutomationPlaywright
     }
 
     private ResolvedCase resolveCase(String caseKey) {
+        ResolvedCase resolved = resolveCaseIdentity(caseKey);
+        if (resolved.caseDO() == null) {
+            throw new BusinessException("Playwright 目标用例不存在，caseId=" + resolved.caseId());
+        }
+        return resolved;
+    }
+
+    private ResolvedCase resolveCaseIdentity(String caseKey) {
         String[] parts = caseKey == null ? new String[0] : caseKey.split(":", 2);
         if (parts.length != 2) {
             throw new BusinessException("Playwright caseKey 格式必须为 sceneId:caseId");
         }
         AutomationUiSceneDO scene = resolveScene(parts[0]);
         CaseDO caseDO = findCase(scene, parts[1]);
-        if (caseDO == null) {
-            throw new BusinessException("Playwright 目标用例不存在，caseId=" + parts[1]);
-        }
-        return new ResolvedCase(scene, caseDO);
+        return new ResolvedCase(scene, caseDO, parts[1]);
     }
 
     private AutomationUiSceneDO resolveScene(String sceneKey) {
@@ -1282,13 +1447,28 @@ public class AutomationPlaywrightCaseServiceImpl implements AutomationPlaywright
         return adapters;
     }
 
-    private void fillCaseRuntimeFields(AutomationPlaywrightCaseResp resp, List<Map<String, Object>> steps) {
-        String startUrl = firstPageUrl(steps);
-        Object windowSizeMode = firstConfigValue(steps, "window_size_mode", "maximized");
-        Object screenshotMode = firstConfigValue(steps, "screenshot_mode", "standard");
-        Object pageErrorCheckEnabled = firstConfigValue(steps, "page_error_check_enabled", 0);
-        Object viewportWidth = firstConfigValue(steps, "viewport_width", null);
-        Object viewportHeight = firstConfigValue(steps, "viewport_height", null);
+    private void fillCaseRuntimeFields(AutomationPlaywrightCaseResp resp,
+                                       CaseDO caseDO,
+                                       List<Map<String, Object>> steps) {
+        CaseExecutionConfigDO config = caseDO.getExecutionConfig();
+        String startUrl = config != null && StringUtils.isNotBlank(config.getStartUrl())
+            ? config.getStartUrl()
+            : firstPageUrl(steps);
+        Object windowSizeMode = config != null && StringUtils.isNotBlank(config.getWindowSizeMode())
+            ? config.getWindowSizeMode()
+            : firstConfigValue(steps, "window_size_mode", "maximized");
+        Object screenshotMode = config != null && StringUtils.isNotBlank(config.getScreenshotMode())
+            ? config.getScreenshotMode()
+            : firstConfigValue(steps, "screenshot_mode", "standard");
+        Object pageErrorCheckEnabled = config != null && config.getPageErrorCheckEnabled() != null
+            ? config.getPageErrorCheckEnabled()
+            : firstConfigValue(steps, "page_error_check_enabled", 0);
+        Object viewportWidth = config != null && config.getViewportWidth() != null
+            ? config.getViewportWidth()
+            : firstConfigValue(steps, "viewport_width", null);
+        Object viewportHeight = config != null && config.getViewportHeight() != null
+            ? config.getViewportHeight()
+            : firstConfigValue(steps, "viewport_height", null);
         resp.setStartUrl(startUrl);
         resp.setStart_url(startUrl);
         resp.setWindowSizeMode(String.valueOf(windowSizeMode));
@@ -1301,6 +1481,41 @@ public class AutomationPlaywrightCaseServiceImpl implements AutomationPlaywright
         resp.setViewport_width(resp.getViewportWidth());
         resp.setViewportHeight(toInteger(viewportHeight));
         resp.setViewport_height(resp.getViewportHeight());
+    }
+
+    private void applyEffectiveExecutionConfig(AutomationPlaywrightCaseResp resp, Map<String, Object> config) {
+        if (config == null || config.isEmpty()) {
+            return;
+        }
+        String startUrl = stringValue(config.get("start_url"));
+        if (StringUtils.isNotBlank(startUrl)) {
+            resp.setStartUrl(startUrl);
+            resp.setStart_url(startUrl);
+        }
+        String windowSizeMode = stringValue(config.get("window_size_mode"));
+        if (StringUtils.isNotBlank(windowSizeMode)) {
+            resp.setWindowSizeMode(windowSizeMode);
+            resp.setWindow_size_mode(windowSizeMode);
+        }
+        String screenshotMode = stringValue(config.get("screenshot_mode"));
+        if (StringUtils.isNotBlank(screenshotMode)) {
+            resp.setScreenshotMode(screenshotMode);
+            resp.setScreenshot_mode(screenshotMode);
+        }
+        if (config.containsKey("viewport_width")) {
+            resp.setViewportWidth(toInteger(config.get("viewport_width")));
+            resp.setViewport_width(resp.getViewportWidth());
+        }
+        if (config.containsKey("viewport_height")) {
+            resp.setViewportHeight(toInteger(config.get("viewport_height")));
+            resp.setViewport_height(resp.getViewportHeight());
+        }
+        if (config.containsKey("page_error_check_enabled")) {
+            Object enabled = config.get("page_error_check_enabled");
+            Integer value = enabled instanceof Boolean bool ? (bool ? 1 : 0) : toInteger(enabled);
+            resp.setPageErrorCheckEnabled(value);
+            resp.setPage_error_check_enabled(value);
+        }
     }
 
     private String firstPageUrl(List<Map<String, Object>> steps) {
@@ -1419,7 +1634,7 @@ public class AutomationPlaywrightCaseServiceImpl implements AutomationPlaywright
         return "";
     }
 
-    private record ResolvedCase(AutomationUiSceneDO scene, CaseDO caseDO) {
+    private record ResolvedCase(AutomationUiSceneDO scene, CaseDO caseDO, String caseId) {
     }
 
     private record PlaybackEnvironmentTarget(String address, String frontendPort) {

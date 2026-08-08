@@ -16,6 +16,7 @@
 
 package top.continew.admin.test.service.impl;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
@@ -31,6 +32,7 @@ import top.continew.admin.automation.mapper.AutomationUiSceneMapper;
 import top.continew.admin.automation.model.entity.AutomationUiSceneDO;
 import top.continew.admin.common.enums.StatusTypeEnum;
 import top.continew.admin.project.mapper.ProjectVersionConfigMapper;
+import top.continew.admin.project.model.entity.ProjectVersionConfigDO;
 import top.continew.admin.test.mapper.TestReportSceneMapper;
 import top.continew.starter.core.exception.BusinessException;
 
@@ -73,6 +75,21 @@ class TestReportSceneSnapshotServiceTest {
         AutomationUiSceneDO otherVersion = scene(102L, 1L, 12L);
         when(sceneMapper.selectBatchIds(List.of(102L))).thenReturn(List.of(otherVersion));
         assertThatThrownBy(() -> service.loadAndValidate(1L, 11L, List.of(102L))).hasMessageContaining("不属于当前项目版本");
+    }
+
+    @Test
+    void shouldTreatZeroVersionAsUnspecified() {
+        AutomationUiSceneDO scene = scene(101L, 1L, 11L);
+        ProjectVersionConfigDO version = new ProjectVersionConfigDO();
+        version.setId(11L);
+        version.setProjectId(1L);
+        version.setDelFlag(StatusTypeEnum.NORMAL);
+        when(sceneMapper.selectBatchIds(List.of(101L))).thenReturn(List.of(scene));
+        when(versionMapper.selectById(11L)).thenReturn(version);
+
+        List<AutomationUiSceneDO> scenes = service.loadAndValidate(1L, 0L, List.of(101L));
+
+        assertThat(service.resolveVersionId(1L, 0L, scenes)).isEqualTo(11L);
     }
 
     private AutomationUiSceneDO scene(Long id, Long projectId, Long versionId) {

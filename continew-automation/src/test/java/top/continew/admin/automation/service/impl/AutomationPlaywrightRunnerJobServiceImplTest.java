@@ -51,12 +51,14 @@ class AutomationPlaywrightRunnerJobServiceImplTest {
         options.setPageErrorCheckEnabled(false);
         AutomationPlaywrightRunnerJobReq request = new AutomationPlaywrightRunnerJobReq();
         request.setProjectEnvironmentId(47L);
+        request.setExecutionCapability("capability-1");
         request.setOptions(options);
 
         List<String> command = invokeBuildCommand(request);
 
         assertThat(optionValue(command, "--locator-mode")).isEqualTo("semantic-v1");
         assertThat(optionValue(command, "--page-error-check-enabled")).isEqualTo("false");
+        assertThat(command).doesNotContain("--execution-capability");
     }
 
     @Test
@@ -68,6 +70,20 @@ class AutomationPlaywrightRunnerJobServiceImplTest {
         List<String> command = invokeBuildCommand(request);
 
         assertThat(command).doesNotContain("--page-error-check-enabled");
+    }
+
+    @Test
+    void shouldPreserveExecutionCapabilityForRunnerEnvironmentInjection() throws Exception {
+        AutomationPlaywrightRunnerJobReq request = new AutomationPlaywrightRunnerJobReq();
+        request.setCaseKey("SCENE_001:CASE_001");
+        request.setExecutionCapability("capability-1");
+
+        Method method = AutomationPlaywrightRunnerJobServiceImpl.class
+            .getDeclaredMethod("normalizeRequest", AutomationPlaywrightRunnerJobReq.class);
+        method.setAccessible(true);
+        AutomationPlaywrightRunnerJobReq normalized = (AutomationPlaywrightRunnerJobReq)method.invoke(service, request);
+
+        assertThat(normalized.getExecutionCapability()).isEqualTo("capability-1");
     }
 
     @Test

@@ -41,11 +41,14 @@ public class AutomationInfrastructureTaskCreateReq implements Serializable {
     private String batchId;
     /** 为空时服务端为交互式回放生成执行标识。 */
     private String executionId;
+    /** Runner/CueCast 服务主体访问既有 execution 时使用的短时 capability。 */
+    private String executionCapability;
     private Integer stepIndex;
     /** 可选的乐观锁版本；提供时必须与场景当前定义一致。 */
     private Long definitionVersion;
     @NotNull(message = "产品环境不能为空")
     private Long projectEnvironmentId;
+    /** 旧客户端兼容字段；服务端不采用该值，执行尝试序号由 StepExecution 状态机分配。 */
     @Min(value = 0, message = "attempt 不能小于 0")
     private Integer attempt = 0;
     /**

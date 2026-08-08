@@ -62,5 +62,11 @@ public class TestTimedTaskDO extends BaseDO {
 
     private LocalDateTime nextExecuteTime;
     private String status;
+    private String scheduleSyncStatus = "PENDING";
+    private String scheduleSyncError;
+    private LocalDateTime scheduleSyncTime;
+    private Long scheduleSyncVersion = 1L;
+    private Integer scheduleSyncRetryCount = 0;
+    private LocalDateTime scheduleSyncNextRetryTime;
     private StatusTypeEnum delFlag = StatusTypeEnum.NORMAL;
 }

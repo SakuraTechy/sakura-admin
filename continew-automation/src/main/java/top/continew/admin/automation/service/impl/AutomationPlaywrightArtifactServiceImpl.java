@@ -195,7 +195,8 @@ public class AutomationPlaywrightArtifactServiceImpl implements AutomationPlaywr
             .eq(AutomationPlaywrightJobDO::getExecutionId, runId)
             .last("LIMIT 1"));
         if (job == null || job.getCaseKey() == null || job.getCaseKey().isBlank()) {
-            return new ArtifactPathMetadata("project", "version", "scene", "case");
+            // 统一存储必须绑定已创建的 Runner Job，不能让上传端伪造 runId 或业务目录。
+            throw new BusinessException("Playwright artifact 执行 ID 不存在或尚未初始化：" + runId);
         }
         AutomationPlaywrightCaseResp testCase = caseService.getCase(job.getCaseKey(), job.getProjectEnvironmentId());
         return new ArtifactPathMetadata(requireSafeSegment(firstText(testCase.getProjectShortName(), testCase

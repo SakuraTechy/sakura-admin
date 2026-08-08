@@ -50,7 +50,8 @@ import top.continew.starter.core.exception.BusinessException;
 @Service
 public class AutomationPlaywrightSessionStateService {
 
-    private static final List<String> SENSITIVE_OPTIONS = List.of("--token", "--storage-state", "--storage-state-out");
+    private static final List<String> SENSITIVE_OPTIONS = List
+        .of("--token", "--execution-capability", "--storage-state", "--storage-state-out");
 
     private final ObjectMapper objectMapper;
     private final ScheduledExecutorService cleanupExecutor = Executors.newSingleThreadScheduledExecutor();

@@ -50,6 +50,7 @@ public class TestReportSceneSnapshotService {
     private final JdbcTemplate jdbcTemplate;
 
     public void validateVersion(Long projectId, Long versionId) {
+        versionId = normalizeVersionId(versionId);
         if (versionId == null) {
             return;
         }
@@ -64,6 +65,7 @@ public class TestReportSceneSnapshotService {
         if (sceneIds == null || sceneIds.isEmpty()) {
             return List.of();
         }
+        expectedVersionId = normalizeVersionId(expectedVersionId);
         List<Long> distinctIds = sceneIds.stream().filter(Objects::nonNull).distinct().toList();
         if (distinctIds.size() != sceneIds.size()) {
             throw new BusinessException("测试场景不能为空或重复");
@@ -96,6 +98,7 @@ public class TestReportSceneSnapshotService {
     }
 
     public Long resolveVersionId(Long projectId, Long expectedVersionId, List<AutomationUiSceneDO> scenes) {
+        expectedVersionId = normalizeVersionId(expectedVersionId);
         if (scenes == null || scenes.isEmpty()) {
             validateVersion(projectId, expectedVersionId);
             return expectedVersionId;
@@ -106,6 +109,10 @@ public class TestReportSceneSnapshotService {
             throw new BusinessException("测试场景版本与测试计划版本不一致");
         }
         return versionId;
+    }
+
+    private Long normalizeVersionId(Long versionId) {
+        return versionId == null || versionId <= 0 ? null : versionId;
     }
 
     @Transactional(rollbackFor = Exception.class)

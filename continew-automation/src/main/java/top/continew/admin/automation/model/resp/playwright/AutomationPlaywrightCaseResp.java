@@ -48,6 +48,12 @@ public class AutomationPlaywrightCaseResp implements Serializable {
 
     private String name;
 
+    /** 执行批次绑定的不可变定义 revision；非批次只读请求为空。 */
+    private Long definitionRevisionId;
+
+    /** Admin 已合并并审计来源的最终配置，Runner/CueCast 不得自行覆盖。 */
+    private Map<String, Object> effectiveExecutionConfig;
+
     private String projectShortName;
 
     private String project_short_name;

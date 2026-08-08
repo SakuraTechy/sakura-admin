@@ -58,7 +58,8 @@ public interface ProjectDataBaseConfigService extends BaseService<ProjectDataBas
      * 测试数据库配置信息
      *
      * @param projectDataBaseConfigReq 数据库配置
+     * @param id                       已保存配置 ID，修改或列表测试时用于解析脱敏密码
      * @return true：测试成功；false：测试失败
      */
-    boolean testDataBase(ProjectDataBaseConfigReq projectDataBaseConfigReq);
+    boolean testDataBase(ProjectDataBaseConfigReq projectDataBaseConfigReq, Long id);
 }

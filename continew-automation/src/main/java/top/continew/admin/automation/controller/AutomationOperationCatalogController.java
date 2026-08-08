@@ -77,11 +77,11 @@ public class AutomationOperationCatalogController {
                                                     @RequestParam(required = false) String sessionId) {
         validateSceneEnvironment(sceneId, projectEnvironmentId);
         AgentHealth agentHealth = readAgentHealth();
-        AutomationOperationCatalog catalog = catalogService.getCatalog(sceneId, projectEnvironmentId, executorInstanceId,
-            principalScope(), sessionId, StpUtil
-            .hasPermission("automation:automationUiScene:addStep"), StpUtil
-                .hasPermission("automation:automationUiScene:execute-infrastructure"), agentHealth.agentTypes(), agentHealth
-                    .features());
+        AutomationOperationCatalog catalog = catalogService
+            .getCatalog(sceneId, projectEnvironmentId, executorInstanceId, principalScope(), sessionId, StpUtil
+                .hasPermission("automation:automationUiScene:addStep"), StpUtil
+                    .hasPermission("automation:automationUiScene:execute-infrastructure"), agentHealth
+                        .agentTypes(), agentHealth.features());
         ProjectConfigDO project = projectConfigMapper.selectById(sceneMapper.selectById(sceneId).getProjectId());
         catalog.setV2Enabled(project == null || !Boolean.FALSE.equals(project.getAutomationOperationCatalogV2()));
         return R.ok(catalog);

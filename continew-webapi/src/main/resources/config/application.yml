@@ -68,6 +68,19 @@ automation:
     batch-size: ${SAKURA_AUTOMATION_EXECUTION_MIGRATION_BATCH_SIZE:20}
 
 test:
+  timed-task:
+    watchdog:
+      fixed-delay-ms: ${SAKURA_TEST_TIMED_TASK_WATCHDOG_DELAY_MS:600000}
+      initial-delay-ms: ${SAKURA_TEST_TIMED_TASK_WATCHDOG_INITIAL_DELAY_MS:60000}
+    cleanup:
+      retention-days: ${SAKURA_TEST_TIMED_TASK_RUN_RETENTION_DAYS:180}
+      batch-size: ${SAKURA_TEST_TIMED_TASK_RUN_CLEANUP_BATCH_SIZE:500}
+      max-batches-per-run: ${SAKURA_TEST_TIMED_TASK_RUN_CLEANUP_MAX_BATCHES:20}
+      fixed-delay-ms: ${SAKURA_TEST_TIMED_TASK_RUN_CLEANUP_DELAY_MS:86400000}
+      initial-delay-ms: ${SAKURA_TEST_TIMED_TASK_RUN_CLEANUP_INITIAL_DELAY_MS:300000}
+    reconcile:
+      fixed-delay-ms: ${SAKURA_TEST_TIMED_TASK_RECONCILE_DELAY_MS:600000}
+      initial-delay-ms: ${SAKURA_TEST_TIMED_TASK_RECONCILE_INITIAL_DELAY_MS:30000}
   metric:
     aggregation:
       recompute-days: ${SAKURA_TEST_METRIC_RECOMPUTE_DAYS:3}

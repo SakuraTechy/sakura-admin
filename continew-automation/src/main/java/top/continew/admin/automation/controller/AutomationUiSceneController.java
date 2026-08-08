@@ -58,7 +58,12 @@ import top.continew.admin.automation.model.resp.AutomationUiSceneExecResp;
 import top.continew.admin.automation.model.resp.AutomationUiSceneResp;
 import top.continew.admin.automation.model.resp.AutomationUiSceneRevisionResp;
 import top.continew.admin.automation.model.resp.AutomationUiTreeMutationResp;
+import top.continew.admin.automation.model.req.ui.AutomationUiCaseEditReq;
+import top.continew.admin.automation.model.req.ui.AutomationUiStepEditReq;
+import top.continew.admin.automation.model.resp.ui.AutomationUiCaseDetailResp;
+import top.continew.admin.automation.model.resp.ui.AutomationUiStepDetailResp;
 import top.continew.admin.automation.service.AutomationUiCaseTreeService;
+import top.continew.admin.automation.service.AutomationUiCaseDetailService;
 import top.continew.admin.automation.service.AutomationUiSceneDefinitionScanService;
 import top.continew.admin.automation.service.AutomationUiSceneService;
 import top.continew.admin.automation.model.resp.AutomationUiSceneDefinitionScanResp;
@@ -87,7 +92,46 @@ import top.continew.starter.web.model.R;
 public class AutomationUiSceneController extends BaseController<AutomationUiSceneService, AutomationUiSceneResp, AutomationUiSceneDetailResp, AutomationUiSceneQuery, AutomationUiSceneReq> {
 
     private final AutomationUiCaseTreeService caseTreeService;
+    private final AutomationUiCaseDetailService caseDetailService;
     private final AutomationUiSceneDefinitionScanService definitionScanService;
+
+    @Operation(summary = "查询用例详情 DTO", description = "返回统一运行配置、来源和只读步骤诊断")
+    @SaCheckPermission("automation:automationUiScene:get")
+    @GetMapping("/{sceneDbId}/cases/{caseId}/detail")
+    public R<AutomationUiCaseDetailResp> getCaseDetail(@PathVariable Long sceneDbId, @PathVariable String caseId) {
+        return R.ok(caseDetailService.getCaseDetail(sceneDbId, caseId));
+    }
+
+    @Operation(summary = "修改用例详情 DTO")
+    @SaCheckPermission("automation:automationUiScene:updateCase")
+    @PutMapping("/{sceneDbId}/cases/{caseId}")
+    public R<AutomationUiCaseDetailResp> updateCaseDetail(@PathVariable Long sceneDbId,
+                                                          @PathVariable String caseId,
+                                                          @Validated @RequestBody AutomationUiCaseEditReq request) {
+        request.setId(caseId);
+        return R.ok(caseDetailService.updateCase(sceneDbId, request));
+    }
+
+    @Operation(summary = "查询步骤详情 DTO")
+    @SaCheckPermission("automation:automationUiScene:get")
+    @GetMapping("/{sceneDbId}/cases/{caseId}/steps/{stepId}/detail")
+    public R<AutomationUiStepDetailResp> getStepDetail(@PathVariable Long sceneDbId,
+                                                       @PathVariable String caseId,
+                                                       @PathVariable String stepId) {
+        return R.ok(caseDetailService.getStepDetail(sceneDbId, caseId, stepId));
+    }
+
+    @Operation(summary = "修改步骤语义 DTO")
+    @SaCheckPermission("automation:automationUiScene:updateStep")
+    @PutMapping("/{sceneDbId}/cases/{caseId}/steps/{stepId}")
+    public R<AutomationUiStepDetailResp> updateStepDetail(@PathVariable Long sceneDbId,
+                                                          @PathVariable String caseId,
+                                                          @PathVariable String stepId,
+                                                          @Validated @RequestBody AutomationUiStepEditReq request) {
+        request.setPid(caseId);
+        request.setId(stepId);
+        return R.ok(caseDetailService.updateStep(sceneDbId, request));
+    }
 
     @Operation(summary = "只读扫描场景定义", description = "统计历史 caseList 异常，不执行修复或写库")
     @SaCheckPermission("automation:automationUiScene:get")

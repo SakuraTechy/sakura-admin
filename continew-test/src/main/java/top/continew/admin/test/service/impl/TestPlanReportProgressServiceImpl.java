@@ -17,6 +17,7 @@
 package top.continew.admin.test.service.impl;
 
 import lombok.RequiredArgsConstructor;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
@@ -36,9 +37,12 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 /**
  * 从场景 testRecord 聚合正式测试报告和测试计划进度。
@@ -46,6 +50,8 @@ import java.util.Objects;
 @Service
 @RequiredArgsConstructor
 public class TestPlanReportProgressServiceImpl implements AutomationPlanReportProgressService {
+
+    private static final int MAX_ARTIFACT_ITEMS = 100;
 
     private final AutomationUiExecutionRecordService executionRecordService;
     private final TestPlanMapper testPlanMapper;
@@ -147,6 +153,8 @@ public class TestPlanReportProgressServiceImpl implements AutomationPlanReportPr
             if (terminal && (isFailed(executeResult) || "blocked".equals(status))) {
                 result.hasFailure = true;
             }
+            collectFailureReason(result, record);
+            collectArtifacts(result, record);
         }
         result.terminal = result.sceneCompleted >= result.sceneTotal;
         result.allSkipped = result.sceneTotal == 0 || result.sceneSkip >= result.sceneTotal;
@@ -175,10 +183,29 @@ public class TestPlanReportProgressServiceImpl implements AutomationPlanReportPr
         ui.put("stepFail", aggregate.stepFail);
         ui.put("stepSkip", aggregate.stepSkip);
         ui.put("stepPassRate", rate(aggregate.stepPass, aggregate.stepTotal));
-        if (aggregate.allSkipped) {
+        if (aggregate.hasFailure && StringUtils.isNotBlank(aggregate.failureReason)) {
+            ui.put("failureReason", aggregate.failureReason);
+        } else if (aggregate.allSkipped) {
             ui.put("failureReason", "无可执行用例");
         }
-        report.setStatisticAnalysis(Map.of("ui", ui));
+        Map<String, Object> statistic = new LinkedHashMap<>();
+        statistic.put("ui", ui);
+        if (!aggregate.artifactUrls.isEmpty() || !aggregate.artifactFileIds.isEmpty() || !aggregate.artifactUploadErrors
+            .isEmpty()) {
+            Map<String, Object> artifacts = new LinkedHashMap<>();
+            artifacts.put("urls", aggregate.artifactUrls);
+            artifacts.put("fileIds", aggregate.artifactFileIds);
+            artifacts.put("uploadErrors", aggregate.artifactUploadErrors);
+            artifacts.put("count", artifactCount(aggregate));
+            statistic.put("playwrightArtifacts", artifacts);
+            if (StringUtils.isBlank(report.getReportUrl())) {
+                report.setReportUrl(firstArtifact(aggregate.artifactUrls, "report_html"));
+            }
+            if (StringUtils.isBlank(report.getVideoUrl())) {
+                report.setVideoUrl(firstArtifact(aggregate.artifactUrls, "video"));
+            }
+        }
+        report.setStatisticAnalysis(statistic);
         report.setRunTime(resolveRunTime(report));
         report.setStatus(aggregate.terminal
             ? aggregate.hasCancellation
@@ -312,6 +339,128 @@ public class TestPlanReportProgressServiceImpl implements AutomationPlanReportPr
         return value == null ? "" : String.valueOf(value);
     }
 
+    private void collectFailureReason(Aggregate aggregate, Map<String, Object> record) {
+        if (StringUtils.isNotBlank(aggregate.failureReason)) {
+            return;
+        }
+        aggregate.failureReason = firstError(record);
+        if (StringUtils.isNotBlank(aggregate.failureReason)) {
+            return;
+        }
+        Object caseResults = record.get("caseResults");
+        if (!(caseResults instanceof List<?> cases)) {
+            return;
+        }
+        for (Object item : cases) {
+            if (!(item instanceof Map<?, ?> caseResult)) {
+                continue;
+            }
+            aggregate.failureReason = firstError(caseResult);
+            if (StringUtils.isNotBlank(aggregate.failureReason)) {
+                return;
+            }
+            Object stepsValue = caseResult.get("steps");
+            if (!(stepsValue instanceof List<?> steps)) {
+                continue;
+            }
+            for (Object step : steps) {
+                if (step instanceof Map<?, ?> stepResult) {
+                    aggregate.failureReason = firstError(stepResult);
+                    if (StringUtils.isNotBlank(aggregate.failureReason)) {
+                        return;
+                    }
+                }
+            }
+        }
+    }
+
+    private String firstError(Map<?, ?> values) {
+        for (String key : List.of("errorMessage", "error", "playwrightError")) {
+            String error = value(values.get(key)).trim();
+            if (StringUtils.isNotBlank(error)) {
+                return StringUtils.abbreviate(error, 1000);
+            }
+        }
+        return null;
+    }
+
+    private void collectArtifacts(Aggregate aggregate, Map<String, Object> record) {
+        collectArtifactMap(aggregate.artifactUrls, record.get("artifactUrls"));
+        collectArtifactMap(aggregate.artifactUrls, record.get("playwrightArtifacts"));
+        collectArtifactMap(aggregate.artifactFileIds, record.get("artifactFileIds"));
+        collectArtifactMap(aggregate.artifactFileIds, record.get("artifact_file_ids"));
+        Object caseResults = record.get("caseResults");
+        if (caseResults instanceof List<?> cases) {
+            for (Object item : cases) {
+                if (!(item instanceof Map<?, ?> caseResult)) {
+                    continue;
+                }
+                collectArtifactMap(aggregate.artifactUrls, caseResult.get("artifact_urls"));
+                collectArtifactMap(aggregate.artifactUrls, caseResult.get("artifactUrls"));
+                collectArtifactMap(aggregate.artifactFileIds, caseResult.get("artifact_file_ids"));
+                collectArtifactMap(aggregate.artifactFileIds, caseResult.get("artifactFileIds"));
+                collectErrors(aggregate, caseResult.get("artifact_upload_errors"));
+                collectErrors(aggregate, caseResult.get("artifactUploadErrors"));
+            }
+        }
+        collectErrors(aggregate, record.get("artifact_upload_errors"));
+        collectErrors(aggregate, record.get("artifactUploadErrors"));
+    }
+
+    private void collectArtifactMap(Map<String, Set<String>> target, Object raw) {
+        if (!(raw instanceof Map<?, ?> values)) {
+            return;
+        }
+        values.forEach((key, value) -> {
+            if (target.values().stream().mapToInt(Set::size).sum() >= MAX_ARTIFACT_ITEMS) {
+                return;
+            }
+            String item = value(value);
+            // 报告只允许保存 admin 受鉴权 URL，禁止把 Runner 节点本地路径暴露到主记录。
+            if (!isSafeArtifactReference(item)) {
+                return;
+            }
+            target.computeIfAbsent(String.valueOf(key), ignored -> new LinkedHashSet<>()).add(item);
+        });
+    }
+
+    private void collectErrors(Aggregate aggregate, Object raw) {
+        if (!(raw instanceof List<?> values)) {
+            return;
+        }
+        for (Object value : values) {
+            if (aggregate.artifactUploadErrors.size() >= MAX_ARTIFACT_ITEMS) {
+                return;
+            }
+            if (value instanceof Map<?, ?> map) {
+                Map<String, Object> error = new LinkedHashMap<>();
+                map.forEach((key, item) -> error.put(String.valueOf(key), item));
+                aggregate.artifactUploadErrors.add(error);
+            } else if (value != null) {
+                aggregate.artifactUploadErrors.add(Map.of("error", value(value)));
+            }
+        }
+    }
+
+    private int artifactCount(Aggregate aggregate) {
+        return aggregate.artifactUrls.values().stream().mapToInt(Set::size).sum();
+    }
+
+    private String firstArtifact(Map<String, Set<String>> artifacts, String type) {
+        Set<String> values = artifacts.get(type);
+        return values == null || values.isEmpty() ? null : values.iterator().next();
+    }
+
+    private boolean isSafeArtifactReference(String value) {
+        if (value == null || value.isBlank() || value.startsWith("file:")) {
+            return false;
+        }
+        if (value.matches("^[A-Za-z]:[\\\\/].*") || value.startsWith("\\\\\\\\")) {
+            return false;
+        }
+        return value.startsWith("/") || value.matches("^[a-z][a-z0-9+.-]*://.*");
+    }
+
     private static final class Aggregate {
         private int sceneTotal;
         private int sceneCompleted;
@@ -332,5 +481,9 @@ public class TestPlanReportProgressServiceImpl implements AutomationPlanReportPr
         private boolean allSkipped;
         private boolean hasFailure;
         private boolean hasCancellation;
+        private String failureReason;
+        private final Map<String, Set<String>> artifactUrls = new LinkedHashMap<>();
+        private final Map<String, Set<String>> artifactFileIds = new LinkedHashMap<>();
+        private final List<Map<String, Object>> artifactUploadErrors = new ArrayList<>();
     }
 }

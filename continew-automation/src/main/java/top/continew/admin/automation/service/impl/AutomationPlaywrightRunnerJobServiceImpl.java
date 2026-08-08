@@ -207,7 +207,8 @@ public class AutomationPlaywrightRunnerJobServiceImpl implements AutomationPlayw
                 .getBatchId(), caseId(caseKey), normalizedRequest.getProjectEnvironmentId());
         }
         // 创建进程前先校验 case，避免任务进入队列后才发现 caseKey 或步骤不存在。
-        caseService.getCase(caseKey, normalizedRequest.getProjectEnvironmentId());
+        caseService.getCase(caseKey, normalizedRequest.getProjectEnvironmentId(), normalizedRequest
+            .getBatchId(), normalizedRequest.getExecutionCapability());
         Path root = resolveRunnerRoot();
         CheckUtils.throwIf(!Files.isDirectory(root), runnerRootError(root));
         CheckUtils.throwIf(!Files.isRegularFile(root.resolve("src/index.js")), "Playwright Runner 入口不存在：" + root
@@ -419,6 +420,10 @@ public class AutomationPlaywrightRunnerJobServiceImpl implements AutomationPlayw
             if (StringUtils.isNotBlank(token)) {
                 environment.put("CUECAST_TOKEN", token);
             }
+            // capability 通过环境变量注入，避免短时授权出现在操作系统进程参数和 Runner 日志中。
+            if (StringUtils.isNotBlank(runtime.request.getExecutionCapability())) {
+                environment.put("CUECAST_EXECUTION_CAPABILITY", runtime.request.getExecutionCapability());
+            }
 
             Process process = processBuilder.start();
             boolean cancelledAfterStart;
@@ -572,6 +577,7 @@ public class AutomationPlaywrightRunnerJobServiceImpl implements AutomationPlayw
         target.setCaseKey(StringUtils.trimToEmpty(source.getCaseKey()));
         target.setBatchId(StringUtils.trimToNull(source.getBatchId()));
         target.setExecutionId(StringUtils.trimToNull(source.getExecutionId()));
+        target.setExecutionCapability(StringUtils.trimToNull(source.getExecutionCapability()));
         target.setProjectEnvironmentId(source.getProjectEnvironmentId());
         target.setStartStep(source.getStartStep());
         target.setOptions(normalizeOptions(source.getOptions()));

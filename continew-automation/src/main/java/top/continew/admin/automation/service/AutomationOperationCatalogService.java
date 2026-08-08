@@ -30,28 +30,32 @@ import top.continew.admin.automation.model.req.catalog.AutomationExecutorCapabil
 public interface AutomationOperationCatalogService {
 
     default AutomationOperationCatalog getCatalog(Long sceneId,
-                                                   Long projectEnvironmentId,
-                                                   String principalScope,
-                                                   String sessionId,
-                                                   boolean canAddStep,
-                                                   boolean canExecuteInfrastructure,
-                                                   Set<String> agentTypes,
-                                                   Set<String> agentFeatures) {
-        return getCatalog(sceneId, projectEnvironmentId, null, principalScope, sessionId, canAddStep,
-            canExecuteInfrastructure, agentTypes, agentFeatures);
+                                                  Long projectEnvironmentId,
+                                                  String principalScope,
+                                                  String sessionId,
+                                                  boolean canAddStep,
+                                                  boolean canExecuteInfrastructure,
+                                                  Set<String> agentTypes,
+                                                  Set<String> agentFeatures) {
+        return getCatalog(sceneId, projectEnvironmentId, null, principalScope, sessionId, canAddStep, canExecuteInfrastructure, agentTypes, agentFeatures);
     }
 
     AutomationOperationCatalog getCatalog(Long sceneId,
-                                           Long projectEnvironmentId,
-                                           String executorInstanceId,
-                                           String principalScope,
-                                           String sessionId,
-                                           boolean canAddStep,
-                                           boolean canExecuteInfrastructure,
-                                           Set<String> agentTypes,
-                                           Set<String> agentFeatures);
+                                          Long projectEnvironmentId,
+                                          String executorInstanceId,
+                                          String principalScope,
+                                          String sessionId,
+                                          boolean canAddStep,
+                                          boolean canExecuteInfrastructure,
+                                          Set<String> agentTypes,
+                                          Set<String> agentFeatures);
 
     Optional<AutomationOperationCatalog.OperationMethod> findMethod(String methodCodeOrAction);
 
+    Optional<OperationDescriptor> findOperation(String methodCodeOrAction);
+
     void registerCapabilities(String executorType, String principalScope, AutomationExecutorCapabilityReq req);
+
+    record OperationDescriptor(String typeCode, String typeLabel, AutomationOperationCatalog.OperationMethod method) {
+    }
 }

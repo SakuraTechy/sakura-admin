@@ -42,6 +42,8 @@ import top.continew.admin.automation.mapper.AutomationPlaywrightJobMapper;
 import top.continew.admin.automation.mapper.AutomationUiSceneMapper;
 import top.continew.admin.automation.model.entity.AutomationUiSceneDO;
 import top.continew.admin.automation.model.entity.ui.CaseDO;
+import top.continew.admin.automation.model.entity.ui.CaseExecutionConfigDO;
+import top.continew.admin.automation.model.entity.ui.CaseOriginDO;
 import top.continew.admin.automation.model.entity.ui.StepDO;
 import top.continew.admin.automation.model.enums.AutomationUiTreeMovePosition;
 import top.continew.admin.automation.model.enums.AutomationUiTreeNodeType;
@@ -70,8 +72,7 @@ class AutomationUiCaseTreeServiceImplTest {
     void setUp() {
         lenient().when(operationStepAssembler.assembleManualStep(org.mockito.ArgumentMatchers.any(StepDO.class)))
             .thenAnswer(invocation -> invocation.getArgument(0));
-        service = new AutomationUiCaseTreeServiceImpl(sceneMapper, playwrightJobMapper, operationStepAssembler,
-            operationStepReverseAdapter, objectMapper);
+        service = new AutomationUiCaseTreeServiceImpl(sceneMapper, playwrightJobMapper, operationStepAssembler, operationStepReverseAdapter, objectMapper);
     }
 
     @Test
@@ -86,6 +87,39 @@ class AutomationUiCaseTreeServiceImplTest {
         ArgumentCaptor<List<CaseDO>> cases = caseListCaptor();
         verify(sceneMapper).updateDefinition(anyLong(), anyLong(), cases.capture(), anyInt(), anyInt());
         assertThat(cases.getValue()).extracting(CaseDO::getId).containsExactly("CASE_002", "CASE_001");
+    }
+
+    @Test
+    void shouldPreserveCaseExecutionConfigAndOriginAcrossTreeMutation() {
+        CaseDO first = caseDO("CASE_001", 1);
+        CaseExecutionConfigDO executionConfig = new CaseExecutionConfigDO();
+        executionConfig.setStartUrl("https://recorded.example/login");
+        executionConfig.setWindowSizeMode("custom");
+        executionConfig.setViewportWidth(1280);
+        executionConfig.setViewportHeight(720);
+        executionConfig.setScreenshotMode("standard");
+        executionConfig.setPageErrorCheckEnabled(1);
+        first.setExecutionConfig(executionConfig);
+        CaseOriginDO origin = new CaseOriginDO();
+        origin.setCreationSource("sakura-playwright");
+        origin.setOriginalCaseId("278");
+        origin.setInitialRecordingId("REC-001");
+        first.setOrigin(origin);
+        AutomationUiSceneDO scene = scene(first, caseDO("CASE_002", 2));
+        prepareMutation(scene);
+
+        service.move(scene.getId(), move(caseRef("CASE_001"), caseRef("CASE_002"), AutomationUiTreeMovePosition.AFTER));
+
+        ArgumentCaptor<List<CaseDO>> cases = caseListCaptor();
+        verify(sceneMapper).updateDefinition(anyLong(), anyLong(), cases.capture(), anyInt(), anyInt());
+        CaseDO preserved = cases.getValue().get(1);
+        assertThat(preserved.getExecutionConfig()).isNotSameAs(executionConfig);
+        assertThat(preserved.getExecutionConfig().getStartUrl()).isEqualTo("https://recorded.example/login");
+        assertThat(preserved.getExecutionConfig().getViewportWidth()).isEqualTo(1280);
+        assertThat(preserved.getExecutionConfig().getPageErrorCheckEnabled()).isEqualTo(1);
+        assertThat(preserved.getOrigin()).isNotSameAs(origin);
+        assertThat(preserved.getOrigin().getCreationSource()).isEqualTo("sakura-playwright");
+        assertThat(preserved.getOrigin().getInitialRecordingId()).isEqualTo("REC-001");
     }
 
     @Test
@@ -109,7 +143,7 @@ class AutomationUiCaseTreeServiceImplTest {
         StepDO existing = step("STEP_001", parent.getId(), 1);
         existing.setOperationValue("real-password");
         existing.setConfigList(new ArrayList<>(List
-            .of(config("value_masked", "1"), config("value", "real-password"), config("playwright_step", "{\"value\":\"real-password\"}"), config("locator_meta", "{\"role\":\"textbox\"}"), config("screenshot_url", "/files/1"))));
+            .of(config("source", "sakura-playwright"), config("value_masked", "1"), config("value", "real-password"), config("playwright_step", "{\"value\":\"real-password\"}"), config("locator_meta", "{\"role\":\"textbox\"}"), config("screenshot_url", "/files/1"))));
         parent.setStepList(new ArrayList<>(List.of(existing)));
         AutomationUiSceneDO scene = scene(parent);
         prepareMutation(scene);
@@ -118,7 +152,7 @@ class AutomationUiCaseTreeServiceImplTest {
         request.setExpectedDefinitionVersion(0L);
         request.setOperationValue("******");
         request.setConfigList(new ArrayList<>(List
-            .of(config("value_masked", "1"), config("value", "******"), config("playwright_step", "******"), config("locator_meta", "******"), config("custom", "updated"))));
+            .of(config("value_masked", "1"), config("value", "******"), config("playwright_step", "******"), config("locator_meta", "{\"role\":\"button\"}"), config("custom", "updated"))));
         service.updateStep(scene.getId(), request);
 
         ArgumentCaptor<List<CaseDO>> cases = caseListCaptor();
@@ -127,7 +161,9 @@ class AutomationUiCaseTreeServiceImplTest {
         assertThat(saved.getOperationValue()).isEqualTo("real-password");
         assertThat(configValue(saved, "value")).isEqualTo("real-password");
         assertThat(configValue(saved, "playwright_step")).isEqualTo("{\"value\":\"real-password\"}");
-        assertThat(configValue(saved, "locator_meta")).isEqualTo("{\"role\":\"textbox\"}");
+        assertThat(configValue(saved, "locator_meta")).isEqualTo("{\"role\":\"button\"}");
+        assertThat(configValue(saved, "original_playwright_step")).isEqualTo("{\"value\":\"real-password\"}");
+        assertThat(configValue(saved, "original_locator_meta")).isEqualTo("{\"role\":\"textbox\"}");
         assertThat(configValue(saved, "screenshot_url")).isEqualTo("/files/1");
         assertThat(configValue(saved, "custom")).isEqualTo("updated");
     }

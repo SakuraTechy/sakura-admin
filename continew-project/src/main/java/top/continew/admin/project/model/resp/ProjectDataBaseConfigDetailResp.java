@@ -38,6 +38,7 @@ import top.continew.admin.common.model.resp.BaseDetailResp;
 import top.continew.admin.project.service.ProjectConfigService;
 import top.continew.starter.file.excel.converter.ExcelBaseEnumConverter;
 import top.continew.starter.file.excel.converter.ExcelListConverter;
+import top.continew.starter.security.mask.annotation.JsonMask;
 
 import java.time.*;
 
@@ -123,7 +124,8 @@ public class ProjectDataBaseConfigDetailResp extends BaseDetailResp {
      * 数据库密码
      */
     @Schema(description = "数据库密码")
-    @ExcelProperty(value = "数据库密码", order = 10)
+    // 密码仅返回掩码，且不添加 ExcelProperty，避免凭据进入导出文件。
+    @JsonMask
     private String passWord;
 
     /**

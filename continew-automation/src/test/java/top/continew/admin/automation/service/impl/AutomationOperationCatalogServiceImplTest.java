@@ -69,6 +69,11 @@ class AutomationOperationCatalogServiceImplTest {
 
     @Test
     void shouldResolveLegacyAliasesAndRequireActiveCapabilityHandshake() {
+        assertThat(service.findOperation("input")).get().satisfies(operation -> {
+            assertThat(operation.typeLabel()).isEqualTo("输入操作");
+            assertThat(operation.method().getLabel()).isEqualTo("输入文本");
+            assertThat(operation.method().getMethodCode()).isEqualTo("input.text");
+        });
         assertThat(service.findMethod("web-checkset")).get()
             .extracting(AutomationOperationCatalog.OperationMethod::getLegacyAction)
             .isEqualTo("web-checksetlist");
@@ -115,8 +120,8 @@ class AutomationOperationCatalogServiceImplTest {
 
     @Test
     void shouldMatchEveryCatalogMethodWithTheCrossExecutorFixture() throws Exception {
-        JsonNode fixture = objectMapper.readTree(getClass().getResourceAsStream(
-            "/automation/automation-operation-62-fixture.json"));
+        JsonNode fixture = objectMapper.readTree(getClass()
+            .getResourceAsStream("/automation/automation-operation-62-fixture.json"));
         assertThat(fixture.path("catalog_version").asText()).isEqualTo("2026-07-30.1");
         assertThat(fixture.path("methods").size()).isEqualTo(62);
 
@@ -143,11 +148,11 @@ class AutomationOperationCatalogServiceImplTest {
         register("cuecast", List.of("click"));
 
         assertThat(findMethod(catalog(), "web-click").getEnabled()).isTrue();
-        AutomationOperationCatalog otherSession = service.getCatalog(SCENE_ID, ENVIRONMENT_ID, PRINCIPAL_SCOPE,
-            "other-session", true, true, Set.of(), Set.of());
+        AutomationOperationCatalog otherSession = service
+            .getCatalog(SCENE_ID, ENVIRONMENT_ID, PRINCIPAL_SCOPE, "other-session", true, true, Set.of(), Set.of());
         assertThat(findMethod(otherSession, "web-click").getDisabledCode()).isEqualTo("CUECAST_NOT_READY");
-        AutomationOperationCatalog otherEnvironment = service.getCatalog(SCENE_ID, 8L, PRINCIPAL_SCOPE, SESSION_ID,
-            true, true, Set.of(), Set.of());
+        AutomationOperationCatalog otherEnvironment = service
+            .getCatalog(SCENE_ID, 8L, PRINCIPAL_SCOPE, SESSION_ID, true, true, Set.of(), Set.of());
         assertThat(findMethod(otherEnvironment, "web-click").getDisabledCode()).isEqualTo("PLAYWRIGHT_NOT_READY");
     }
 
@@ -160,8 +165,9 @@ class AutomationOperationCatalogServiceImplTest {
         AutomationOperationCatalog ambiguous = catalog();
         assertThat(findMethod(ambiguous, "web-click").getDisabledCode()).isEqualTo("PLAYWRIGHT_NOT_READY");
 
-        AutomationOperationCatalog nodeOne = service.getCatalog(SCENE_ID, ENVIRONMENT_ID, "playwright-node-1",
-            PRINCIPAL_SCOPE, SESSION_ID, true, true, Set.of(), Set.of());
+        AutomationOperationCatalog nodeOne = service
+            .getCatalog(SCENE_ID, ENVIRONMENT_ID, "playwright-node-1", PRINCIPAL_SCOPE, SESSION_ID, true, true, Set
+                .of(), Set.of());
         assertThat(findMethod(nodeOne, "web-click").getEnabled()).isTrue();
         assertThat(findMethod(nodeOne, "web-geturls").getDisabledCode()).isEqualTo("EXECUTOR_ACTION_NOT_READY");
     }
@@ -181,14 +187,17 @@ class AutomationOperationCatalogServiceImplTest {
         register("playwright", List.of("host_command"));
         register("cuecast", List.of("host_command"));
 
-        assertThat(findMethod(catalog(), "windows.command").getDisabledCode()).isEqualTo("HOST_COMMAND_AGENT_NOT_READY");
-        AutomationOperationCatalog ready = service.getCatalog(SCENE_ID, ENVIRONMENT_ID, PRINCIPAL_SCOPE, SESSION_ID,
-            true, true, Set.of("runner-host"), Set.of("host_command"));
+        assertThat(findMethod(catalog(), "windows.command").getDisabledCode())
+            .isEqualTo("HOST_COMMAND_AGENT_NOT_READY");
+        AutomationOperationCatalog ready = service
+            .getCatalog(SCENE_ID, ENVIRONMENT_ID, PRINCIPAL_SCOPE, SESSION_ID, true, true, Set.of("runner-host"), Set
+                .of("host_command"));
         assertThat(findMethod(ready, "windows.command").getEnabled()).isTrue();
     }
 
     private AutomationOperationCatalog catalog() {
-        return service.getCatalog(SCENE_ID, ENVIRONMENT_ID, PRINCIPAL_SCOPE, SESSION_ID, true, true, Set.of(), Set.of());
+        return service.getCatalog(SCENE_ID, ENVIRONMENT_ID, PRINCIPAL_SCOPE, SESSION_ID, true, true, Set.of(), Set
+            .of());
     }
 
     private AutomationOperationCatalog.OperationMethod findMethod(AutomationOperationCatalog source, String code) {

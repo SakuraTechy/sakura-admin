@@ -3,6 +3,15 @@
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package top.continew.admin.automation.converter;
@@ -34,8 +43,8 @@ public class AutomationOperationStepReverseAdapter {
 
     private static final TypeReference<LinkedHashMap<String, Object>> MAP_TYPE = new TypeReference<>() {
     };
-    private static final Set<String> SENSITIVE_NAMES = Set.of("password", "passwd", "pwd", "secret", "token",
-        "private_key", "privatekey", "pass_word");
+    private static final Set<String> SENSITIVE_NAMES = Set
+        .of("password", "passwd", "pwd", "secret", "token", "private_key", "privatekey", "pass_word");
 
     private final ObjectMapper objectMapper;
     private final AutomationOperationCatalogService catalogService;
@@ -49,8 +58,8 @@ public class AutomationOperationStepReverseAdapter {
         if (!methodCode.isBlank() && configs.containsKey("method_config")) {
             Map<String, Object> existing = parseMap(configs.get("method_config"));
             if (existing != null && catalogService.findMethod(methodCode).isPresent()) {
-                return new ReverseResult(true, methodCode, parseVersion(configs.get("method_version")), existing,
-                    List.of());
+                return new ReverseResult(true, methodCode, parseVersion(configs.get("method_version")), existing, List
+                    .of());
             }
         }
 
@@ -62,14 +71,16 @@ public class AutomationOperationStepReverseAdapter {
             }
         }
 
-        AutomationOperationCatalog.OperationMethod method = catalogService.findMethod(step.getOperationValue()).orElse(null);
+        AutomationOperationCatalog.OperationMethod method = catalogService.findMethod(step.getOperationValue())
+            .orElse(null);
         if (method == null) {
-            return new ReverseResult(false, "", null, Map.of(), List.of("无法唯一识别历史 operationValue："
-                + text(step.getOperationValue())));
+            return new ReverseResult(false, "", null, Map.of(), List.of("无法唯一识别历史 operationValue：" + text(step
+                .getOperationValue())));
         }
         List<String> warnings = new ArrayList<>();
         LinkedHashMap<String, Object> methodConfig = projectLegacyConfig(method, configs, warnings);
-        return new ReverseResult(true, method.getMethodCode(), method.getMethodVersion(), methodConfig, List.copyOf(warnings));
+        return new ReverseResult(true, method.getMethodCode(), method.getMethodVersion(), methodConfig, List
+            .copyOf(warnings));
     }
 
     private ReverseResult fromRaw(String rawStep) {
@@ -84,17 +95,26 @@ public class AutomationOperationStepReverseAdapter {
         }
         LinkedHashMap<String, Object> config = new LinkedHashMap<>();
         for (Map.Entry<String, Object> entry : raw.entrySet()) {
-            if (!Set.of("id", "action_type", "description", "source", "schema_version", "catalog_version",
-                "step_index").contains(entry.getKey())) {
+            if (!Set.of("id", "action_type", "description", "source", "schema_version", "catalog_version", "step_index")
+                .contains(entry.getKey())) {
                 config.put(entry.getKey(), entry.getValue());
+            }
+        }
+        if (hasField(method, "target_ref") && !config.containsKey("target_ref")) {
+            String selector = text(raw.get("target_selector"));
+            String xpath = text(raw.get("target_xpath"));
+            if (!selector.isBlank()) {
+                config.put("target_ref", locatorReference("css=" + selector));
+            } else if (!xpath.isBlank()) {
+                config.put("target_ref", locatorReference("xpath=" + xpath));
             }
         }
         return new ReverseResult(true, method.getMethodCode(), method.getMethodVersion(), config, List.of());
     }
 
     private LinkedHashMap<String, Object> projectLegacyConfig(AutomationOperationCatalog.OperationMethod method,
-                                                               Map<String, String> legacy,
-                                                               List<String> warnings) {
+                                                              Map<String, String> legacy,
+                                                              List<String> warnings) {
         LinkedHashMap<String, Object> result = new LinkedHashMap<>();
         for (String name : legacy.keySet()) {
             if (SENSITIVE_NAMES.contains(name.toLowerCase(Locale.ROOT))) {
@@ -195,8 +215,9 @@ public class AutomationOperationStepReverseAdapter {
     }
 
     private boolean requiresTargetRef(AutomationOperationCatalog.OperationMethod method) {
-        return hasField(method, "target_ref") || Set.of("server_command", "server_file_upload", "database_sql",
-            "database_native").contains(method.getActionType());
+        return hasField(method, "target_ref") || Set
+            .of("server_command", "server_file_upload", "database_sql", "database_native")
+            .contains(method.getActionType());
     }
 
     private Map<String, String> configMap(List<StepDO.Config> configs) {
@@ -255,10 +276,7 @@ public class AutomationOperationStepReverseAdapter {
         return value == null ? "" : String.valueOf(value).trim();
     }
 
-    public record ReverseResult(boolean recognized,
-                                String methodCode,
-                                Integer methodVersion,
-                                Map<String, Object> methodConfig,
-                                List<String> warnings) {
+    public record ReverseResult(boolean recognized, String methodCode, Integer methodVersion,
+                                Map<String, Object> methodConfig, List<String> warnings) {
     }
 }

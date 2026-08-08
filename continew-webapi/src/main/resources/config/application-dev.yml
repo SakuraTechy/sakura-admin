@@ -282,11 +282,11 @@ avatar:
 
 --- ### Snail Job 配置
 snail-job:
-  enabled: false
+  enabled: ${SCHEDULE_ENABLED:false}
   # 客户端地址（默认自动获取本机 IP）
   #host: 127.0.0.1
   # 客户端端口（默认：1789）
-  port: 1789
+  port: ${SCHEDULE_CLIENT_PORT:1789}
   # 命名空间 ID
   namespace: ${SCHEDULE_NAMESPACE:764d604ec6fc45f68cd92514c40e9e1a}
   # 分组名
@@ -302,7 +302,7 @@ snail-job:
     # API 配置
     api:
       # URL
-      url: http://127.0.0.1:8001/snail-job
+      url: ${SCHEDULE_API_URL:http://127.0.0.1:8001/snail-job}
       # 用户名
       username: ${SCHEDULE_USERNAME:admin}
       # 密码

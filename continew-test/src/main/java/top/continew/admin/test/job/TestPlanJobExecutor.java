@@ -18,6 +18,7 @@ package top.continew.admin.test.job;
 
 import cn.hutool.core.bean.BeanUtil;
 import com.aizuda.snailjob.client.job.core.annotation.JobExecutor;
+import com.aizuda.snailjob.client.job.core.dto.JobArgs;
 import com.aizuda.snailjob.common.log.SnailJobLog;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -26,6 +27,7 @@ import top.continew.admin.common.json.JsonUtil;
 import top.continew.admin.test.mapper.TestTimedTaskMapper;
 import top.continew.admin.test.model.entity.TestTimedTaskDO;
 import top.continew.admin.test.model.enums.TestExecutionEngineEnum;
+import top.continew.admin.test.model.exception.TestPlanDispatchException;
 import top.continew.admin.test.model.req.TestPlanExecuteReq;
 import top.continew.admin.test.model.req.TestTimedTaskExecutePayload;
 import top.continew.admin.test.model.resp.TestPlanExecuteResp;
@@ -44,23 +46,30 @@ public class TestPlanJobExecutor {
     private final TestTimedTaskRunService timedTaskRunService;
 
     @JobExecutor(name = EXECUTOR_NAME)
-    public void executeTestPlan(String args) {
+    public void executeTestPlan(JobArgs args) {
+        executeTestPlan(args == null ? null : args.getJobParams());
+    }
+
+    void executeTestPlan(Object args) {
         TestTimedTaskExecutePayload payload = parsePayload(args);
         if (payload.getTaskId() == null) {
             throw new BusinessException("定时任务 ID 不能为空");
         }
-        TestTimedTaskDO task = timedTaskMapper.selectById(payload.getTaskId());
-        if (task == null) {
-            throw new BusinessException("测试定时任务不存在");
-        }
-
-        TestTimedTaskRunService.StartResult startResult = timedTaskRunService.start(task.getId(), payload
+        TestTimedTaskRunService.StartResult startResult = timedTaskRunService.start(payload.getTaskId(), payload
             .getTriggerMode());
         if (startResult.skipped()) {
-            SnailJobLog.REMOTE.info("测试计划存在未完成执行，本次已跳过，taskId={}", task.getId());
+            SnailJobLog.REMOTE.info("测试计划执行条件不满足，本次已跳过，taskId={}, reason={}", payload.getTaskId(), startResult.run()
+                .getFailureReason());
             return;
         }
 
+        TestTimedTaskDO task = startResult.task() == null
+            ? timedTaskMapper.selectById(payload.getTaskId())
+            : startResult.task();
+        if (task == null) {
+            timedTaskRunService.fail(startResult.run().getId(), "测试定时任务不存在");
+            throw new BusinessException("测试定时任务不存在");
+        }
         Long runId = startResult.run().getId();
         try {
             TestPlanExecuteReq req = buildExecuteReq(task, payload);
@@ -70,6 +79,12 @@ public class TestPlanJobExecutor {
             timedTaskRunService.attachExecution(runId, executeResp);
             SnailJobLog.REMOTE.info("测试计划执行触发完成，taskId={}, planId={}, runId={}, reportId={}", task.getId(), task
                 .getTestPlanId(), runId, executeResp == null ? null : executeResp.getTestReportId());
+        } catch (TestPlanDispatchException e) {
+            TestPlanExecuteResp failedResp = new TestPlanExecuteResp();
+            failedResp.setTestReportId(String.valueOf(e.getTestReportId()));
+            timedTaskRunService.attachExecution(runId, failedResp);
+            timedTaskRunService.fail(runId, e.getMessage());
+            throw e;
         } catch (Exception e) {
             timedTaskRunService.fail(runId, e.getMessage());
             throw e;
@@ -99,9 +114,17 @@ public class TestPlanJobExecutor {
         return req;
     }
 
-    private TestTimedTaskExecutePayload parsePayload(String args) {
+    private TestTimedTaskExecutePayload parsePayload(Object args) {
         try {
-            return JsonUtil.unmarshal(args, TestTimedTaskExecutePayload.class);
+            if (args instanceof TestTimedTaskExecutePayload payload) {
+                return payload;
+            }
+            String json = args instanceof CharSequence sequence ? sequence.toString() : JsonUtil.marshal(args);
+            TestTimedTaskExecutePayload payload = JsonUtil.unmarshal(json, TestTimedTaskExecutePayload.class);
+            if (payload == null) {
+                throw new IllegalArgumentException("empty payload");
+            }
+            return payload;
         } catch (Exception e) {
             throw new BusinessException("定时任务参数解析失败");
         }

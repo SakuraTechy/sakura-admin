@@ -38,9 +38,13 @@ public interface TestTimedTaskService extends BaseService<TestTimedTaskResp, Tes
 
     void deleteByIds(List<Long> ids);
 
+    void deleteByPlanIds(List<Long> planIds);
+
     boolean isExists(String name, Long planId, Long id);
 
     void updateStatus(Long id, String status);
+
+    void retrySync(Long id);
 
     void trigger(Long id);
 

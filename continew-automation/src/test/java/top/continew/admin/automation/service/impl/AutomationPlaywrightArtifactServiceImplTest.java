@@ -102,6 +102,14 @@ class AutomationPlaywrightArtifactServiceImplTest {
     }
 
     @Test
+    void shouldRejectArtifactForUnknownRunnerExecution() {
+        ReflectionTestUtils.setField(service, "unifiedStorageEnabled", true);
+        MockMultipartFile file = new MockMultipartFile("file", "report.html", "text/html", "<html></html>".getBytes());
+
+        assertThatThrownBy(() -> service.store(runId, "report", file)).hasMessageContaining("执行 ID 不存在或尚未初始化");
+    }
+
+    @Test
     void shouldBuildDatePartitionForTimestampRunId() {
         ReflectionTestUtils.setField(service, "pathPrefix", "automation/playwright");
         String storagePath = (String)ReflectionTestUtils.invokeMethod(service, "buildStoragePath", "20260722120022");

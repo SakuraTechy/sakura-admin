@@ -34,6 +34,14 @@ public interface AutomationPlaywrightCaseService {
 
     AutomationPlaywrightCaseResp getCase(String caseKey, Long projectEnvironmentId);
 
+    /**
+     * 批次 Runner 读取用例时绑定当前 execution capability，避免仅凭通用读取权限跨批次读取执行数据。
+     */
+    AutomationPlaywrightCaseResp getCase(String caseKey,
+                                         Long projectEnvironmentId,
+                                         String batchId,
+                                         String executionCapability);
+
     AutomationPlaywrightBatchResp createBatch(AutomationPlaywrightBatchCreateReq req);
 
     void updateBatchCaseStatus(String sceneKey,
@@ -58,4 +66,9 @@ public interface AutomationPlaywrightCaseService {
     void validateReusableBatchCase(String sceneKey, String batchId, String caseId, Long projectEnvironmentId);
 
     void saveResult(String caseKey, AutomationPlaywrightResultReq req);
+
+    /**
+     * 保存 Runner 回传结果，并使用当前执行批次的短期 capability 校验服务主体范围。
+     */
+    void saveResult(String caseKey, AutomationPlaywrightResultReq req, String executionCapability);
 }

@@ -23,6 +23,7 @@ import static org.mockito.Mockito.when;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -144,6 +145,32 @@ class TestPlanReportProgressServiceImplTest {
     }
 
     @Test
+    void shouldAggregatePlaywrightArtifactsIntoReport() {
+        TestPlanDO plan = plan();
+        TestReportDO report = report();
+        Map<Long, Map<String, Object>> records = Map.of(11L, Map
+            .of("testReportId", "101", "executeStatus", "completed", "executeResult", "passed", "caseTotal", 1, "casePass", 1, "caseResults", List
+                .of(Map.of("artifact_urls", Map
+                    .of("report_html", "/automation/playwright/artifacts/run/report.html", "video", "/automation/playwright/artifacts/run/video.webm", "console_log", "D:\\\\runner\\\\artifacts\\\\console.log"), "artifact_file_ids", Map
+                        .of("report_html", "501"), "artifact_upload_errors", List.of(Map
+                            .of("artifact_type", "trace", "error", "upload failed"))))));
+        when(planMapper.selectById(1L)).thenReturn(plan);
+        when(reportMapper.selectById(101L)).thenReturn(report);
+        when(executionRecordService.findReportRecords(List.of(11L, 12L), "101")).thenReturn(records);
+
+        service.onProgressChanged("1", "101");
+
+        @SuppressWarnings("unchecked") Map<String, Object> artifacts = (Map<String, Object>)report
+            .getStatisticAnalysis()
+            .get("playwrightArtifacts");
+        assertThat(artifacts).containsEntry("count", 2);
+        @SuppressWarnings("unchecked") Map<String, Set<String>> urls = (Map<String, Set<String>>)artifacts.get("urls");
+        assertThat(urls.get("report_html")).containsExactly("/automation/playwright/artifacts/run/report.html");
+        assertThat(report.getReportUrl()).isEqualTo("/automation/playwright/artifacts/run/report.html");
+        assertThat(report.getVideoUrl()).isEqualTo("/automation/playwright/artifacts/run/video.webm");
+    }
+
+    @Test
     void shouldRejectSceneOutsideReportExecutionScope() {
         TestPlanDO plan = plan();
         TestReportDO report = report();
@@ -170,6 +197,26 @@ class TestPlanReportProgressServiceImplTest {
             .get("ui");
         assertThat(ui).containsEntry("failureReason", "无可执行用例");
         assertThat(plan.getStatus()).isEqualTo("COMPLETED");
+    }
+
+    @Test
+    void shouldExposeFirstCaseFailureReasonInReportStatistic() {
+        TestPlanDO plan = plan();
+        plan.setUiTestScene(List.of(11L));
+        TestReportDO report = report();
+        Map<Long, Map<String, Object>> records = Map.of(11L, Map
+            .of("testReportId", "101", "executeStatus", "completed", "executeResult", "failed", "caseTotal", 1, "caseFail", 1, "caseResults", List
+                .of(Map.of("case_id", "case-1", "executeResult", "failed", "error", "Runner 服务端鉴权令牌缺失"))));
+        when(planMapper.selectById(1L)).thenReturn(plan);
+        when(reportMapper.selectById(101L)).thenReturn(report);
+        when(executionRecordService.findReportRecords(List.of(11L), "101")).thenReturn(records);
+
+        service.onProgressChanged("1", "101");
+
+        assertThat(report.getStatus()).isEqualTo("FAILED");
+        @SuppressWarnings("unchecked") Map<String, Object> ui = (Map<String, Object>)report.getStatisticAnalysis()
+            .get("ui");
+        assertThat(ui).containsEntry("failureReason", "Runner 服务端鉴权令牌缺失");
     }
 
     private TestPlanDO plan() {

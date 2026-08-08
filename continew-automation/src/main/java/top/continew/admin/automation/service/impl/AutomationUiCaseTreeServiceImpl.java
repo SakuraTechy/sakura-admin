@@ -33,6 +33,8 @@ import top.continew.admin.automation.mapper.AutomationPlaywrightJobMapper;
 import top.continew.admin.automation.mapper.AutomationUiSceneMapper;
 import top.continew.admin.automation.model.entity.AutomationUiSceneDO;
 import top.continew.admin.automation.model.entity.ui.CaseDO;
+import top.continew.admin.automation.model.entity.ui.CaseExecutionConfigDO;
+import top.continew.admin.automation.model.entity.ui.CaseOriginDO;
 import top.continew.admin.automation.model.entity.ui.StepDO;
 import top.continew.admin.automation.model.enums.AutomationUiTreeMovePosition;
 import top.continew.admin.automation.model.enums.AutomationUiTreeNodeType;
@@ -65,7 +67,7 @@ public class AutomationUiCaseTreeServiceImpl implements AutomationUiCaseTreeServ
                         .entry("TREE_CONCURRENT_MODIFICATION", "场景定义已被其他操作修改，请刷新后重试"), Map
                             .entry("TREE_SCENE_EXECUTING", "场景正在执行，暂不能修改用例树"));
     private static final Set<String> IMMUTABLE_RECORDING_CONFIGS = Set
-        .of("playwright_step", "locator_meta", "original_case_id", "original_step_id", "recording_id", "value_masked", "screenshot_url", "screenshot_file_id", "screenshot_path", "screenshot_present");
+        .of("playwright_step", "original_case_id", "original_step_id", "recording_id", "value_masked", "screenshot_url", "screenshot_file_id", "screenshot_path", "screenshot_present");
 
     private final AutomationUiSceneMapper sceneMapper;
     private final AutomationPlaywrightJobMapper playwrightJobMapper;
@@ -102,6 +104,10 @@ public class AutomationUiCaseTreeServiceImpl implements AutomationUiCaseTreeServ
             target.setName(request.getName());
             target.setRemark(request.getRemark());
             target.setStatus(request.getStatus());
+            if (request.getExecutionConfig() != null) {
+                // 起始地址、窗口和截图策略属于用例级定义，不能继续从第一条步骤反推。
+                target.setExecutionConfig(copyExecutionConfig(request.getExecutionConfig()));
+            }
             return result(true, caseRef(target.getId()));
         });
     }
@@ -140,11 +146,16 @@ public class AutomationUiCaseTreeServiceImpl implements AutomationUiCaseTreeServ
             StepDO editRequest = reverseLegacyStepForExplicitEdit(request);
             StepDO assembledRequest = operationStepAssembler.assembleManualStep(editRequest);
             boolean maskedValue = isMasked(target.getConfigList());
+            preserveOriginalRecordingConfigs(target);
             String existingOperationValue = target.getOperationValue();
             target.setName(assembledRequest.getName());
             target.setRemark(assembledRequest.getRemark());
-            target.setOperationType(assembledRequest.getOperationType());
-            target.setOperationName(assembledRequest.getOperationName());
+            if (assembledRequest.getOperationType() != null) {
+                target.setOperationType(assembledRequest.getOperationType());
+            }
+            if (assembledRequest.getOperationName() != null) {
+                target.setOperationName(assembledRequest.getOperationName());
+            }
             // 展示接口返回的是掩码，编辑时必须保留数据库中的真实操作值。
             target.setOperationValue(maskedValue ? existingOperationValue : assembledRequest.getOperationValue());
             target.setStatus(assembledRequest.getStatus());
@@ -154,6 +165,25 @@ public class AutomationUiCaseTreeServiceImpl implements AutomationUiCaseTreeServ
                 .getConfigList(), replaceCanonicalStep));
             return result(true, stepRef(assembledRequest.getPid(), assembledRequest.getId()));
         });
+    }
+
+    private void preserveOriginalRecordingConfigs(StepDO target) {
+        if (target == null || target.getConfigList() == null) {
+            return;
+        }
+        if (!"sakura-playwright".equalsIgnoreCase(configValue(target, "source"))) {
+            return;
+        }
+        preserveOriginalConfig(target, "playwright_step");
+        preserveOriginalConfig(target, "locator_meta");
+    }
+
+    private void preserveOriginalConfig(StepDO target, String name) {
+        String originalName = "original_" + name;
+        String value = configValue(target, name);
+        if (configValue(target, originalName) == null && value != null && !value.isBlank()) {
+            putConfig(target.getConfigList(), originalName, value);
+        }
     }
 
     @Override
@@ -577,11 +607,39 @@ public class AutomationUiCaseTreeServiceImpl implements AutomationUiCaseTreeServ
         copy.setType(source.getType());
         copy.setOrder(source.getOrder());
         copy.setStatus(source.getStatus());
+        copy.setExecutionConfig(copyExecutionConfig(source.getExecutionConfig()));
+        copy.setOrigin(copyOrigin(source.getOrigin()));
         List<StepDO> steps = new ArrayList<>();
         if (source.getStepList() != null)
             for (StepDO step : source.getStepList())
                 steps.add(copyStep(step));
         copy.setStepList(steps);
+        return copy;
+    }
+
+    private CaseExecutionConfigDO copyExecutionConfig(CaseExecutionConfigDO source) {
+        if (source == null) {
+            return null;
+        }
+        CaseExecutionConfigDO copy = new CaseExecutionConfigDO();
+        copy.setStartUrl(source.getStartUrl());
+        copy.setWindowSizeMode(source.getWindowSizeMode());
+        copy.setViewportWidth(source.getViewportWidth());
+        copy.setViewportHeight(source.getViewportHeight());
+        copy.setScreenshotMode(source.getScreenshotMode());
+        copy.setPageErrorCheckEnabled(source.getPageErrorCheckEnabled());
+        return copy;
+    }
+
+    private CaseOriginDO copyOrigin(CaseOriginDO source) {
+        if (source == null) {
+            return null;
+        }
+        CaseOriginDO copy = new CaseOriginDO();
+        copy.setCreationSource(source.getCreationSource());
+        copy.setOriginalCaseId(source.getOriginalCaseId());
+        copy.setInitialRecordingId(source.getInitialRecordingId());
+        copy.setCopiedFromCaseId(source.getCopiedFromCaseId());
         return copy;
     }
 
@@ -651,7 +709,7 @@ public class AutomationUiCaseTreeServiceImpl implements AutomationUiCaseTreeServ
         configs.add(config);
     }
 
-    /** 普通编辑表单可能只回传掩码值；保留数据库中的录制事实，避免敏感值和执行元数据被覆盖。 */
+    /** 普通编辑表单可能只回传掩码值；保留来源、敏感值和初始录制快照，避免执行事实不可追溯。 */
     private List<StepDO.Config> mergeProtectedConfigs(List<StepDO.Config> existing,
                                                       List<StepDO.Config> requested,
                                                       boolean replaceCanonicalStep) {

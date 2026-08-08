@@ -99,7 +99,7 @@ public class AutomationRecordingImportReq implements Serializable {
     private Boolean persistScreenshots = Boolean.FALSE;
 
     /**
-     * 默认不在 playwright_step 中保留原始 base64 截图。
+     * 兼容旧客户端字段；服务端始终禁止原始 base64 截图进入 caseList JSON。
      */
     private Boolean keepRawScreenshotInStep = Boolean.FALSE;
 }

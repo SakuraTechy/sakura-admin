@@ -35,6 +35,8 @@ import java.io.IOException;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -56,7 +58,8 @@ public class JenkinsService {
             connection = JenkinsConnect.connection(url, userName, passWord);
             log.info("发起Jenkins构建请求...");
             JobWithDetails job = connection.getJob(jobName);
-            log.info("Jenkins构建参数：" + params);
+            // Jenkins 参数包含服务器和数据库凭据，日志只能输出脱敏副本。
+            log.info("Jenkins构建参数：{}", redactSensitiveParams(params));
             if (params.size() > 0) {
                 job.build(params);
             } else {
@@ -74,11 +77,26 @@ public class JenkinsService {
             //            log.info(String.valueOf(job.details().getNextBuildNumber()));
             TimeUnit.SECONDS.sleep(10);
         } catch (Exception e) {
-            log.error("Jenkins构建失败!");
-            log.error(e.getMessage());
+            // 第三方异常消息可能回显请求参数，生产日志只记录异常类型。
+            log.error("Jenkins构建失败，异常类型：{}", e.getClass().getSimpleName());
         }
         //        connection.close();
         return buildNumber;
+    }
+
+    public static Map<String, String> redactSensitiveParams(Map<String, String> params) {
+        if (params == null || params.isEmpty()) {
+            return Map.of();
+        }
+        Map<String, String> redacted = new LinkedHashMap<>(params.size());
+        params.forEach((key, value) -> redacted.put(key, isSensitiveKey(key) ? "******" : value));
+        return redacted;
+    }
+
+    private static boolean isSensitiveKey(String key) {
+        String normalized = key == null ? "" : key.toLowerCase(Locale.ROOT).replace("_", "").replace("-", "");
+        return normalized.contains("password") || normalized.contains("passwd") || normalized
+            .contains("secret") || normalized.contains("token") || normalized.contains("credential");
     }
 
     public static boolean getBuildResult(String jobName, Integer buildNumber) throws Exception {
@@ -123,7 +141,7 @@ public class JenkinsService {
 
     public static Response getApiJson(String apiUrl, String userName, String passWord) {
         // 设置认证信息
-        //        String auth = "sakura:3edc$RFV";
+        //        String auth = "sakura:${JENKINS_PASSWORD}";
         String auth = userName + ":" + passWord;
         String encodedAuth = Base64.getEncoder().encodeToString(auth.getBytes());
 
@@ -220,8 +238,8 @@ public class JenkinsService {
         }
     }
 
-    //    curl -u "liuzhi:112d353b367c17bd73c294d6465197d966" "http://172.19.5.222:8080/computer/172.19.5.47/config.xml" -o current_config.xml
-    //    curl -X POST -u "liuzhi:112d353b367c17bd73c294d6465197d966" -H "Content-Type: application/xml" \ --data-binary @current_config.xml \ "http://172.19.5.222:8080/computer/172.19.5.47/config.xml"
+    //    curl -u "liuzhi:${JENKINS_API_TOKEN}" "http://172.19.5.222:8080/computer/172.19.5.47/config.xml" -o current_config.xml
+    //    curl -X POST -u "liuzhi:${JENKINS_API_TOKEN}" -H "Content-Type: application/xml" \ --data-binary @current_config.xml \ "http://172.19.5.222:8080/computer/172.19.5.47/config.xml"
     public static boolean updateJenkinsNode(String jenkinsUrl,
                                             String userName,
                                             String passWord,
@@ -515,9 +533,9 @@ public class JenkinsService {
     public static void main1(String[] args) throws IOException {
         String url = "http://172.19.5.222:8080/";
         String userName = "ankki";
-        String passWord = "3edc$RFV";
+        String passWord = "${JENKINS_PASSWORD}";
         String jobName = "Ankki.Web.UI.Automation.Test";
-        String input = "{Date=2024-09-18, Name=刘智, Email=, Product=防统方系统, Abbreviate=AAS_P, Version=V6.5B05, Description=V6.5B05, IP=172.19.5.45, EDescription=防统方测试环境, PassWord=@nKk1^2Oe38&8!~!, DataBasePort=3306, Domain=https://172.19.5.45:443/login, Port=443, Run=172.19.5.242, Branch=ankki, jenkinsUrl=http://172.19.5.222:8080/job/Ankki.Web.UI.Automation.Test, testPlanId=, testReportId=b57262b075a911efab85d161e0b57220}";
+        String input = "{Date=2024-09-18, Name=刘智, Email=, Product=防统方系统, Abbreviate=AAS_P, Version=V6.5B05, Description=V6.5B05, IP=172.19.5.45, EDescription=防统方测试环境, PassWord=${SERVER_PASSWORD}, DataBasePort=3306, Domain=https://172.19.5.45:443/login, Port=443, Run=172.19.5.242, Branch=ankki, jenkinsUrl=http://172.19.5.222:8080/job/Ankki.Web.UI.Automation.Test, testPlanId=, testReportId=b57262b075a911efab85d161e0b57220}";
         Map<String, String> params = convertToMap(input);
         Integer buildNumber = launchJob(url, userName, passWord, jobName, params);
         log.info("Build Success? {}", buildNumber);
@@ -543,7 +561,7 @@ public class JenkinsService {
         //        log.info(String.valueOf(results));
 
         String computerUrl = "http://172.19.5.222:8080/computer/api/json?pretty=true&tree=computer[displayName,description,idle,executors[currentExecutable[url]],offline,offlineCauseReason],totalExecutors";
-        //        String computer = getApiJson(computerUrl,"Sakura.Web.UI.Automation.Test","liuzhi","lz612425","GET");
+        //        String computer = getApiJson(computerUrl,"Sakura.Web.UI.Automation.Test","liuzhi","${JENKINS_PASSWORD}","GET");
         //        JSONObject jsonObject = JSON.parseObject(computer);
         //        List<Object> computer = getApiJson(computerUrl,"computer.findAll { it.displayName == '172.19.5.231' }");
         //        log.info(computer.toString());
@@ -673,13 +691,13 @@ public class JenkinsService {
     public static void main(String[] args) throws Exception {
         String url = "http://172.19.5.222:8080";
         String userName = "ankki";
-        String passWord = "3edc$RFV";
+        String passWord = "${JENKINS_PASSWORD}";
         String nodeName = "172.19.5.47";
         String type = "hudson.slaves.DumbSlave";
-        String josn = "{\n" + "    \"name\": \"172.19.5.482\",\n" + "    \"nodeDescription\": \"{\\\"name\\\":\\\"数审产品环境2\\\",\\\"systemType\\\":\\\"Linux\\\",\\\"userName\\\":\\\"root\\\",\\\"passWord\\\":\\\"@1fw#2soc$3vpn\\\"}\",\n" + "    \"numExecutors\": \"1\",\n" + "    \"remoteFS\": \"/data/jenkins\",\n" + "    \"labelString\": \"172.19.5.47\",\n" + "    \"mode\": \"EXCLUSIVE\",\n" + "    \"\": [\n" + "        \"hudson.plugins.sshslaves.SSHLauncher\",\n" + "        \"0\"\n" + "    ],\n" + "    \"launcher\": {\n" + "        \"oldCommand\": \"\",\n" + "        \"stapler-class\": \"hudson.plugins.sshslaves.SSHLauncher\",\n" + "        \"$class\": \"hudson.plugins.sshslaves.SSHLauncher\",\n" + "        \"host\": \"172.19.5.47\",\n" + "        \"includeUser\": \"false\",\n" + "        \"credentialsId\": \"fcaef557-298d-496f-a2f7-ada5048ff6b9\",\n" + "        \"\": \"3\",\n" + "        \"sshHostKeyVerificationStrategy\": {\n" + "            \"stapler-class\": \"hudson.plugins.sshslaves.verifiers.NonVerifyingKeyVerificationStrategy\",\n" + "            \"$class\": \"hudson.plugins.sshslaves.verifiers.NonVerifyingKeyVerificationStrategy\"\n" + "        },\n" + "        \"port\": \"22\",\n" + "        \"javaPath\": \"\",\n" + "        \"jvmOptions\": \"\",\n" + "        \"prefixStartSlaveCmd\": \"\",\n" + "        \"suffixStartSlaveCmd\": \"\",\n" + "        \"launchTimeoutSeconds\": \"\",\n" + "        \"maxNumRetries\": \"\",\n" + "        \"retryWaitTime\": \"\",\n" + "        \"tcpNoDelay\": true,\n" + "        \"workDir\": \"\"\n" + "    },\n" + "    \"retentionStrategy\": {\n" + "        \"stapler-class\": \"hudson.slaves.RetentionStrategy$Always\",\n" + "        \"$class\": \"hudson.slaves.RetentionStrategy$Always\"\n" + "    },\n" + "    \"nodeProperties\": {\n" + "        \"stapler-class-bag\": \"true\",\n" + "        \"hudson-tools-ToolLocationNodeProperty\": {\n" + "            \"locations\": {\n" + "                \"key\": \"hudson.model.JDK$DescriptorImpl@JDK\",\n" + "                \"home\": \"/data/jenkins/java/jdk1.8.0_202\"\n" + "            }\n" + "        },\n" + "        \"hudson-slaves-EnvironmentVariablesNodeProperty\": {\n" + "            \"env\": {\n" + "                \"key\": \"LANG\",\n" + "                \"value\": \"en_US.UTF-8\"\n" + "            }\n" + "        }\n" + "    },\n" + "    \"type\": \"hudson.slaves.DumbSlave\"\n" + "}";
+        String josn = "{\n" + "    \"name\": \"172.19.5.482\",\n" + "    \"nodeDescription\": \"{\\\"name\\\":\\\"数审产品环境2\\\",\\\"systemType\\\":\\\"Linux\\\",\\\"userName\\\":\\\"root\\\",\\\"passWord\\\":\\\"${NODE_PASSWORD}\\\"}\",\n" + "    \"numExecutors\": \"1\",\n" + "    \"remoteFS\": \"/data/jenkins\",\n" + "    \"labelString\": \"172.19.5.47\",\n" + "    \"mode\": \"EXCLUSIVE\",\n" + "    \"\": [\n" + "        \"hudson.plugins.sshslaves.SSHLauncher\",\n" + "        \"0\"\n" + "    ],\n" + "    \"launcher\": {\n" + "        \"oldCommand\": \"\",\n" + "        \"stapler-class\": \"hudson.plugins.sshslaves.SSHLauncher\",\n" + "        \"$class\": \"hudson.plugins.sshslaves.SSHLauncher\",\n" + "        \"host\": \"172.19.5.47\",\n" + "        \"includeUser\": \"false\",\n" + "        \"credentialsId\": \"fcaef557-298d-496f-a2f7-ada5048ff6b9\",\n" + "        \"\": \"3\",\n" + "        \"sshHostKeyVerificationStrategy\": {\n" + "            \"stapler-class\": \"hudson.plugins.sshslaves.verifiers.NonVerifyingKeyVerificationStrategy\",\n" + "            \"$class\": \"hudson.plugins.sshslaves.verifiers.NonVerifyingKeyVerificationStrategy\"\n" + "        },\n" + "        \"port\": \"22\",\n" + "        \"javaPath\": \"\",\n" + "        \"jvmOptions\": \"\",\n" + "        \"prefixStartSlaveCmd\": \"\",\n" + "        \"suffixStartSlaveCmd\": \"\",\n" + "        \"launchTimeoutSeconds\": \"\",\n" + "        \"maxNumRetries\": \"\",\n" + "        \"retryWaitTime\": \"\",\n" + "        \"tcpNoDelay\": true,\n" + "        \"workDir\": \"\"\n" + "    },\n" + "    \"retentionStrategy\": {\n" + "        \"stapler-class\": \"hudson.slaves.RetentionStrategy$Always\",\n" + "        \"$class\": \"hudson.slaves.RetentionStrategy$Always\"\n" + "    },\n" + "    \"nodeProperties\": {\n" + "        \"stapler-class-bag\": \"true\",\n" + "        \"hudson-tools-ToolLocationNodeProperty\": {\n" + "            \"locations\": {\n" + "                \"key\": \"hudson.model.JDK$DescriptorImpl@JDK\",\n" + "                \"home\": \"/data/jenkins/java/jdk1.8.0_202\"\n" + "            }\n" + "        },\n" + "        \"hudson-slaves-EnvironmentVariablesNodeProperty\": {\n" + "            \"env\": {\n" + "                \"key\": \"LANG\",\n" + "                \"value\": \"en_US.UTF-8\"\n" + "            }\n" + "        }\n" + "    },\n" + "    \"type\": \"hudson.slaves.DumbSlave\"\n" + "}";
         //        JenkinsService.getApiJson("http://172.19.5.222:8080/computer/172.18.1.115/config.xml",userName,passWord);
 
-        String xml = "<?xml version=\"1.1\" encoding=\"UTF-8\"?>\n" + "<slave>\n" + "  <name>172.19.5.47</name>\n" + "  <description>{&quot;name&quot;:&quot;数审产品环境2&quot;,&quot;systemType&quot;:&quot;Linux&quot;,&quot;userName&quot;:&quot;root&quot;,&quot;passWord&quot;:&quot;@1fw#2soc$3vpn&quot;}</description>\n" + "  <remoteFS>/data/jenkins</remoteFS>\n" + "  <numExecutors>1</numExecutors>\n" + "  <mode>EXCLUSIVE</mode>\n" + "  <retentionStrategy class=\"hudson.slaves.RetentionStrategy$Always\"/>\n" + "  <launcher class=\"hudson.plugins.sshslaves.SSHLauncher\" plugin=\"ssh-slaves@1.834.v622da_57f702c\">\n" + "    <host>172.19.5.47</host>\n" + "    <port>22</port>\n" + "    <credentialsId>fcaef557-298d-496f-a2f7-ada5048ff6b9</credentialsId>\n" + "    <launchTimeoutSeconds>60</launchTimeoutSeconds>\n" + "    <maxNumRetries>10</maxNumRetries>\n" + "    <retryWaitTime>15</retryWaitTime>\n" + "    <sshHostKeyVerificationStrategy class=\"hudson.plugins.sshslaves.verifiers.NonVerifyingKeyVerificationStrategy\"/>\n" + "    <tcpNoDelay>true</tcpNoDelay>\n" + "  </launcher>\n" + "  <label>172.19.5.47</label>\n" + "  <nodeProperties>\n" + "    <hudson.tools.ToolLocationNodeProperty>\n" + "      <locations>\n" + "        <hudson.tools.ToolLocationNodeProperty_-ToolLocation>\n" + "          <type>hudson.model.JDK$DescriptorImpl</type>\n" + "          <name>JDK</name>\n" + "          <home>/data/jenkins/java/jdk1.8.0_202</home>\n" + "        </hudson.tools.ToolLocationNodeProperty_-ToolLocation>\n" + "        <hudson.tools.ToolLocationNodeProperty_-ToolLocation>\n" + "          <type>hudson.tasks.Maven$MavenInstallation$DescriptorImpl</type>\n" + "          <name>Maven</name>\n" + "          <home>/data/jenkins/maven/apache-maven-3.8.7</home>\n" + "        </hudson.tools.ToolLocationNodeProperty_-ToolLocation>\n" + "        <hudson.tools.ToolLocationNodeProperty_-ToolLocation>\n" + "          <type>hudson.tasks.Ant$AntInstallation$DescriptorImpl</type>\n" + "          <name>Ant</name>\n" + "          <home>/data/jenkins/ant/apache-ant-1.9.16</home>\n" + "        </hudson.tools.ToolLocationNodeProperty_-ToolLocation>\n" + "      </locations>\n" + "    </hudson.tools.ToolLocationNodeProperty>\n" + "    <hudson.slaves.EnvironmentVariablesNodeProperty>\n" + "      <envVars serialization=\"custom\">\n" + "        <unserializable-parents/>\n" + "        <tree-map>\n" + "          <default>\n" + "            <comparator class=\"java.lang.String$CaseInsensitiveComparator\"/>\n" + "          </default>\n" + "          <int>1</int>\n" + "          <string>LANG</string>\n" + "          <string>en_US.UTF-8</string>\n" + "        </tree-map>\n" + "      </envVars>\n" + "    </hudson.slaves.EnvironmentVariablesNodeProperty>\n" + "  </nodeProperties>\n" + "</slave>";
+        String xml = "<?xml version=\"1.1\" encoding=\"UTF-8\"?>\n" + "<slave>\n" + "  <name>172.19.5.47</name>\n" + "  <description>{&quot;name&quot;:&quot;数审产品环境2&quot;,&quot;systemType&quot;:&quot;Linux&quot;,&quot;userName&quot;:&quot;root&quot;,&quot;passWord&quot;:&quot;${NODE_PASSWORD}&quot;}</description>\n" + "  <remoteFS>/data/jenkins</remoteFS>\n" + "  <numExecutors>1</numExecutors>\n" + "  <mode>EXCLUSIVE</mode>\n" + "  <retentionStrategy class=\"hudson.slaves.RetentionStrategy$Always\"/>\n" + "  <launcher class=\"hudson.plugins.sshslaves.SSHLauncher\" plugin=\"ssh-slaves@1.834.v622da_57f702c\">\n" + "    <host>172.19.5.47</host>\n" + "    <port>22</port>\n" + "    <credentialsId>fcaef557-298d-496f-a2f7-ada5048ff6b9</credentialsId>\n" + "    <launchTimeoutSeconds>60</launchTimeoutSeconds>\n" + "    <maxNumRetries>10</maxNumRetries>\n" + "    <retryWaitTime>15</retryWaitTime>\n" + "    <sshHostKeyVerificationStrategy class=\"hudson.plugins.sshslaves.verifiers.NonVerifyingKeyVerificationStrategy\"/>\n" + "    <tcpNoDelay>true</tcpNoDelay>\n" + "  </launcher>\n" + "  <label>172.19.5.47</label>\n" + "  <nodeProperties>\n" + "    <hudson.tools.ToolLocationNodeProperty>\n" + "      <locations>\n" + "        <hudson.tools.ToolLocationNodeProperty_-ToolLocation>\n" + "          <type>hudson.model.JDK$DescriptorImpl</type>\n" + "          <name>JDK</name>\n" + "          <home>/data/jenkins/java/jdk1.8.0_202</home>\n" + "        </hudson.tools.ToolLocationNodeProperty_-ToolLocation>\n" + "        <hudson.tools.ToolLocationNodeProperty_-ToolLocation>\n" + "          <type>hudson.tasks.Maven$MavenInstallation$DescriptorImpl</type>\n" + "          <name>Maven</name>\n" + "          <home>/data/jenkins/maven/apache-maven-3.8.7</home>\n" + "        </hudson.tools.ToolLocationNodeProperty_-ToolLocation>\n" + "        <hudson.tools.ToolLocationNodeProperty_-ToolLocation>\n" + "          <type>hudson.tasks.Ant$AntInstallation$DescriptorImpl</type>\n" + "          <name>Ant</name>\n" + "          <home>/data/jenkins/ant/apache-ant-1.9.16</home>\n" + "        </hudson.tools.ToolLocationNodeProperty_-ToolLocation>\n" + "      </locations>\n" + "    </hudson.tools.ToolLocationNodeProperty>\n" + "    <hudson.slaves.EnvironmentVariablesNodeProperty>\n" + "      <envVars serialization=\"custom\">\n" + "        <unserializable-parents/>\n" + "        <tree-map>\n" + "          <default>\n" + "            <comparator class=\"java.lang.String$CaseInsensitiveComparator\"/>\n" + "          </default>\n" + "          <int>1</int>\n" + "          <string>LANG</string>\n" + "          <string>en_US.UTF-8</string>\n" + "        </tree-map>\n" + "      </envVars>\n" + "    </hudson.slaves.EnvironmentVariablesNodeProperty>\n" + "  </nodeProperties>\n" + "</slave>";
 
         Response response = JenkinsService.getJenkinsNodeDetails(url, userName, passWord, nodeName);
         JsonNode jsonNode = JenkinsService.parseXmlToJson(response.xmlPath());

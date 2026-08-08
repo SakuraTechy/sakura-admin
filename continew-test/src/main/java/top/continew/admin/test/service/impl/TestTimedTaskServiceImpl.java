@@ -21,10 +21,14 @@ import cn.hutool.core.text.CharSequenceUtil;
 import cn.hutool.cron.pattern.CronPattern;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import top.continew.admin.automation.mapper.AutomationEnvironmentConfigMapper;
 import top.continew.admin.automation.model.entity.AutomationEnvironmentConfigDO;
 import top.continew.admin.common.context.UserContextHolder;
@@ -34,20 +38,11 @@ import top.continew.admin.common.json.JsonUtil;
 import top.continew.admin.common.regex.RegexUtil;
 import top.continew.admin.project.mapper.ProjectEnvironmentConfigMapper;
 import top.continew.admin.project.model.entity.ProjectEnvironmentConfigDO;
-import top.continew.admin.schedule.enums.JobBlockStrategyEnum;
-import top.continew.admin.schedule.enums.JobRouteStrategyEnum;
-import top.continew.admin.schedule.enums.JobStatusEnum;
-import top.continew.admin.schedule.enums.JobTaskTypeEnum;
-import top.continew.admin.schedule.enums.JobTriggerTypeEnum;
 import top.continew.admin.schedule.model.query.JobLogQuery;
-import top.continew.admin.schedule.model.query.JobQuery;
-import top.continew.admin.schedule.model.req.JobReq;
 import top.continew.admin.schedule.model.req.JobTriggerReq;
 import top.continew.admin.schedule.model.resp.JobLogResp;
-import top.continew.admin.schedule.model.resp.JobResp;
 import top.continew.admin.schedule.service.JobLogService;
 import top.continew.admin.schedule.service.JobService;
-import top.continew.admin.test.job.TestPlanJobExecutor;
 import top.continew.admin.test.mapper.TestPlanMapper;
 import top.continew.admin.test.mapper.TestTimedTaskMapper;
 import top.continew.admin.test.model.entity.TestPlanDO;
@@ -63,13 +58,17 @@ import top.continew.admin.test.model.resp.TestTimedTaskResp;
 import top.continew.admin.test.model.resp.TestTimedTaskRunResp;
 import top.continew.admin.test.model.resp.TestTimedTaskRunSummaryResp;
 import top.continew.admin.test.service.TestTimedTaskRunService;
+import top.continew.admin.test.service.TestTimedTaskScheduleSyncService;
 import top.continew.admin.test.service.TestTimedTaskService;
+import top.continew.starter.core.exception.BusinessException;
 import top.continew.starter.core.validation.CheckUtils;
 import top.continew.starter.extension.crud.model.query.PageQuery;
 import top.continew.starter.extension.crud.model.resp.PageResp;
 import top.continew.starter.extension.crud.service.BaseServiceImpl;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.time.LocalDateTime;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -78,10 +77,10 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class TestTimedTaskServiceImpl extends BaseServiceImpl<TestTimedTaskMapper, TestTimedTaskDO, TestTimedTaskResp, TestTimedTaskDetailResp, TestTimedTaskQuery, TestTimedTaskReq> implements TestTimedTaskService {
 
-    private static final String JOB_GROUP_NAME = "continew-admin";
     private static final String TASK_TYPE = "PLAN";
     private static final String MISFIRE_POLICY = "DO_NOTHING";
 
@@ -91,6 +90,7 @@ public class TestTimedTaskServiceImpl extends BaseServiceImpl<TestTimedTaskMappe
     private final JobService jobService;
     private final JobLogService jobLogService;
     private final TestTimedTaskRunService runService;
+    private final TestTimedTaskScheduleSyncService scheduleSyncService;
 
     @Override
     public PageResp<TestTimedTaskResp> page(TestTimedTaskQuery query, PageQuery pageQuery) {
@@ -127,20 +127,41 @@ public class TestTimedTaskServiceImpl extends BaseServiceImpl<TestTimedTaskMappe
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void deleteByIds(List<Long> ids) {
+        List<Long> syncTaskIds = new ArrayList<>();
         for (Long id : ids) {
-            TestTimedTaskDO task = baseMapper.selectById(id);
+            TestTimedTaskDO task = baseMapper.selectByIdForUpdate(id);
             if (task == null) {
                 continue;
             }
-            Long jobId = resolveScheduleJobId(task);
-            if (jobId != null) {
-                jobService.delete(jobId);
-            }
-            baseMapper.lambdaUpdate()
-                .eq(TestTimedTaskDO::getId, id)
-                .set(TestTimedTaskDO::getDelFlag, StatusTypeEnum.ABNORMAL)
-                .update();
+            long version = nextSyncVersion(task);
+            baseMapper.update(null, Wrappers.<TestTimedTaskDO>update()
+                .eq("id", id)
+                .set("status", "DELETING")
+                .set("schedule_sync_status", "DELETING")
+                .set("schedule_sync_error", null)
+                .set("schedule_sync_version", version)
+                .set("schedule_sync_retry_count", 0)
+                .set("schedule_sync_next_retry_time", LocalDateTime.now()));
+            syncTaskIds.add(id);
         }
+        syncAfterCommit(syncTaskIds);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteByPlanIds(List<Long> planIds) {
+        if (planIds == null || planIds.isEmpty()) {
+            return;
+        }
+        List<Long> taskIds = baseMapper.lambdaQuery()
+            .select(TestTimedTaskDO::getId)
+            .in(TestTimedTaskDO::getTestPlanId, planIds)
+            .eq(TestTimedTaskDO::getDelFlag, StatusTypeEnum.NORMAL)
+            .list()
+            .stream()
+            .map(TestTimedTaskDO::getId)
+            .toList();
+        deleteByIds(taskIds);
     }
 
     @Override
@@ -167,7 +188,7 @@ public class TestTimedTaskServiceImpl extends BaseServiceImpl<TestTimedTaskMappe
         }
         req.setExecuteEmail(req.getNotificationEmails().get(0));
         Long id = super.create(req);
-        ensureScheduleJob(baseMapper.selectById(id));
+        syncAfterCommit(List.of(id));
         return id;
     }
 
@@ -185,7 +206,8 @@ public class TestTimedTaskServiceImpl extends BaseServiceImpl<TestTimedTaskMappe
         req.setExecuteName(CharSequenceUtil.blankToDefault(existing.getExecuteName(), UserContextHolder.getNickname()));
         req.setExecuteEmail(req.getNotificationEmails().get(0));
         super.update(req, id);
-        ensureScheduleJob(baseMapper.selectById(id));
+        markPending(id, nextSyncVersion(existing));
+        syncAfterCommit(List.of(id));
     }
 
     @Override
@@ -198,7 +220,26 @@ public class TestTimedTaskServiceImpl extends BaseServiceImpl<TestTimedTaskMappe
             validateExecutable(task);
         }
         baseMapper.lambdaUpdate().eq(TestTimedTaskDO::getId, id).set(TestTimedTaskDO::getStatus, status).update();
-        ensureScheduleJob(baseMapper.selectById(id));
+        markPending(id, nextSyncVersion(task));
+        syncAfterCommit(List.of(id));
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void retrySync(Long id) {
+        TestTimedTaskDO task = baseMapper.selectByIdForUpdate(id);
+        if (task == null) {
+            throw new BusinessException("测试定时任务不存在");
+        }
+        String syncStatus = "DELETING".equalsIgnoreCase(task.getStatus()) ? "DELETING" : "PENDING";
+        baseMapper.update(null, Wrappers.<TestTimedTaskDO>update()
+            .eq("id", id)
+            .set("schedule_sync_status", syncStatus)
+            .set("schedule_sync_error", null)
+            .set("schedule_sync_version", nextSyncVersion(task))
+            .set("schedule_sync_retry_count", 0)
+            .set("schedule_sync_next_retry_time", LocalDateTime.now()));
+        syncAfterCommit(List.of(id));
     }
 
     @Override
@@ -206,8 +247,9 @@ public class TestTimedTaskServiceImpl extends BaseServiceImpl<TestTimedTaskMappe
         TestTimedTaskDO task = baseMapper.selectById(id);
         CheckUtils.throwIfNull(task, "测试定时任务不存在");
         validateExecutable(task);
-        ensureScheduleJob(task);
-        Long jobId = resolveScheduleJobId(baseMapper.selectById(id));
+        scheduleSyncService.syncNow(id);
+        task = baseMapper.selectById(id);
+        Long jobId = task == null ? null : task.getScheduleJobId();
         CheckUtils.throwIfNull(jobId, "调度任务不存在");
         JobTriggerReq req = new JobTriggerReq();
         req.setJobId(jobId);
@@ -219,7 +261,11 @@ public class TestTimedTaskServiceImpl extends BaseServiceImpl<TestTimedTaskMappe
     public PageResp<TestTimedTaskLogResp> pageLogs(Long id, Integer page, Integer size) {
         TestTimedTaskDO task = baseMapper.selectById(id);
         CheckUtils.throwIfNull(task, "测试定时任务不存在");
-        Long jobId = resolveScheduleJobId(task);
+        if (task.getScheduleJobId() == null) {
+            scheduleSyncService.syncNow(id);
+            task = baseMapper.selectById(id);
+        }
+        Long jobId = task == null ? null : task.getScheduleJobId();
         CheckUtils.throwIfNull(jobId, "调度任务不存在");
         JobLogQuery query = new JobLogQuery();
         query.setJobId(jobId);
@@ -307,90 +353,6 @@ public class TestTimedTaskServiceImpl extends BaseServiceImpl<TestTimedTaskMappe
         CheckUtils.throwIf(!StatusTypeEnum.ENABLE.equals(automationEnvironment.getStatus()), "自动化环境未启用");
     }
 
-    private void ensureScheduleJob(TestTimedTaskDO task) {
-        if (task == null) {
-            return;
-        }
-        JobReq req = buildJobReq(task);
-        Long jobId = resolveScheduleJobId(task);
-        boolean success = jobId == null ? jobService.create(req) : jobService.update(req, jobId);
-        CheckUtils.throwIf(!success, "同步调度任务失败");
-        syncScheduleMetadata(task);
-    }
-
-    private void syncScheduleMetadata(TestTimedTaskDO task) {
-        JobResp job = loadScheduleJob(task);
-        if (job == null) {
-            return;
-        }
-        baseMapper.lambdaUpdate()
-            .eq(TestTimedTaskDO::getId, task.getId())
-            .set(TestTimedTaskDO::getScheduleJobId, job.getId())
-            .set(TestTimedTaskDO::getNextExecuteTime, job.getNextTriggerAt())
-            .update();
-    }
-
-    private Long resolveScheduleJobId(TestTimedTaskDO task) {
-        if (task == null) {
-            return null;
-        }
-        if (task.getScheduleJobId() != null) {
-            return task.getScheduleJobId();
-        }
-        JobResp job = loadScheduleJob(task);
-        return job == null ? null : job.getId();
-    }
-
-    private JobResp loadScheduleJob(TestTimedTaskDO task) {
-        JobResp current = findJob(task, internalJobName(task));
-        if (current != null) {
-            return current;
-        }
-        // 兼容升级前使用业务任务名称创建的调度任务。
-        return findJob(task, task.getName());
-    }
-
-    private JobResp findJob(TestTimedTaskDO task, String jobName) {
-        JobQuery query = new JobQuery();
-        query.setGroupName(JOB_GROUP_NAME);
-        query.setJobName(jobName);
-        query.setPage(1);
-        query.setSize(20);
-        PageResp<JobResp> result = jobService.page(query);
-        if (result.getList() == null) {
-            return null;
-        }
-        return result.getList()
-            .stream()
-            .filter(item -> Objects.equals(item.getId(), task.getScheduleJobId()) || Objects.equals(item
-                .getJobName(), jobName))
-            .findFirst()
-            .orElse(null);
-    }
-
-    private JobReq buildJobReq(TestTimedTaskDO task) {
-        JobReq req = new JobReq();
-        req.setGroupName(JOB_GROUP_NAME);
-        req.setJobName(internalJobName(task));
-        req.setDescription(task.getDescription());
-        req.setTriggerType(JobTriggerTypeEnum.CRON);
-        req.setTriggerInterval(task.getCronExpression());
-        req.setExecutorType(1);
-        req.setTaskType(JobTaskTypeEnum.CLUSTER);
-        req.setExecutorInfo(TestPlanJobExecutor.EXECUTOR_NAME);
-        req.setArgsStr(buildPayload(task, "SCHEDULE"));
-        req.setArgsType(1);
-        req.setRouteKey(JobRouteStrategyEnum.POLLING);
-        // 所有触发都进入业务执行器，才能为被跳过的触发建立可审计记录。
-        req.setBlockStrategy(JobBlockStrategyEnum.PARALLEL);
-        req.setExecutorTimeout(3600);
-        req.setMaxRetryTimes(0);
-        req.setRetryInterval(0);
-        req.setParallelNum(1);
-        req.setJobStatus(toJobStatus(task.getStatus()));
-        return req;
-    }
-
     private String buildPayload(TestTimedTaskDO task, String triggerMode) {
         TestTimedTaskExecutePayload payload = new TestTimedTaskExecutePayload();
         payload.setTaskId(task.getId());
@@ -407,12 +369,35 @@ public class TestTimedTaskServiceImpl extends BaseServiceImpl<TestTimedTaskMappe
         }
     }
 
-    private String internalJobName(TestTimedTaskDO task) {
-        return "test-plan-task-" + task.getId();
+    private void markPending(Long id, long version) {
+        baseMapper.update(null, Wrappers.<TestTimedTaskDO>update()
+            .eq("id", id)
+            .set("schedule_sync_status", "PENDING")
+            .set("schedule_sync_error", null)
+            .set("schedule_sync_version", version)
+            .set("schedule_sync_retry_count", 0)
+            .set("schedule_sync_next_retry_time", LocalDateTime.now()));
     }
 
-    private JobStatusEnum toJobStatus(String status) {
-        return "ENABLED".equalsIgnoreCase(status) ? JobStatusEnum.ENABLED : JobStatusEnum.DISABLED;
+    private long nextSyncVersion(TestTimedTaskDO task) {
+        return (task.getScheduleSyncVersion() == null ? 0L : task.getScheduleSyncVersion()) + 1L;
+    }
+
+    private void syncAfterCommit(List<Long> taskIds) {
+        if (taskIds == null || taskIds.isEmpty()) {
+            return;
+        }
+        Runnable syncAction = () -> taskIds.forEach(scheduleSyncService::submit);
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            syncAction.run();
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                syncAction.run();
+            }
+        });
     }
 
     private TestPlanDO checkPlan(Long planId) {
@@ -443,25 +428,38 @@ public class TestTimedTaskServiceImpl extends BaseServiceImpl<TestTimedTaskMappe
         if (tasks == null || tasks.isEmpty()) {
             return;
         }
-        Map<Long, TestPlanDO> planMap = testPlanMapper.selectBatchIds(tasks.stream()
+        List<Long> planIds = tasks.stream()
             .map(TestTimedTaskResp::getTestPlanId)
             .filter(Objects::nonNull)
             .distinct()
-            .toList()).stream().collect(Collectors.toMap(TestPlanDO::getId, Function.identity()));
-        Map<Long, ProjectEnvironmentConfigDO> projectEnvironmentMap = projectEnvironmentMapper.selectBatchIds(tasks
-            .stream()
+            .toList();
+        Map<Long, TestPlanDO> planMap = planIds.isEmpty()
+            ? Collections.emptyMap()
+            : testPlanMapper.selectBatchIds(planIds)
+                .stream()
+                .collect(Collectors.toMap(TestPlanDO::getId, Function.identity()));
+
+        List<Long> projectEnvironmentIds = tasks.stream()
             .map(TestTimedTaskResp::getProjectEnvironmentId)
             .filter(Objects::nonNull)
             .distinct()
-            .toList()).stream().collect(Collectors.toMap(ProjectEnvironmentConfigDO::getId, Function.identity()));
-        Map<Long, AutomationEnvironmentConfigDO> automationEnvironmentMap = automationEnvironmentMapper
-            .selectBatchIds(tasks.stream()
-                .map(TestTimedTaskResp::getAutomationEnvironmentId)
-                .filter(Objects::nonNull)
-                .distinct()
-                .toList())
-            .stream()
-            .collect(Collectors.toMap(AutomationEnvironmentConfigDO::getId, Function.identity()));
+            .toList();
+        Map<Long, ProjectEnvironmentConfigDO> projectEnvironmentMap = projectEnvironmentIds.isEmpty()
+            ? Collections.emptyMap()
+            : projectEnvironmentMapper.selectBatchIds(projectEnvironmentIds)
+                .stream()
+                .collect(Collectors.toMap(ProjectEnvironmentConfigDO::getId, Function.identity()));
+
+        List<Long> automationEnvironmentIds = tasks.stream()
+            .map(TestTimedTaskResp::getAutomationEnvironmentId)
+            .filter(Objects::nonNull)
+            .distinct()
+            .toList();
+        Map<Long, AutomationEnvironmentConfigDO> automationEnvironmentMap = automationEnvironmentIds.isEmpty()
+            ? Collections.emptyMap()
+            : automationEnvironmentMapper.selectBatchIds(automationEnvironmentIds)
+                .stream()
+                .collect(Collectors.toMap(AutomationEnvironmentConfigDO::getId, Function.identity()));
         Map<Long, TestTimedTaskRunSummaryResp> lastRuns = runService.latestByTaskIds(tasks.stream()
             .map(TestTimedTaskResp::getId)
             .toList());

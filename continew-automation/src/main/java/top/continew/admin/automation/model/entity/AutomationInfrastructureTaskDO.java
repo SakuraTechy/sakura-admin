@@ -41,9 +41,15 @@ public class AutomationInfrastructureTaskDO extends BaseDO {
     private String stepId;
     private String actionType;
     private String executionId;
+    /** 创建任务的登录主体；查询、取消和附件访问必须校验该归属。 */
+    private Long ownerUserId;
     private Long projectEnvironmentId;
     private Long sceneId;
     private Long definitionVersion;
+    /** 不可变定义快照 ID，执行时禁止回读场景当前 caseList。 */
+    private Long definitionRevisionId;
+    /** 服务端生成的步骤执行实例 ID。 */
+    private Long stepExecutionId;
     private String targetKind;
     /** 当前步骤引用的服务器或数据库配置 ID。 */
     private Long targetConfigId;
@@ -51,6 +57,14 @@ public class AutomationInfrastructureTaskDO extends BaseDO {
     private String targetBindingKey;
     private Integer attempt;
     private String idempotencyKey;
+    /** 规范化任务输入摘要；相同幂等键不得对应不同执行事实。 */
+    private String payloadDigest;
+    /** 操作目录风险等级及不可篡改审批摘要。 */
+    private String riskLevel;
+    private String approvalDigest;
+    private LocalDateTime approvalAt;
+    private String commandTemplateId;
+    private Integer readOnlyTransaction;
     private String executorNode;
     private String status;
     private String errorCode;
@@ -58,7 +72,14 @@ public class AutomationInfrastructureTaskDO extends BaseDO {
     private Integer exitCode;
     private Long affectedRows;
     private String resultSummary;
+    /** 受限结果预览 JSON；完整输出和大结果通过附件，不进入任务表。 */
+    private String resultJson;
     private LocalDateTime startedAt;
     private LocalDateTime finishedAt;
     private LocalDateTime cancelRequestedAt;
+    /** UNKNOWN_OUTCOME 的人工核验结论；原始核验说明不入库。 */
+    private String disposition;
+    private Long dispositionUserId;
+    private LocalDateTime dispositionAt;
+    private String dispositionNoteDigest;
 }

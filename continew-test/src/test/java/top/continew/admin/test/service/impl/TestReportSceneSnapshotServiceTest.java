@@ -18,6 +18,9 @@ package top.continew.admin.test.service.impl;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
@@ -34,6 +37,8 @@ import top.continew.admin.common.enums.StatusTypeEnum;
 import top.continew.admin.project.mapper.ProjectVersionConfigMapper;
 import top.continew.admin.project.model.entity.ProjectVersionConfigDO;
 import top.continew.admin.test.mapper.TestReportSceneMapper;
+import top.continew.admin.test.model.entity.TestReportDO;
+import top.continew.admin.test.model.entity.TestReportSceneDO;
 import top.continew.starter.core.exception.BusinessException;
 
 @ExtendWith(MockitoExtension.class)
@@ -90,6 +95,21 @@ class TestReportSceneSnapshotServiceTest {
         List<AutomationUiSceneDO> scenes = service.loadAndValidate(1L, 0L, List.of(101L));
 
         assertThat(service.resolveVersionId(1L, 0L, scenes)).isEqualTo(11L);
+    }
+
+    @Test
+    void shouldRejectSnapshotOverwrite() {
+        TestReportDO report = new TestReportDO();
+        report.setId(201L);
+        when(reportSceneMapper.selectCount(any())).thenReturn(1L);
+
+        assertThatThrownBy(() -> service.saveSnapshot(report, List.of(scene(101L, 1L, 11L))))
+            .isInstanceOf(BusinessException.class)
+            .hasMessageContaining("不允许覆盖");
+
+        verify(reportSceneMapper, never()).insert(any(TestReportSceneDO.class));
+        verify(jdbcTemplate, never())
+            .query(any(String.class), any(org.springframework.jdbc.core.RowCallbackHandler.class), any(Object[].class));
     }
 
     private AutomationUiSceneDO scene(Long id, Long projectId, Long versionId) {

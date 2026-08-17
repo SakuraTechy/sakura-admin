@@ -16,32 +16,43 @@
 
 package top.continew.admin.test.service.impl;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 import top.continew.admin.automation.mapper.AutomationEnvironmentConfigMapper;
 import top.continew.admin.project.mapper.ProjectEnvironmentConfigMapper;
 import top.continew.admin.project.model.entity.ProjectEnvironmentConfigDO;
+import top.continew.admin.schedule.enums.JobExecuteReasonEnum;
+import top.continew.admin.schedule.enums.JobExecuteStatusEnum;
+import top.continew.admin.schedule.model.query.JobLogQuery;
+import top.continew.admin.schedule.model.resp.JobLogResp;
 import top.continew.admin.schedule.service.JobLogService;
 import top.continew.admin.schedule.service.JobService;
 import top.continew.admin.test.mapper.TestPlanMapper;
 import top.continew.admin.test.mapper.TestTimedTaskMapper;
 import top.continew.admin.test.model.entity.TestPlanDO;
 import top.continew.admin.test.model.entity.TestTimedTaskDO;
+import top.continew.admin.test.model.query.TestTimedTaskLogQuery;
+import top.continew.admin.test.model.resp.TestTimedTaskLogResp;
 import top.continew.admin.test.model.resp.TestTimedTaskResp;
 import top.continew.admin.test.service.TestTimedTaskRunService;
 import top.continew.admin.test.service.TestTimedTaskScheduleSyncService;
+import top.continew.starter.extension.crud.model.query.PageQuery;
+import top.continew.starter.extension.crud.model.resp.PageResp;
 
 import java.util.Map;
 
@@ -111,5 +122,49 @@ class TestTimedTaskServiceImplTest {
         ReflectionTestUtils.invokeMethod(service, "enrich", List.of(task));
 
         verify(automationEnvironmentMapper, never()).selectBatchIds(any());
+    }
+
+    @Test
+    void shouldFilterAndEnrichScheduleLogs() {
+        TestTimedTaskDO task = new TestTimedTaskDO();
+        task.setId(1L);
+        task.setScheduleJobId(99L);
+        when(timedTaskMapper.selectById(1L)).thenReturn(task);
+
+        JobLogResp sourceLog = new JobLogResp();
+        sourceLog.setId(700L);
+        sourceLog.setJobId(99L);
+        sourceLog.setGroupName("sakura-admin");
+        sourceLog.setJobName("测试计划调度");
+        sourceLog.setTaskBatchStatus(JobExecuteStatusEnum.FAILED);
+        sourceLog.setOperationReason(JobExecuteReasonEnum.TIME_OUT);
+        sourceLog.setExecutorType(1);
+        sourceLog.setExecutorInfo("ExecuteTestPlanJob");
+        PageResp<JobLogResp> sourcePage = new PageResp<>();
+        sourcePage.setList(List.of(sourceLog));
+        sourcePage.setTotal(1L);
+        when(jobLogService.page(any())).thenReturn(sourcePage);
+
+        LocalDateTime start = LocalDateTime.of(2026, 8, 10, 8, 0);
+        LocalDateTime end = LocalDateTime.of(2026, 8, 10, 18, 0);
+        TestTimedTaskLogQuery query = new TestTimedTaskLogQuery();
+        query.setTaskBatchStatus(JobExecuteStatusEnum.FAILED.getValue());
+        query.setStartTime(start);
+        query.setEndTime(end);
+
+        PageResp<TestTimedTaskLogResp> result = service.pageLogs(1L, query, new PageQuery());
+
+        ArgumentCaptor<JobLogQuery> captor = ArgumentCaptor.forClass(JobLogQuery.class);
+        verify(jobLogService).page(captor.capture());
+        assertThat(captor.getValue().getJobId()).isEqualTo(99L);
+        assertThat(captor.getValue().getTaskBatchStatus()).isEqualTo(JobExecuteStatusEnum.FAILED.getValue());
+        assertThat(captor.getValue().getDatetimeRange()).containsExactly(start, end);
+        assertThat(result.getList()).singleElement().satisfies(log -> {
+            assertThat(log.getId()).isEqualTo(700L);
+            assertThat(log.getGroupName()).isEqualTo("sakura-admin");
+            assertThat(log.getTaskBatchStatus()).isEqualTo(JobExecuteStatusEnum.FAILED.getValue());
+            assertThat(log.getOperationReason()).isEqualTo(JobExecuteReasonEnum.TIME_OUT.getValue());
+            assertThat(log.getExecutorType()).isEqualTo(1);
+        });
     }
 }

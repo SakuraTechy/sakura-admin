@@ -242,3 +242,46 @@ CREATE TABLE IF NOT EXISTS `test_metric_aggregation_state` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='测试度量汇总水位与对账状态';
 
 -- rollback DROP TABLE `test_metric_aggregation_state`;
+
+-- changeset codex:test-metric-v2-execution-metric-time-20260811
+-- preconditions onFail:MARK_RAN onError:HALT
+-- precondition-sql-check expectedResult:0 SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'automation_ui_execution' AND column_name = 'metric_time'
+-- comment 统一执行归属时间并为在线度量范围查询提供可索引列。
+ALTER TABLE `automation_ui_execution`
+    ADD COLUMN `metric_time` datetime(3)
+        GENERATED ALWAYS AS (COALESCE(`finished_at`, `started_at`, `create_time`)) STORED
+        COMMENT '度量归属时间' AFTER `finished_at`;
+
+-- rollback ALTER TABLE `automation_ui_execution` DROP COLUMN `metric_time`;
+
+-- changeset codex:test-metric-v2-execution-project-time-index-20260811
+-- preconditions onFail:MARK_RAN onError:HALT
+-- precondition-sql-check expectedResult:0 SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = 'automation_ui_execution' AND index_name = 'idx_ui_execution_metric_project_time'
+ALTER TABLE `automation_ui_execution`
+    ADD INDEX `idx_ui_execution_metric_project_time` (`project_id`, `metric_time`);
+
+-- rollback ALTER TABLE `automation_ui_execution` DROP INDEX `idx_ui_execution_metric_project_time`;
+
+-- changeset codex:test-metric-v2-execution-version-time-index-20260811
+-- preconditions onFail:MARK_RAN onError:HALT
+-- precondition-sql-check expectedResult:0 SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = 'automation_ui_execution' AND index_name = 'idx_ui_execution_metric_version_time'
+ALTER TABLE `automation_ui_execution`
+    ADD INDEX `idx_ui_execution_metric_version_time` (`project_id`, `version_id`, `metric_time`);
+
+-- rollback ALTER TABLE `automation_ui_execution` DROP INDEX `idx_ui_execution_metric_version_time`;
+
+-- changeset codex:test-metric-v2-daily-other-count-20260811
+-- preconditions onFail:MARK_RAN onError:HALT
+-- precondition-sql-check expectedResult:0 SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'test_metric_daily' AND column_name = 'scene_other_count'
+ALTER TABLE `test_metric_daily`
+    ADD COLUMN `scene_other_count` bigint unsigned NOT NULL DEFAULT 0 AFTER `scene_infra_fail_count`;
+
+-- rollback ALTER TABLE `test_metric_daily` DROP COLUMN `scene_other_count`;
+
+-- changeset codex:test-metric-v2-scene-daily-other-count-20260811
+-- preconditions onFail:MARK_RAN onError:HALT
+-- precondition-sql-check expectedResult:0 SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'test_metric_scene_daily' AND column_name = 'other_count'
+ALTER TABLE `test_metric_scene_daily`
+    ADD COLUMN `other_count` int unsigned NOT NULL DEFAULT 0 AFTER `infra_fail_count`;
+
+-- rollback ALTER TABLE `test_metric_scene_daily` DROP COLUMN `other_count`;

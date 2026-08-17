@@ -41,6 +41,8 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class TestMetricServiceImpl implements TestMetricService {
 
+    static final long BASELINE_SCENES_PER_PERSON_DAY = 70L;
+
     private final TestMetricQueryService testMetricQueryService;
     private final JdbcTemplate jdbcTemplate;
 
@@ -156,12 +158,15 @@ public class TestMetricServiceImpl implements TestMetricService {
         metric.setMonthRunCount(month.getRunCount());
         metric.setYearRunCount(year.getRunCount());
         metric.setTotalRunSceneCount(summary.getSceneExecutionCount());
-        metric.setDiscoveredDefectCount(0L);
-        metric.setSavedManHours(zeroRate());
+        // Keep the legacy response useful: these values use the same v2
+        // execution-fact definitions as the new page, while retaining the
+        // old field names for existing consumers.
+        metric.setDiscoveredDefectCount(summary.getFailCount());
+        metric.setSavedManHours(standardLaborDays(summary.getSceneExecutionCount()));
         metric.setAutomationCoverageRate(summary.getExecutionCoverage().getRate());
-        metric.setAutomationExecuteRate(summary.getExecutionCoverage().getRate());
+        metric.setAutomationExecuteRate(executionRate(summary.getSceneExecutionCount(), summary.getDurationTotalMs()));
         metric.setAutomationPassRate(summary.getPassRate().getRate());
-        metric.setDefectRate(zeroRate());
+        metric.setDefectRate(percent(summary.getFailCount(), summary.getSceneExecutionCount()));
         return metric;
     }
 
@@ -266,5 +271,31 @@ public class TestMetricServiceImpl implements TestMetricService {
 
     private BigDecimal zeroRate() {
         return BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+    }
+
+    static BigDecimal standardLaborDays(long sceneExecutionCount) {
+        if (sceneExecutionCount <= 0) {
+            return BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+        }
+        return BigDecimal.valueOf(sceneExecutionCount)
+            .divide(BigDecimal.valueOf(BASELINE_SCENES_PER_PERSON_DAY), 2, RoundingMode.HALF_UP);
+    }
+
+    static BigDecimal executionRate(long sceneExecutionCount, long durationTotalMs) {
+        if (sceneExecutionCount <= 0 || durationTotalMs <= 0) {
+            return BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+        }
+        return BigDecimal.valueOf(sceneExecutionCount)
+            .multiply(BigDecimal.valueOf(3_600_000L))
+            .divide(BigDecimal.valueOf(durationTotalMs), 2, RoundingMode.HALF_UP);
+    }
+
+    static BigDecimal percent(long numerator, long denominator) {
+        if (numerator <= 0 || denominator <= 0) {
+            return BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+        }
+        return BigDecimal.valueOf(numerator)
+            .multiply(BigDecimal.valueOf(100L))
+            .divide(BigDecimal.valueOf(denominator), 2, RoundingMode.HALF_UP);
     }
 }

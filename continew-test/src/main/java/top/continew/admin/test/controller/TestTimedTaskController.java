@@ -27,6 +27,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import top.continew.admin.common.controller.BaseController;
 import top.continew.admin.test.model.query.TestTimedTaskQuery;
+import top.continew.admin.test.model.query.TestTimedTaskLogQuery;
 import top.continew.admin.test.model.query.TestTimedTaskRunQuery;
 import top.continew.admin.test.model.req.TestTimedTaskReq;
 import top.continew.admin.test.model.resp.TestTimedTaskCapabilityResp;
@@ -149,8 +150,8 @@ public class TestTimedTaskController extends BaseController<TestTimedTaskService
     @SaCheckPermission("test:timedTask:list")
     @GetMapping("/{id}/logs")
     public PageResp<TestTimedTaskLogResp> pageLogs(@PathVariable Long id,
-                                                   @RequestParam(defaultValue = "1") Integer page,
-                                                   @RequestParam(defaultValue = "10") Integer size) {
-        return baseService.pageLogs(id, page, size);
+                                                   @Validated TestTimedTaskLogQuery query,
+                                                   @Validated PageQuery pageQuery) {
+        return baseService.pageLogs(id, query, pageQuery);
     }
 }

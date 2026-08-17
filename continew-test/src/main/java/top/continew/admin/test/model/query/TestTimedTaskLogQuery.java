@@ -24,15 +24,12 @@ import java.io.Serializable;
 import java.time.LocalDateTime;
 
 @Data
-public class TestTimedTaskRunQuery implements Serializable {
+public class TestTimedTaskLogQuery implements Serializable {
 
     @Serial
     private static final long serialVersionUID = 1L;
 
-    private Long runId;
-    private Long testReportId;
-    private String status;
-    private String triggerMode;
+    private Integer taskBatchStatus;
 
     @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime startTime;

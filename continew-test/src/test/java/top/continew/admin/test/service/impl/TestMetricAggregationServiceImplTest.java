@@ -93,4 +93,23 @@ class TestMetricAggregationServiceImplTest {
             .count();
         assertThat(dimensionBackfills).isEqualTo(1);
     }
+
+    @Test
+    void shouldReconcileSourceAggregateAndAllTerminalCategories() {
+        TestMetricAggregationServiceImpl service = new TestMetricAggregationServiceImpl(jdbcTemplate, transactionTemplate);
+
+        service.aggregateDay(LocalDate.of(2026, 8, 1));
+
+        String stateSql = mockingDetails(jdbcTemplate).getInvocations()
+            .stream()
+            .filter(invocation -> invocation.getMethod().getName().equals("update"))
+            .map(invocation -> String.valueOf((Object)invocation.getArgument(0)))
+            .filter(sql -> sql.startsWith("INSERT INTO test_metric_aggregation_state"))
+            .findFirst()
+            .orElseThrow();
+        assertThat(stateSql).contains("src.source_execution_count = COALESCE(agg.aggregated_execution_count, 0)")
+            .contains("agg.aggregated_execution_count, 0) = COALESCE(agg.category_execution_count, 0)")
+            .contains("scene_pass_count + scene_fail_count + scene_skip_count + scene_cancel_count + scene_infra_fail_count + scene_other_count")
+            .contains("source=", "aggregate=", "categories=");
+    }
 }

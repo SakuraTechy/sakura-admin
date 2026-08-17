@@ -390,11 +390,15 @@ public class AutomationUiExecutionRecordServiceImpl implements AutomationUiExecu
                                  Map<String, Object> record,
                                  Long definitionRevisionId,
                                  boolean operationDiagnosticEnabled) {
+        String runKey = resolveRunKey(id, record);
+        Long moduleId = scene.getModuleId() == null ? 0L : scene.getModuleId();
+        String sceneLevel = firstNonBlank(scene.getLevel(), "UNSPECIFIED");
+        String dimensionQuality = scene.getProjectId() != null && scene.getVersionId() != null ? "EXACT" : "MISSING";
         jdbcTemplate
-            .update("INSERT INTO automation_ui_execution (id, execution_key, scene_id, scene_key," + " definition_revision_id, execution_capability_digest, execution_capability_expires_at, batch_id, record_type, trigger_type, execution_engine, status, result, operation_diagnostic_v1," + " create_user, create_time, update_user, update_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?," + " CURRENT_TIMESTAMP(3), ?, CURRENT_TIMESTAMP(3))", id, executionKey, scene
-                .getId(), firstNonBlank(scene.getSceneId(), String.valueOf(scene
-                    .getId())), definitionRevisionId, capabilityDigest(record), capabilityExpiresAt(record), nullableText(record
-                        .get("batchId")), firstNonBlank(value(record
+            .update("INSERT INTO automation_ui_execution (id, execution_key, scene_id, scene_key," + " project_id, version_id, module_id, scene_level, definition_revision_id, execution_capability_digest, execution_capability_expires_at, batch_id, run_key, dimension_quality, record_type, trigger_type, execution_engine, status, result, operation_diagnostic_v1," + " create_user, create_time, update_user, update_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?," + " CURRENT_TIMESTAMP(3), ?, CURRENT_TIMESTAMP(3))", id, executionKey, scene
+                .getId(), firstNonBlank(scene.getSceneId(), String.valueOf(scene.getId())), scene.getProjectId(), scene
+                    .getVersionId(), moduleId, sceneLevel, definitionRevisionId, capabilityDigest(record), capabilityExpiresAt(record), nullableText(record
+                        .get("batchId")), runKey, dimensionQuality, firstNonBlank(value(record
                             .get("recordType")), "execution"), resolveTriggerType(record), resolveEngine(record), firstNonBlank(value(record
                                 .get("executeStatus")), "queued"), nullableText(record
                                     .get("executeResult")), operationDiagnosticEnabled, scene.getCreateUser(), scene
@@ -411,41 +415,47 @@ public class AutomationUiExecutionRecordServiceImpl implements AutomationUiExecu
         summary.remove("executionCapability");
         String summaryJson = boundedSummary(summary, MAX_EXECUTION_SUMMARY_BYTES);
         String executionConfig = boundedSummary(asMap(record.get("executionConfig")), MAX_EXECUTION_SUMMARY_BYTES);
+        String runKey = resolveRunKey(executionId, record);
+        Long moduleId = scene.getModuleId() == null ? 0L : scene.getModuleId();
+        String sceneLevel = firstNonBlank(scene.getLevel(), "UNSPECIFIED");
         jdbcTemplate
-            .update("UPDATE automation_ui_execution SET definition_revision_id = ?, execution_capability_digest = COALESCE(?, execution_capability_digest), execution_capability_expires_at = COALESCE(?, execution_capability_expires_at), batch_id = ?," + " test_plan_id = ?, test_report_id = ?, record_type = ?, trigger_type = ?, execution_engine = ?," + " status = ?, result = ?, execute_user_id = ?, execute_username = ?, execute_name = ?, execute_email = ?," + " project_environment_id = ?, project_environment_name = ?, execution_config = CAST(? AS JSON)," + " build_number = ?, console_url = ?, test_report_url = ?, case_total = ?, case_pass = ?, case_fail = ?," + " case_skip = ?, case_cancelled = ?, step_total = ?, step_pass = ?, step_fail = ?, step_skip = ?," + " executor_node = ?, heartbeat_at = ?, lease_until = ?, cancel_requested = ?, started_at = ?," + " finished_at = ?, duration_ms = ?, error_code = ?, error_message = ?, summary_json = CAST(? AS JSON)," + " version = version + 1, update_user = ?, update_time = CURRENT_TIMESTAMP(3) WHERE id = ?", definitionRevisionId, capabilityDigest(record), capabilityExpiresAt(record), nullableText(record
-                .get("batchId")), nullableLong(record.get("testPlanId")), nullableLong(record
-                    .get("testReportId")), firstNonBlank(value(record
-                        .get("recordType")), "execution"), resolveTriggerType(record), resolveEngine(record), firstNonBlank(value(record
-                            .get("executeStatus")), "queued"), nullableText(record
-                                .get("executeResult")), nullableLong(record.get("executeUserId")), nullableText(record
-                                    .get("executeUsername")), nullableText(record
-                                        .get("executeName")), nullableText(record
-                                            .get("executeEmail")), nullableLong(record
-                                                .get("projectEnvironmentId")), nullableText(record
-                                                    .get("projectEnvironmentName")), executionConfig, nullableInteger(record
-                                                        .get("buildNumber")), nullableText(record
-                                                            .get("consoleUrl")), nullableText(record
-                                                                .get("testReportUrl")), number(record
-                                                                    .get("caseTotal")), number(record
-                                                                        .get("casePass")), number(record
-                                                                            .get("caseFail")), number(record
-                                                                                .get("caseSkip")), number(record
-                                                                                    .get("caseCancelled")), number(record
-                                                                                        .get("stepTotal")), number(record
-                                                                                            .get("stepPass")), number(record
-                                                                                                .get("stepFail")), number(record
-                                                                                                    .get("stepSkip")), nullableText(record
-                                                                                                        .get("executorNode")), timestamp(record
-                                                                                                            .get("heartbeatAt")), timestamp(record
-                                                                                                                .get("leaseUntil")), truthy(record
-                                                                                                                    .get("cancelRequested")), timestamp(record
-                                                                                                                        .get("startedAt")), timestamp(record
-                                                                                                                            .get("finishedAt")), nullableLong(record
-                                                                                                                                .get("duration")), nullableText(record
-                                                                                                                                    .get("errorCode")), abbreviate(firstNonBlank(value(record
-                                                                                                                                        .get("error")), value(record
-                                                                                                                                            .get("playwrightError"))), MAX_ERROR_LENGTH), summaryJson, scene
-                                                                                                                                                .getUpdateUser(), executionId);
+            .update("UPDATE automation_ui_execution SET project_id = COALESCE(project_id, ?), version_id = COALESCE(version_id, ?)," + " module_id = COALESCE(module_id, ?), scene_level = COALESCE(NULLIF(scene_level, ''), ?)," + " run_key = COALESCE(NULLIF(run_key, ''), ?), dimension_quality = CASE" + " WHEN UPPER(COALESCE(dimension_quality, '')) = 'EXACT' THEN 'EXACT'" + " WHEN project_id IS NOT NULL AND version_id IS NOT NULL AND run_key IS NOT NULL AND run_key <> '' THEN 'INFERRED'" + " ELSE 'MISSING' END," + " definition_revision_id = ?, execution_capability_digest = COALESCE(?, execution_capability_digest), execution_capability_expires_at = COALESCE(?, execution_capability_expires_at), batch_id = ?," + " test_plan_id = ?, test_report_id = ?, record_type = ?, trigger_type = ?, execution_engine = ?," + " status = ?, result = ?, execute_user_id = ?, execute_username = ?, execute_name = ?, execute_email = ?," + " project_environment_id = ?, project_environment_name = ?, execution_config = CAST(? AS JSON)," + " build_number = ?, console_url = ?, test_report_url = ?, case_total = ?, case_pass = ?, case_fail = ?," + " case_skip = ?, case_cancelled = ?, step_total = ?, step_pass = ?, step_fail = ?, step_skip = ?," + " executor_node = ?, heartbeat_at = ?, lease_until = ?, cancel_requested = ?, started_at = ?," + " finished_at = ?, duration_ms = ?, error_code = ?, error_message = ?, summary_json = CAST(? AS JSON)," + " version = version + 1, update_user = ?, update_time = CURRENT_TIMESTAMP(3) WHERE id = ?", scene
+                .getProjectId(), scene
+                    .getVersionId(), moduleId, sceneLevel, runKey, definitionRevisionId, capabilityDigest(record), capabilityExpiresAt(record), nullableText(record
+                        .get("batchId")), nullableLong(record.get("testPlanId")), nullableLong(record
+                            .get("testReportId")), firstNonBlank(value(record
+                                .get("recordType")), "execution"), resolveTriggerType(record), resolveEngine(record), firstNonBlank(value(record
+                                    .get("executeStatus")), "queued"), nullableText(record
+                                        .get("executeResult")), nullableLong(record
+                                            .get("executeUserId")), nullableText(record
+                                                .get("executeUsername")), nullableText(record
+                                                    .get("executeName")), nullableText(record
+                                                        .get("executeEmail")), nullableLong(record
+                                                            .get("projectEnvironmentId")), nullableText(record
+                                                                .get("projectEnvironmentName")), executionConfig, nullableInteger(record
+                                                                    .get("buildNumber")), nullableText(record
+                                                                        .get("consoleUrl")), nullableText(record
+                                                                            .get("testReportUrl")), number(record
+                                                                                .get("caseTotal")), number(record
+                                                                                    .get("casePass")), number(record
+                                                                                        .get("caseFail")), number(record
+                                                                                            .get("caseSkip")), number(record
+                                                                                                .get("caseCancelled")), number(record
+                                                                                                    .get("stepTotal")), number(record
+                                                                                                        .get("stepPass")), number(record
+                                                                                                            .get("stepFail")), number(record
+                                                                                                                .get("stepSkip")), nullableText(record
+                                                                                                                    .get("executorNode")), timestamp(record
+                                                                                                                        .get("heartbeatAt")), timestamp(record
+                                                                                                                            .get("leaseUntil")), truthy(record
+                                                                                                                                .get("cancelRequested")), timestamp(record
+                                                                                                                                    .get("startedAt")), timestamp(record
+                                                                                                                                        .get("finishedAt")), nullableLong(record
+                                                                                                                                            .get("duration")), nullableText(record
+                                                                                                                                                .get("errorCode")), abbreviate(firstNonBlank(value(record
+                                                                                                                                                    .get("error")), value(record
+                                                                                                                                                        .get("playwrightError"))), MAX_ERROR_LENGTH), summaryJson, scene
+                                                                                                                                                            .getUpdateUser(), executionId);
     }
 
     private void persistCases(Long executionId,
@@ -913,7 +923,7 @@ public class AutomationUiExecutionRecordServiceImpl implements AutomationUiExecu
         }
         String batchId = value(record.get("batchId"));
         if (StringUtils.isNotBlank(batchId)) {
-            return abbreviate(resolveEngine(record).toUpperCase() + ":BATCH:" + batchId, 192);
+            return abbreviate(resolveEngine(record) + ":BATCH:" + batchId, 192);
         }
         return "EXECUTION:" + executionId;
     }

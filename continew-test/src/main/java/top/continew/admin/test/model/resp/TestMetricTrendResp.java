@@ -34,12 +34,16 @@ public class TestMetricTrendResp {
     public static class TrendPoint {
         private LocalDate date;
         private long runCount;
-        private long executedCount;
+        private long sceneExecutionCount;
+        private long executedSceneCount;
         private long passCount;
         private long failCount;
         private long skipCount;
         private long cancelCount;
         private long infraFailCount;
+        private long otherCount;
+        private long durationTotalMs;
+        private long durationSampleCount;
         private BigDecimal passRate;
     }
 }

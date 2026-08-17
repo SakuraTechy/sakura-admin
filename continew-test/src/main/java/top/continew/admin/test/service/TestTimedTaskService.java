@@ -17,6 +17,7 @@
 package top.continew.admin.test.service;
 
 import top.continew.admin.test.model.query.TestTimedTaskQuery;
+import top.continew.admin.test.model.query.TestTimedTaskLogQuery;
 import top.continew.admin.test.model.query.TestTimedTaskRunQuery;
 import top.continew.admin.test.model.req.TestTimedTaskReq;
 import top.continew.admin.test.model.resp.TestTimedTaskDetailResp;
@@ -48,7 +49,7 @@ public interface TestTimedTaskService extends BaseService<TestTimedTaskResp, Tes
 
     void trigger(Long id);
 
-    PageResp<TestTimedTaskLogResp> pageLogs(Long id, Integer page, Integer size);
+    PageResp<TestTimedTaskLogResp> pageLogs(Long id, TestTimedTaskLogQuery query, PageQuery pageQuery);
 
     PageResp<TestTimedTaskRunResp> pageRuns(Long id, TestTimedTaskRunQuery query, PageQuery pageQuery);
 }

@@ -27,7 +27,10 @@ import static org.mockito.Mockito.when;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.time.LocalDate;
+import java.util.List;
+import java.util.Set;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -37,6 +40,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowCallbackHandler;
 import top.continew.admin.common.enums.StatusTypeEnum;
+import top.continew.admin.common.context.UserContext;
+import top.continew.admin.common.context.UserContextHolder;
 import top.continew.admin.project.mapper.ProjectConfigMapper;
 import top.continew.admin.project.mapper.ProjectVersionConfigMapper;
 import top.continew.admin.project.model.entity.ProjectConfigDO;
@@ -61,6 +66,12 @@ class TestMetricQueryServiceImplTest {
     @BeforeEach
     void setUp() {
         service = new TestMetricQueryServiceImpl(jdbcTemplate, projectConfigMapper, projectVersionConfigMapper);
+        setUser(1L);
+    }
+
+    @AfterEach
+    void tearDown() {
+        UserContextHolder.clearContext();
     }
 
     @Test
@@ -109,10 +120,59 @@ class TestMetricQueryServiceImplTest {
             assertThat(point.getPassCount()).isZero();
             assertThat(point.getPassRate()).isEqualByComparingTo(new BigDecimal("0.00"));
         });
+        ArgumentCaptor<String> sql = ArgumentCaptor.forClass(String.class);
         ArgumentCaptor<Object[]> args = ArgumentCaptor.forClass(Object[].class);
-        verify(jdbcTemplate).query(anyString(), any(RowCallbackHandler.class), args.capture());
+        verify(jdbcTemplate).query(sql.capture(), any(RowCallbackHandler.class), args.capture());
+        assertThat(sql.getValue()).contains("e.metric_time >= ? AND e.metric_time < ?")
+            .contains("GROUP BY DATE(e.metric_time)");
         assertThat(args.getValue()[1]).isEqualTo(Timestamp.valueOf("2026-08-01 00:00:00"));
         assertThat(args.getValue()[2]).isEqualTo(Timestamp.valueOf("2026-08-03 00:00:00"));
+    }
+
+    @Test
+    void shouldKeepTerminalCategoriesMutuallyExclusiveInDocumentedPrecedence() {
+        String expression = TestMetricSqlExpressions.CATEGORY_EXPR;
+
+        assertThat(expression.indexOf(TestMetricSqlExpressions.CANCEL_EXPR)).isLessThan(expression
+            .indexOf(TestMetricSqlExpressions.INFRA_EXPR));
+        assertThat(expression.indexOf(TestMetricSqlExpressions.INFRA_EXPR)).isLessThan(expression
+            .indexOf(TestMetricSqlExpressions.PASS_EXPR));
+        assertThat(expression.indexOf(TestMetricSqlExpressions.PASS_EXPR)).isLessThan(expression
+            .indexOf(TestMetricSqlExpressions.FAIL_EXPR));
+        assertThat(expression.indexOf(TestMetricSqlExpressions.FAIL_EXPR)).isLessThan(expression
+            .indexOf(TestMetricSqlExpressions.SKIP_EXPR));
+        assertThat(TestMetricSqlExpressions.sumTerminal("total")).contains(TestMetricSqlExpressions.TERMINAL_EXPR);
+        for (String category : List.of("CANCELLED", "INFRA_FAILED", "PASSED", "FAILED", "SKIPPED", "OTHER")) {
+            assertThat(TestMetricSqlExpressions.sumCategory(category, category.toLowerCase()))
+                .contains(TestMetricSqlExpressions.CATEGORY_EXPR + " = '" + category + "'");
+        }
+    }
+
+    @Test
+    void shouldAllowListedProjectMemberAndRejectUnlistedUser() {
+        ProjectConfigDO project = project(1L);
+        project.setCreateUser(7L);
+        project.setMember(List.of("42"));
+        when(projectConfigMapper.selectById(1L)).thenReturn(project);
+        doNothing().when(jdbcTemplate).query(anyString(), any(RowCallbackHandler.class), any(Object[].class));
+
+        setUser(42L);
+        assertThat(service.getTrends(query(1L, LocalDate.now(), LocalDate.now())).getPoints()).hasSize(1);
+
+        setUser(43L);
+        assertThatThrownBy(() -> service.getTrends(query(1L, LocalDate.now(), LocalDate.now())))
+            .isInstanceOf(BusinessException.class)
+            .hasMessageContaining("无权访问");
+    }
+
+    @Test
+    void shouldRejectMetricQueryWithoutUserContext() {
+        UserContextHolder.clearContext();
+        when(projectConfigMapper.selectById(1L)).thenReturn(project(1L));
+
+        assertThatThrownBy(() -> service.getTrends(query(1L, LocalDate.now(), LocalDate.now())))
+            .isInstanceOf(BusinessException.class)
+            .hasMessageContaining("未获取到当前用户");
     }
 
     @Test
@@ -142,6 +202,7 @@ class TestMetricQueryServiceImplTest {
     private ProjectConfigDO project(Long id) {
         ProjectConfigDO project = new ProjectConfigDO();
         project.setId(id);
+        project.setCreateUser(1L);
         project.setDelFlag(StatusTypeEnum.NORMAL);
         return project;
     }
@@ -152,5 +213,12 @@ class TestMetricQueryServiceImplTest {
         version.setProjectId(projectId);
         version.setDelFlag(StatusTypeEnum.NORMAL);
         return version;
+    }
+
+    private void setUser(Long userId) {
+        UserContext context = new UserContext();
+        context.setId(userId);
+        context.setRoleCodes(Set.of());
+        UserContextHolder.setContext(context, false);
     }
 }

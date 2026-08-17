@@ -17,6 +17,7 @@
 package top.continew.admin.test.service.impl;
 
 import lombok.RequiredArgsConstructor;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -120,7 +121,11 @@ public class TestReportSceneSnapshotService {
         if (report == null || report.getId() == null) {
             throw new BusinessException("测试报告尚未创建，无法保存执行范围");
         }
-        testReportSceneMapper.lambdaUpdate().eq(TestReportSceneDO::getTestReportId, report.getId()).remove();
+        Long existingCount = testReportSceneMapper.selectCount(Wrappers.lambdaQuery(TestReportSceneDO.class)
+            .eq(TestReportSceneDO::getTestReportId, report.getId()));
+        if (existingCount != null && existingCount > 0) {
+            throw new BusinessException("测试报告执行范围快照已存在，不允许覆盖历史范围");
+        }
         Map<Long, Long> revisionIds = findLatestRevisionIds(scenes);
         int sort = 0;
         for (AutomationUiSceneDO scene : scenes) {

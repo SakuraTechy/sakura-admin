@@ -16,10 +16,19 @@
 
 package top.continew.admin.test.service.impl;
 
+import static top.continew.admin.test.service.impl.TestMetricSqlExpressions.CATEGORY_EXPR;
+import static top.continew.admin.test.service.impl.TestMetricSqlExpressions.ENGINE_EXPR;
+import static top.continew.admin.test.service.impl.TestMetricSqlExpressions.TERMINAL_EXPR;
+import static top.continew.admin.test.service.impl.TestMetricSqlExpressions.TIME_EXPR;
+import static top.continew.admin.test.service.impl.TestMetricSqlExpressions.TRIGGER_EXPR;
+import static top.continew.admin.test.service.impl.TestMetricSqlExpressions.sumCategory;
+import static top.continew.admin.test.service.impl.TestMetricSqlExpressions.sumTerminal;
+
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+import top.continew.admin.common.context.UserContextHolder;
 import top.continew.admin.common.enums.StatusTypeEnum;
 import top.continew.admin.project.mapper.ProjectConfigMapper;
 import top.continew.admin.project.mapper.ProjectVersionConfigMapper;
@@ -46,6 +55,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.regex.Pattern;
 
 /**
  * 基于规范化执行事实的测试度量查询。
@@ -56,15 +66,10 @@ public class TestMetricQueryServiceImpl implements TestMetricQueryService {
 
     private static final int DEFAULT_RANGE_DAYS = 30;
     private static final int MAX_RANGE_DAYS = 366;
-    private static final String TIME_EXPR = "COALESCE(e.finished_at, e.started_at, e.create_time)";
-    private static final String PASS_EXPR = "LOWER(COALESCE(e.result, '')) IN ('passed', '14', '全部通过')";
-    private static final String SKIP_EXPR = "LOWER(COALESCE(e.result, '')) IN ('skipped', '16', '跳过')";
-    private static final String CANCEL_EXPR = "(LOWER(COALESCE(e.result, '')) IN ('cancelled', 'canceled', '17') " + "OR LOWER(COALESCE(e.status, '')) IN ('cancelled', 'canceled'))";
-    private static final String INFRA_EXPR = "(LOWER(COALESCE(e.status, '')) IN ('blocked', 'interrupted') " + "OR LOWER(COALESCE(e.error_code, '')) LIKE 'infra%' " + "OR LOWER(COALESCE(e.error_code, '')) LIKE 'executor%' " + "OR LOWER(COALESCE(e.error_code, '')) LIKE 'browser%' " + "OR LOWER(COALESCE(e.error_code, '')) LIKE 'environment%' " + "OR LOWER(COALESCE(e.error_code, '')) LIKE 'network%')";
-    private static final String FAIL_EXPR = "(LOWER(COALESCE(e.result, '')) IN ('failed', '15', '不通过') AND NOT " + INFRA_EXPR + ")";
-    private static final String TERMINAL_EXPR = "(LOWER(COALESCE(e.status, '')) IN " + "('completed', 'passed', 'failed', 'cancelled', 'canceled', 'interrupted', 'blocked', 'skipped') " + "OR " + PASS_EXPR + " OR " + FAIL_EXPR + " OR " + SKIP_EXPR + " OR " + CANCEL_EXPR + " OR " + INFRA_EXPR + ")";
-    private static final String ENGINE_EXPR = "CASE WHEN LOWER(REPLACE(COALESCE(e.execution_engine, ''), '_', '-')) IN ('playwright', 'runner', 'playwright-runner') THEN 'playwright-runner' " + "WHEN LOWER(REPLACE(COALESCE(e.execution_engine, ''), '_', '-')) IN ('chrome-devtools-protocol', 'cdp', 'extension-cdp') THEN 'extension-cdp' " + "ELSE COALESCE(NULLIF(LOWER(REPLACE(e.execution_engine, '_', '-')), ''), 'unknown') END";
-    private static final String TRIGGER_EXPR = "COALESCE(NULLIF(LOWER(REPLACE(e.trigger_type, '_', '-')), ''), 'unknown')";
+    private static final int MAX_FAILURE_MESSAGE_LENGTH = 1000;
+    private static final Pattern SENSITIVE_ASSIGNMENT = Pattern
+        .compile("(?i)(password|passwd|pwd|token|secret|authorization|api[-_]?key|credential)(\\s*[:=]\\s*)([^\\s,;]+)");
+    private static final Pattern BEARER_TOKEN = Pattern.compile("(?i)bearer\\s+[a-z0-9._~+\\-/]+=*");
 
     private final JdbcTemplate jdbcTemplate;
     private final ProjectConfigMapper projectConfigMapper;
@@ -91,6 +96,7 @@ public class TestMetricQueryServiceImpl implements TestMetricQueryService {
         resp.setSkipCount(current.skipCount());
         resp.setCancelCount(current.cancelCount());
         resp.setInfraFailCount(current.infraFailCount());
+        resp.setOtherCount(current.otherCount());
         resp.setCaseTotal(current.caseTotal());
         resp.setCasePass(current.casePass());
         resp.setCaseFail(current.caseFail());
@@ -100,6 +106,8 @@ public class TestMetricQueryServiceImpl implements TestMetricQueryService {
         resp.setStepFail(current.stepFail());
         resp.setStepSkip(current.stepSkip());
         resp.setAverageDurationMs(current.averageDurationMs());
+        resp.setDurationTotalMs(current.durationTotalMs());
+        resp.setDurationSampleCount(current.durationSampleCount());
         resp.setExactDimensionCount(current.exactDimensionCount());
         resp.setInferredDimensionCount(current.inferredDimensionCount());
         resp.setMissingDimensionCount(current.missingDimensionCount());
@@ -113,19 +121,23 @@ public class TestMetricQueryServiceImpl implements TestMetricQueryService {
     @Override
     public TestMetricTrendResp getTrends(TestMetricScopeQuery query) {
         MetricScope scope = resolveScope(query);
-        String sql = "SELECT DATE(" + TIME_EXPR + ") metric_date, " + "COUNT(DISTINCT CASE WHEN " + TERMINAL_EXPR + " THEN COALESCE(NULLIF(e.run_key, ''), e.execution_key) END) run_count, " + "COUNT(DISTINCT CASE WHEN " + TERMINAL_EXPR + " THEN e.scene_id END) executed_count, " + sum(PASS_EXPR, "pass_count") + ", " + sum(FAIL_EXPR, "fail_count") + ", " + sum(SKIP_EXPR, "skip_count") + ", " + sum(CANCEL_EXPR, "cancel_count") + ", " + sum(INFRA_EXPR, "infra_fail_count") + " FROM automation_ui_execution e WHERE " + scope
+        String sql = "SELECT DATE(" + TIME_EXPR + ") metric_date, " + "COUNT(DISTINCT CASE WHEN " + TERMINAL_EXPR + " THEN COALESCE(NULLIF(e.run_key, ''), e.execution_key) END) run_count, " + sumTerminal("scene_execution_count") + ", " + "COUNT(DISTINCT CASE WHEN " + TERMINAL_EXPR + " THEN e.scene_id END) executed_scene_count, " + sumCategory("PASSED", "pass_count") + ", " + sumCategory("FAILED", "fail_count") + ", " + sumCategory("SKIPPED", "skip_count") + ", " + sumCategory("CANCELLED", "cancel_count") + ", " + sumCategory("INFRA_FAILED", "infra_fail_count") + ", " + sumCategory("OTHER", "other_count") + ", " + "COALESCE(SUM(CASE WHEN " + TERMINAL_EXPR + " AND e.duration_ms IS NOT NULL THEN e.duration_ms ELSE 0 END), 0) duration_total_ms, " + "COUNT(CASE WHEN " + TERMINAL_EXPR + " AND e.duration_ms IS NOT NULL THEN 1 END) duration_sample_count " + "FROM automation_ui_execution e WHERE " + scope
             .predicate() + " GROUP BY DATE(" + TIME_EXPR + ") ORDER BY metric_date";
         Map<LocalDate, TestMetricTrendResp.TrendPoint> byDate = new LinkedHashMap<>();
         jdbcTemplate.query(sql, (rs) -> {
             TestMetricTrendResp.TrendPoint point = new TestMetricTrendResp.TrendPoint();
             point.setDate(rs.getDate("metric_date").toLocalDate());
             point.setRunCount(rs.getLong("run_count"));
-            point.setExecutedCount(rs.getLong("executed_count"));
+            point.setSceneExecutionCount(rs.getLong("scene_execution_count"));
+            point.setExecutedSceneCount(rs.getLong("executed_scene_count"));
             point.setPassCount(rs.getLong("pass_count"));
             point.setFailCount(rs.getLong("fail_count"));
             point.setSkipCount(rs.getLong("skip_count"));
             point.setCancelCount(rs.getLong("cancel_count"));
             point.setInfraFailCount(rs.getLong("infra_fail_count"));
+            point.setOtherCount(rs.getLong("other_count"));
+            point.setDurationTotalMs(rs.getLong("duration_total_ms"));
+            point.setDurationSampleCount(rs.getLong("duration_sample_count"));
             point.setPassRate(percent(point.getPassCount(), point.getPassCount() + point.getFailCount()));
             byDate.put(point.getDate(), point);
         }, scope.args().toArray());
@@ -174,8 +186,8 @@ public class TestMetricQueryServiceImpl implements TestMetricQueryService {
         int safeLimit = Math.max(1, Math.min(limit == null ? 10 : limit, 50));
         String latestErrorCode = "SUBSTRING_INDEX(GROUP_CONCAT(COALESCE(e.error_code, '') ORDER BY " + TIME_EXPR + " DESC SEPARATOR '||'), '||', 1)";
         String latestErrorMessage = "SUBSTRING_INDEX(GROUP_CONCAT(REPLACE(COALESCE(e.error_message, ''), '||', ' ') ORDER BY " + TIME_EXPR + " DESC SEPARATOR '||'), '||', 1)";
-        String sql = "SELECT e.scene_id, MAX(e.scene_key) scene_key, MAX(s.name) scene_name, " + "e.module_id, MAX(m.name) module_name, MAX(e.scene_level) scene_level, " + sum(FAIL_EXPR, "fail_count") + ", " + sum(INFRA_EXPR, "infra_fail_count") + ", MAX(" + TIME_EXPR + ") last_failed_at, " + latestErrorCode + " last_error_code, " + latestErrorMessage + " last_error_message FROM automation_ui_execution e " + "LEFT JOIN automation_ui_scene s ON s.id = e.scene_id " + "LEFT JOIN project_module_config m ON m.id = e.module_id WHERE " + scope
-            .predicate() + " AND (" + FAIL_EXPR + " OR " + INFRA_EXPR + ") GROUP BY e.scene_id, e.module_id " + "ORDER BY (fail_count + infra_fail_count) DESC, last_failed_at DESC LIMIT " + safeLimit;
+        String sql = "SELECT e.scene_id, MAX(e.scene_key) scene_key, MAX(s.name) scene_name, " + "e.module_id, MAX(m.name) module_name, MAX(e.scene_level) scene_level, " + sumCategory("FAILED", "fail_count") + ", " + sumCategory("INFRA_FAILED", "infra_fail_count") + ", MAX(" + TIME_EXPR + ") last_failed_at, " + latestErrorCode + " last_error_code, " + latestErrorMessage + " last_error_message FROM automation_ui_execution e " + "LEFT JOIN automation_ui_scene s ON s.id = e.scene_id " + "LEFT JOIN project_module_config m ON m.id = e.module_id WHERE " + scope
+            .predicate() + " AND " + TERMINAL_EXPR + " AND " + CATEGORY_EXPR + " IN ('FAILED', 'INFRA_FAILED') GROUP BY e.scene_id, e.module_id " + "ORDER BY (fail_count + infra_fail_count) DESC, last_failed_at DESC LIMIT " + safeLimit;
         List<TestMetricFailureResp.FailureItem> items = jdbcTemplate.query(sql, this::mapFailure, scope.args()
             .toArray());
         TestMetricFailureResp resp = new TestMetricFailureResp();
@@ -184,7 +196,7 @@ public class TestMetricQueryServiceImpl implements TestMetricQueryService {
     }
 
     private Aggregate aggregate(MetricScope scope) {
-        String sql = "SELECT " + "COUNT(DISTINCT CASE WHEN " + TERMINAL_EXPR + " THEN COALESCE(NULLIF(e.run_key, ''), e.execution_key) END) run_count, " + sum(TERMINAL_EXPR, "scene_execution_count") + ", " + "COUNT(DISTINCT CASE WHEN " + TERMINAL_EXPR + " THEN e.scene_id END) executed_scene_count, " + sum(PASS_EXPR, "pass_count") + ", " + sum(FAIL_EXPR, "fail_count") + ", " + sum(SKIP_EXPR, "skip_count") + ", " + sum(CANCEL_EXPR, "cancel_count") + ", " + sum(INFRA_EXPR, "infra_fail_count") + ", " + "COALESCE(SUM(CASE WHEN " + TERMINAL_EXPR + " THEN e.case_total ELSE 0 END), 0) case_total, " + "COALESCE(SUM(CASE WHEN " + TERMINAL_EXPR + " THEN e.case_pass ELSE 0 END), 0) case_pass, " + "COALESCE(SUM(CASE WHEN " + TERMINAL_EXPR + " THEN e.case_fail ELSE 0 END), 0) case_fail, " + "COALESCE(SUM(CASE WHEN " + TERMINAL_EXPR + " THEN e.case_skip ELSE 0 END), 0) case_skip, " + "COALESCE(SUM(CASE WHEN " + TERMINAL_EXPR + " THEN e.step_total ELSE 0 END), 0) step_total, " + "COALESCE(SUM(CASE WHEN " + TERMINAL_EXPR + " THEN e.step_pass ELSE 0 END), 0) step_pass, " + "COALESCE(SUM(CASE WHEN " + TERMINAL_EXPR + " THEN e.step_fail ELSE 0 END), 0) step_fail, " + "COALESCE(SUM(CASE WHEN " + TERMINAL_EXPR + " THEN e.step_skip ELSE 0 END), 0) step_skip, " + "COALESCE(ROUND(AVG(CASE WHEN " + TERMINAL_EXPR + " AND e.duration_ms IS NOT NULL THEN e.duration_ms END)), 0) average_duration_ms, " + sum("UPPER(COALESCE(e.dimension_quality, 'EXACT')) = 'EXACT'", "exact_dimension_count") + ", " + sum("UPPER(COALESCE(e.dimension_quality, '')) = 'INFERRED'", "inferred_dimension_count") + ", " + sum("UPPER(COALESCE(e.dimension_quality, '')) NOT IN ('EXACT', 'INFERRED')", "missing_dimension_count") + " FROM automation_ui_execution e WHERE " + scope
+        String sql = "SELECT " + "COUNT(DISTINCT CASE WHEN " + TERMINAL_EXPR + " THEN COALESCE(NULLIF(e.run_key, ''), e.execution_key) END) run_count, " + sumTerminal("scene_execution_count") + ", " + "COUNT(DISTINCT CASE WHEN " + TERMINAL_EXPR + " THEN e.scene_id END) executed_scene_count, " + sumCategory("PASSED", "pass_count") + ", " + sumCategory("FAILED", "fail_count") + ", " + sumCategory("SKIPPED", "skip_count") + ", " + sumCategory("CANCELLED", "cancel_count") + ", " + sumCategory("INFRA_FAILED", "infra_fail_count") + ", " + sumCategory("OTHER", "other_count") + ", " + "COALESCE(SUM(CASE WHEN " + TERMINAL_EXPR + " THEN e.case_total ELSE 0 END), 0) case_total, " + "COALESCE(SUM(CASE WHEN " + TERMINAL_EXPR + " THEN e.case_pass ELSE 0 END), 0) case_pass, " + "COALESCE(SUM(CASE WHEN " + TERMINAL_EXPR + " THEN e.case_fail ELSE 0 END), 0) case_fail, " + "COALESCE(SUM(CASE WHEN " + TERMINAL_EXPR + " THEN e.case_skip ELSE 0 END), 0) case_skip, " + "COALESCE(SUM(CASE WHEN " + TERMINAL_EXPR + " THEN e.step_total ELSE 0 END), 0) step_total, " + "COALESCE(SUM(CASE WHEN " + TERMINAL_EXPR + " THEN e.step_pass ELSE 0 END), 0) step_pass, " + "COALESCE(SUM(CASE WHEN " + TERMINAL_EXPR + " THEN e.step_fail ELSE 0 END), 0) step_fail, " + "COALESCE(SUM(CASE WHEN " + TERMINAL_EXPR + " THEN e.step_skip ELSE 0 END), 0) step_skip, " + "COALESCE(SUM(CASE WHEN " + TERMINAL_EXPR + " AND e.duration_ms IS NOT NULL THEN e.duration_ms ELSE 0 END), 0) duration_total_ms, " + "COUNT(CASE WHEN " + TERMINAL_EXPR + " AND e.duration_ms IS NOT NULL THEN 1 END) duration_sample_count, " + "COALESCE(ROUND(AVG(CASE WHEN " + TERMINAL_EXPR + " AND e.duration_ms IS NOT NULL THEN e.duration_ms END)), 0) average_duration_ms, " + sum("(" + TERMINAL_EXPR + ") AND UPPER(COALESCE(e.dimension_quality, '')) = 'EXACT'", "exact_dimension_count") + ", " + sum("(" + TERMINAL_EXPR + ") AND UPPER(COALESCE(e.dimension_quality, '')) = 'INFERRED'", "inferred_dimension_count") + ", " + sum("(" + TERMINAL_EXPR + ") AND UPPER(COALESCE(e.dimension_quality, '')) NOT IN ('EXACT', 'INFERRED')", "missing_dimension_count") + " FROM automation_ui_execution e WHERE " + scope
             .predicate();
         return jdbcTemplate.queryForObject(sql, (rs, rowNum) -> mapAggregate(rs), scope.args().toArray());
     }
@@ -210,6 +222,7 @@ public class TestMetricQueryServiceImpl implements TestMetricQueryService {
         if (project == null || !StatusTypeEnum.NORMAL.equals(project.getDelFlag())) {
             throw new BusinessException("项目不存在或已删除");
         }
+        validateProjectAccess(project);
         if (query.getVersionId() != null) {
             ProjectVersionConfigDO version = projectVersionConfigMapper.selectById(query.getVersionId());
             if (version == null || !Objects.equals(query.getProjectId(), version
@@ -229,6 +242,20 @@ public class TestMetricQueryServiceImpl implements TestMetricQueryService {
         }
         return buildScope(query.getProjectId(), query.getVersionId(), startDate, endDate, query
             .getExecutionEngine(), query.getTriggerType(), query.getEnvironmentId());
+    }
+
+    private void validateProjectAccess(ProjectConfigDO project) {
+        Long userId = UserContextHolder.getUserId();
+        if (userId == null) {
+            throw new BusinessException("未获取到当前用户，无法访问项目测试度量");
+        }
+        if (UserContextHolder.getContext().isAdmin() || Objects.equals(userId, project.getCreateUser())) {
+            return;
+        }
+        List<String> members = project.getMember();
+        if (members == null || !members.contains(String.valueOf(userId))) {
+            throw new BusinessException("无权访问当前项目的测试度量");
+        }
     }
 
     private MetricScope buildScope(Long projectId,
@@ -271,11 +298,12 @@ public class TestMetricQueryServiceImpl implements TestMetricQueryService {
         return new Aggregate(rs.getLong("run_count"), rs.getLong("scene_execution_count"), rs
             .getLong("executed_scene_count"), rs.getLong("pass_count"), rs.getLong("fail_count"), rs
                 .getLong("skip_count"), rs.getLong("cancel_count"), rs.getLong("infra_fail_count"), rs
-                    .getLong("case_total"), rs.getLong("case_pass"), rs.getLong("case_fail"), rs
-                        .getLong("case_skip"), rs.getLong("step_total"), rs.getLong("step_pass"), rs
-                            .getLong("step_fail"), rs.getLong("step_skip"), rs.getLong("average_duration_ms"), rs
-                                .getLong("exact_dimension_count"), rs.getLong("inferred_dimension_count"), rs
-                                    .getLong("missing_dimension_count"));
+                    .getLong("other_count"), rs.getLong("case_total"), rs.getLong("case_pass"), rs
+                        .getLong("case_fail"), rs.getLong("case_skip"), rs.getLong("step_total"), rs
+                            .getLong("step_pass"), rs.getLong("step_fail"), rs.getLong("step_skip"), rs
+                                .getLong("average_duration_ms"), rs.getLong("duration_total_ms"), rs
+                                    .getLong("duration_sample_count"), rs.getLong("exact_dimension_count"), rs
+                                        .getLong("inferred_dimension_count"), rs.getLong("missing_dimension_count"));
     }
 
     private TestMetricFailureResp.FailureItem mapFailure(ResultSet rs, int rowNum) throws SQLException {
@@ -292,8 +320,18 @@ public class TestMetricQueryServiceImpl implements TestMetricQueryService {
         Timestamp lastFailedAt = rs.getTimestamp("last_failed_at");
         item.setLastFailedAt(lastFailedAt == null ? null : lastFailedAt.toLocalDateTime());
         item.setLastErrorCode(StringUtils.trimToNull(rs.getString("last_error_code")));
-        item.setLastErrorMessage(StringUtils.trimToNull(rs.getString("last_error_message")));
+        item.setLastErrorMessage(sanitizeErrorMessage(rs.getString("last_error_message")));
         return item;
+    }
+
+    private String sanitizeErrorMessage(String value) {
+        String message = StringUtils.trimToNull(value);
+        if (message == null) {
+            return null;
+        }
+        message = SENSITIVE_ASSIGNMENT.matcher(message).replaceAll("$1$2***");
+        message = BEARER_TOKEN.matcher(message).replaceAll("Bearer ***");
+        return StringUtils.abbreviate(message, MAX_FAILURE_MESSAGE_LENGTH);
     }
 
     private TestMetricSummaryResp.RateMetric rateMetric(long numerator,
@@ -358,14 +396,15 @@ public class TestMetricQueryServiceImpl implements TestMetricQueryService {
     }
 
     private record Aggregate(long runCount, long sceneExecutionCount, long executedSceneCount, long passCount,
-                             long failCount, long skipCount, long cancelCount, long infraFailCount, long caseTotal,
-                             long casePass, long caseFail, long caseSkip, long stepTotal, long stepPass, long stepFail,
-                             long stepSkip, long averageDurationMs, long exactDimensionCount,
-                             long inferredDimensionCount, long missingDimensionCount) {
+                             long failCount, long skipCount, long cancelCount, long infraFailCount, long otherCount,
+                             long caseTotal, long casePass, long caseFail, long caseSkip, long stepTotal, long stepPass,
+                             long stepFail, long stepSkip, long averageDurationMs, long durationTotalMs,
+                             long durationSampleCount, long exactDimensionCount, long inferredDimensionCount,
+                             long missingDimensionCount) {
     }
 
     private enum BreakdownDimension {
-        RESULT("result", "CASE WHEN " + PASS_EXPR + " THEN 'PASSED' WHEN " + INFRA_EXPR + " THEN 'INFRA_FAILED' WHEN " + FAIL_EXPR + " THEN 'FAILED' WHEN " + SKIP_EXPR + " THEN 'SKIPPED' WHEN " + CANCEL_EXPR + " THEN 'CANCELLED' ELSE 'OTHER' END", "CASE WHEN " + PASS_EXPR + " THEN '通过' WHEN " + INFRA_EXPR + " THEN '基础设施失败' WHEN " + FAIL_EXPR + " THEN '失败' WHEN " + SKIP_EXPR + " THEN '跳过' WHEN " + CANCEL_EXPR + " THEN '取消' ELSE '其他' END", ""),
+        RESULT("result", CATEGORY_EXPR, "CASE " + CATEGORY_EXPR + " WHEN 'PASSED' THEN '通过' WHEN 'FAILED' THEN '失败' WHEN 'SKIPPED' THEN '跳过' WHEN 'CANCELLED' THEN '取消' WHEN 'INFRA_FAILED' THEN '基础设施失败' ELSE '其他' END", ""),
         ENGINE("engine", ENGINE_EXPR, "CASE " + ENGINE_EXPR + " WHEN 'playwright-runner' THEN 'Playwright Runner' WHEN 'extension-cdp' THEN 'Chrome DevTools Protocol' WHEN 'selenium' THEN 'Selenium' WHEN 'jenkins' THEN 'Jenkins' ELSE " + ENGINE_EXPR + " END", ""),
         TRIGGER("trigger", TRIGGER_EXPR, "CASE " + TRIGGER_EXPR + " WHEN 'manual' THEN '手动' WHEN 'test-plan' THEN '测试计划' WHEN 'schedule' THEN '定时任务' WHEN 'jenkins' THEN 'Jenkins' ELSE " + TRIGGER_EXPR + " END", ""),
         LEVEL("level", "COALESCE(NULLIF(e.scene_level, ''), 'UNSPECIFIED')", "COALESCE(NULLIF(e.scene_level, ''), '未指定')", ""),

@@ -216,6 +216,12 @@ public class TestTimedTaskRunServiceImpl implements TestTimedTaskRunService {
             .selectPage(page, new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<TestTimedTaskRunDO>()
                 .eq(TestTimedTaskRunDO::getTimedTaskId, taskId)
                 .eq(TestTimedTaskRunDO::getDelFlag, StatusTypeEnum.NORMAL)
+                .eq(query != null && query.getRunId() != null, TestTimedTaskRunDO::getId, query == null
+                    ? null
+                    : query.getRunId())
+                .eq(query != null && query.getTestReportId() != null, TestTimedTaskRunDO::getTestReportId, query == null
+                    ? null
+                    : query.getTestReportId())
                 .eq(query != null && query.getStatus() != null, TestTimedTaskRunDO::getStatus, query == null
                     ? null
                     : query.getStatus())

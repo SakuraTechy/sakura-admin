@@ -34,8 +34,9 @@ public class TestTimedTaskLogResp implements Serializable {
     private Long jobId;
     private String groupName;
     private String jobName;
-    private String taskBatchStatus;
-    private String operationReason;
+    private Integer taskBatchStatus;
+    private Integer operationReason;
+    private Integer executorType;
     private String executorInfo;
     private LocalDateTime executionAt;
     private LocalDateTime createDt;

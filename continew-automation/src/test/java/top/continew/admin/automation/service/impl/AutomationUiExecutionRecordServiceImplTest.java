@@ -140,6 +140,10 @@ class AutomationUiExecutionRecordServiceImplTest {
         AutomationUiSceneDO scene = new AutomationUiSceneDO();
         scene.setId(1L);
         scene.setSceneId("SCENE_001");
+        scene.setProjectId(9L);
+        scene.setVersionId(10L);
+        scene.setModuleId(11L);
+        scene.setLevel("P1");
         scene.setDefinitionVersion(3L);
         scene.setCaseList(List.of());
         Map<String, Object> record = new LinkedHashMap<>();
@@ -170,9 +174,14 @@ class AutomationUiExecutionRecordServiceImplTest {
             if (sql.startsWith("INSERT INTO automation_ui_execution")) {
                 executionInserted = true;
                 assertThat(args[0]).isEqualTo(8L);
-                assertThat(args[4]).isEqualTo(7L);
-                assertThat(args[7]).isEqualTo("JENKINS_BATCH_001");
-                assertThat(args[13]).isEqualTo(true);
+                assertThat(args[4]).isEqualTo(9L);
+                assertThat(args[5]).isEqualTo(10L);
+                assertThat(args[6]).isEqualTo(11L);
+                assertThat(args[7]).isEqualTo("P1");
+                assertThat(args[8]).isEqualTo(7L);
+                assertThat(args[12]).isEqualTo("jenkins:BATCH:JENKINS_BATCH_001");
+                assertThat(args[13]).isEqualTo("EXACT");
+                assertThat(args[19]).isEqualTo(true);
             }
         }
         assertThat(revisionInserted).isTrue();
@@ -252,7 +261,7 @@ class AutomationUiExecutionRecordServiceImplTest {
         for (int i = 0; i < sqlCaptor.getAllValues().size(); i++) {
             if (sqlCaptor.getAllValues().get(i).startsWith("UPDATE automation_ui_execution SET")) {
                 updatedWithFrozenRevision = true;
-                assertThat(argsCaptor.getAllValues().get(i)[0]).isEqualTo(7L);
+                assertThat(argsCaptor.getAllValues().get(i)[5]).isEqualTo(7L);
             }
         }
         assertThat(updatedWithFrozenRevision).isTrue();

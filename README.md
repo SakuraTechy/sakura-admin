@@ -324,6 +324,36 @@ mvn -f .\continew-webapi\pom.xml exec:exec '-Dexec.executable=java' '-Dexec.args
 # 5.2 其他方式部署
 ```
 
+### 本地联调调度服务
+
+测试定时任务依赖 SnailJob 调度服务。本地需要验证任务启停、立即执行、Cron 触发或调度日志时，请在仓库根目录执行：
+
+```powershell
+# 首次启动或依赖发生变化：编译并启动 WebAPI 与 schedule-server
+.\dev-start.ps1 -WithSchedule
+
+# 已完成过完整编译且依赖未变化：跳过打包快速启动
+.\dev-start.ps1 -WithSchedule -SkipPackage
+
+# 端口被其他项目占用时可显式调整
+.\dev-start.ps1 -WithSchedule -Port 18000 -ScheduleHttpPort 18001 -ScheduleNettyPort 1788
+```
+
+默认监听端口如下：
+
+| 服务 | 默认端口 | 用途 |
+| --- | ---: | --- |
+| Sakura Admin WebAPI | `8000` | 管理端 API、接口文档 |
+| schedule-server HTTP | `8001` | SnailJob 管理与 OpenAPI |
+| schedule-server Netty | `1788` | 调度客户端注册与通信 |
+| WebAPI SnailJob gRPC | `1789` | WebAPI 执行器通信 |
+
+启动成功后应同时确认 `8000`、`8001`、`1788`、`1789` 均处于监听状态。脚本会复用已监听 `ScheduleHttpPort` 的 schedule-server；如果 schedule-server 由本次脚本启动，按 `Ctrl+C` 退出时会一并停止它。
+
+`-WithSchedule` 模式会自动启用调度客户端，并禁用 Spring Boot DevTools 热重启。SnailJob 1.4.0 的静态客户端线程无法在 DevTools 上下文重启后可靠释放，热重启会造成 `1789` 端口残留并导致 WebAPI 重启失败。因此修改后端代码后，需要按 `Ctrl+C` 停止当前进程，再重新执行上述命令。普通 `.\dev-start.ps1` 不启用调度客户端，仍保留 DevTools 热重启，适合不涉及定时任务的日常开发。
+
+脚本默认使用 `127.0.0.1` 连接本地调度服务，并设置 `SCHEDULE_ENABLED=true`、`SCHEDULE_PORT` 和 `SCHEDULE_API_URL`。如需连接已有调度环境，可在启动前显式设置对应环境变量；不要将调度密钥提交到仓库。
+
 ## 项目结构
 
 > [!TIP]

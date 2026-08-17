@@ -39,6 +39,7 @@ public class TestMetricSummaryResp {
     private long skipCount;
     private long cancelCount;
     private long infraFailCount;
+    private long otherCount;
     private long caseTotal;
     private long casePass;
     private long caseFail;
@@ -48,6 +49,8 @@ public class TestMetricSummaryResp {
     private long stepFail;
     private long stepSkip;
     private long averageDurationMs;
+    private long durationTotalMs;
+    private long durationSampleCount;
     private long exactDimensionCount;
     private long inferredDimensionCount;
     private long missingDimensionCount;

@@ -49,6 +49,7 @@ import top.continew.admin.test.model.entity.TestPlanDO;
 import top.continew.admin.test.model.entity.TestTimedTaskDO;
 import top.continew.admin.test.model.enums.TestExecutionEngineEnum;
 import top.continew.admin.test.model.query.TestTimedTaskQuery;
+import top.continew.admin.test.model.query.TestTimedTaskLogQuery;
 import top.continew.admin.test.model.query.TestTimedTaskRunQuery;
 import top.continew.admin.test.model.req.TestTimedTaskExecutePayload;
 import top.continew.admin.test.model.req.TestTimedTaskReq;
@@ -258,19 +259,29 @@ public class TestTimedTaskServiceImpl extends BaseServiceImpl<TestTimedTaskMappe
     }
 
     @Override
-    public PageResp<TestTimedTaskLogResp> pageLogs(Long id, Integer page, Integer size) {
+    public PageResp<TestTimedTaskLogResp> pageLogs(Long id, TestTimedTaskLogQuery logQuery, PageQuery pageQuery) {
         TestTimedTaskDO task = baseMapper.selectById(id);
-        CheckUtils.throwIfNull(task, "测试定时任务不存在");
+        if (task == null) {
+            throw new BusinessException("测试定时任务不存在");
+        }
         if (task.getScheduleJobId() == null) {
             scheduleSyncService.syncNow(id);
             task = baseMapper.selectById(id);
         }
         Long jobId = task == null ? null : task.getScheduleJobId();
-        CheckUtils.throwIfNull(jobId, "调度任务不存在");
+        if (jobId == null) {
+            throw new BusinessException("调度任务不存在");
+        }
         JobLogQuery query = new JobLogQuery();
         query.setJobId(jobId);
-        query.setPage(page == null ? 1 : page);
-        query.setSize(size == null ? 10 : size);
+        query.setPage(pageQuery.getPage());
+        query.setSize(pageQuery.getSize());
+        if (logQuery != null) {
+            query.setTaskBatchStatus(logQuery.getTaskBatchStatus());
+            if (logQuery.getStartTime() != null && logQuery.getEndTime() != null) {
+                query.setDatetimeRange(new LocalDateTime[] {logQuery.getStartTime(), logQuery.getEndTime()});
+            }
+        }
         PageResp<JobLogResp> result = jobLogService.page(query);
         PageResp<TestTimedTaskLogResp> resp = new PageResp<>();
         List<TestTimedTaskLogResp> logs = new ArrayList<>();
@@ -281,8 +292,9 @@ public class TestTimedTaskServiceImpl extends BaseServiceImpl<TestTimedTaskMappe
                 log.setJobId(item.getJobId());
                 log.setGroupName(item.getGroupName());
                 log.setJobName(item.getJobName());
-                log.setTaskBatchStatus(item.getTaskBatchStatus() == null ? null : item.getTaskBatchStatus().name());
-                log.setOperationReason(item.getOperationReason() == null ? null : item.getOperationReason().name());
+                log.setTaskBatchStatus(item.getTaskBatchStatus() == null ? null : item.getTaskBatchStatus().getValue());
+                log.setOperationReason(item.getOperationReason() == null ? null : item.getOperationReason().getValue());
+                log.setExecutorType(item.getExecutorType());
                 log.setExecutorInfo(item.getExecutorInfo());
                 log.setExecutionAt(item.getExecutionAt());
                 log.setCreateDt(item.getCreateDt());

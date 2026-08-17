@@ -73,6 +73,9 @@ public class AutomationOperationCatalog {
 
         private String label;
 
+        /** 前端方法选择器展示的实际语义说明，不参与执行参数。 */
+        private String description;
+
         private String legacyAction;
 
         private String actionType;

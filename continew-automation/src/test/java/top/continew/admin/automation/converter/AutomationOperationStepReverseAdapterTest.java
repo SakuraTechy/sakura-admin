@@ -101,6 +101,51 @@ class AutomationOperationStepReverseAdapterTest {
         assertThat(adapter.adapt(customDate).methodConfig()).containsEntry("date_mode", "custom_datetime");
     }
 
+    @Test
+    void shouldMapRecordedTabValueToDeclaredKeyField() {
+        StepDO step = step("pw-key");
+        step.setConfigList(List.of(config("source", "sakura-playwright"), config("playwright_step", """
+            {"action_type":"key","target_selector":"#user_name","value":"Tab"}
+            """)));
+
+        AutomationOperationStepReverseAdapter.ReverseResult result = adapter.adapt(step);
+
+        assertThat(result.methodCode()).isEqualTo("windows.key.normal");
+        assertThat(result.methodConfig()).containsExactly(Map.entry("key", "Tab"));
+    }
+
+    @Test
+    void shouldProjectRecordedLocatorFactsOnlyIntoDeclaredTargetReference() {
+        StepDO step = step("pw-input");
+        step.setConfigList(List.of(config("source", "sakura-playwright"), config("playwright_step", """
+            {"action_type":"input","target_selector":"#user_name","target_xpath":"//*[@id='user_name']",
+             "locator_meta":{"strategy":"css"},"url":"https://example.test/login","value":"sysadmin"}
+            """)));
+
+        AutomationOperationStepReverseAdapter.ReverseResult result = adapter.adapt(step);
+
+        assertThat(result.methodConfig()).containsOnlyKeys("target_ref", "value").containsEntry("value", "sysadmin");
+        Map<?, ?> targetRef = (Map<?, ?>)result.methodConfig().get("target_ref");
+        assertThat(targetRef.get("target_selector")).isEqualTo("#user_name");
+        assertThat(targetRef.get("target_xpath")).isEqualTo("//*[@id='user_name']");
+        assertThat(targetRef.get("locator_meta")).isEqualTo(Map.of("strategy", "css"));
+    }
+
+    @Test
+    void shouldRemoveUndeclaredRecordingFieldsFromExistingMethodConfig() {
+        StepDO step = step("input.text");
+        step.setConfigList(List
+            .of(config("method_code", "input.text"), config("method_version", "1"), config("method_config", """
+                {"target_selector":"#user_name","target_xpath":"//*[@id='user_name']",
+                 "locator_meta":{"strategy":"css"},"url":"https://example.test/login","value":"sysadmin"}
+                """)));
+
+        AutomationOperationStepReverseAdapter.ReverseResult result = adapter.adapt(step);
+
+        assertThat(result.methodConfig()).containsOnlyKeys("target_ref", "value")
+            .doesNotContainKeys("target_selector", "target_xpath", "locator_meta", "url");
+    }
+
     private StepDO step(String operationValue) {
         StepDO step = new StepDO();
         step.setOperationValue(operationValue);

@@ -54,6 +54,8 @@ public class AutomationUiCaseDetailServiceImpl implements AutomationUiCaseDetail
 
     private static final TypeReference<LinkedHashMap<String, Object>> MAP_TYPE = new TypeReference<>() {
     };
+    private static final List<String> RECOVERED_RECORDING_FIELDS = List
+        .of("target_selector", "target_xpath", "url", "locator_meta", "value");
 
     private final AutomationUiSceneMapper sceneMapper;
     private final AutomationUiCaseTreeService caseTreeService;
@@ -91,6 +93,7 @@ public class AutomationUiCaseDetailServiceImpl implements AutomationUiCaseDetail
         StepDO command = new StepDO();
         command.setPid(request.getPid());
         command.setId(request.getId());
+        command.setOrder(request.getOrder());
         command.setName(request.getName());
         command.setRemark(request.getRemark());
         command.setStatus(request.getStatus());
@@ -179,30 +182,96 @@ public class AutomationUiCaseDetailServiceImpl implements AutomationUiCaseDetail
         result.setMethodConfig(resolution.reverse().methodConfig());
         Map<String, String> values = configMap(step);
         boolean masked = "1".equals(values.get("value_masked")) || "true".equalsIgnoreCase(values.get("value_masked"));
+        // 历史状态编辑只改写了 canonical step，录制事实仍在 original_* 中；详情读取时恢复，避免要求数据迁移。
+        recoverOriginalRecordingValues(values, masked);
         result.setValueMasked(masked);
         result.setOperationValue(masked ? "******" : step.getOperationValue());
         result.setTargetSummary(resolveTargetSummary(values));
-        result.setConfigList(toConfigResp(step, masked));
+        result.setConfigList(toConfigResp(step, masked, values));
         return result;
     }
 
-    private List<AutomationUiStepConfigResp> toConfigResp(StepDO step, boolean masked) {
-        if (step.getConfigList() == null)
-            return List.of();
-        return step.getConfigList().stream().filter(Objects::nonNull).map(config -> {
-            AutomationUiStepConfigResp item = new AutomationUiStepConfigResp();
-            item.setParamsName(config.getParamsName());
-            item.setReadOnly(false);
-            String value = config.getParamsValue();
-            if (masked && ("value".equals(config.getParamsName()) || "operationValue".equals(config.getParamsName()))) {
-                value = "******";
+    private List<AutomationUiStepConfigResp> toConfigResp(StepDO step,
+                                                          boolean masked,
+                                                          Map<String, String> displayValues) {
+        List<AutomationUiStepConfigResp> result = new ArrayList<>();
+        if (step.getConfigList() != null) {
+            step.getConfigList().stream().filter(Objects::nonNull).map(config -> {
+                AutomationUiStepConfigResp item = new AutomationUiStepConfigResp();
+                item.setParamsName(config.getParamsName());
+                item.setReadOnly(false);
+                String value = config.getParamsValue();
+                if (masked && ("value".equals(config.getParamsName()) || "operationValue".equals(config
+                    .getParamsName()))) {
+                    value = "******";
+                }
+                if (masked && ("playwright_step".equals(config.getParamsName()) || "original_playwright_step"
+                    .equals(config.getParamsName()))) {
+                    value = maskRawStep(value);
+                }
+                item.setParamsValue(value);
+                return item;
+            }).forEach(result::add);
+        }
+        for (String name : RECOVERED_RECORDING_FIELDS) {
+            boolean exists = result.stream().anyMatch(item -> name.equals(item.getParamsName()));
+            String value = displayValues.get(name);
+            if (!exists && value != null && !value.isBlank()) {
+                AutomationUiStepConfigResp item = new AutomationUiStepConfigResp();
+                item.setParamsName(name);
+                item.setParamsValue(value);
+                item.setReadOnly(true);
+                result.add(item);
             }
-            if ("playwright_step".equals(config.getParamsName()) && masked) {
-                value = maskRawStep(value);
+        }
+        return result;
+    }
+
+    private void recoverOriginalRecordingValues(Map<String, String> values, boolean masked) {
+        Map<String, Object> originalStep = parseOptionalMap(values.get("original_playwright_step"));
+        if (originalStep != null) {
+            for (String name : List.of("target_selector", "target_xpath", "url")) {
+                putTextIfAbsent(values, name, originalStep.get(name));
             }
-            item.setParamsValue(value);
-            return item;
-        }).toList();
+            putJsonIfAbsent(values, "locator_meta", originalStep.get("locator_meta"));
+            if (!masked) {
+                putTextIfAbsent(values, "value", originalStep.get("value"));
+            }
+        }
+        putTextIfAbsent(values, "locator_meta", values.get("original_locator_meta"));
+    }
+
+    private Map<String, Object> parseOptionalMap(String json) {
+        if (json == null || json.isBlank()) {
+            return null;
+        }
+        try {
+            return objectMapper.readValue(json, MAP_TYPE);
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    private void putTextIfAbsent(Map<String, String> target, String name, Object value) {
+        if (hasText(target.get(name)) || value == null || String.valueOf(value).isBlank()) {
+            return;
+        }
+        target.put(name, String.valueOf(value));
+    }
+
+    private void putJsonIfAbsent(Map<String, String> target, String name, Object value) {
+        if (hasText(target.get(name)) || value == null) {
+            return;
+        }
+        try {
+            target.put(name, value instanceof String text ? text : objectMapper.writeValueAsString(value));
+        } catch (Exception ignored) {
+            // 原始定位元数据损坏时保持缺失，不能构造伪造 locator_meta。
+        }
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.isBlank();
     }
 
     private String maskRawStep(String value) {

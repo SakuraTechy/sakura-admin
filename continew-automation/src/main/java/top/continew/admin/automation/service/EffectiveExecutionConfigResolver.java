@@ -41,7 +41,7 @@ public class EffectiveExecutionConfigResolver {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final List<String> OVERRIDE_KEYS = List
-        .of("browser", "session_mode", "headed", "ignore_https_errors", "trace", "video", "step_timeout_ms", "case_timeout_ms", "slow_mo_ms", "finish_delay_ms", "page_error_check_enabled", "screenshot_mode", "browser_bootstrap_mode", "start_url", "window_size_mode", "viewport_width", "viewport_height", "live_frame_quality");
+        .of("browser", "browser_session_source", "session_mode", "headed", "ignore_https_errors", "trace", "video", "step_timeout_ms", "case_timeout_ms", "slow_mo_ms", "finish_delay_ms", "page_error_check_enabled", "screenshot_mode", "browser_bootstrap_mode", "start_url", "window_size_mode", "viewport_width", "viewport_height", "live_frame_quality");
 
     public Resolved resolve(CaseDO caseDO,
                             ProjectEnvironmentConfigDO environment,

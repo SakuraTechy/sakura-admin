@@ -45,6 +45,9 @@ public class AutomationPlaywrightBatchResp implements Serializable {
 
     private String startedAt;
 
+    /** 批次级冻结会话配置；前端不得从第一条用例反推。 */
+    private Map<String, Object> sessionConfig;
+
     private List<CaseExecution> cases;
 
     @Data

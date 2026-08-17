@@ -41,7 +41,9 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 import top.continew.admin.automation.model.entity.ui.CaseDO;
 import top.continew.admin.automation.model.entity.ui.StepDO;
 import top.continew.admin.automation.model.query.AutomationUiSceneQuery;
@@ -61,7 +63,10 @@ import top.continew.admin.automation.model.resp.AutomationUiTreeMutationResp;
 import top.continew.admin.automation.model.req.ui.AutomationUiCaseEditReq;
 import top.continew.admin.automation.model.req.ui.AutomationUiStepEditReq;
 import top.continew.admin.automation.model.resp.ui.AutomationUiCaseDetailResp;
+import top.continew.admin.automation.model.resp.ui.AutomationCertificateUploadResp;
 import top.continew.admin.automation.model.resp.ui.AutomationUiStepDetailResp;
+import top.continew.admin.automation.service.AutomationCertificateWorkspaceService;
+import top.continew.admin.automation.service.AutomationCertificateWorkspaceService.CertificateFile;
 import top.continew.admin.automation.service.AutomationUiCaseTreeService;
 import top.continew.admin.automation.service.AutomationUiCaseDetailService;
 import top.continew.admin.automation.service.AutomationUiSceneDefinitionScanService;
@@ -94,6 +99,20 @@ public class AutomationUiSceneController extends BaseController<AutomationUiScen
     private final AutomationUiCaseTreeService caseTreeService;
     private final AutomationUiCaseDetailService caseDetailService;
     private final AutomationUiSceneDefinitionScanService definitionScanService;
+    private final AutomationCertificateWorkspaceService certificateWorkspaceService;
+
+    @Operation(summary = "上传证书到 Playwright Runner 工作区")
+    @SaCheckPermission("automation:automationUiScene:updateStep")
+    @PostMapping("/{sceneDbId}/certificate-files")
+    public R<AutomationCertificateUploadResp> uploadCertificate(@PathVariable Long sceneDbId,
+                                                                @RequestParam("file") MultipartFile file) {
+        CertificateFile uploaded = certificateWorkspaceService.upload(sceneDbId, file);
+        return R.ok(AutomationCertificateUploadResp.builder()
+            .reference(uploaded.reference())
+            .fileName(uploaded.fileName())
+            .size(uploaded.size())
+            .build());
+    }
 
     @Operation(summary = "查询用例详情 DTO", description = "返回统一运行配置、来源和只读步骤诊断")
     @SaCheckPermission("automation:automationUiScene:get")

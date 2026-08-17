@@ -292,6 +292,11 @@ mvn -pl continew-webapi -am compile -DskipTests '-Dspotless.apply.skip=true'
 # 4.1.4 dev-start.ps1 会将日志固定输出到：
 #       D:\King\sakura\sakura-admin\logs\sakura-admin.log
 
+# 4.1.5 开发态已配置 META-INF/spring-devtools.properties，
+#       使 ContiNew Starter 和 CosId 在热重启时重新加载，避免 RedissonShutdownException。
+#       首次新增或修改该配置后，请先完整执行一次 .\dev-start.ps1（不要加 -SkipPackage），
+#       并完整停止、启动一次；之后可继续使用 DevTools 热重启。
+
 # 4.2 普通打包启动（部署或验证完整产物时使用）
 cd D:\King\sakura\sakura-admin
 mvn clean package -DskipTests '-Dspotless.apply.skip=true'

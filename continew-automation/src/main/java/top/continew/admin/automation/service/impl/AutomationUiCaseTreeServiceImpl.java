@@ -69,7 +69,7 @@ public class AutomationUiCaseTreeServiceImpl implements AutomationUiCaseTreeServ
                         .entry("TREE_CONCURRENT_MODIFICATION", "场景定义已被其他操作修改，请刷新后重试"), Map
                             .entry("TREE_SCENE_EXECUTING", "场景正在执行，暂不能修改用例树"));
     private static final Set<String> IMMUTABLE_RECORDING_CONFIGS = Set
-        .of("playwright_step", "original_case_id", "original_step_id", "recording_id", "value_masked", "screenshot_url", "screenshot_file_id", "screenshot_path", "screenshot_present");
+        .of("playwright_step", "original_case_id", "original_step_id", "recording_id", "value_masked", "target_selector", "target_xpath", "url", "screenshot_url", "screenshot_file_id", "screenshot_path", "screenshot_present");
 
     private final AutomationUiSceneMapper sceneMapper;
     private final AutomationPlaywrightJobMapper playwrightJobMapper;
@@ -144,9 +144,11 @@ public class AutomationUiCaseTreeServiceImpl implements AutomationUiCaseTreeServ
             ref.setType(AutomationUiTreeNodeType.STEP);
             ref.setCaseId(request.getPid());
             ref.setStepId(request.getId());
-            StepDO target = requireStep(scene.getCaseList(), ref, "TREE_SOURCE_NOT_FOUND").step();
-            applyStepEdit(target, request);
-            return result(true, stepRef(target.getPid(), target.getId()));
+            StepLocation target = requireStep(scene.getCaseList(), ref, "TREE_SOURCE_NOT_FOUND");
+            applyStepEdit(target.step(), request);
+            // 序号以步骤在列表中的位置为准，移动后由统一 normalize 保证连续。
+            reorderStep(target.caseDO(), target.step(), request.getOrder());
+            return result(true, stepRef(target.step().getPid(), target.step().getId()));
         });
     }
 
@@ -303,7 +305,10 @@ public class AutomationUiCaseTreeServiceImpl implements AutomationUiCaseTreeServ
             if (req.getRemark() != null)
                 copy.setRemark(req.getRemark());
             applyStepCopyOverrides(copy, req.getStep());
-            int index = copyStepIndex(targetCase, req.getPosition(), req.getAnchor());
+            Integer requestedOrder = req.getStep() == null ? null : req.getStep().getOrder();
+            int index = requestedOrder == null
+                ? copyStepIndex(targetCase, req.getPosition(), req.getAnchor())
+                : insertionIndex(requestedOrder, targetCase.getStepList().size(), "步骤");
             targetCase.getStepList().add(index, copy);
             return result(true, stepRef(targetCase.getId(), copy.getId()));
         });
@@ -496,6 +501,19 @@ public class AutomationUiCaseTreeServiceImpl implements AutomationUiCaseTreeServ
         if (requestedOrder < 1 || requestedOrder > maxOrder)
             throw error(nodeLabel + "序号必须在 1 到 " + maxOrder + " 之间");
         return requestedOrder - 1;
+    }
+
+    private void reorderStep(CaseDO parent, StepDO step, Integer requestedOrder) {
+        if (requestedOrder == null) {
+            return;
+        }
+        int targetIndex = insertionIndex(requestedOrder, parent.getStepList().size() - 1, "步骤");
+        int currentIndex = parent.getStepList().indexOf(step);
+        if (currentIndex == targetIndex) {
+            return;
+        }
+        parent.getStepList().remove(currentIndex);
+        parent.getStepList().add(targetIndex, step);
     }
 
     private List<AutomationUiTreeNodeRefReq> normalizeDelete(List<AutomationUiTreeNodeRefReq> requested) {

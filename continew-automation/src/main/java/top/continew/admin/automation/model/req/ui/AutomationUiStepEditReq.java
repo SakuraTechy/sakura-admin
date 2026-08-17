@@ -35,8 +35,10 @@ public class AutomationUiStepEditReq implements Serializable {
 
     private String pid;
     private String id;
+    private Integer order;
     private String name;
     private String remark;
+    @NotNull
     private StatusTypeEnum status;
     private String operationType;
     private String operationName;

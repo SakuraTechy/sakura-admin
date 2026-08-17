@@ -29,6 +29,13 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import java.nio.charset.StandardCharsets;
 import top.continew.admin.automation.model.req.playwright.AutomationPlaywrightResultReq;
 import top.continew.admin.automation.model.resp.playwright.AutomationPlaywrightCaseResp;
 import top.continew.admin.automation.service.AutomationPlaywrightCaseService;
@@ -68,6 +75,28 @@ public class AutomationPlaywrightCaseController {
                                                           @RequestHeader(value = "X-Execution-Capability", required = false) String executionCapability) {
         return R.ok(automationPlaywrightCaseService
             .getCase(sceneKey + ":" + caseId, projectEnvironmentId, batchId, executionCapability));
+    }
+
+    @Operation(summary = "下载执行步骤绑定的环境证书")
+    @SaCheckPermission("automation:automationUiScene:get")
+    @GetMapping("/{sceneKey}/{caseId}/execution-files/{stepId}")
+    public ResponseEntity<Resource> getExecutionFile(@PathVariable String sceneKey,
+                                                     @PathVariable String caseId,
+                                                     @PathVariable String stepId,
+                                                     @RequestParam Long projectEnvironmentId,
+                                                     @RequestParam String batchId,
+                                                     @RequestHeader(value = "X-Execution-Capability", required = false) String executionCapability) {
+        AutomationPlaywrightCaseService.ExecutionFile file = automationPlaywrightCaseService
+            .getExecutionFile(sceneKey + ":" + caseId, stepId, projectEnvironmentId, batchId, executionCapability);
+        ContentDisposition disposition = ContentDisposition.attachment()
+            .filename(file.fileName(), StandardCharsets.UTF_8)
+            .build();
+        return ResponseEntity.ok()
+            .contentType(MediaType.APPLICATION_OCTET_STREAM)
+            .contentLength(file.size())
+            .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
+            .header("X-Content-SHA256", file.sha256())
+            .body(new FileSystemResource(file.path()));
     }
 
     @Operation(summary = "回传 Playwright 执行结果", description = "写入规范化执行事实表，并合并用例统计和步骤明细")

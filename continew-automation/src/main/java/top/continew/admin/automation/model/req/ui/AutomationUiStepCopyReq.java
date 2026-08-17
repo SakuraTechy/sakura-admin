@@ -31,6 +31,7 @@ public class AutomationUiStepCopyReq implements Serializable {
     @Serial
     private static final long serialVersionUID = 1L;
 
+    private Integer order;
     private String name;
     private String remark;
     private StatusTypeEnum status;

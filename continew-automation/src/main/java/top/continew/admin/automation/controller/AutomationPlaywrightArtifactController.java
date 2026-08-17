@@ -56,12 +56,14 @@ public class AutomationPlaywrightArtifactController {
     @PostMapping
     public R<AutomationPlaywrightArtifactResp> upload(@RequestParam String runId,
                                                       @RequestParam String artifactType,
+                                                      @RequestParam(required = false, defaultValue = "") String relativePath,
                                                       @RequestParam MultipartFile file) {
-        Artifact artifact = automationPlaywrightArtifactService.store(runId, artifactType, file);
+        Artifact artifact = automationPlaywrightArtifactService.store(runId, artifactType, relativePath, file);
         return R.ok(AutomationPlaywrightArtifactResp.builder()
             .fileId(artifact.fileId())
             .runId(artifact.runId())
             .artifactType(artifact.artifactType())
+            .relativePath(artifact.relativePath())
             .fileName(artifact.fileName())
             .url(artifact.url())
             .contentType(artifact.contentType())
@@ -78,7 +80,9 @@ public class AutomationPlaywrightArtifactController {
         ArtifactResource resource = automationPlaywrightArtifactService.loadByFileId(fileId);
         return ResponseEntity.ok()
             .cacheControl(CacheControl.noCache())
-            .header("Content-Disposition", "inline; filename=\"" + resource.fileName() + "\"")
+            .header("Content-Disposition", (resource.attachment()
+                ? "attachment"
+                : "inline") + "; filename=\"" + resource.fileName() + "\"")
             .contentLength(resource.content().length)
             .contentType(MediaType.parseMediaType(resource.contentType()))
             .body(resource.content());
@@ -91,7 +95,26 @@ public class AutomationPlaywrightArtifactController {
         ArtifactResource resource = automationPlaywrightArtifactService.loadLegacy(runId, fileName);
         return ResponseEntity.ok()
             .cacheControl(CacheControl.noCache())
-            .header("Content-Disposition", "inline; filename=\"" + resource.fileName() + "\"")
+            .header("Content-Disposition", (resource.attachment()
+                ? "attachment"
+                : "inline") + "; filename=\"" + resource.fileName() + "\"")
+            .contentLength(resource.content().length)
+            .contentType(MediaType.parseMediaType(resource.contentType()))
+            .body(resource.content());
+    }
+
+    @Operation(summary = "读取历史 Playwright Runner 子目录产物")
+    @SaCheckPermission("automation:automationUiScene:get")
+    @GetMapping("/{runId}/{directory}/{fileName}")
+    public ResponseEntity<byte[]> getLegacyNested(@PathVariable String runId,
+                                                  @PathVariable String directory,
+                                                  @PathVariable String fileName) {
+        ArtifactResource resource = automationPlaywrightArtifactService.loadLegacy(runId, directory + "/" + fileName);
+        return ResponseEntity.ok()
+            .cacheControl(CacheControl.noCache())
+            .header("Content-Disposition", (resource.attachment()
+                ? "attachment"
+                : "inline") + "; filename=\"" + resource.fileName() + "\"")
             .contentLength(resource.content().length)
             .contentType(MediaType.parseMediaType(resource.contentType()))
             .body(resource.content());

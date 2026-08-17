@@ -57,6 +57,7 @@ class AutomationPlaywrightRunnerJobServiceImplTest {
         List<String> command = invokeBuildCommand(request);
 
         assertThat(optionValue(command, "--locator-mode")).isEqualTo("semantic-v1");
+        assertThat(optionValue(command, "--ignore-https-errors")).isEqualTo("true");
         assertThat(optionValue(command, "--page-error-check-enabled")).isEqualTo("false");
         assertThat(command).doesNotContain("--execution-capability");
     }

@@ -445,6 +445,9 @@ public class AutomationPlaywrightRunnerJobServiceImpl implements AutomationPlayw
             // 共享浏览器端点等同于控制凭据，只能通过子进程环境变量传递，禁止写入命令和日志。
             if (StringUtils.isNotBlank(browserSessionEndpoint)) {
                 environment.put("SAKURA_PLAYWRIGHT_BROWSER_SESSION_ENDPOINT", browserSessionEndpoint);
+                browserSessionService.sessionDirectory(runtime.request.getBatchId())
+                    .ifPresent(directory -> environment.put("SAKURA_PLAYWRIGHT_BROWSER_SESSION_DIR", directory
+                        .toString()));
             }
             // API 地址、浏览器和产物策略均由 Runner .env 统一管理；这里只注入当前用户的短期凭证。
             if (StringUtils.isNotBlank(token)) {
@@ -494,6 +497,10 @@ public class AutomationPlaywrightRunnerJobServiceImpl implements AutomationPlayw
             }
             if (StringUtils.isNotBlank(runtime.request.getBatchId()) && caseService
                 .isBatchTerminal(sceneKey(runtime.caseKey), runtime.request.getBatchId())) {
+                if (isReuseBrowser(runtime.request)) {
+                    browserSessionService.finalizeBatchVideos(runtime.request
+                        .getBatchId(), root, nodeCommand, token, runtime.request.getExecutionCapability());
+                }
                 sessionStateService.cleanupBatch(runtime.request.getBatchId());
                 releaseBrowserSession(runtime.request.getBatchId());
                 recordSessionEvent(runtime, "info", "批次已进入终态，会话资源已清理");
@@ -512,6 +519,13 @@ public class AutomationPlaywrightRunnerJobServiceImpl implements AutomationPlayw
             }
             if (isReuseBrowser(runtime.request) && !"passed".equals(runtime.status)) {
                 // 失败或取消后的页面状态不可作为下一条用例的可靠前置条件，立即销毁本批次宿主。
+                try {
+                    browserSessionService.finalizeBatchVideos(runtime.request
+                        .getBatchId(), resolveRunnerRoot(), nodeCommand, token, runtime.request
+                            .getExecutionCapability());
+                } catch (Exception e) {
+                    log.warn("Playwright 失败用例批次视频切片失败，batchId={}", runtime.request.getBatchId(), e);
+                }
                 releaseBrowserSession(runtime.request.getBatchId());
             }
             sessionStateService.discardCandidate(runtime.sessionFiles);

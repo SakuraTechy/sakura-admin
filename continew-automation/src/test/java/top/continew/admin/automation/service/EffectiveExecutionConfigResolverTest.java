@@ -43,11 +43,13 @@ class EffectiveExecutionConfigResolverTest {
         environment.setLastDomain("https://environment.example");
 
         EffectiveExecutionConfigResolver.Resolved resolved = resolver.resolve(caseDO, environment, Map
-            .of("startUrl", "https://environment.example/login"), Map.of("stepTimeoutMs", 12000, "headed", true), true);
+            .of("startUrl", "https://environment.example/login"), Map
+                .of("stepTimeoutMs", 12000, "headed", true, "browserSessionSource", "managed-context"), true);
 
         assertThat(resolved.values()).containsEntry("start_url", "https://environment.example/login")
             .containsEntry("step_timeout_ms", 12000)
             .containsEntry("headed", true)
+            .containsEntry("browser_session_source", "managed-context")
             .containsEntry("window_size_mode", "maximized")
             .containsEntry("page_error_check_enabled", true);
         assertThat(resolved.sources()).containsEntry("step_timeout_ms", "execution-override")

@@ -21,6 +21,7 @@ import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
@@ -61,4 +62,8 @@ public class AutomationPlaywrightBatchCreateReq implements Serializable {
 
     /** 执行配置快照，仅用于历史诊断，不回写场景主数据。 */
     private Map<String, Object> executionConfig;
+
+    /** 扩展 CDP 专用配置；为空表示旧客户端的 current-profile 兼容回放。 */
+    @Valid
+    private AutomationCdpPlaybackOptionsReq cdpOptions;
 }

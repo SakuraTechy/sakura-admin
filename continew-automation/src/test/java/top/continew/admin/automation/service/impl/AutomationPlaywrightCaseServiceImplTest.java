@@ -40,26 +40,33 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import top.continew.admin.automation.converter.AutomationPlaybackUrlRewriter;
 import top.continew.admin.automation.converter.AutomationPlaywrightStepExtractor;
+import top.continew.admin.automation.model.entity.AutomationFileAssetDO;
 import top.continew.admin.automation.mapper.AutomationUiSceneMapper;
 import top.continew.admin.automation.model.entity.AutomationUiSceneDO;
 import top.continew.admin.automation.model.entity.ui.CaseDO;
 import top.continew.admin.automation.model.entity.ui.CaseExecutionConfigDO;
 import top.continew.admin.automation.model.entity.ui.StepDO;
+import top.continew.admin.automation.model.req.playwright.AutomationCdpPlaybackOptionsReq;
 import top.continew.admin.automation.model.req.playwright.AutomationPlaywrightBatchCreateReq;
 import top.continew.admin.automation.model.req.playwright.AutomationPlaywrightBatchCaseStatusReq;
 import top.continew.admin.automation.model.req.playwright.AutomationPlaywrightResultReq;
 import top.continew.admin.automation.model.resp.playwright.AutomationPlaywrightBatchResp;
 import top.continew.admin.automation.model.resp.playwright.AutomationPlaywrightCaseResp;
 import top.continew.admin.automation.service.AutomationPlaywrightSessionStateService;
+import top.continew.admin.automation.service.AutomationEnvironmentResourceService;
+import top.continew.admin.automation.service.AutomationCertificateWorkspaceService;
 import top.continew.admin.automation.service.AutomationCaseExecutionClassifier;
 import top.continew.admin.automation.service.AutomationUiExecutionRecordService;
 import top.continew.admin.automation.service.AutomationUiExecutionRecordService.FrozenExecutionCase;
 import top.continew.admin.automation.service.EffectiveExecutionConfigResolver;
+import top.continew.admin.automation.support.AutomationCdpPlaybackPolicy;
 import top.continew.admin.common.enums.DisEnableStatusEnum;
+import top.continew.admin.common.enums.StatusTypeEnum;
 import top.continew.admin.project.mapper.ProjectConfigMapper;
 import top.continew.admin.project.mapper.ProjectEnvironmentConfigMapper;
 import top.continew.admin.project.model.entity.ProjectConfigDO;
 import top.continew.admin.project.model.entity.ProjectEnvironmentConfigDO;
+import top.continew.admin.automation.mapper.AutomationFileAssetMapper;
 
 @ExtendWith(MockitoExtension.class)
 class AutomationPlaywrightCaseServiceImplTest {
@@ -82,12 +89,21 @@ class AutomationPlaywrightCaseServiceImplTest {
     @Mock
     private AutomationUiExecutionRecordService executionRecordService;
 
+    @Mock
+    private AutomationEnvironmentResourceService environmentResourceService;
+
+    @Mock
+    private AutomationCertificateWorkspaceService certificateWorkspaceService;
+
+    @Mock
+    private AutomationFileAssetMapper fileAssetMapper;
+
     private AutomationPlaywrightCaseServiceImpl service;
 
     @BeforeEach
     void setUp() {
         service = new AutomationPlaywrightCaseServiceImpl(sceneMapper, stepExtractor, environmentMapper, projectConfigMapper, new AutomationPlaybackUrlRewriter(), List
-            .of(), sessionStateService, executionRecordService, new EffectiveExecutionConfigResolver(), new AutomationCaseExecutionClassifier(stepExtractor));
+            .of(), sessionStateService, executionRecordService, new EffectiveExecutionConfigResolver(), new AutomationCaseExecutionClassifier(stepExtractor), new AutomationCdpPlaybackPolicy(true, "*"), environmentResourceService, certificateWorkspaceService, fileAssetMapper);
         lenient().when(stepExtractor.extract(any(StepDO.class), anyInt()))
             .thenReturn(Map.of("action_type", "navigate", "start_url", "https://172.19.5.45/login"));
         // 这些旧单测通过内存 mock 模拟规范化执行表，生产代码不会再写 scene JSON。
@@ -173,6 +189,129 @@ class AutomationPlaywrightCaseServiceImplTest {
     }
 
     @Test
+    void shouldOnlyReturnEnabledStepsWithDefinitionIndexes() {
+        AutomationUiSceneDO storedScene = scene(1L);
+        StepDO disabledStep = step("STEP_002", "禁用断言", 2, StatusTypeEnum.DISABLE);
+        StepDO enabledStep = step("STEP_003", "提交", 3, StatusTypeEnum.ENABLE);
+        storedScene.getCaseList()
+            .get(0)
+            .setStepList(List.of(storedScene.getCaseList().get(0).getStepList().get(0), disabledStep, enabledStep));
+        when(sceneMapper.selectById(100L)).thenReturn(storedScene);
+        when(stepExtractor.extract(any(StepDO.class), anyInt())).thenAnswer(invocation -> {
+            StepDO source = invocation.getArgument(0);
+            int index = invocation.getArgument(1);
+            return Map.of("id", source.getId(), "step_index", index, "action_type", "click");
+        });
+
+        AutomationPlaywrightCaseResp response = service.getCase("100:CASE_001");
+
+        assertThat(response.getSteps()).extracting(item -> item.get("id")).containsExactly("STEP_001", "STEP_003");
+        assertThat(response.getSteps()).extracting(item -> item.get("step_index")).containsExactly(0, 2);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void shouldExcludeDisabledStepsFromBatchTotals() {
+        AutomationUiSceneDO storedScene = scene(1L);
+        StepDO disabledStep = step("STEP_002", "禁用断言", 2, StatusTypeEnum.DISABLE);
+        storedScene.getCaseList()
+            .get(0)
+            .setStepList(List.of(storedScene.getCaseList().get(0).getStepList().get(0), disabledStep));
+        when(sceneMapper.selectById(100L)).thenReturn(storedScene);
+        when(environmentMapper.selectById(47L)).thenReturn(environment(1L));
+
+        AutomationPlaywrightBatchResp response = service.createBatch(batchRequest());
+
+        assertThat(response.getCases()).hasSize(1);
+        assertThat(response.getCases().get(0).getStepTotal()).isEqualTo(1);
+        Map<String, Object> storedBatch = (Map<String, Object>)storedScene.getDebugRecord().get(0);
+        Map<String, Object> storedCase = (Map<String, Object>)((List<?>)storedBatch.get("caseResults")).get(0);
+        assertThat(storedCase).containsEntry("step_total", 1).containsEntry("step_skip", 0);
+        assertThat(storedBatch).containsEntry("stepTotal", 1).containsEntry("stepSkip", 0);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void shouldFreezeManagedCdpSessionConfigAtBatchLevel() {
+        AutomationUiSceneDO storedScene = scene(1L);
+        when(sceneMapper.selectById(100L)).thenReturn(storedScene);
+        when(environmentMapper.selectById(47L)).thenReturn(environment(1L));
+        AutomationPlaywrightBatchCreateReq request = batchRequest();
+        request.setExecutionType("extension-cdp");
+        AutomationCdpPlaybackOptionsReq options = new AutomationCdpPlaybackOptionsReq();
+        options.setBrowserSessionSource("managed-context");
+        options.setSessionMode("reuse-browser");
+        options.setWindowSizeMode("custom");
+        options.setViewportWidth(1440);
+        options.setViewportHeight(900);
+        options.setPageErrorCheckEnabled(false);
+        request.setCdpOptions(options);
+
+        AutomationPlaywrightBatchResp response = service.createBatch(request);
+
+        assertThat(response.getSessionConfig()).containsEntry("browserSessionSource", "managed-context")
+            .containsEntry("sessionMode", "reuse-browser");
+        assertThat(response.getCases().get(0).getEffectiveExecutionConfig())
+            .containsEntry("browser_session_source", "managed-context")
+            .containsEntry("session_mode", "reuse-browser")
+            .containsEntry("ignore_https_errors", false)
+            .containsEntry("window_size_mode", "custom")
+            .containsEntry("viewport_width", 1440)
+            .containsEntry("viewport_height", 900)
+            .containsEntry("page_error_check_enabled", false);
+        Map<String, Object> storedBatch = (Map<String, Object>)storedScene.getDebugRecord().get(0);
+        assertThat((Map<String, Object>)storedBatch.get("sessionConfig")).containsEntry("sessionMode", "reuse-browser");
+    }
+
+    @Test
+    void shouldKeepOldCdpBatchInLegacyProfileMode() {
+        when(sceneMapper.selectById(100L)).thenReturn(scene(1L));
+        when(environmentMapper.selectById(47L)).thenReturn(environment(1L));
+        AutomationPlaywrightBatchCreateReq request = batchRequest();
+        request.setExecutionType("extension-cdp");
+
+        AutomationPlaywrightBatchResp response = service.createBatch(request);
+
+        assertThat(response.getSessionConfig()).containsEntry("browserSessionSource", "current-profile")
+            .containsEntry("sessionMode", "legacy-profile");
+        assertThat(response.getCases().get(0).getEffectiveExecutionConfig())
+            .containsEntry("browser_session_source", "current-profile")
+            .containsEntry("session_mode", "legacy-profile")
+            .containsEntry("ignore_https_errors", false);
+    }
+
+    @Test
+    void shouldRejectMismatchedCdpSessionSourceAndMode() {
+        when(sceneMapper.selectById(100L)).thenReturn(scene(1L));
+        when(environmentMapper.selectById(47L)).thenReturn(environment(1L));
+        AutomationPlaywrightBatchCreateReq request = batchRequest();
+        request.setExecutionType("extension-cdp");
+        AutomationCdpPlaybackOptionsReq options = new AutomationCdpPlaybackOptionsReq();
+        options.setBrowserSessionSource("current-profile");
+        options.setSessionMode("reuse-auth");
+        request.setCdpOptions(options);
+
+        assertThatThrownBy(() -> service.createBatch(request)).hasMessageContaining("浏览器会话来源与用例会话模式不匹配");
+    }
+
+    @Test
+    void shouldRejectManagedCdpSessionWhenCurrentUserIsNotInGrayWhitelist() {
+        service = new AutomationPlaywrightCaseServiceImpl(sceneMapper, stepExtractor, environmentMapper, projectConfigMapper, new AutomationPlaybackUrlRewriter(), List
+            .of(), sessionStateService, executionRecordService, new EffectiveExecutionConfigResolver(), new AutomationCaseExecutionClassifier(stepExtractor), new AutomationCdpPlaybackPolicy(false, "test-user"), environmentResourceService, certificateWorkspaceService, fileAssetMapper);
+        when(sceneMapper.selectById(100L)).thenReturn(scene(1L));
+        when(environmentMapper.selectById(47L)).thenReturn(environment(1L));
+        AutomationPlaywrightBatchCreateReq request = batchRequest();
+        request.setExecutionType("extension-cdp");
+        AutomationCdpPlaybackOptionsReq options = new AutomationCdpPlaybackOptionsReq();
+        options.setBrowserSessionSource("managed-context");
+        options.setSessionMode("isolated");
+        request.setCdpOptions(options);
+
+        assertThatThrownBy(() -> service.createBatch(request)).hasMessageContaining("CDP_MANAGED_CONTEXT_NOT_ALLOWED")
+            .hasMessageContaining("灰度开关未开启");
+    }
+
+    @Test
     void shouldReadBatchCaseAndEffectiveConfigFromBoundRevision() {
         AutomationUiSceneDO currentScene = scene(1L);
         currentScene.setCaseList(List.of());
@@ -200,6 +339,49 @@ class AutomationPlaywrightCaseServiceImplTest {
         assertThat(response.getViewportHeight()).isEqualTo(900);
         assertThat(response.getPageErrorCheckEnabled()).isEqualTo(1);
         assertThat(response.getEffectiveExecutionConfig()).isEqualTo(effectiveConfig);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void shouldMaterializeEnvironmentCertificateForCdpWhenBatchUsesExecutorField() {
+        AutomationUiSceneDO currentScene = scene(1L);
+        when(sceneMapper.selectById(100L)).thenReturn(currentScene);
+        when(environmentMapper.selectById(47L)).thenReturn(environment(1L));
+        Map<String, Object> batchRecord = Map
+            .of("batchId", "BATCH_CDP", "executor", "extension-cdp", "caseResults", List.of(Map
+                .of("case_id", "CASE_001")));
+        when(executionRecordService.findBatch(100L, "BATCH_CDP")).thenReturn(batchRecord);
+        when(executionRecordService.matchesExecutionCapability(100L, "BATCH_CDP", "capability")).thenReturn(true);
+        CaseDO frozenCase = scene(1L).getCaseList().get(0);
+        when(executionRecordService.findFrozenCase(100L, "BATCH_CDP", "CASE_001"))
+            .thenReturn(new FrozenExecutionCase(frozenCase, 7002L, 47L, Map.of()));
+
+        Map<String, Object> certificateRef = Map
+            .of("scope", "project_environment", "kind", "certificate", "slot_id", "878671771996430365");
+        Map<String, Object> certificateStep = new LinkedHashMap<>();
+        certificateStep.put("id", "STEP_CERT");
+        certificateStep.put("action_type", "certificate_upload");
+        certificateStep.put("start_url", "https://172.19.5.45/login");
+        certificateStep.put("certificate_ref", certificateRef);
+        when(stepExtractor.extract(any(StepDO.class), anyInt())).thenReturn(certificateStep);
+        when(environmentResourceService
+            .resolve(47L, 1L, AutomationEnvironmentResourceService.CERTIFICATE, certificateRef))
+            .thenReturn(new AutomationEnvironmentResourceService.ResolvedResource(878671771996430365L, "audit-license", AutomationEnvironmentResourceService.CERTIFICATE, 91L, 1));
+        AutomationFileAssetDO asset = new AutomationFileAssetDO();
+        asset.setId(91L);
+        asset.setOriginalName("172_19_5_45_audit.lic");
+        asset.setSize(1024L);
+        asset.setSha256("sha256");
+        when(fileAssetMapper.selectById(91L)).thenReturn(asset);
+
+        AutomationPlaywrightCaseResp response = service.getCase("100:CASE_001", 47L, "BATCH_CDP", "capability");
+
+        Map<String, Object> executionReference = (Map<String, Object>)response.getSteps().get(0).get("certificate_ref");
+        assertThat(executionReference).containsEntry("type", "admin_execution_file")
+            .containsEntry("asset_id", 91L)
+            .containsEntry("file_name", "172_19_5_45_audit.lic");
+        assertThat(executionReference.get("download_path"))
+            .isEqualTo("/automation/playwright/testcases/100/CASE_001/execution-files/STEP_CERT?projectEnvironmentId=47&batchId=BATCH_CDP");
     }
 
     @Test
@@ -462,6 +644,51 @@ class AutomationPlaywrightCaseServiceImplTest {
         assertThat(storedCase.get("executeStatus")).isEqualTo("queued");
         assertThat(storedCase.get("executeResult")).isEqualTo("not_executed");
         verify(sceneMapper).updateById(storedScene);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void shouldRejectBatchWhenOnlyCaseIsDisabled() {
+        AutomationUiSceneDO storedScene = scene(1L);
+        storedScene.getCaseList().get(0).setStatus(StatusTypeEnum.DISABLE);
+        when(sceneMapper.selectById(100L)).thenReturn(storedScene);
+        ProjectEnvironmentConfigDO environment = environment(1L);
+        when(environmentMapper.selectById(47L)).thenReturn(environment);
+        AutomationPlaywrightBatchCreateReq request = batchRequest();
+
+        assertThatThrownBy(() -> service.createBatch(request)).hasMessageContaining("没有启用且包含启用步骤的用例");
+        assertThat(storedScene.getDebugRecord()).isNull();
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void shouldExcludeDisabledStepFromExecutionResultAndTotals() {
+        AutomationUiSceneDO storedScene = scene(1L);
+        StepDO disabledStep = step("STEP_002", "禁用断言", 2, StatusTypeEnum.DISABLE);
+        storedScene.getCaseList()
+            .get(0)
+            .setStepList(List.of(storedScene.getCaseList().get(0).getStepList().get(0), disabledStep));
+        when(sceneMapper.selectById(100L)).thenReturn(storedScene);
+        when(stepExtractor.extract(any(StepDO.class), anyInt())).thenAnswer(invocation -> {
+            StepDO source = invocation.getArgument(0);
+            int index = invocation.getArgument(1);
+            return Map.of("id", source.getId(), "step_index", index, "action_type", "click");
+        });
+        Map<String, Object> raw = new LinkedHashMap<>();
+        raw.put("steps", List.of(Map.of("step_index", 0, "step_id", "STEP_001", "status", "passed")));
+        AutomationPlaywrightResultReq request = new AutomationPlaywrightResultReq();
+        request.setStatus("passed");
+        request.setSuccess(true);
+        request.setDurationMs(100L);
+        request.setRaw(raw);
+
+        service.saveResult("100:CASE_001", request);
+
+        Map<String, Object> record = (Map<String, Object>)storedScene.getDebugRecord().get(0);
+        List<Map<String, Object>> stepResults = (List<Map<String, Object>>)record.get("stepResults");
+        assertThat(stepResults).extracting(item -> item.get("status")).containsExactly("passed");
+        assertThat(stepResults).extracting(item -> item.get("step_id")).containsExactly("STEP_001");
+        assertThat(record).containsEntry("stepTotal", 1).containsEntry("stepSkip", 0);
     }
 
     @Test
@@ -887,6 +1114,24 @@ class AutomationPlaywrightCaseServiceImplTest {
         environment.setLastDomain("https://172.19.5.47");
         environment.setStatus(DisEnableStatusEnum.ENABLE);
         return environment;
+    }
+
+    private AutomationPlaywrightBatchCreateReq batchRequest() {
+        AutomationPlaywrightBatchCreateReq request = new AutomationPlaywrightBatchCreateReq();
+        request.setSceneKey("100");
+        request.setExecutionType("playwright-runner");
+        request.setCaseIds(List.of("CASE_001"));
+        request.setProjectEnvironmentId(47L);
+        return request;
+    }
+
+    private StepDO step(String id, String name, int order, StatusTypeEnum status) {
+        StepDO step = new StepDO();
+        step.setId(id);
+        step.setName(name);
+        step.setOrder(order);
+        step.setStatus(status);
+        return step;
     }
 
     private StepDO.Config config(String name, String value) {

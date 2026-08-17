@@ -25,6 +25,7 @@ import org.springframework.stereotype.Component;
 import top.continew.admin.automation.converter.AutomationPlaywrightStepExtractor;
 import top.continew.admin.automation.model.entity.ui.CaseDO;
 import top.continew.admin.automation.model.entity.ui.StepDO;
+import top.continew.admin.common.enums.StatusTypeEnum;
 
 /**
  * 根据服务端规范化步骤判断用例是否需要浏览器会话。
@@ -43,6 +44,10 @@ public class AutomationCaseExecutionClassifier {
             return false;
         }
         for (StepDO step : caseDO.getStepList()) {
+            // 禁用步骤不属于本次执行事实，不能影响浏览器会话和环境配置判断。
+            if (step != null && StatusTypeEnum.DISABLE.equals(step.getStatus())) {
+                continue;
+            }
             Map<String, Object> rawStep = stepExtractor.extract(step, 0);
             String actionType = StringUtils.trimToEmpty(String.valueOf(rawStep.getOrDefault("action_type", "")))
                 .toLowerCase();

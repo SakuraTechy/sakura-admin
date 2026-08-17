@@ -43,6 +43,7 @@ import top.continew.admin.automation.model.req.ui.AutomationUiStepConfigEditReq;
 import top.continew.admin.automation.model.req.ui.AutomationUiStepEditReq;
 import top.continew.admin.automation.model.resp.ui.AutomationUiStepDetailResp;
 import top.continew.admin.automation.service.AutomationUiCaseTreeService;
+import top.continew.admin.common.enums.StatusTypeEnum;
 
 @ExtendWith(MockitoExtension.class)
 class AutomationUiCaseDetailServiceImplTest {
@@ -85,7 +86,9 @@ class AutomationUiCaseDetailServiceImplTest {
         AutomationUiStepEditReq request = new AutomationUiStepEditReq();
         request.setPid("CASE_001");
         request.setId("STEP_001");
+        request.setOrder(3);
         request.setName("修改后的输入步骤");
+        request.setStatus(StatusTypeEnum.DISABLE);
         request.setOperationType("输入操作");
         request.setOperationName("输入文本");
         request.setOperationValue("web-input");
@@ -99,10 +102,55 @@ class AutomationUiCaseDetailServiceImplTest {
 
         ArgumentCaptor<StepDO> command = ArgumentCaptor.forClass(StepDO.class);
         verify(caseTreeService).updateStep(org.mockito.ArgumentMatchers.eq(1L), command.capture());
+        assertThat(command.getValue().getOrder()).isEqualTo(3);
+        assertThat(command.getValue().getStatus()).isEqualTo(StatusTypeEnum.DISABLE);
         assertThat(command.getValue().getOperationType()).isEqualTo("输入操作");
         assertThat(command.getValue().getConfigList()).extracting(StepDO.Config::getParamsName)
             .contains("custom_key", "method_code", "method_version", "method_config");
         assertThat(configValue(command.getValue(), "custom_key")).isEqualTo("custom_value");
+    }
+
+    @Test
+    void shouldRecoverRecordingFieldsFromOriginalSnapshotForHistoricalEdit() {
+        StepDO step = recordedInputStep();
+        step.setStatus(StatusTypeEnum.DISABLE);
+        step.setConfigList(new ArrayList<>(List
+            .of(stepConfig("source", "admin-manual"), stepConfig("recording_id", "rec-001"), stepConfig("playwright_step", """
+                {"action_type":"input","target_xpath":"//input[@name='user_name']","value":"sysadmin"}
+                """), stepConfig("original_playwright_step", """
+                {"action_type":"input","target_selector":"input[name='user_name']","target_xpath":"//*[@id='user_name']",
+                 "locator_meta":{"strategy":"css"},"url":"https://example.test/login","value":"sysadmin"}
+                """), stepConfig("original_locator_meta", "{\"strategy\":\"css\"}"))));
+        when(sceneMapper.selectById(1L)).thenReturn(scene(step));
+
+        AutomationUiStepDetailResp detail = service.getStepDetail(1L, "CASE_001", "STEP_001");
+
+        assertThat(detail.getTargetSummary()).isEqualTo("css=input[name='user_name']");
+        assertThat(detail.getConfigList()).anySatisfy(config -> {
+            assertThat(config.getParamsName()).isEqualTo("target_selector");
+            assertThat(config.getParamsValue()).isEqualTo("input[name='user_name']");
+            assertThat(config.isReadOnly()).isTrue();
+        }).anySatisfy(config -> {
+            assertThat(config.getParamsName()).isEqualTo("locator_meta");
+            assertThat(config.getParamsValue()).contains("strategy");
+        });
+    }
+
+    @Test
+    void shouldMaskOriginalRawStepAndNeverRecoverMaskedValue() {
+        StepDO step = recordedInputStep();
+        step.setConfigList(new ArrayList<>(List
+            .of(stepConfig("source", "sakura-playwright"), stepConfig("value_masked", "1"), stepConfig("playwright_step", "{\"action_type\":\"input\",\"value\":\"secret\"}"), stepConfig("original_playwright_step", "{\"action_type\":\"input\",\"target_selector\":\"#password\",\"value\":\"secret\"}"))));
+        when(sceneMapper.selectById(1L)).thenReturn(scene(step));
+
+        AutomationUiStepDetailResp detail = service.getStepDetail(1L, "CASE_001", "STEP_001");
+
+        assertThat(detail.getConfigList()).filteredOn(config -> "original_playwright_step".equals(config
+            .getParamsName()))
+            .singleElement()
+            .satisfies(config -> assertThat(config.getParamsValue()).doesNotContain("secret").contains("******"));
+        assertThat(detail.getConfigList()).noneMatch(config -> "value".equals(config.getParamsName()) && "secret"
+            .equals(config.getParamsValue()));
     }
 
     private AutomationUiSceneDO scene(StepDO step) {

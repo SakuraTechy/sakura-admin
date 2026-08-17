@@ -18,6 +18,7 @@ package top.continew.admin.automation.service;
 
 import java.io.IOException;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -27,6 +28,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
@@ -100,6 +102,68 @@ public class AutomationPlaywrightBrowserSessionService {
         cleanup(session);
     }
 
+    public Optional<Path> sessionDirectory(String batchId) {
+        if (StringUtils.isBlank(batchId)) {
+            return Optional.empty();
+        }
+        BrowserSession session = sessions.get(requireSegment(batchId, "批次 ID"));
+        return session == null ? Optional.empty() : Optional.of(session.directory());
+    }
+
+    /**
+     * 终态批次先关闭共享 Context 生成完整原生 WebM，再由 Node finalizer 按用例时间切片并回传结果。
+     */
+    public void finalizeBatchVideos(String batchId,
+                                    Path runnerRoot,
+                                    String nodeCommand,
+                                    String token,
+                                    String executionCapability) {
+        if (StringUtils.isBlank(batchId) || runnerRoot == null || StringUtils.isBlank(nodeCommand)) {
+            return;
+        }
+        BrowserSession session = sessions.get(requireSegment(batchId, "批次 ID"));
+        if (session == null) {
+            return;
+        }
+        terminateProcessTree(session.process());
+        Process finalizer = null;
+        try {
+            List<String> command = List.of(nodeCommand, "src/batch-video-finalizer.js", "--session-dir", session
+                .directory()
+                .toString());
+            Path outputFile = session.directory().resolve("batch-video-finalizer.log");
+            ProcessBuilder builder = new ProcessBuilder(command).directory(runnerRoot.toFile())
+                .redirectErrorStream(true)
+                .redirectOutput(outputFile.toFile());
+            Map<String, String> environment = builder.environment();
+            environment.put("CUECAST_ADMIN_API", "true");
+            if (StringUtils.isNotBlank(token)) {
+                environment.put("CUECAST_TOKEN", token);
+            }
+            if (StringUtils.isNotBlank(executionCapability)) {
+                environment.put("CUECAST_EXECUTION_CAPABILITY", executionCapability);
+            }
+            finalizer = builder.start();
+            boolean finished = finalizer.waitFor(120, TimeUnit.SECONDS);
+            String output = readOutput(outputFile);
+            if (!finished || finalizer.exitValue() != 0) {
+                log.warn("Playwright 批次视频切片失败，batchId={} output={}", batchId, output);
+            } else {
+                log.info("Playwright 批次视频切片完成，batchId={} output={}", batchId, output);
+            }
+        } catch (IOException e) {
+            log.warn("启动 Playwright 批次视频切片失败，batchId={}", batchId, e);
+            if (finalizer != null) {
+                finalizer.destroyForcibly();
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            if (finalizer != null) {
+                finalizer.destroyForcibly();
+            }
+        }
+    }
+
     @PreDestroy
     public void shutdown() {
         List<BrowserSession> active;
@@ -128,7 +192,9 @@ public class AutomationPlaywrightBrowserSessionService {
             List<String> command = List.of(nodeCommand, "src/browser-session-host.js", "--endpoint-file", endpointFile
                 .toString(), "--browser", config.browser(), "--headed", String.valueOf(config
                     .headed()), "--ignore-https-errors", String.valueOf(config.ignoreHttpsErrors()), "--slow-mo", String
-                        .valueOf(config.slowMoMs()));
+                        .valueOf(config.slowMoMs()), "--video", config.video(), "--recording-manifest-file", directory
+                            .resolve("recording.json")
+                            .toString());
             process = new ProcessBuilder(command).directory(runnerRoot.toFile())
                 .redirectErrorStream(true)
                 .redirectOutput(outputFile.toFile())
@@ -198,6 +264,17 @@ public class AutomationPlaywrightBrowserSessionService {
     private void terminateProcessTree(Process process) {
         if (process == null) {
             return;
+        }
+        if (process.isAlive()) {
+            try {
+                process.getOutputStream().write("stop\n".getBytes(StandardCharsets.UTF_8));
+                process.getOutputStream().flush();
+                process.waitFor(3, TimeUnit.SECONDS);
+            } catch (IOException e) {
+                log.debug("Playwright 浏览器宿主未能优雅停止", e);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
         }
         List<ProcessHandle> descendants = process.descendants().toList();
         process.destroy();
@@ -279,11 +356,12 @@ public class AutomationPlaywrightBrowserSessionService {
                                   String endpoint, Process process) {
     }
 
-    private record BrowserSessionConfig(String browser, boolean headed, boolean ignoreHttpsErrors, int slowMoMs) {
+    private record BrowserSessionConfig(String browser, boolean headed, boolean ignoreHttpsErrors, int slowMoMs,
+                                        String video) {
 
         private static BrowserSessionConfig from(AutomationPlaywrightRunnerOptionsReq options) {
             return new BrowserSessionConfig(options.getBrowser(), Boolean.TRUE.equals(options.getHeaded()), Boolean.TRUE
-                .equals(options.getIgnoreHttpsErrors()), options.getSlowMoMs());
+                .equals(options.getIgnoreHttpsErrors()), options.getSlowMoMs(), options.getVideo());
         }
     }
 }

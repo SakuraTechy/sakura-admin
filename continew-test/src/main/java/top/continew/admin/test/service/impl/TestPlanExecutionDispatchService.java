@@ -210,9 +210,8 @@ public class TestPlanExecutionDispatchService {
                 continue;
             }
             AutomationPlaywrightBatchResp.CaseExecution execution = executions.get(caseId);
-            if (execution == null || "failed".equalsIgnoreCase(execution.getStatus()) || "cancelled"
-                .equalsIgnoreCase(execution.getStatus())) {
-                // 批次创建阶段已记录该用例的配置错误或取消事实，不能再次启动 Runner 覆盖失败原因。
+            if (execution == null || !"queued".equalsIgnoreCase(execution.getStatus())) {
+                // 只有 queued 用例允许启动 Runner；禁用用例不会进入批次执行范围。
                 continue;
             }
             AutomationPlaywrightRunnerOptionsReq effectiveOptions = toRunnerOptions(execution
@@ -422,12 +421,24 @@ public class TestPlanExecutionDispatchService {
             .stream()
             .filter(Objects::nonNull)
             .filter(item -> caseIds.contains(item.getId()))
-            .mapToInt(item -> item.getStepList() == null ? item.getStep() == null ? 0 : 1 : item.getStepList().size())
+            .mapToInt(this::executableStepTotal)
             .sum();
     }
 
     private boolean hasSteps(CaseDO item) {
-        return item.getStep() != null || item.getStepList() != null && !item.getStepList().isEmpty();
+        return executableStepTotal(item) > 0;
+    }
+
+    private int executableStepTotal(CaseDO item) {
+        if (item.getStepList() != null) {
+            return (int)item.getStepList()
+                .stream()
+                .filter(Objects::nonNull)
+                .filter(step -> step.getStatus() == null || StatusTypeEnum.ENABLE.equals(step.getStatus()))
+                .count();
+        }
+        return item.getStep() != null && (item.getStep().getStatus() == null || StatusTypeEnum.ENABLE
+            .equals(item.getStep().getStatus())) ? 1 : 0;
     }
 
     private void cancelSceneRecords(String testPlanId, String reportId) {

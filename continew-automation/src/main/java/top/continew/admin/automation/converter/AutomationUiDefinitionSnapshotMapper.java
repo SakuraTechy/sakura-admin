@@ -24,11 +24,22 @@ import java.util.TreeMap;
 
 import cn.hutool.crypto.digest.DigestUtil;
 import cn.hutool.json.JSONUtil;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.DeserializationContext;
+import com.fasterxml.jackson.databind.JsonDeserializer;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.module.SimpleModule;
 import org.apache.commons.lang3.StringUtils;
 import top.continew.admin.automation.model.entity.ui.CaseDO;
+import top.continew.admin.common.enums.StatusTypeEnum;
 
 /** 将持久化用例树映射为可散列的规范化执行快照。 */
 public final class AutomationUiDefinitionSnapshotMapper {
+
+    private static final TypeReference<List<CaseDO>> CASE_LIST_TYPE = new TypeReference<>() {
+    };
+    private static final SimpleModule SNAPSHOT_ENUM_MODULE = createSnapshotEnumModule();
 
     private AutomationUiDefinitionSnapshotMapper() {
     }
@@ -39,6 +50,34 @@ public final class AutomationUiDefinitionSnapshotMapper {
         Object normalized = normalize("case_list", source);
         String definitionJson = JSONUtil.toJsonStr(normalized == null ? List.of() : normalized);
         return new Snapshot(definitionJson, DigestUtil.sha256Hex(definitionJson));
+    }
+
+    public static List<CaseDO> readCases(ObjectMapper objectMapper, String definitionJson) throws Exception {
+        // revision 由 Hutool 按枚举名写入；应用 BaseEnum 读取器只认数值，必须在快照边界同时兼容两种格式。
+        ObjectMapper snapshotReader = objectMapper.copy();
+        snapshotReader.registerModule(SNAPSHOT_ENUM_MODULE);
+        return snapshotReader.readValue(definitionJson, CASE_LIST_TYPE);
+    }
+
+    private static SimpleModule createSnapshotEnumModule() {
+        SimpleModule module = new SimpleModule("automation-ui-definition-snapshot");
+        module.addDeserializer(StatusTypeEnum.class, new JsonDeserializer<>() {
+            @Override
+            public StatusTypeEnum deserialize(JsonParser parser,
+                                              DeserializationContext context) throws java.io.IOException {
+                String raw = StringUtils.trimToEmpty(parser.getText());
+                for (StatusTypeEnum status : StatusTypeEnum.values()) {
+                    if (status.name().equalsIgnoreCase(raw) || String.valueOf(status.getValue()).equals(raw) || status
+                        .getDescription()
+                        .equals(raw)) {
+                        return status;
+                    }
+                }
+                return (StatusTypeEnum)context
+                    .handleWeirdStringValue(StatusTypeEnum.class, raw, "无法识别的自动化定义状态：%s", raw);
+            }
+        });
+        return module;
     }
 
     private static Object normalize(String key, Object value) {

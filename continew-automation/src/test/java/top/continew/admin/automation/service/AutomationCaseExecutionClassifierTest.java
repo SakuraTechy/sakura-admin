@@ -29,6 +29,7 @@ import org.junit.jupiter.api.Test;
 import top.continew.admin.automation.converter.AutomationPlaywrightStepExtractor;
 import top.continew.admin.automation.model.entity.ui.CaseDO;
 import top.continew.admin.automation.model.entity.ui.StepDO;
+import top.continew.admin.common.enums.StatusTypeEnum;
 
 class AutomationCaseExecutionClassifierTest {
 
@@ -45,5 +46,19 @@ class AutomationCaseExecutionClassifierTest {
 
         when(extractor.extract(any(StepDO.class), anyInt())).thenReturn(Map.of("action_type", "click"));
         assertThat(classifier.hasBrowserSteps(caseDO)).isTrue();
+    }
+
+    @Test
+    void shouldIgnoreDisabledBrowserSteps() {
+        AutomationPlaywrightStepExtractor extractor = mock(AutomationPlaywrightStepExtractor.class);
+        AutomationCaseExecutionClassifier classifier = new AutomationCaseExecutionClassifier(extractor);
+        CaseDO caseDO = new CaseDO();
+        StepDO disabledBrowserStep = new StepDO();
+        disabledBrowserStep.setStatus(StatusTypeEnum.DISABLE);
+        StepDO infrastructureStep = new StepDO();
+        caseDO.setStepList(List.of(disabledBrowserStep, infrastructureStep));
+        when(extractor.extract(infrastructureStep, 0)).thenReturn(Map.of("action_type", "database_sql"));
+
+        assertThat(classifier.hasBrowserSteps(caseDO)).isFalse();
     }
 }

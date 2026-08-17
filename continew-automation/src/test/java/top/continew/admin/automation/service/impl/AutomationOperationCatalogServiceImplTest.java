@@ -48,7 +48,7 @@ class AutomationOperationCatalogServiceImplTest {
     }
 
     @Test
-    void shouldLoadThirteenTypesAndSixtyThreeMethods() {
+    void shouldLoadThirteenTypesAndSixtyFourMethods() {
         AutomationOperationCatalog catalog = catalog();
         List<AutomationOperationCatalog.OperationMethod> methods = catalog.getTypes()
             .stream()
@@ -56,7 +56,7 @@ class AutomationOperationCatalogServiceImplTest {
             .toList();
 
         assertThat(catalog.getTypes()).hasSize(13);
-        assertThat(methods).hasSize(63);
+        assertThat(methods).hasSize(64);
         assertThat(methods).allSatisfy(method -> {
             assertThat(method.getMethodCode()).isNotBlank();
             assertThat(method.getLegacyAction()).isNotBlank();
@@ -75,8 +75,8 @@ class AutomationOperationCatalogServiceImplTest {
         AutomationOperationCatalog catalog = catalog();
         assertThat(catalog.getDiagnosticProfiles())
             .containsKeys("navigation", "element_interaction", "dialog", "assertion", "wait", "variable", "script", "infrastructure");
-        assertThat(catalog.getDiagnosticProfiles().values().stream().mapToInt(List::size).sum()).isEqualTo(63);
-        assertThat(catalog.getDiagnosticProfiles().values().stream().flatMap(List::stream).distinct()).hasSize(63);
+        assertThat(catalog.getDiagnosticProfiles().values().stream().mapToInt(List::size).sum()).isEqualTo(64);
+        assertThat(catalog.getDiagnosticProfiles().values().stream().flatMap(List::stream).distinct()).hasSize(64);
     }
 
     @Test
@@ -84,9 +84,9 @@ class AutomationOperationCatalogServiceImplTest {
         List<AutomationOperationCatalog.OperationMethod> methods = methods();
         List<Map<String, Object>> fields = methods.stream().flatMap(method -> method.getFormSchema().stream()).toList();
 
-        assertThat(fields).hasSize(117);
-        assertThat(catalog().getDiagnosticFieldDefaults()).hasSize(44);
-        assertThat(fields.stream().filter(field -> field.containsKey("default"))).hasSize(16);
+        assertThat(fields).hasSize(125);
+        assertThat(catalog().getDiagnosticFieldDefaults()).hasSize(51);
+        assertThat(fields.stream().filter(field -> field.containsKey("default"))).hasSize(17);
         for (AutomationOperationCatalog.OperationMethod method : methods) {
             Set<String> fieldNames = new HashSet<>();
             for (Map<String, Object> field : method.getFormSchema()) {
@@ -106,6 +106,22 @@ class AutomationOperationCatalogServiceImplTest {
                 assertConditionsReferenceDeclaredFields(method, field);
             }
         }
+    }
+
+    @Test
+    void shouldAcceptEnvironmentResourceReferenceComponentForCertificateUpload() {
+        AutomationOperationCatalog.OperationMethod method = findMethod(catalog(), "input.certificate");
+        assertThat(field(method, "certificate_ref")).containsEntry("component", "environment_resource_ref");
+    }
+
+    @Test
+    void shouldDeclareShellTypeInServerShellFormSchema() {
+        AutomationOperationCatalog.OperationMethod method = findMethod(catalog(), "server.shell");
+        assertThat(field(method, "shell")).containsEntry("label", "Shell 脚本类型")
+            .containsEntry("component", "select")
+            .containsEntry("default", "bash")
+            .containsEntry("options", List.of(Map.of("label", "bash", "value", "bash"), Map
+                .of("label", "sh", "value", "sh"), Map.of("label", "PowerShell", "value", "powershell")));
     }
 
     @Test
@@ -180,7 +196,22 @@ class AutomationOperationCatalogServiceImplTest {
     }
 
     @Test
-    void shouldMatchEveryCatalogMethodWithTheCrossExecutorFixture() throws Exception {
+    void shouldEnablePlaywrightOnlyDownloadWithoutCuecastSnapshot() {
+        register("playwright", List.of("assert_download"));
+
+        assertThat(findMethod(catalog(), "assertion.download")).satisfies(method -> {
+            assertThat(method.getCapabilities()).containsEntry("selenium", "unsupported")
+                .containsEntry("playwright", "implemented")
+                .containsEntry("cuecast", "unsupported");
+            assertThat(method.getRequirements()).containsEntry("executor_types", List.of("playwright"));
+            assertThat(method.getAuthoringEnabled()).isTrue();
+            assertThat(method.getEnabled()).isTrue();
+            assertThat(method.getRuntimeReady()).isTrue();
+        });
+    }
+
+    @Test
+    void shouldMatchCrossExecutorMethodsWithTheCompatibilityFixture() throws Exception {
         JsonNode fixture = objectMapper.readTree(getClass()
             .getResourceAsStream("/automation/automation-operation-63-fixture.json"));
         assertThat(fixture.path("catalog_version").asText()).isEqualTo("2026-08-07.1");
@@ -190,6 +221,8 @@ class AutomationOperationCatalogServiceImplTest {
             .stream()
             .flatMap(type -> type.getMethods().stream())
             .toList();
+        assertThat(catalogMethods.stream()
+            .filter(method -> method.getCapabilities().values().stream().allMatch("implemented"::equals))).hasSize(63);
         for (JsonNode expected : fixture.path("methods")) {
             AutomationOperationCatalog.OperationMethod actual = catalogMethods.stream()
                 .filter(method -> expected.path("method_code").asText().equals(method.getMethodCode()))

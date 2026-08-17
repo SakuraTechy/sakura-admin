@@ -30,7 +30,7 @@ class AutomationPlaywrightArtifactControllerTest {
     @Test
     void uploadRequiresUpdateOrExecutePermission() throws NoSuchMethodException {
         Method method = AutomationPlaywrightArtifactController.class
-            .getDeclaredMethod("upload", String.class, String.class, MultipartFile.class);
+            .getDeclaredMethod("upload", String.class, String.class, String.class, MultipartFile.class);
         SaCheckPermission permission = method.getAnnotation(SaCheckPermission.class);
 
         assertThat(permission).isNotNull();
@@ -43,6 +43,7 @@ class AutomationPlaywrightArtifactControllerTest {
     void artifactReadsRequireSceneViewPermission() throws NoSuchMethodException {
         assertViewPermission("getByFileId", Long.class);
         assertViewPermission("getLegacy", String.class, String.class);
+        assertViewPermission("getLegacyNested", String.class, String.class, String.class);
     }
 
     private void assertViewPermission(String methodName, Class<?>... parameterTypes) throws NoSuchMethodException {

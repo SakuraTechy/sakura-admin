@@ -34,6 +34,24 @@ ALTER TABLE `automation_ui_scene_definition_revision`
 
 -- rollback ALTER TABLE `automation_ui_scene_definition_revision` DROP INDEX `idx_automation_ui_scene_definition_hash`, ADD UNIQUE INDEX `uk_automation_ui_scene_definition_hash` (`scene_id`, `content_hash`);
 
+-- changeset codex:automation-ui-definition-revision-content-hash-drop-unique-repair-20260810
+-- preconditions onFail:MARK_RAN onError:HALT
+-- precondition-sql-check expectedResult:1 SELECT COUNT(DISTINCT index_name) FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = 'automation_ui_scene_definition_revision' AND index_name = 'uk_automation_ui_scene_definition_hash' AND non_unique = 0
+-- comment 修复旧 changeset 因复合索引统计为两行而被误标 MARK_RAN 的环境；相同快照必须允许绑定不同 definitionVersion。
+ALTER TABLE `automation_ui_scene_definition_revision`
+    DROP INDEX `uk_automation_ui_scene_definition_hash`;
+
+-- rollback CREATE UNIQUE INDEX `uk_automation_ui_scene_definition_hash` ON `automation_ui_scene_definition_revision` (`scene_id`, `content_hash`);
+
+-- changeset codex:automation-ui-definition-revision-content-hash-add-normal-repair-20260810
+-- preconditions onFail:MARK_RAN onError:HALT
+-- precondition-sql-check expectedResult:0 SELECT COUNT(DISTINCT index_name) FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = 'automation_ui_scene_definition_revision' AND index_name = 'idx_automation_ui_scene_definition_hash'
+-- comment content_hash 只用于内容校验和检索，不作为 revision 唯一身份。
+CREATE INDEX `idx_automation_ui_scene_definition_hash`
+    ON `automation_ui_scene_definition_revision` (`scene_id`, `content_hash`);
+
+-- rollback ALTER TABLE `automation_ui_scene_definition_revision` DROP INDEX `idx_automation_ui_scene_definition_hash`;
+
 -- changeset codex:automation-infrastructure-task-owner-digest-20260803
 -- preconditions onFail:MARK_RAN onError:HALT
 -- precondition-sql-check expectedResult:0 SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'automation_infrastructure_task' AND column_name = 'owner_user_id'

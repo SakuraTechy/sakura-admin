@@ -28,6 +28,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.json.JSONUtil;
@@ -47,6 +49,7 @@ import top.continew.admin.automation.model.entity.AutomationUiSceneDO;
 import top.continew.admin.automation.model.entity.ui.CaseDO;
 import top.continew.admin.automation.model.entity.ui.CaseExecutionConfigDO;
 import top.continew.admin.automation.model.entity.ui.StepDO;
+import top.continew.admin.automation.model.req.playwright.AutomationCdpPlaybackOptionsReq;
 import top.continew.admin.automation.model.req.playwright.AutomationPlaywrightBatchCaseStatusReq;
 import top.continew.admin.automation.model.req.playwright.AutomationPlaywrightBatchCreateReq;
 import top.continew.admin.automation.model.req.playwright.AutomationPlaywrightResultReq;
@@ -54,6 +57,10 @@ import top.continew.admin.automation.model.resp.playwright.AutomationPlaywrightB
 import top.continew.admin.automation.model.resp.playwright.AutomationPlaywrightCaseCancellationResp;
 import top.continew.admin.automation.model.resp.playwright.AutomationPlaywrightCaseResp;
 import top.continew.admin.automation.service.AutomationPlaywrightCaseService;
+import top.continew.admin.automation.service.AutomationEnvironmentResourceService;
+import top.continew.admin.automation.service.AutomationCertificateWorkspaceService;
+import top.continew.admin.automation.mapper.AutomationFileAssetMapper;
+import top.continew.admin.automation.model.entity.AutomationFileAssetDO;
 import top.continew.admin.automation.service.AutomationPlanReportProgressService;
 import top.continew.admin.automation.service.AutomationPlaywrightSessionStateService;
 import top.continew.admin.automation.service.AutomationCaseExecutionClassifier;
@@ -61,10 +68,12 @@ import top.continew.admin.automation.service.AutomationUiExecutionRecordService;
 import top.continew.admin.automation.service.AutomationUiExecutionRecordService.FrozenExecutionCase;
 import top.continew.admin.automation.service.EffectiveExecutionConfigResolver;
 import top.continew.admin.automation.support.AutomationExecutionCapability;
+import top.continew.admin.automation.support.AutomationCdpPlaybackPolicy;
 import top.continew.admin.automation.support.AutomationStoragePressureGuard;
 import top.continew.admin.automation.util.AutomationUiSceneStatusCodes;
 import top.continew.admin.common.context.UserContextHolder;
 import top.continew.admin.common.enums.DisEnableStatusEnum;
+import top.continew.admin.common.enums.StatusTypeEnum;
 import top.continew.admin.project.mapper.ProjectConfigMapper;
 import top.continew.admin.project.mapper.ProjectEnvironmentConfigMapper;
 import top.continew.admin.project.model.entity.ProjectConfigDO;
@@ -99,6 +108,10 @@ public class AutomationPlaywrightCaseServiceImpl implements AutomationPlaywright
     private final AutomationUiExecutionRecordService executionRecordService;
     private final EffectiveExecutionConfigResolver effectiveExecutionConfigResolver;
     private final AutomationCaseExecutionClassifier executionClassifier;
+    private final AutomationCdpPlaybackPolicy cdpPlaybackPolicy;
+    private final AutomationEnvironmentResourceService environmentResourceService;
+    private final AutomationCertificateWorkspaceService certificateWorkspaceService;
+    private final AutomationFileAssetMapper fileAssetMapper;
 
     @Resource
     private AutomationStoragePressureGuard storagePressureGuard;
@@ -132,8 +145,9 @@ public class AutomationPlaywrightCaseServiceImpl implements AutomationPlaywright
                                                  String batchId,
                                                  String executionCapability) {
         FrozenExecutionCase frozenExecution = null;
+        Map<String, Object> batchRecord = null;
         if (StringUtils.isNotBlank(batchId)) {
-            Map<String, Object> batchRecord = findBatch(resolved.scene(), batchId);
+            batchRecord = findBatch(resolved.scene(), batchId);
             if (batchRecord == null) {
                 throw new BusinessException("执行批次不存在，batchId=" + batchId);
             }
@@ -150,6 +164,9 @@ public class AutomationPlaywrightCaseServiceImpl implements AutomationPlaywright
             }
         }
         CaseDO caseDO = frozenExecution == null ? resolved.caseDO() : frozenExecution.caseDO();
+        if (!isEnabled(caseDO.getStatus())) {
+            throw new BusinessException("Playwright 目标用例已禁用，caseId=" + caseDO.getId());
+        }
         AutomationPlaywrightCaseResp resp = new AutomationPlaywrightCaseResp();
         resp.setId(caseKey);
         resp.setSceneDbId(resolved.scene().getId());
@@ -165,9 +182,12 @@ public class AutomationPlaywrightCaseServiceImpl implements AutomationPlaywright
         fillArtifactPathMetadata(resp, resolved.scene());
 
         List<Map<String, Object>> steps = new ArrayList<>();
-        List<StepDOAdapter> adapters = stepAdapters(caseDO);
-        for (int i = 0; i < adapters.size(); i++) {
-            steps.add(stepExtractor.extract(adapters.get(i).step(), i));
+        List<StepDOAdapter> adapters = executableStepAdapters(caseDO);
+        if (adapters.isEmpty()) {
+            throw new BusinessException("Playwright 目标用例没有启用的步骤，caseId=" + caseDO.getId());
+        }
+        for (StepDOAdapter adapter : adapters) {
+            steps.add(stepExtractor.extract(adapter.step(), adapter.index()));
         }
         resp.setSteps(steps);
         fillCaseRuntimeFields(resp, caseDO, steps);
@@ -176,11 +196,41 @@ public class AutomationPlaywrightCaseServiceImpl implements AutomationPlaywright
             : frozenExecution.projectEnvironmentId();
         if (effectiveEnvironmentId != null) {
             applyProjectEnvironment(resp, resolved.scene(), effectiveEnvironmentId);
+            applyEnvironmentResources(steps, resolved.scene(), caseDO, effectiveEnvironmentId, batchId, batchRecord);
         }
         if (frozenExecution != null) {
             applyEffectiveExecutionConfig(resp, frozenExecution.effectiveExecutionConfig());
         }
         return resp;
+    }
+
+    @Override
+    public ExecutionFile getExecutionFile(String caseKey,
+                                          String stepId,
+                                          Long projectEnvironmentId,
+                                          String batchId,
+                                          String executionCapability) {
+        if (StringUtils.isBlank(batchId)) {
+            throw new BusinessException("环境证书下载必须绑定执行批次");
+        }
+        AutomationPlaywrightCaseResp testCase = getCase(caseKey, projectEnvironmentId, batchId, executionCapability);
+        Map<String, Object> step = testCase.getSteps()
+            .stream()
+            .filter(item -> Objects.equals(stepId, stringValue(item.get("id"))))
+            .findFirst()
+            .orElseThrow(() -> new BusinessException("执行批次中不存在证书步骤，stepId=" + stepId));
+        Map<String, Object> certificateRef = mapValue(step.get("certificate_ref"));
+        Long assetId = nullableLong(certificateRef.get("asset_id"));
+        if (assetId == null) {
+            throw new BusinessException("当前步骤没有可下载的环境证书资产");
+        }
+        ResolvedCase resolved = resolveCaseIdentity(caseKey);
+        AutomationFileAssetDO asset = fileAssetMapper.selectById(assetId);
+        if (asset == null || !Objects.equals(resolved.scene().getProjectId(), asset.getProjectId())) {
+            throw new BusinessException("证书资产不存在或不属于当前场景项目");
+        }
+        java.nio.file.Path path = certificateWorkspaceService.assetPath(assetId, resolved.scene().getProjectId());
+        return new ExecutionFile(path, asset.getOriginalName(), asset.getSize(), asset.getSha256());
     }
 
     @Override
@@ -223,6 +273,8 @@ public class AutomationPlaywrightCaseServiceImpl implements AutomationPlaywright
         String executeName = StringUtils.firstNonBlank(UserContextHolder.getNickname(), "-".equals(username)
             ? null
             : username, req.getExecuteName(), "-");
+        Map<String, Object> sessionConfig = resolveBatchSessionConfig(executionType, req.getCdpOptions());
+        Map<String, Object> executionOverrides = resolveBatchExecutionOverrides(req, sessionConfig);
 
         List<Object> caseResults = new ArrayList<>();
         Map<String, Object> effectiveExecutionConfigs = new LinkedHashMap<>();
@@ -232,16 +284,26 @@ public class AutomationPlaywrightCaseServiceImpl implements AutomationPlaywright
             if (caseDO == null) {
                 throw new BusinessException("批次目标用例不存在，caseId=" + caseId);
             }
-            int stepTotal = stepAdapters(caseDO).size();
+            List<StepDOAdapter> adapters = executableStepAdapters(caseDO);
+            int stepTotal = adapters.size();
+            if (!isEnabled(caseDO.getStatus()) || adapters.isEmpty()) {
+                continue;
+            }
             AutomationPlaywrightBatchResp.CaseExecution responseCase = new AutomationPlaywrightBatchResp.CaseExecution();
             responseCase.setCaseId(caseId);
             responseCase.setCaseName(caseDO.getName());
             responseCase.setStepTotal(stepTotal);
             try {
+                List<Map<String, Object>> resourcePrecheckSteps = new ArrayList<>();
+                for (StepDOAdapter adapter : adapters) {
+                    resourcePrecheckSteps.add(stepExtractor.extract(adapter.step(), adapter.index()));
+                }
+                applyEnvironmentResources(resourcePrecheckSteps, scene, caseDO, environment.getId(), null, Map
+                    .of("executionType", executionType));
                 boolean hasBrowserSteps = executionClassifier.hasBrowserSteps(caseDO);
                 Map<String, Object> environmentDefaults = resolveEnvironmentExecutionDefaults(scene, caseDO, environment, hasBrowserSteps);
                 EffectiveExecutionConfigResolver.Resolved effectiveConfig = effectiveExecutionConfigResolver
-                    .resolve(caseDO, environment, environmentDefaults, req.getExecutionConfig(), hasBrowserSteps);
+                    .resolve(caseDO, environment, environmentDefaults, executionOverrides, hasBrowserSteps);
                 effectiveExecutionConfigs.put(caseId, effectiveConfig.values());
                 responseCase.setEffectiveExecutionConfig(effectiveConfig.values());
                 String executionId = nextExecutionId();
@@ -288,6 +350,9 @@ public class AutomationPlaywrightCaseServiceImpl implements AutomationPlaywright
             }
             responseCases.add(responseCase);
         }
+        if (caseResults.isEmpty()) {
+            throw new BusinessException("批次没有启用且包含启用步骤的用例");
+        }
 
         Map<String, Object> record = new LinkedHashMap<>();
         record.put("recordType", "playwright-batch");
@@ -306,6 +371,9 @@ public class AutomationPlaywrightCaseServiceImpl implements AutomationPlaywright
         record.put("duration", 0);
         record.put("projectEnvironmentId", req.getProjectEnvironmentId());
         record.put("projectEnvironmentName", environment.getName());
+        if (!sessionConfig.isEmpty()) {
+            record.put("sessionConfig", sessionConfig);
+        }
         record.put("executionConfig", Map.of("cases", effectiveExecutionConfigs, "resolutionOrder", List
             .of("system-default", "case-default", "environment", "execution-override", "platform-policy")));
         record.put("caseResults", caseResults);
@@ -329,8 +397,64 @@ public class AutomationPlaywrightCaseServiceImpl implements AutomationPlaywright
         response.setExecuteName(executeName);
         response.setExecuteEmail(StringUtils.defaultIfBlank(req.getExecuteEmail(), "-"));
         response.setStartedAt(startedAt);
+        response.setSessionConfig(sessionConfig);
         response.setCases(responseCases);
         return response;
+    }
+
+    private Map<String, Object> resolveBatchSessionConfig(String executionType,
+                                                          AutomationCdpPlaybackOptionsReq options) {
+        if (!"extension-cdp".equals(executionType)) {
+            if (options != null) {
+                throw new BusinessException("CDP 回放配置只能用于 extension-cdp 批次");
+            }
+            return Map.of();
+        }
+        if (options == null) {
+            // 旧客户端没有能力协商，必须明确记录为当前 Profile 兼容模式，不能伪装成严格隔离。
+            return Map.of("browserSessionSource", "current-profile", "sessionMode", "legacy-profile");
+        }
+        String source = StringUtils.trimToEmpty(options.getBrowserSessionSource()).toLowerCase();
+        String mode = StringUtils.trimToEmpty(options.getSessionMode()).toLowerCase();
+        if (!List.of("current-profile", "managed-context").contains(source)) {
+            throw new BusinessException("CDP 浏览器会话来源配置无效：" + source);
+        }
+        if (!List.of("legacy-profile", "isolated", "reuse-auth", "reuse-browser").contains(mode)) {
+            throw new BusinessException("CDP 用例会话模式配置无效：" + mode);
+        }
+        boolean legacyPair = "current-profile".equals(source) && "legacy-profile".equals(mode);
+        boolean managedPair = "managed-context".equals(source) && !"legacy-profile".equals(mode);
+        if (!legacyPair && !managedPair) {
+            throw new BusinessException("CDP 浏览器会话来源与用例会话模式不匹配：" + source + "/" + mode);
+        }
+        if (managedPair) {
+            // 后端强制灰度资格，避免客户端绕过 UI 直接请求未验证的三种会话模式。
+            cdpPlaybackPolicy.assertManagedContextAllowed();
+        }
+        return Map.of("browserSessionSource", source, "sessionMode", mode);
+    }
+
+    private Map<String, Object> resolveBatchExecutionOverrides(AutomationPlaywrightBatchCreateReq req,
+                                                               Map<String, Object> sessionConfig) {
+        Map<String, Object> overrides = new LinkedHashMap<>(req.getExecutionConfig() == null
+            ? Map.of()
+            : req.getExecutionConfig());
+        if (!"extension-cdp".equals(StringUtils.trimToEmpty(req.getExecutionType()).toLowerCase())) {
+            return overrides;
+        }
+        AutomationCdpPlaybackOptionsReq options = req.getCdpOptions();
+        // 普通扩展无法可靠覆盖 Chrome 证书校验；旧客户端未传配置时也必须默认关闭。
+        overrides.put("ignore_https_errors", options != null && Boolean.TRUE.equals(options.getIgnoreHttpsErrors()));
+        if (options != null) {
+            overrides.put("window_size_mode", options.getWindowSizeMode());
+            overrides.put("viewport_width", options.getViewportWidth());
+            overrides.put("viewport_height", options.getViewportHeight());
+            overrides.put("page_error_check_enabled", options.getPageErrorCheckEnabled());
+        }
+        // 会话字段只允许来自批次级 CDP DTO，覆盖旧 Map 中可能存在的同名值。
+        overrides.put("browser_session_source", sessionConfig.get("browserSessionSource"));
+        overrides.put("session_mode", sessionConfig.get("sessionMode"));
+        return overrides;
     }
 
     private boolean isCaseExecutionConfigError(BusinessException exception) {
@@ -349,9 +473,9 @@ public class AutomationPlaywrightCaseServiceImpl implements AutomationPlaywright
             : StringUtils.trimToEmpty(caseDO.getExecutionConfig().getStartUrl());
         if (StringUtils.isBlank(sourceStartUrl)) {
             List<Map<String, Object>> steps = new ArrayList<>();
-            List<StepDOAdapter> adapters = stepAdapters(caseDO);
-            for (int index = 0; index < adapters.size(); index++) {
-                steps.add(stepExtractor.extract(adapters.get(index).step(), index));
+            List<StepDOAdapter> adapters = executableStepAdapters(caseDO);
+            for (StepDOAdapter adapter : adapters) {
+                steps.add(stepExtractor.extract(adapter.step(), adapter.index()));
             }
             sourceStartUrl = firstPageUrl(steps);
         }
@@ -701,12 +825,12 @@ public class AutomationPlaywrightCaseServiceImpl implements AutomationPlaywright
         }
 
         List<Object> enriched = new ArrayList<>();
-        List<StepDOAdapter> adapters = stepAdapters(caseDO);
-        for (int index = 0; index < adapters.size(); index++) {
-            StepDO sourceStep = adapters.get(index).step();
-            Map<String, Object> source = stepExtractor.extract(sourceStep, index);
+        List<StepDOAdapter> adapters = executableStepAdapters(caseDO);
+        for (StepDOAdapter adapter : adapters) {
+            StepDO sourceStep = adapter.step();
+            Map<String, Object> source = stepExtractor.extract(sourceStep, adapter.index());
             String stepId = StringUtils.firstNonBlank(stringValue(source.get("id")), sourceStep.getId(), "");
-            int sourceIndex = source.containsKey("step_index") ? toInt(source.get("step_index")) : index;
+            int sourceIndex = source.containsKey("step_index") ? toInt(source.get("step_index")) : adapter.index();
             // step_index 是 Runner 的执行序号，优先级高于可能重复的业务 step_id。
             Map<String, Object> result = takeResultByIndex(pendingResults, sourceIndex);
             result = result == null ? takeResultById(pendingResults, stepId) : result;
@@ -819,25 +943,23 @@ public class AutomationPlaywrightCaseServiceImpl implements AutomationPlaywright
             return;
         }
         List<Object> steps = new ArrayList<>();
-        int stepIndex = 0;
-        for (StepDOAdapter adapter : stepAdapters(caseDO)) {
-            Map<String, Object> source = stepExtractor.extract(adapter.step(), stepIndex);
+        for (StepDOAdapter adapter : executableStepAdapters(caseDO)) {
+            Map<String, Object> source = stepExtractor.extract(adapter.step(), adapter.index());
             Map<String, Object> step = new LinkedHashMap<>();
             step.put("step_id", StringUtils.firstNonBlank(stringValue(source.get("id")), adapter.step().getId(), ""));
-            step.put("step_index", stepIndex);
+            step.put("step_index", adapter.index());
             step.put("step_name", StringUtils.firstNonBlank(adapter.step().getName(), stringValue(source
                 .get("description")), "-"));
             step.put("status", "skipped");
             step.put("error", "用例已取消，未执行");
             steps.add(step);
-            stepIndex++;
         }
         // 取消时只有尚未回传的步骤才会进入这里；明细到达后仍可补充已执行步骤的诊断。
         List<Object> existingSteps = listValue(caseResult.get("steps"));
         if (existingSteps.isEmpty()) {
             caseResult.put("steps", steps);
         }
-        int total = stepAdapters(caseDO).size();
+        int total = executableStepAdapters(caseDO).size();
         caseResult.put("step_total", total);
         caseResult.put("step_skip", Math.max(toInt(caseResult.get("step_skip")), total - existingSteps.size()));
     }
@@ -1446,13 +1568,24 @@ public class AutomationPlaywrightCaseServiceImpl implements AutomationPlaywright
         if (caseDO.getStepList() == null) {
             return adapters;
         }
-        caseDO.getStepList()
+        List<StepDO> steps = caseDO.getStepList()
             .stream()
             .sorted((a, b) -> Integer.compare(a.getOrder() == null ? 0 : a.getOrder(), b.getOrder() == null
                 ? 0
                 : b.getOrder()))
-            .forEach(step -> adapters.add(new StepDOAdapter(step)));
+            .toList();
+        for (int index = 0; index < steps.size(); index++) {
+            adapters.add(new StepDOAdapter(steps.get(index), index));
+        }
         return adapters;
+    }
+
+    private List<StepDOAdapter> executableStepAdapters(CaseDO caseDO) {
+        return stepAdapters(caseDO).stream().filter(adapter -> isEnabled(adapter.step().getStatus())).toList();
+    }
+
+    private boolean isEnabled(StatusTypeEnum status) {
+        return status == null || StatusTypeEnum.ENABLE.equals(status);
     }
 
     private void fillCaseRuntimeFields(AutomationPlaywrightCaseResp resp,
@@ -1559,6 +1692,98 @@ public class AutomationPlaywrightCaseServiceImpl implements AutomationPlaywright
         }
     }
 
+    private void applyEnvironmentResources(List<Map<String, Object>> steps,
+                                           AutomationUiSceneDO scene,
+                                           CaseDO caseDO,
+                                           Long projectEnvironmentId,
+                                           String batchId,
+                                           Map<String, Object> batchRecord) {
+        String executionType = batchRecord == null ? "" : stringValue(batchRecord.get("executionType"));
+        if (StringUtils.isBlank(executionType) && batchRecord != null) {
+            executionType = stringValue(batchRecord.get("executor"));
+        }
+        executionType = executionType.toLowerCase();
+        for (Map<String, Object> step : steps) {
+            String actionType = stringValue(step.get("action_type")).toLowerCase();
+            if (List.of("server_command", "server_file_upload").contains(actionType)) {
+                environmentResourceService.resolve(projectEnvironmentId, scene
+                    .getProjectId(), AutomationEnvironmentResourceService.SERVER, mapValue(step.get("target_ref")));
+                continue;
+            }
+            if (List.of("database_sql", "database_native").contains(actionType)) {
+                environmentResourceService.resolve(projectEnvironmentId, scene
+                    .getProjectId(), AutomationEnvironmentResourceService.DATABASE, mapValue(step.get("target_ref")));
+                continue;
+            }
+            if (!"certificate_upload".equals(actionType)) {
+                continue;
+            }
+            Map<String, Object> certificateRef = mapValue(step.get("certificate_ref"));
+            // 历史相对路径继续只读兼容；新步骤必须使用 project_environment 资源角色。
+            if (certificateRef.isEmpty() || !"project_environment".equals(stringValue(certificateRef.get("scope")))) {
+                continue;
+            }
+            AutomationEnvironmentResourceService.ResolvedResource resolved = environmentResourceService
+                .resolve(projectEnvironmentId, scene
+                    .getProjectId(), AutomationEnvironmentResourceService.CERTIFICATE, certificateRef);
+            if (StringUtils.isBlank(batchId)) {
+                continue;
+            }
+            if ("playwright-runner".equals(executionType)) {
+                step.put("certificate_ref", certificateWorkspaceService.runnerReference(resolved.resourceId(), scene
+                    .getProjectId()));
+                continue;
+            }
+            if ("extension-cdp".equals(executionType)) {
+                AutomationFileAssetDO asset = fileAssetMapper.selectById(resolved.resourceId());
+                if (asset == null) {
+                    throw new BusinessException("环境证书资产不存在，caseId=" + caseDO.getId());
+                }
+                String stepId = stringValue(step.get("id"));
+                if (StringUtils.isBlank(stepId)) {
+                    throw new BusinessException("环境证书步骤缺少稳定步骤 ID，caseId=" + caseDO.getId());
+                }
+                String downloadPath = "/automation/playwright/testcases/" + encodePath(String.valueOf(scene
+                    .getId())) + "/" + encodePath(caseDO
+                        .getId()) + "/execution-files/" + encodePath(stepId) + "?projectEnvironmentId=" + projectEnvironmentId + "&batchId=" + encodeQuery(batchId);
+                Map<String, Object> executionReference = new LinkedHashMap<>();
+                executionReference.put("type", "admin_execution_file");
+                executionReference.put("asset_id", resolved.resourceId());
+                executionReference.put("file_name", asset.getOriginalName());
+                executionReference.put("size", asset.getSize());
+                executionReference.put("sha256", asset.getSha256());
+                executionReference.put("download_path", downloadPath);
+                step.put("certificate_ref", executionReference);
+            }
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> mapValue(Object value) {
+        if (value instanceof Map<?, ?> map) {
+            Map<String, Object> result = new LinkedHashMap<>();
+            map.forEach((key, item) -> result.put(String.valueOf(key), item));
+            return result;
+        }
+        String text = stringValue(value);
+        if (text.startsWith("{") && text.endsWith("}")) {
+            try {
+                return JSONUtil.toBean(text, Map.class);
+            } catch (Exception ignored) {
+                return Map.of();
+            }
+        }
+        return Map.of();
+    }
+
+    private String encodePath(String value) {
+        return URLEncoder.encode(StringUtils.defaultString(value), StandardCharsets.UTF_8).replace("+", "%20");
+    }
+
+    private String encodeQuery(String value) {
+        return URLEncoder.encode(StringUtils.defaultString(value), StandardCharsets.UTF_8);
+    }
+
     private void applyProjectEnvironment(AutomationPlaywrightCaseResp resp,
                                          AutomationUiSceneDO scene,
                                          Long projectEnvironmentId) {
@@ -1648,6 +1873,6 @@ public class AutomationPlaywrightCaseServiceImpl implements AutomationPlaywright
     private record PlaybackEnvironmentTarget(String address, String frontendPort) {
     }
 
-    private record StepDOAdapter(top.continew.admin.automation.model.entity.ui.StepDO step) {
+    private record StepDOAdapter(top.continew.admin.automation.model.entity.ui.StepDO step, int index) {
     }
 }

@@ -21,9 +21,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
 import top.continew.admin.automation.model.entity.ui.CaseDO;
 import top.continew.admin.automation.model.entity.ui.StepDO;
+import top.continew.admin.common.enums.StatusTypeEnum;
+import top.continew.starter.json.jackson.autoconfigure.JacksonAutoConfiguration;
 
 class AutomationUiDefinitionSnapshotMapperTest {
 
@@ -73,6 +77,27 @@ class AutomationUiDefinitionSnapshotMapperTest {
         assertThat(json)
             .doesNotContain("expectedDefinitionVersion", "expected_definition_version", "copyId", "copy_id", "stepMsg", "step_msg", "dropPosition", "drop_position")
             .contains("executionConfig");
+    }
+
+    @Test
+    void shouldRestoreDisabledStatusWithApplicationBaseEnumDeserializer() throws Exception {
+        StepDO disabledStep = new StepDO();
+        disabledStep.setId("STEP_DISABLED");
+        disabledStep.setStatus(StatusTypeEnum.DISABLE);
+        CaseDO caseDO = new CaseDO();
+        caseDO.setId("CASE_001");
+        caseDO.setStepList(List.of(disabledStep));
+        AutomationUiDefinitionSnapshotMapper.Snapshot snapshot = AutomationUiDefinitionSnapshotMapper.map(List
+            .of(caseDO));
+
+        Jackson2ObjectMapperBuilder builder = new Jackson2ObjectMapperBuilder();
+        new JacksonAutoConfiguration().jackson2ObjectMapperBuilderCustomizer().customize(builder);
+        ObjectMapper applicationMapper = builder.build();
+        List<CaseDO> restored = AutomationUiDefinitionSnapshotMapper.readCases(applicationMapper, snapshot
+            .definitionJson());
+
+        assertThat(snapshot.definitionJson()).contains("\"status\":\"DISABLE\"");
+        assertThat(restored.get(0).getStepList().get(0).getStatus()).isEqualTo(StatusTypeEnum.DISABLE);
     }
 
     private StepDO.Config config(String name, String value) {

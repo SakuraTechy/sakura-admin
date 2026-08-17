@@ -245,6 +245,11 @@ public class ProjectEnvironmentConfigServiceImpl extends BaseServiceImpl<Project
         snapshot.setPassWord(null);
         snapshot.setUrl(null);
         snapshot.setConfigList(null);
+        // 环境快照仅用于定位资源，审计字段属于主表元数据，不能写入 JSON 快照。
+        snapshot.setCreateUser(null);
+        snapshot.setCreateTime(null);
+        snapshot.setUpdateUser(null);
+        snapshot.setUpdateTime(null);
         return snapshot;
     }
 

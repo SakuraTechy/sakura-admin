@@ -53,7 +53,7 @@ public class AutomationOperationCatalogServiceImpl implements AutomationOperatio
     private static final String CATALOG_RESOURCE = "automation/automation-operation-catalog.json";
     private static final Set<String> EXECUTORS = Set.of("selenium", "playwright", "cuecast");
     private static final Set<String> FORM_COMPONENTS = Set
-        .of("input", "number", "select", "switch", "textarea", "code", "locator", "target_ref", "file_ref", "key_value");
+        .of("input", "number", "select", "switch", "textarea", "code", "locator", "target_ref", "file_ref", "key_value", "environment_resource_ref");
     private static final Set<String> DIAGNOSTIC_PROFILES = Set
         .of("navigation", "element_interaction", "dialog", "assertion", "wait", "variable", "script", "infrastructure");
     private static final Set<String> DIAGNOSTIC_ROLES = Set
@@ -66,7 +66,7 @@ public class AutomationOperationCatalogServiceImpl implements AutomationOperatio
     private static final Set<String> DEFAULT_FORBIDDEN_FIELDS = Set
         .of("url", "target_ref", "sql", "command", "path", "file_ref", "certificate_ref", "variable_name", "value", "expect", "script");
     private static final int EXPECTED_TYPE_COUNT = 13;
-    private static final int EXPECTED_METHOD_COUNT = 63;
+    private static final int EXPECTED_METHOD_COUNT = 64;
     // 能力上报是短租约：Runner 或扩展升级、退出后不能继续以历史能力开放手工步骤。
     private static final Duration CAPABILITY_SNAPSHOT_TTL = Duration.ofMinutes(5);
 
@@ -262,6 +262,10 @@ public class AutomationOperationCatalogServiceImpl implements AutomationOperatio
         validateFormSchema(method);
         if (method.getCapabilities() == null || !method.getCapabilities().keySet().containsAll(EXECUTORS)) {
             throw new IllegalStateException("自动化操作方法缺少三执行器能力声明：" + method.getMethodCode());
+        }
+        Set<String> requiredExecutors = requiredExecutors(method);
+        if (requiredExecutors.isEmpty() || !EXECUTORS.containsAll(requiredExecutors)) {
+            throw new IllegalStateException("自动化操作方法包含无效目标执行器：" + method.getMethodCode());
         }
     }
 
@@ -491,7 +495,7 @@ public class AutomationOperationCatalogServiceImpl implements AutomationOperatio
     }
 
     private void applyStaticAvailability(AutomationOperationCatalog.OperationMethod method) {
-        boolean implemented = EXECUTORS.stream()
+        boolean implemented = requiredExecutors(method).stream()
             .allMatch(executor -> "implemented".equals(normalize(method.getCapabilities().get(executor))));
         method.setImplemented(implemented);
         method.setAuthoringEnabled(implemented);
@@ -500,7 +504,7 @@ public class AutomationOperationCatalogServiceImpl implements AutomationOperatio
         method.setEnabled(false);
         if (!implemented) {
             method.setDisabledCode("METHOD_ADAPTER_NOT_READY");
-            method.setDisabledReason("至少一个执行器尚未实现该方法");
+            method.setDisabledReason("目标执行器尚未实现该方法");
             return;
         }
         method.setDisabledCode("EXECUTION_CONTEXT_REQUIRED");
@@ -508,7 +512,8 @@ public class AutomationOperationCatalogServiceImpl implements AutomationOperatio
     }
 
     private void applyAvailability(AutomationOperationCatalog.OperationMethod method, CatalogRequestScope scope) {
-        boolean implemented = EXECUTORS.stream()
+        Set<String> requiredExecutors = requiredExecutors(method);
+        boolean implemented = requiredExecutors.stream()
             .allMatch(executor -> "implemented".equals(normalize(method.getCapabilities().get(executor))));
         boolean permissionGranted = scope.canAddStep() && (!requiresInfrastructurePermission(method) || scope
             .canExecuteInfrastructure());
@@ -518,7 +523,7 @@ public class AutomationOperationCatalogServiceImpl implements AutomationOperatio
         method.setRuntimeReady(false);
         method.setEnabled(false);
         if (!implemented) {
-            disable(method, "METHOD_ADAPTER_NOT_READY", "至少一个执行器尚未实现该方法");
+            disable(method, "METHOD_ADAPTER_NOT_READY", "目标执行器尚未实现该方法");
             return;
         }
         if (!permissionGranted) {
@@ -542,6 +547,9 @@ public class AutomationOperationCatalogServiceImpl implements AutomationOperatio
             }
         }
         for (String executor : List.of("playwright", "cuecast")) {
+            if (!requiredExecutors.contains(executor)) {
+                continue;
+            }
             CapabilitySnapshot snapshot = findSnapshot(executor, scope);
             if (snapshot == null) {
                 disable(method, executor.toUpperCase(Locale.ROOT) + "_NOT_READY", executor + " 未上报当前环境的有效能力快照");
@@ -617,6 +625,18 @@ public class AutomationOperationCatalogServiceImpl implements AutomationOperatio
         Set<String> result = new HashSet<>();
         for (String feature : readStringList(requirements(method).get("features"))) {
             result.add(normalize(feature));
+        }
+        return result;
+    }
+
+    private Set<String> requiredExecutors(AutomationOperationCatalog.OperationMethod method) {
+        List<String> configuredExecutors = readStringList(requirements(method).get("executor_types"));
+        if (configuredExecutors.isEmpty()) {
+            return EXECUTORS;
+        }
+        Set<String> result = new HashSet<>();
+        for (String executor : configuredExecutors) {
+            result.add(normalize(executor));
         }
         return result;
     }

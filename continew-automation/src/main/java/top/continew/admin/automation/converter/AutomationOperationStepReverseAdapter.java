@@ -58,9 +58,10 @@ public class AutomationOperationStepReverseAdapter {
         String methodCode = text(configs.get("method_code"));
         if (!methodCode.isBlank() && configs.containsKey("method_config")) {
             Map<String, Object> existing = parseMap(configs.get("method_config"));
-            if (existing != null && catalogService.findMethod(methodCode).isPresent()) {
-                return new ReverseResult(true, methodCode, parseVersion(configs.get("method_version")), existing, List
-                    .of());
+            AutomationOperationCatalog.OperationMethod method = catalogService.findMethod(methodCode).orElse(null);
+            if (existing != null && method != null) {
+                return new ReverseResult(true, methodCode, parseVersion(configs
+                    .get("method_version")), declaredMethodConfig(method, existing), List.of());
             }
         }
 
@@ -103,23 +104,85 @@ public class AutomationOperationStepReverseAdapter {
         if (method == null) {
             return new ReverseResult(false, "", null, Map.of(), List.of("raw step action_type 未注册：" + actionType));
         }
+        return new ReverseResult(true, method.getMethodCode(), method
+            .getMethodVersion(), declaredMethodConfig(method, raw), List.of());
+    }
+
+    private LinkedHashMap<String, Object> declaredMethodConfig(AutomationOperationCatalog.OperationMethod method,
+                                                               Map<String, Object> values) {
         LinkedHashMap<String, Object> config = new LinkedHashMap<>();
-        for (Map.Entry<String, Object> entry : raw.entrySet()) {
-            if (!Set.of("id", "action_type", "description", "source", "schema_version", "catalog_version", "step_index")
-                .contains(entry.getKey())) {
+        for (Map.Entry<String, Object> entry : values.entrySet()) {
+            if (!Set
+                .of("id", "action_type", "description", "source", "schema_version", "catalog_version", "step_index", "target_ref", "target_selector", "target_xpath", "locator_meta")
+                .contains(entry.getKey()) && hasField(method, entry.getKey())) {
                 config.put(entry.getKey(), entry.getValue());
             }
         }
-        if (hasField(method, "target_ref") && !config.containsKey("target_ref")) {
-            String selector = text(raw.get("target_selector"));
-            String xpath = text(raw.get("target_xpath"));
-            if (!selector.isBlank()) {
-                config.put("target_ref", locatorReference("css=" + selector));
-            } else if (!xpath.isBlank()) {
-                config.put("target_ref", locatorReference("xpath=" + xpath));
+        if (hasField(method, "target_ref")) {
+            Map<String, Object> targetRef = recordedTargetReference(values);
+            if (targetRef != null) {
+                config.put("target_ref", targetRef);
             }
         }
-        return new ReverseResult(true, method.getMethodCode(), method.getMethodVersion(), config, List.of());
+        copyRawCompatibilityValue(method, values, config, "key", "key", "value", "keys");
+        copyRawCompatibilityValue(method, values, config, "expect", "expect", "value");
+        copyRawCompatibilityValue(method, values, config, "url", "url", "value");
+        return config;
+    }
+
+    private Map<String, Object> recordedTargetReference(Map<String, Object> raw) {
+        LinkedHashMap<String, Object> target = new LinkedHashMap<>();
+        target.put("scope", "page");
+        Object rawTargetRef = raw.get("target_ref");
+        if (rawTargetRef instanceof Map<?, ?> map) {
+            map.forEach((key, value) -> target.put(String.valueOf(key), value));
+        } else if (!text(rawTargetRef).isBlank()) {
+            target.putAll(locatorReference(text(rawTargetRef)));
+        }
+        putIfText(target, "target_selector", raw.get("target_selector"));
+        putIfText(target, "target_xpath", raw.get("target_xpath"));
+        Map<String, Object> locatorMeta = mapValue(raw.get("locator_meta"));
+        if (locatorMeta != null) {
+            target.put("locator_meta", locatorMeta);
+        }
+        return target.size() == 1 ? null : target;
+    }
+
+    private void copyRawCompatibilityValue(AutomationOperationCatalog.OperationMethod method,
+                                           Map<String, Object> raw,
+                                           Map<String, Object> config,
+                                           String field,
+                                           String... sourceNames) {
+        if (!hasField(method, field) || config.containsKey(field)) {
+            return;
+        }
+        for (String sourceName : sourceNames) {
+            Object value = raw.get(sourceName);
+            if (value != null && !text(value).isBlank()) {
+                config.put(field, value);
+                return;
+            }
+        }
+    }
+
+    private void putIfText(Map<String, Object> target, String key, Object value) {
+        if (value != null && !text(value).isBlank()) {
+            target.put(key, value);
+        }
+    }
+
+    private Map<String, Object> mapValue(Object value) {
+        if (value == null) {
+            return null;
+        }
+        try {
+            if (value instanceof String json) {
+                return json.isBlank() ? null : objectMapper.readValue(json, MAP_TYPE);
+            }
+            return objectMapper.convertValue(value, MAP_TYPE);
+        } catch (Exception ignored) {
+            return null;
+        }
     }
 
     private LinkedHashMap<String, Object> projectLegacyConfig(AutomationOperationCatalog.OperationMethod method,

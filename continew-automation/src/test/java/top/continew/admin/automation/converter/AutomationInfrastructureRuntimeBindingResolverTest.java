@@ -31,14 +31,14 @@ class AutomationInfrastructureRuntimeBindingResolverTest {
 
     @Test
     void shouldOnlyResolveVariablesFrozenInRawStep() {
-        Map<String, Object> frozen = Map.of("action_type", "host_command", "command", "echo ${user}", "parameters", List
-            .of("${count}"));
+        Map<String, Object> frozen = Map
+            .of("action_type", "host_command", "command", "echo {{user}}", "parameters", List.of("${count}"));
 
         Map<String, Object> result = resolver.resolve(frozen, Map.of("user", "alice", "count", 3));
 
         assertThat(result).containsEntry("command", "echo alice");
         assertThat(result.get("parameters")).isEqualTo(List.of(3));
-        assertThat(frozen.get("command")).isEqualTo("echo ${user}");
+        assertThat(frozen.get("command")).isEqualTo("echo {{user}}");
     }
 
     @Test

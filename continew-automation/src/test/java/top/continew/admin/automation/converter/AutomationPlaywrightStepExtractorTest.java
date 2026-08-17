@@ -29,6 +29,7 @@ import org.junit.jupiter.api.Test;
 import top.continew.admin.automation.model.catalog.AutomationOperationCatalog;
 import top.continew.admin.automation.model.entity.ui.StepDO;
 import top.continew.admin.automation.service.AutomationOperationCatalogService;
+import top.continew.admin.common.enums.StatusTypeEnum;
 
 class AutomationPlaywrightStepExtractorTest {
 
@@ -66,6 +67,18 @@ class AutomationPlaywrightStepExtractorTest {
             .containsEntry("original_step_id", 1)
             .containsEntry("step_index", 4);
         assertThat(stepDO.getConfigList().get(0).getParamsValue()).isEqualTo(rawStep);
+    }
+
+    @Test
+    void shouldExposeStepDoStatusAsRunnerExecutionSwitch() {
+        StepDO stepDO = new StepDO();
+        stepDO.setId("STEP_DISABLED");
+        stepDO.setStatus(StatusTypeEnum.DISABLE);
+        stepDO.setConfigList(List.of(config("playwright_step", "{\"action_type\":\"click\"}")));
+
+        Map<String, Object> extracted = extractor.extract(stepDO, 3);
+
+        assertThat(extracted).containsEntry("status", "DISABLE").containsEntry("step_index", 3);
     }
 
     @Test
@@ -145,6 +158,40 @@ class AutomationPlaywrightStepExtractorTest {
 
         assertThat(extracted).containsEntry("target_ref", "#login")
             .doesNotContainKeys("type_code", "type_label", "method_code", "method_version", "method_label", "diagnostic_profile");
+    }
+
+    @Test
+    void shouldRestoreOriginalRecordingLocatorFactsAfterCatalogEdit() {
+        StepDO stepDO = new StepDO();
+        stepDO.setId("STEP_008");
+        stepDO.setStatus(StatusTypeEnum.DISABLE);
+        stepDO.setConfigList(List.of(config("playwright_step", """
+            {"action_type":"input","target_xpath":"//input[@name='user_name']","value":"sysadmin"}
+            """), config("original_playwright_step", """
+            {"action_type":"input","target_selector":"input[name='user_name']","target_xpath":"//*[@id='user_name']",
+             "locator_meta":{"strategy":"css","candidates":[{"value":"input[name='user_name']"}]},
+             "url":"https://example.test/login","value":"sysadmin"}
+            """)));
+
+        Map<String, Object> extracted = extractor.extract(stepDO, 7);
+
+        assertThat(extracted).containsEntry("status", "DISABLE")
+            .containsEntry("target_selector", "input[name='user_name']")
+            .containsEntry("target_xpath", "//input[@name='user_name']")
+            .containsEntry("url", "https://example.test/login");
+        assertThat(((Map<?, ?>)extracted.get("locator_meta")).get("strategy")).isEqualTo("css");
+    }
+
+    @Test
+    void shouldRestoreRecordedTabValueAsRunnerKey() {
+        StepDO stepDO = new StepDO();
+        stepDO.setId("STEP_009");
+        stepDO.setConfigList(List
+            .of(config("playwright_step", "{\"action_type\":\"key\"}"), config("original_playwright_step", "{\"action_type\":\"key\",\"value\":\"Tab\"}")));
+
+        Map<String, Object> extracted = extractor.extract(stepDO, 8);
+
+        assertThat(extracted).containsEntry("key", "Tab").containsEntry("value", "Tab");
     }
 
     private StepDO.Config config(String name, String value) {

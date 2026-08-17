@@ -36,7 +36,6 @@ import java.util.Set;
 import cn.hutool.crypto.digest.DigestUtil;
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.incrementer.IdentifierGenerator;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -54,6 +53,7 @@ import top.continew.admin.automation.model.entity.ui.StepDO;
 import top.continew.admin.automation.service.AutomationUiExecutionRecordService;
 import top.continew.admin.automation.service.AutomationOperationCatalogService;
 import top.continew.admin.automation.support.AutomationExecutionCapability;
+import top.continew.admin.common.enums.StatusTypeEnum;
 import top.continew.admin.project.mapper.ProjectConfigMapper;
 import top.continew.admin.project.model.entity.ProjectConfigDO;
 import top.continew.starter.core.exception.BusinessException;
@@ -357,7 +357,7 @@ public class AutomationUiExecutionRecordServiceImpl implements AutomationUiExecu
                             : scene.getUpdateUser());
             return id;
         } catch (DuplicateKeyException ignored) {
-            DefinitionRevisionRef raced = findDefinitionRevision(scene.getId(), definitionVersion);
+            DefinitionRevisionRef raced = findDefinitionRevisionForUpdate(scene.getId(), definitionVersion);
             if (raced == null) {
                 throw new BusinessException("DEFINITION_REVISION_NOT_FOUND：并发创建后未找到定义 revision");
             }
@@ -367,11 +367,21 @@ public class AutomationUiExecutionRecordServiceImpl implements AutomationUiExecu
     }
 
     private DefinitionRevisionRef findDefinitionRevision(Long sceneId, Long definitionVersion) {
+        return queryDefinitionRevision(sceneId, definitionVersion, false);
+    }
+
+    private DefinitionRevisionRef findDefinitionRevisionForUpdate(Long sceneId, Long definitionVersion) {
+        // 并发创建后的补读必须使用当前读；普通一致性读可能看不到刚被其他事务提交的 revision。
+        return queryDefinitionRevision(sceneId, definitionVersion, true);
+    }
+
+    private DefinitionRevisionRef queryDefinitionRevision(Long sceneId, Long definitionVersion, boolean currentRead) {
+        String lockClause = currentRead ? " FOR UPDATE" : "";
         return jdbcTemplate
-            .query("SELECT id, content_hash FROM automation_ui_scene_definition_revision" + " WHERE scene_id = ? AND definition_version = ? LIMIT 1", (rs,
-                                                                                                                                                       rowNum) -> new DefinitionRevisionRef(rs
-                                                                                                                                                           .getLong("id"), rs
-                                                                                                                                                               .getString("content_hash")), sceneId, definitionVersion)
+            .query("SELECT id, content_hash FROM automation_ui_scene_definition_revision" + " WHERE scene_id = ? AND definition_version = ? LIMIT 1" + lockClause, (rs,
+                                                                                                                                                                    rowNum) -> new DefinitionRevisionRef(rs
+                                                                                                                                                                        .getLong("id"), rs
+                                                                                                                                                                            .getString("content_hash")), sceneId, definitionVersion)
             .stream()
             .findFirst()
             .orElse(null);
@@ -502,6 +512,10 @@ public class AutomationUiExecutionRecordServiceImpl implements AutomationUiExecu
         }
         for (int stepIndex = 0; stepIndex < sourceCase.getStepList().size(); stepIndex++) {
             StepDO sourceStep = sourceCase.getStepList().get(stepIndex);
+            // 禁用步骤不属于本次执行树，不能创建 queued 占位污染执行历史统计。
+            if (sourceStep == null || StatusTypeEnum.DISABLE.equals(sourceStep.getStatus())) {
+                continue;
+            }
             Long existingId = queryLong("SELECT id FROM automation_ui_execution_step" + " WHERE execution_case_id = ? AND step_index = ? AND attempt_no = 1 LIMIT 1", caseExecutionId, stepIndex);
             if (existingId != null) {
                 continue;
@@ -529,8 +543,11 @@ public class AutomationUiExecutionRecordServiceImpl implements AutomationUiExecu
             .findFirst()
             .orElseThrow(() -> new BusinessException("DEFINITION_REVISION_NOT_FOUND：执行绑定的定义 revision 不存在"));
         try {
-            return objectMapper.readValue(definitionJson, new TypeReference<List<CaseDO>>() {
-            }).stream().filter(item -> Objects.equals(caseId, item.getId())).findFirst().orElse(null);
+            return AutomationUiDefinitionSnapshotMapper.readCases(objectMapper, definitionJson)
+                .stream()
+                .filter(item -> Objects.equals(caseId, item.getId()))
+                .findFirst()
+                .orElse(null);
         } catch (Exception e) {
             throw new BusinessException("DEFINITION_REVISION_INVALID：执行绑定的定义 revision 无法解析");
         }

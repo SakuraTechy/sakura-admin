@@ -57,6 +57,7 @@ public class AutomationOperationConfigValidator {
 
     public void validate(AutomationOperationCatalog.OperationMethod method, Map<String, Object> config) {
         rejectPlaintextSecrets(config);
+        normalizeCompatibilityFields(method, config);
         validateDeclaredFields(method, config);
         validateRequiredFields(method, config);
         validateFieldValues(method, config);
@@ -66,6 +67,35 @@ public class AutomationOperationConfigValidator {
         validateDateFormat(method.getActionType(), config);
         validateFormula(method.getActionType(), config);
         validateIpRange(method.getActionType(), config);
+    }
+
+    private void normalizeCompatibilityFields(AutomationOperationCatalog.OperationMethod method,
+                                              Map<String, Object> config) {
+        if (!"server_command".equals(method.getActionType())) {
+            return;
+        }
+        if (!config.containsKey("shell")) {
+            if (!config.containsKey("shell_type")) {
+                return;
+            }
+            // 兼容早期字段名，统一迁移到当前 Shell 内部字段。
+            config.put("shell", config.remove("shell_type"));
+        }
+        String normalized = normalizeShellValue(config.get("shell"));
+        if (normalized != null && !normalized.equals(stringValue(config.get("shell")))) {
+            // 兼容旧表单把展示文本直接写入配置，但执行快照统一使用内部值。
+            config.put("shell", normalized);
+        }
+    }
+
+    private String normalizeShellValue(Object value) {
+        String normalized = stringValue(value).trim().toLowerCase(Locale.ROOT);
+        return switch (normalized) {
+            case "bash", "/bin/bash", "linux", "shell", "shell 类型", "shell type", "脚本类型", "shell 脚本类型" -> "bash";
+            case "sh", "/bin/sh" -> "sh";
+            case "powershell", "powershell.exe", "pwsh", "power shell" -> "powershell";
+            default -> null;
+        };
     }
 
     private void validateRequiredFields(AutomationOperationCatalog.OperationMethod method, Map<String, Object> config) {
@@ -124,7 +154,7 @@ public class AutomationOperationConfigValidator {
                 throw new BusinessException("METHOD_CONFIG_INVALID：" + method
                     .getLabel() + " 参数“执行超时”必须在 1000-600000 毫秒之间");
             }
-        } else if ("shell".equals(name) && !Set.of("bash", "sh", "powershell").contains(stringValue(value))) {
+        } else if ("shell".equals(name) && normalizeShellValue(value) == null) {
             throw new BusinessException("METHOD_CONFIG_INVALID：" + method.getLabel() + " 参数“Shell 类型”不是有效选项");
         } else if ("sql_mode".equals(name) && !Set.of("query", "update", "call").contains(stringValue(value))) {
             throw new BusinessException("METHOD_CONFIG_INVALID：" + method.getLabel() + " 参数“SQL 类型”不是有效选项");
@@ -238,7 +268,7 @@ public class AutomationOperationConfigValidator {
 
     /**
      * 基础设施目标是路由事实来源，不能只依赖通用的“字段存在”校验。
-     * 新建步骤优先使用正数配置 ID；binding_key 仅为历史步骤保留兼容入口。
+     * 新建步骤使用环境资源角色；config_id 和 binding_key 仅为历史步骤保留兼容入口。
      */
     private void validateInfrastructureTargetRef(AutomationOperationCatalog.OperationMethod method,
                                                  Map<String, Object> config) {
@@ -255,13 +285,25 @@ public class AutomationOperationConfigValidator {
             throw new BusinessException("INFRA_TARGET_REF_INVALID：" + method.getLabel() + " 的 target_ref 必须是对象");
         }
         String scope = stringValue(targetRef.get("scope"));
-        if (!"project_config".equals(scope)) {
-            throw new BusinessException("INFRA_TARGET_REF_INVALID：" + method
-                .getLabel() + " 的 target_ref.scope 必须为 project_config");
-        }
         String actualKind = stringValue(targetRef.get("kind"));
         if (!expectedKind.equals(actualKind)) {
             throw new BusinessException("INFRA_TARGET_KIND_MISMATCH：" + method.getLabel() + " 需要 kind=" + expectedKind);
+        }
+
+        if ("project_environment".equals(scope)) {
+            String slotId = stringValue(targetRef.get("slot_id"));
+            try {
+                if (Long.parseLong(slotId) <= 0) {
+                    throw new NumberFormatException();
+                }
+            } catch (NumberFormatException e) {
+                throw new BusinessException("INFRA_TARGET_REF_INVALID：target_ref.slot_id 必须为正数");
+            }
+            return;
+        }
+        if (!"project_config".equals(scope)) {
+            throw new BusinessException("INFRA_TARGET_REF_INVALID：" + method
+                .getLabel() + " 的 target_ref.scope 必须为 project_environment 或 project_config");
         }
 
         String configId = stringValue(targetRef.get("config_id"));

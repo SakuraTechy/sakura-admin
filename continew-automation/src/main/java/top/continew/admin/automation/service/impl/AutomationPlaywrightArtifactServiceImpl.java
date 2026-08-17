@@ -65,10 +65,14 @@ public class AutomationPlaywrightArtifactServiceImpl implements AutomationPlaywr
     private static final String BUSINESS_TYPE = "PLAYWRIGHT_ARTIFACT";
     private static final long MAX_FILE_SIZE = 200L * 1024 * 1024;
     private static final Pattern SAFE_SEGMENT = Pattern.compile("[A-Za-z0-9._-]{1,160}");
+    private static final Pattern INVALID_ARTIFACT_PATH_CHARS = Pattern.compile("[<>:\"\\\\|?*\\p{Cntrl}]");
+    private static final Pattern SAFE_EXTENSION = Pattern.compile("[a-z0-9]{0,20}");
     private static final Pattern TIME_RUN_ID = Pattern.compile("\\d{14}");
     private static final Map<String, Set<String>> ALLOWED_EXTENSIONS = Map.of("report", Set.of("html"), "console", Set
         .of("json"), "execution-log", Set.of("json"), "video", Set.of("webm"), "trace", Set.of("zip"), "screenshot", Set
-            .of("png", "jpg", "jpeg", "webp"), "result", Set.of("json"));
+            .of("png", "jpg", "jpeg", "webp"), "result", Set.of("json"), "dom", Set.of("html", "txt"), "response", Set
+                .of("json", "txt"));
+    private static final String DOWNLOAD_ARTIFACT_TYPE = "download";
 
     private final FileService fileService;
     private final StorageService storageService;
@@ -89,26 +93,28 @@ public class AutomationPlaywrightArtifactServiceImpl implements AutomationPlaywr
     private String pathPrefix;
 
     @Override
-    public Artifact store(String runId, String artifactType, MultipartFile file) {
+    public Artifact store(String runId, String artifactType, String relativePath, MultipartFile file) {
         String safeRunId = requireSafeSegment(runId, "执行 ID");
         String safeArtifactType = requireArtifactType(artifactType);
         String extension = requireValidFile(file, safeArtifactType);
+        String safeRelativePath = requireArtifactRelativePath(relativePath, safeArtifactType, extension);
         if (!unifiedStorageEnabled) {
-            return storeLegacy(safeRunId, safeArtifactType, extension, file);
+            return storeLegacy(safeRunId, safeArtifactType, safeRelativePath, file);
         }
 
-        String fileName = fileName(safeArtifactType, extension);
+        String fileName = relativeFileName(safeRelativePath);
         // 目录元数据从已持久化的 Runner Job 反查，避免上传端自行拼接或伪造业务路径。
         ArtifactPathMetadata pathMetadata = resolvePathMetadata(safeRunId);
-        FileInfo fileInfo = fileService.upload(file, buildStoragePath(safeRunId, pathMetadata), storageCode, fileName);
+        String storagePath = buildStoragePath(safeRunId, pathMetadata) + relativeDirectory(safeRelativePath);
+        FileInfo fileInfo = fileService.upload(file, storagePath, storageCode, fileName);
         Long fileId = parseFileId(fileInfo.getId());
-        Map<String, String> metadata = artifactMetadata(safeRunId, safeArtifactType, pathMetadata);
+        Map<String, String> metadata = artifactMetadata(safeRunId, safeArtifactType, safeRelativePath, pathMetadata);
         // 上传时 FileRecorder 已创建 sys_file；随后补充业务元数据，读取接口据此拒绝普通系统文件。
         fileService.lambdaUpdate()
             .eq(FileDO::getId, fileId)
             .set(FileDO::getMetadata, JSONUtil.toJsonStr(metadata))
             .update();
-        return new Artifact(fileId, safeRunId, safeArtifactType, fileName, URL_PREFIX + fileId, fileInfo
+        return new Artifact(fileId, safeRunId, safeArtifactType, safeRelativePath, fileName, URL_PREFIX + fileId, fileInfo
             .getContentType(), fileInfo.getSize(), fileInfo.getHashInfo().getMd5(), fileInfo.getPlatform());
     }
 
@@ -131,42 +137,45 @@ public class AutomationPlaywrightArtifactServiceImpl implements AutomationPlaywr
             fileInfo.setPath(file.getAbsPath());
         }
         byte[] content = fileStorageService.download(fileInfo).bytes();
-        return new ArtifactResource(content, defaultContentType(file.getContentType()), file.getName() + "." + file
-            .getExtension());
+        String artifactType = JSONUtil.parseObj(file.getMetadata()).getStr("artifactType");
+        return new ArtifactResource(content, defaultContentType(file
+            .getContentType()), storedFileName(file), DOWNLOAD_ARTIFACT_TYPE.equals(artifactType));
     }
 
     @Override
     public ArtifactResource loadLegacy(String runId, String fileName) {
         String safeRunId = requireSafeSegment(runId, "执行 ID");
-        String safeFileName = requireSafeSegment(fileName, "文件名");
+        String safeRelativePath = requireArtifactReadPath(fileName);
         if (!legacyReadEnabled) {
             throw new BusinessException("历史 Playwright artifact 读取已关闭");
         }
         Path runRoot = legacyRoot().resolve(safeRunId).normalize();
-        Path target = runRoot.resolve(safeFileName).normalize();
+        Path target = runRoot.resolve(safeRelativePath).normalize();
         if (!target.startsWith(runRoot) || !Files.isRegularFile(target)) {
             throw new BusinessException("历史 Playwright artifact 不存在");
         }
         try {
-            return new ArtifactResource(Files.readAllBytes(target), resolveContentType(target, null), safeFileName);
+            return new ArtifactResource(Files
+                .readAllBytes(target), resolveContentType(target, null), relativeFileName(safeRelativePath), safeRelativePath
+                    .startsWith("downloads/"));
         } catch (IOException e) {
             throw new BusinessException("读取历史 Playwright artifact 失败：" + e.getMessage());
         }
     }
 
-    private Artifact storeLegacy(String runId, String artifactType, String extension, MultipartFile file) {
-        String fileName = fileName(artifactType, extension);
+    private Artifact storeLegacy(String runId, String artifactType, String relativePath, MultipartFile file) {
+        String fileName = relativeFileName(relativePath);
         Path runRoot = legacyRoot().resolve(runId).normalize();
-        Path target = runRoot.resolve(fileName).normalize();
+        Path target = runRoot.resolve(relativePath).normalize();
         if (!target.startsWith(runRoot)) {
             throw new BusinessException("Playwright artifact 路径非法");
         }
         try {
-            Files.createDirectories(runRoot);
+            Files.createDirectories(target.getParent());
             try (InputStream inputStream = file.getInputStream()) {
                 Files.copy(inputStream, target, StandardCopyOption.REPLACE_EXISTING);
             }
-            return new Artifact(null, runId, artifactType, fileName, "/automation/playwright/artifacts/" + runId + "/" + fileName, resolveContentType(target, file
+            return new Artifact(null, runId, artifactType, relativePath, fileName, "/automation/playwright/artifacts/" + runId + "/" + relativePath, resolveContentType(target, file
                 .getContentType()), Files.size(target), null, null);
         } catch (IOException e) {
             throw new BusinessException("保存历史 Playwright artifact 失败：" + e.getMessage());
@@ -207,11 +216,15 @@ public class AutomationPlaywrightArtifactServiceImpl implements AutomationPlaywr
                             .getCaseId(), "case"), "用例标识"));
     }
 
-    private Map<String, String> artifactMetadata(String runId, String artifactType, ArtifactPathMetadata pathMetadata) {
+    private Map<String, String> artifactMetadata(String runId,
+                                                 String artifactType,
+                                                 String relativePath,
+                                                 ArtifactPathMetadata pathMetadata) {
         Map<String, String> metadata = new LinkedHashMap<>();
         metadata.put("businessType", BUSINESS_TYPE);
         metadata.put("runId", runId);
         metadata.put("artifactType", artifactType);
+        metadata.put("relativePath", relativePath);
         metadata.put("projectShortName", pathMetadata.projectShortName());
         metadata.put("versionName", pathMetadata.versionName());
         metadata.put("sceneId", pathMetadata.sceneId());
@@ -238,7 +251,7 @@ public class AutomationPlaywrightArtifactServiceImpl implements AutomationPlaywr
 
     private String requireArtifactType(String artifactType) {
         String safeArtifactType = requireSafeSegment(artifactType, "产物类型").toLowerCase(Locale.ROOT);
-        if (!ALLOWED_EXTENSIONS.containsKey(safeArtifactType)) {
+        if (!DOWNLOAD_ARTIFACT_TYPE.equals(safeArtifactType) && !ALLOWED_EXTENSIONS.containsKey(safeArtifactType)) {
             throw new BusinessException("不支持的 Playwright artifact 类型：" + artifactType);
         }
         return safeArtifactType;
@@ -252,10 +265,43 @@ public class AutomationPlaywrightArtifactServiceImpl implements AutomationPlaywr
             throw new BusinessException("Playwright artifact 不能超过 200MB");
         }
         String extension = extension(file.getOriginalFilename());
+        if (DOWNLOAD_ARTIFACT_TYPE.equals(artifactType)) {
+            // 下载产物可能使用业务自定义扩展名；读取接口强制 attachment，避免浏览器内联执行未知内容。
+            if (!SAFE_EXTENSION.matcher(extension).matches()) {
+                throw new BusinessException("Playwright 下载产物扩展名非法");
+            }
+            return extension;
+        }
         if (!ALLOWED_EXTENSIONS.get(artifactType).contains(extension)) {
             throw new BusinessException("Playwright artifact 文件类型不匹配：" + artifactType + "." + extension);
         }
         return extension;
+    }
+
+    private String requireArtifactRelativePath(String relativePath, String artifactType, String extension) {
+        String candidate = relativePath == null || relativePath.isBlank()
+            ? fileName(artifactType, extension)
+            : relativePath;
+        String safeRelativePath = requireArtifactReadPath(candidate);
+        if (!extension(relativeFileName(safeRelativePath)).equals(extension)) {
+            throw new BusinessException("Playwright artifact 相对路径与文件类型不匹配");
+        }
+        return safeRelativePath;
+    }
+
+    private String requireArtifactReadPath(String relativePath) {
+        if (relativePath == null || relativePath.isBlank() || relativePath.length() > 640 || relativePath
+            .startsWith("/") || relativePath.contains("\\")) {
+            throw new BusinessException("Playwright artifact 相对路径非法");
+        }
+        String[] parts = relativePath.split("/", -1);
+        for (String part : parts) {
+            if (part.isBlank() || ".".equals(part) || "..".equals(part) || part.length() > 160 || part
+                .endsWith(".") || part.endsWith(" ") || INVALID_ARTIFACT_PATH_CHARS.matcher(part).find()) {
+                throw new BusinessException("Playwright artifact 相对路径非法");
+            }
+        }
+        return String.join("/", parts);
     }
 
     private Long parseFileId(String fileId) {
@@ -278,7 +324,23 @@ public class AutomationPlaywrightArtifactServiceImpl implements AutomationPlaywr
     }
 
     private String fileName(String artifactType, String extension) {
-        return artifactType + "." + extension;
+        return extension.isBlank() ? artifactType : artifactType + "." + extension;
+    }
+
+    private String relativeDirectory(String relativePath) {
+        int index = relativePath.lastIndexOf('/');
+        return index < 0 ? "" : relativePath.substring(0, index + 1);
+    }
+
+    private String relativeFileName(String relativePath) {
+        int index = relativePath.lastIndexOf('/');
+        return index < 0 ? relativePath : relativePath.substring(index + 1);
+    }
+
+    private String storedFileName(FileDO file) {
+        return file.getExtension() == null || file.getExtension().isBlank()
+            ? file.getName()
+            : file.getName() + "." + file.getExtension();
     }
 
     private String extension(String fileName) {

@@ -16,6 +16,8 @@
 
 package top.continew.admin.automation.service;
 
+import java.nio.file.Path;
+
 import top.continew.admin.automation.model.req.playwright.AutomationPlaywrightResultReq;
 import top.continew.admin.automation.model.req.playwright.AutomationPlaywrightBatchCaseStatusReq;
 import top.continew.admin.automation.model.req.playwright.AutomationPlaywrightBatchCreateReq;
@@ -41,6 +43,13 @@ public interface AutomationPlaywrightCaseService {
                                          Long projectEnvironmentId,
                                          String batchId,
                                          String executionCapability);
+
+    /** 解析执行批次中指定步骤的环境证书，不接受调用方直接指定资产 ID。 */
+    ExecutionFile getExecutionFile(String caseKey,
+                                   String stepId,
+                                   Long projectEnvironmentId,
+                                   String batchId,
+                                   String executionCapability);
 
     AutomationPlaywrightBatchResp createBatch(AutomationPlaywrightBatchCreateReq req);
 
@@ -71,4 +80,7 @@ public interface AutomationPlaywrightCaseService {
      * 保存 Runner 回传结果，并使用当前执行批次的短期 capability 校验服务主体范围。
      */
     void saveResult(String caseKey, AutomationPlaywrightResultReq req, String executionCapability);
+
+    record ExecutionFile(Path path, String fileName, long size, String sha256) {
+    }
 }

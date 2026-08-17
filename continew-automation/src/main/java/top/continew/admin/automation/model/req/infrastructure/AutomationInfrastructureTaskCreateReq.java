@@ -52,7 +52,7 @@ public class AutomationInfrastructureTaskCreateReq implements Serializable {
     @Min(value = 0, message = "attempt 不能小于 0")
     private Integer attempt = 0;
     /**
-     * 本次执行的运行时变量。仅用于替换冻结 raw step 中实际出现的 ${var}，服务端不得持久化或记录值。
+     * 本次执行的运行时变量。优先使用 {{var}}，同时兼容旧 ${var}；服务端不得持久化或记录值。
      */
     @JsonAlias("runtime_bindings")
     private Map<String, Object> runtimeBindings;

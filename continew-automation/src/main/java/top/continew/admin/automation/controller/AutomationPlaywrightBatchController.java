@@ -31,9 +31,11 @@ import org.springframework.web.bind.annotation.RestController;
 import top.continew.admin.automation.model.req.playwright.AutomationPlaywrightBatchCaseStatusReq;
 import top.continew.admin.automation.model.req.playwright.AutomationPlaywrightBatchCreateReq;
 import top.continew.admin.automation.model.resp.playwright.AutomationPlaywrightBatchResp;
+import top.continew.admin.automation.model.resp.playwright.AutomationCdpPlaybackAvailabilityResp;
 import top.continew.admin.automation.model.resp.playwright.AutomationPlaywrightCaseCancellationResp;
 import top.continew.admin.automation.service.AutomationPlaywrightCaseService;
 import top.continew.admin.automation.service.AutomationPlaywrightRunnerJobService;
+import top.continew.admin.automation.support.AutomationCdpPlaybackPolicy;
 import top.continew.starter.web.model.R;
 
 /**
@@ -47,6 +49,18 @@ public class AutomationPlaywrightBatchController {
 
     private final AutomationPlaywrightCaseService automationPlaywrightCaseService;
     private final AutomationPlaywrightRunnerJobService runnerJobService;
+    private final AutomationCdpPlaybackPolicy cdpPlaybackPolicy;
+
+    @Operation(summary = "查询 CDP 受控会话灰度资格")
+    @SaCheckPermission("automation:automationUiScene:execute")
+    @GetMapping("/cdp-playback/availability")
+    public R<AutomationCdpPlaybackAvailabilityResp> getCdpPlaybackAvailability() {
+        AutomationCdpPlaybackAvailabilityResp response = new AutomationCdpPlaybackAvailabilityResp();
+        boolean allowed = cdpPlaybackPolicy.isManagedContextAllowed();
+        response.setManagedContextEnabled(allowed);
+        response.setReason(allowed ? "" : cdpPlaybackPolicy.unavailableReason());
+        return R.ok(response);
+    }
 
     @Operation(summary = "创建执行批次")
     @SaCheckPermission("automation:automationUiScene:execute")

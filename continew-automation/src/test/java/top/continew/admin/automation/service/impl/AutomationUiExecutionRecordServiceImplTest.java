@@ -38,20 +38,47 @@ import com.baomidou.mybatisplus.core.incrementer.IdentifierGenerator;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import top.continew.admin.automation.converter.AutomationUiDefinitionSnapshotMapper;
 import top.continew.admin.automation.model.entity.AutomationUiSceneDO;
 import top.continew.admin.automation.model.entity.ui.CaseDO;
 import top.continew.admin.automation.model.entity.ui.StepDO;
 import top.continew.admin.automation.model.catalog.AutomationOperationCatalog;
 import top.continew.admin.automation.service.AutomationOperationCatalogService;
+import top.continew.admin.common.enums.StatusTypeEnum;
 import top.continew.admin.project.mapper.ProjectConfigMapper;
 import top.continew.admin.project.model.entity.ProjectConfigDO;
+import top.continew.starter.json.jackson.autoconfigure.JacksonAutoConfiguration;
 
 class AutomationUiExecutionRecordServiceImplTest {
+
+    @Test
+    void shouldRestoreDisabledStatusFromDefinitionRevision() {
+        StepDO disabledStep = new StepDO();
+        disabledStep.setId("STEP_DISABLED");
+        disabledStep.setStatus(StatusTypeEnum.DISABLE);
+        CaseDO sourceCase = new CaseDO();
+        sourceCase.setId("CASE_001");
+        sourceCase.setStepList(List.of(disabledStep));
+        String definitionJson = AutomationUiDefinitionSnapshotMapper.map(List.of(sourceCase)).definitionJson();
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        when(jdbcTemplate.query(anyString(), any(RowMapper.class), any(Object[].class))).thenReturn(List
+            .of(definitionJson));
+        Jackson2ObjectMapperBuilder builder = new Jackson2ObjectMapperBuilder();
+        new JacksonAutoConfiguration().jackson2ObjectMapperBuilderCustomizer().customize(builder);
+        AutomationUiExecutionRecordServiceImpl service = new AutomationUiExecutionRecordServiceImpl(jdbcTemplate, mock(IdentifierGenerator.class), builder
+            .build(), null);
+
+        CaseDO restored = ReflectionTestUtils.invokeMethod(service, "loadFrozenCase", 7L, "CASE_001");
+
+        assertThat(restored).isNotNull();
+        assertThat(restored.getStepList().get(0).getStatus()).isEqualTo(StatusTypeEnum.DISABLE);
+    }
 
     @Test
     void shouldRemoveOnlyTypedOperationWhenDiagnosticFlagIsDisabled() {
@@ -186,6 +213,22 @@ class AutomationUiExecutionRecordServiceImplTest {
         }
         assertThat(revisionInserted).isTrue();
         assertThat(executionInserted).isTrue();
+    }
+
+    @Test
+    void shouldUseCurrentReadOnlyWhenDefinitionRevisionCreationRaces() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        when(jdbcTemplate.query(anyString(), any(RowMapper.class), any(Object[].class))).thenReturn(List.of());
+        AutomationUiExecutionRecordServiceImpl service = new AutomationUiExecutionRecordServiceImpl(jdbcTemplate, mock(IdentifierGenerator.class), new ObjectMapper(), null);
+
+        ReflectionTestUtils.invokeMethod(service, "findDefinitionRevision", 1L, 3L);
+        ReflectionTestUtils.invokeMethod(service, "findDefinitionRevisionForUpdate", 1L, 3L);
+
+        ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
+        verify(jdbcTemplate, times(2)).query(sqlCaptor.capture(), any(RowMapper.class), any(Object[].class));
+        assertThat(sqlCaptor.getAllValues().get(0)).doesNotContain("FOR UPDATE");
+        assertThat(sqlCaptor.getAllValues().get(1))
+            .contains("WHERE scene_id = ? AND definition_version = ? LIMIT 1 FOR UPDATE");
     }
 
     @Test

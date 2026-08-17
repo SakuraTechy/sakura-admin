@@ -36,6 +36,8 @@ databaseChangeLog:
   - include:
       file: db/changelog/mysql/automation_executor_registration.sql
   - include:
+      file: db/changelog/mysql/automation_environment_resource_binding.sql
+  - include:
       file: db/changelog/mysql/plugin/plugin_schedule.sql
   - include:
       file: db/changelog/mysql/plugin/plugin_open.sql

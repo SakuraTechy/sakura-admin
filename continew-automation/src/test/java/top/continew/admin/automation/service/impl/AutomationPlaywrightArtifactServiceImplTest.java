@@ -92,13 +92,33 @@ class AutomationPlaywrightArtifactServiceImplTest {
     }
 
     @Test
+    void shouldPreserveDownloadRelativePathAndOriginalFileName() {
+        MockMultipartFile file = new MockMultipartFile("file", "clientInfoFile47628A57FE84D04A.info", "multipart/form-data", new byte[] {
+            1, 2, 3});
+
+        useLegacyStorage();
+        Artifact artifact = service.store(runId, "download", "downloads/clientInfoFile47628A57FE84D04A.info", file);
+
+        assertThat(artifact.relativePath()).isEqualTo("downloads/clientInfoFile47628A57FE84D04A.info");
+        assertThat(artifact.fileName()).isEqualTo("clientInfoFile47628A57FE84D04A.info");
+        assertThat(artifact.url())
+            .isEqualTo("/automation/playwright/artifacts/" + runId + "/downloads/clientInfoFile47628A57FE84D04A.info");
+        assertThat(service.loadLegacy(runId, artifact.relativePath()).attachment()).isTrue();
+        assertThat(Files.isRegularFile(Path.of(System
+            .getProperty("user.dir"), "uploads", "automation-playwright-artifacts", runId, "downloads", artifact
+                .fileName()))).isTrue();
+    }
+
+    @Test
     void shouldRejectPathTraversalAndMismatchedExtension() {
         MockMultipartFile invalidType = new MockMultipartFile("file", "report.exe", "application/octet-stream", new byte[] {
             1});
 
         assertThatThrownBy(() -> service.store(runId, "report", invalidType)).hasMessageContaining("文件类型不匹配");
+        assertThatThrownBy(() -> service.store(runId, "download", "../report.exe", invalidType))
+            .hasMessageContaining("相对路径非法");
         assertThatThrownBy(() -> service.loadLegacy("../outside", "report.html")).hasMessageContaining("格式非法");
-        assertThatThrownBy(() -> service.loadLegacy(runId, "../report.html")).hasMessageContaining("格式非法");
+        assertThatThrownBy(() -> service.loadLegacy(runId, "../report.html")).hasMessageContaining("相对路径非法");
     }
 
     @Test

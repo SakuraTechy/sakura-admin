@@ -28,6 +28,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import top.continew.admin.automation.model.entity.ui.StepDO;
 import top.continew.admin.automation.service.AutomationOperationCatalogService;
+import top.continew.admin.common.enums.StatusTypeEnum;
 import top.continew.starter.core.exception.BusinessException;
 
 /**
@@ -60,11 +61,15 @@ public class AutomationPlaywrightStepExtractor {
             if (stepDO.getId() != null && !stepDO.getId().isBlank()) {
                 step.put("id", stepDO.getId());
             }
+            // 原始 playwright_step 不包含中台启用状态；必须以 StepDO 为准，供 Runner 最后过滤。
+            step.put("status", stepStatus(stepDO));
             step.putIfAbsent("step_index", index);
             Object description = step.get("description");
             if (description == null || description.toString().isBlank()) {
                 step.put("description", stepDO.getName());
             }
+            // 编辑后的录制步骤可能已有新的 canonical step；缺失字段必须从原始录制快照恢复，不能让定位事实退化。
+            copyOriginalRecordingFacts(step, configs);
             // case 级配置仍挂在 StepDO.configList 中，补到响应顶层供两种执行器读取。
             copyIfAbsent(step, configs, "start_url");
             copyIfAbsent(step, configs, "end_url");
@@ -78,6 +83,8 @@ public class AutomationPlaywrightStepExtractor {
         }
         Map<String, Object> step = fallbackStep(stepDO, configs);
         step.put("id", stepDO.getId());
+        // legacy 步骤同样以 StepDO.status 为执行开关，不能只依赖 operation 字段。
+        step.put("status", stepStatus(stepDO));
         step.put("step_index", index);
         step.put("description", stepDO.getName());
         step.putIfAbsent("value_masked", configs.getOrDefault("value_masked", "0"));
@@ -190,6 +197,66 @@ public class AutomationPlaywrightStepExtractor {
         if (!target.containsKey(key) && configs.containsKey(key)) {
             target.put(key, configs.get(key));
         }
+    }
+
+    private void copyOriginalRecordingFacts(Map<String, Object> step, Map<String, String> configs) {
+        Map<String, Object> original = parseOptionalMap(configs.get("original_playwright_step"));
+        if (original != null) {
+            for (String key : List.of("target_selector", "target_xpath", "locator_meta", "url", "key")) {
+                copyObjectIfAbsent(step, original, key);
+            }
+            if (!isMasked(configs)) {
+                copyObjectIfAbsent(step, original, "value");
+            }
+            if ("key".equals(String.valueOf(step.get("action_type")))) {
+                copyObjectIfAbsent(step, original, "key", "value");
+            }
+        }
+        Map<String, Object> originalLocatorMeta = parseOptionalMap(configs.get("original_locator_meta"));
+        if (originalLocatorMeta != null) {
+            step.putIfAbsent("locator_meta", originalLocatorMeta);
+        }
+        for (String key : List.of("target_selector", "target_xpath", "url")) {
+            copyIfAbsent(step, configs, key);
+        }
+        if (!isMasked(configs)) {
+            copyIfAbsent(step, configs, "value");
+        }
+    }
+
+    private void copyObjectIfAbsent(Map<String, Object> target, Map<String, Object> source, String key) {
+        if (!target.containsKey(key) && source.containsKey(key) && source.get(key) != null) {
+            target.put(key, source.get(key));
+        }
+    }
+
+    private void copyObjectIfAbsent(Map<String, Object> target,
+                                    Map<String, Object> source,
+                                    String targetKey,
+                                    String sourceKey) {
+        if (!target.containsKey(targetKey) && source.containsKey(sourceKey) && source.get(sourceKey) != null) {
+            target.put(targetKey, source.get(sourceKey));
+        }
+    }
+
+    private boolean isMasked(Map<String, String> configs) {
+        return "1".equals(configs.get("value_masked")) || "true".equalsIgnoreCase(configs.get("value_masked"));
+    }
+
+    private Map<String, Object> parseOptionalMap(String json) {
+        if (json == null || json.isBlank()) {
+            return null;
+        }
+        try {
+            return objectMapper.readValue(json, MAP_TYPE);
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    private String stepStatus(StepDO stepDO) {
+        StatusTypeEnum status = stepDO.getStatus();
+        return status == null ? StatusTypeEnum.ENABLE.name() : status.name();
     }
 
     private Map<String, String> toConfigMap(List<StepDO.Config> configList) {

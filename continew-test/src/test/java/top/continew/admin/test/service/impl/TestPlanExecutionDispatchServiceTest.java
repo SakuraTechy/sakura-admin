@@ -125,7 +125,7 @@ class TestPlanExecutionDispatchServiceTest {
         plan.setId(1L);
         TestPlanExecuteResp.SceneExecution scene = new TestPlanExecuteResp.SceneExecution();
         scene.setSceneKey("100");
-        scene.setCaseIds(List.of("CASE_BAD", "CASE_OK"));
+        scene.setCaseIds(List.of("CASE_BAD", "CASE_DISABLED", "CASE_OK"));
         AutomationPlaywrightBatchResp batch = new AutomationPlaywrightBatchResp();
         batch.setBatchId("BATCH_001");
         AutomationPlaywrightBatchResp.CaseExecution rejected = new AutomationPlaywrightBatchResp.CaseExecution();
@@ -159,6 +159,8 @@ class TestPlanExecutionDispatchServiceTest {
         org.junit.jupiter.api.Assertions.assertEquals(12000, requestCaptor.getValue().getOptions().getCaseTimeoutMs());
         org.junit.jupiter.api.Assertions.assertTrue(requestCaptor.getValue().getOptions().getHeaded());
         verify(runnerJobService, never()).create(argThat(request -> "100:CASE_BAD".equals(request
+            .getCaseKey())), anyString());
+        verify(runnerJobService, never()).create(argThat(request -> "100:CASE_DISABLED".equals(request
             .getCaseKey())), anyString());
     }
 }

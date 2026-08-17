@@ -147,6 +147,16 @@ public class AutomationOperationStepAssembler {
             canonical.put("value", stringValue(url));
         } else if ("assert_text".equals(action)) {
             canonical.put("value", stringValue(firstValue(canonical, "expect", "value")));
+        } else if ("assert_download".equals(action)) {
+            // Runner 把 value 作为下载断言契约读取，表单字段需要集中封装，不能降级为普通点击。
+            LinkedHashMap<String, Object> expected = new LinkedHashMap<>();
+            for (String field : List.of("filename", "mime", "contains", "min_bytes", "max_bytes", "sha256")) {
+                Object value = canonical.remove(field);
+                if (value != null && (!(value instanceof String text) || !text.isBlank())) {
+                    expected.put(field, value);
+                }
+            }
+            canonical.put("value", writeJson(expected));
         } else if ("wait".equals(action)) {
             canonical.put("value", numberOrString(firstValue(canonical, "duration_ms", "value")));
         } else if ("key".equals(action)) {
@@ -227,6 +237,11 @@ public class AutomationOperationStepAssembler {
             case "web-check", "web-notcheck" -> {
                 putLocator(legacy, locator);
                 putAssertionOptions(legacy, methodConfig, true);
+            }
+            case "pw-assert-download" -> {
+                // 旧 Selenium 链路不支持该动作，仅保留可诊断参数，避免静默降级为普通点击。
+                putLocator(legacy, locator);
+                putValue(legacy, "value", canonical.get("value"));
             }
             case "web-assert-element-match" -> {
                 putLocator(legacy, locator);
@@ -481,6 +496,11 @@ public class AutomationOperationStepAssembler {
             if (locatorMeta != null) {
                 canonical.put("locator_meta", locatorMeta);
             }
+            String strategy = stringValue(firstValue(target, "strategy", "type"));
+            String value = stringValue(firstValue(target, "value", "locator_value", "locatorValue"));
+            if (!strategy.isBlank() || !value.isBlank()) {
+                applyTypedLocator(canonical, strategy, value, Boolean.TRUE.equals(target.get("exact")));
+            }
         } else if (targetRef != null) {
             applyLegacyLocator(canonical, stringValue(targetRef));
         }
@@ -495,15 +515,135 @@ public class AutomationOperationStepAssembler {
         if (locator.isBlank()) {
             return;
         }
-        if (locator.regionMatches(true, 0, "xpath=", 0, 6)) {
-            canonical.put("target_xpath", locator.substring(6));
-        } else if (locator.startsWith("/") || locator.startsWith("(")) {
-            canonical.put("target_xpath", locator);
-        } else if (locator.regionMatches(true, 0, "css=", 0, 4)) {
-            canonical.put("target_selector", locator.substring(4));
-        } else {
-            canonical.put("target_selector", locator);
+        String normalized = locator.trim();
+        String strategy = locatorStrategy(normalized);
+        if (isUnsupportedLocatorStrategy(strategy) || isExecutableLocator(normalized)) {
+            throw unsupportedLocator(strategy.isBlank() ? "script" : strategy);
         }
+        if (normalized.regionMatches(true, 0, "xpath=", 0, 6)) {
+            canonical.put("target_xpath", normalized.substring(6).trim());
+        } else if (normalized.startsWith("/") || normalized.startsWith("(") || normalized.startsWith(".//")) {
+            canonical.put("target_xpath", normalized);
+        } else if (normalized.regionMatches(true, 0, "css=", 0, 4)) {
+            canonical.put("target_selector", normalized.substring(4).trim());
+        } else if (List.of("text", "role", "label", "placeholder", "testid").contains(strategy)) {
+            applyTypedLocator(canonical, strategy, normalized.substring(normalized.indexOf('=') + 1).trim(), true);
+        } else if (!strategy.isBlank()) {
+            throw unsupportedLocator(strategy);
+        } else {
+            // 历史步骤可能保存无前缀 CSS，继续兼容但新建步骤由前端始终提交明确策略。
+            canonical.put("target_selector", normalized);
+        }
+    }
+
+    private void applyTypedLocator(Map<String, Object> canonical, String rawStrategy, String value, boolean exact) {
+        String strategy = rawStrategy == null ? "" : rawStrategy.trim().toLowerCase(java.util.Locale.ROOT);
+        if (strategy.isBlank() || value.isBlank()) {
+            throw new BusinessException("METHOD_CONFIG_INVALID：定位策略和值不能为空");
+        }
+        if (isUnsupportedLocatorStrategy(strategy)) {
+            throw unsupportedLocator(strategy);
+        }
+        switch (strategy) {
+            case "css" -> canonical.put("target_selector", value);
+            case "xpath" -> canonical.put("target_xpath", value);
+            case "text" -> {
+                canonical
+                    .put("target_xpath", "//*[self::button or self::a or self::label or self::li or @role][normalize-space(.)=" + xpathLiteral(value) + "] | //*[self::span or self::div or self::p][normalize-space(.)=" + xpathLiteral(value) + " and not(.//*[normalize-space(.)=" + xpathLiteral(value) + "])]");
+                addLocatorCandidate(canonical, "text_exact", value, 1D, Map.of("exact", exact));
+            }
+            case "role" -> {
+                String selector = "[role=\"" + cssAttributeValue(value) + "\"]";
+                canonical.put("target_selector", selector);
+                addLocatorCandidate(canonical, "css_attr_role", selector, 1D, Map.of("role", value));
+            }
+            case "label" -> {
+                String literal = xpathLiteral(value);
+                canonical
+                    .put("target_xpath", "//*[@id=//label[normalize-space(.)=" + literal + "]/@for] | //label[normalize-space(.)=" + literal + "]//*[self::input or self::textarea or self::select or self::button]");
+                addLocatorCandidate(canonical, "xpath_fallback", stringValue(canonical.get("target_xpath")), 1D, Map
+                    .of("label_text", value, "exact", exact));
+            }
+            case "placeholder" -> {
+                String selector = "[placeholder=\"" + cssAttributeValue(value) + "\"]";
+                canonical.put("target_selector", selector);
+                addLocatorCandidate(canonical, "css_attr_placeholder", selector, 1D, Map.of("placeholder", value));
+            }
+            case "testid" -> {
+                String escaped = cssAttributeValue(value);
+                String selector = "[data-testid=\"" + escaped + "\"],[data-test=\"" + escaped + "\"],[data-qa=\"" + escaped + "\"],[data-cy=\"" + escaped + "\"]";
+                canonical.put("target_selector", selector);
+                addLocatorCandidate(canonical, "css_attr_data-cy", "[data-cy=\"" + escaped + "\"]", 0.97D, Map
+                    .of("test_id", value));
+                addLocatorCandidate(canonical, "css_attr_data-qa", "[data-qa=\"" + escaped + "\"]", 0.98D, Map
+                    .of("test_id", value));
+                addLocatorCandidate(canonical, "css_attr_data-test", "[data-test=\"" + escaped + "\"]", 0.99D, Map
+                    .of("test_id", value));
+                addLocatorCandidate(canonical, "css_attr_data-testid", "[data-testid=\"" + escaped + "\"]", 1D, Map
+                    .of("test_id", value));
+            }
+            default -> throw unsupportedLocator(strategy);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private void addLocatorCandidate(Map<String, Object> canonical,
+                                     String type,
+                                     String value,
+                                     double score,
+                                     Map<String, Object> contextPatch) {
+        // locator_meta 是跨执行器定位事实，不能只保留投影后的 CSS/XPath。
+        LinkedHashMap<String, Object> meta = canonical.get("locator_meta") instanceof Map<?, ?> rawMeta
+            ? new LinkedHashMap<>((Map<String, Object>)rawMeta)
+            : new LinkedHashMap<>();
+        meta.putIfAbsent("version", 1);
+        List<Object> candidates = meta.get("candidates") instanceof java.util.Collection<?> rawCandidates
+            ? new ArrayList<>(rawCandidates)
+            : new ArrayList<>();
+        LinkedHashMap<String, Object> candidate = new LinkedHashMap<>();
+        candidate.put("type", type);
+        candidate.put("value", value);
+        candidate.put("score", score);
+        candidates.add(0, candidate);
+        meta.put("candidates", candidates);
+        LinkedHashMap<String, Object> context = meta.get("context") instanceof Map<?, ?> rawContext
+            ? new LinkedHashMap<>((Map<String, Object>)rawContext)
+            : new LinkedHashMap<>();
+        context.putAll(contextPatch);
+        meta.put("context", context);
+        canonical.put("locator_meta", meta);
+    }
+
+    private String locatorStrategy(String locator) {
+        int delimiter = locator.indexOf('=');
+        return delimiter <= 0 ? "" : locator.substring(0, delimiter).trim().toLowerCase(java.util.Locale.ROOT);
+    }
+
+    private boolean isUnsupportedLocatorStrategy(String strategy) {
+        return List.of("jquery", "js", "js_path", "jspath", "testrigor").contains(strategy);
+    }
+
+    private boolean isExecutableLocator(String locator) {
+        return locator.matches("(?is)^\\$\\s*\\(.*") || locator.matches("(?is)^jquery\\s*\\(.*") || locator
+            .matches("(?is)^(?:document|window)\\s*\\.\\s*(?:querySelector|querySelectorAll)\\s*\\(.*");
+    }
+
+    private BusinessException unsupportedLocator(String strategy) {
+        return new BusinessException("LOCATOR_STRATEGY_UNSUPPORTED：不支持的定位策略 " + strategy);
+    }
+
+    private String cssAttributeValue(String value) {
+        return value.replace("\\", "\\\\").replace("\"", "\\\"");
+    }
+
+    private String xpathLiteral(String value) {
+        if (!value.contains("'")) {
+            return "'" + value + "'";
+        }
+        if (!value.contains("\"")) {
+            return "\"" + value + "\"";
+        }
+        return "concat('" + value.replace("'", "',\"'\",'") + "')";
     }
 
     private String legacyLocator(Map<String, Object> canonical) {

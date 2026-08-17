@@ -39,6 +39,9 @@ public class AutomationPlaywrightArtifactResp {
     @Schema(description = "产物类型")
     private String artifactType;
 
+    @Schema(description = "Runner 产物目录中的相对路径")
+    private String relativePath;
+
     @Schema(description = "服务端文件名")
     private String fileName;
 

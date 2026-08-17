@@ -43,6 +43,7 @@ import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import top.continew.admin.automation.converter.AutomationPlaywrightStepExtractor;
 import top.continew.admin.automation.converter.AutomationInfrastructureRuntimeBindingResolver;
+import top.continew.admin.automation.converter.AutomationUiDefinitionSnapshotMapper;
 import top.continew.admin.automation.mapper.AutomationInfrastructureTaskLogMapper;
 import top.continew.admin.automation.mapper.AutomationInfrastructureTaskMapper;
 import top.continew.admin.automation.mapper.AutomationUiSceneMapper;
@@ -57,6 +58,7 @@ import top.continew.admin.automation.model.resp.infrastructure.AutomationInfrast
 import top.continew.admin.automation.model.resp.infrastructure.AutomationInfrastructureTaskResp;
 import top.continew.admin.automation.model.resp.infrastructure.AutomationInfrastructureTargetResp;
 import top.continew.admin.automation.service.AutomationInfrastructureTaskService;
+import top.continew.admin.automation.service.AutomationEnvironmentResourceService;
 import top.continew.admin.automation.service.AutomationUiExecutionRecordService;
 import top.continew.admin.automation.support.AutomationExecutionAgentClient;
 import top.continew.admin.automation.support.AutomationExecutionCapability;
@@ -110,6 +112,7 @@ public class AutomationInfrastructureTaskServiceImpl implements AutomationInfras
     private final JdbcTemplate jdbcTemplate;
     private final AutomationInfrastructureResultSanitizer infrastructureResultSanitizer;
     private final AutomationInfrastructureRiskPolicy infrastructureRiskPolicy;
+    private final AutomationEnvironmentResourceService environmentResourceService;
 
     @Override
     public List<AutomationInfrastructureTargetResp> listTargets(Long projectId, String kind) {
@@ -171,8 +174,8 @@ public class AutomationInfrastructureTaskServiceImpl implements AutomationInfras
             stage = "校验产品环境";
             validateExecutionEnvironment(executionContext, req.getProjectEnvironmentId());
             stage = "解析目标配置";
-            ResolvedTarget target = resolveTarget(executionContext.projectId(), resolved.targetKind(), resolved
-                .configId(), resolved.bindingKey());
+            ResolvedTarget target = resolveTarget(executionContext.projectId(), req.getProjectEnvironmentId(), resolved
+                .targetKind(), resolved.configId(), resolved.slotId(), resolved.bindingKey());
             int attempt = 1;
             String idempotencyKey = executionContext.executionId() + ":" + executionContext
                 .stepExecutionId() + ":" + attempt;
@@ -201,7 +204,7 @@ public class AutomationInfrastructureTaskServiceImpl implements AutomationInfras
             task.setStepExecutionId(executionContext.stepExecutionId());
             task.setTargetKind(resolved.targetKind());
             task.setTargetConfigId(target.configId());
-            task.setTargetBindingKey(resolved.bindingKey());
+            task.setTargetBindingKey(target.bindingKey());
             task.setAttempt(attempt);
             task.setIdempotencyKey(idempotencyKey);
             task.setPayloadDigest(payloadDigest);
@@ -495,7 +498,7 @@ public class AutomationInfrastructureTaskServiceImpl implements AutomationInfras
             throw new BusinessException("当前步骤不是基础设施操作");
         }
         if (!SERVER_TARGET_ACTIONS.contains(actionType) && !DATABASE_TARGET_ACTIONS.contains(actionType)) {
-            return new ResolvedStep(context, actionType, "agent", null, null, rawStep);
+            return new ResolvedStep(context, actionType, "agent", null, null, null, rawStep);
         }
         Map<String, Object> targetRef = readMap(rawStep.get("target_ref"));
         String targetScope = stringValue(targetRef.get("scope"));
@@ -503,23 +506,29 @@ public class AutomationInfrastructureTaskServiceImpl implements AutomationInfras
         Long configId = configIdValue(targetRef.get("config_id"));
         String bindingKey = stringValue(targetRef.get("binding_key"));
         String expectedKind = SERVER_TARGET_ACTIONS.contains(actionType) ? "server" : "database";
-        if (!"project_config".equals(targetScope)) {
-            throw new BusinessException("INFRA_TARGET_REF_INVALID：target_ref.scope 必须为 project_config");
-        }
         if (!expectedKind.equals(targetKind)) {
             throw new BusinessException("INFRA_TARGET_KIND_MISMATCH：当前操作需要 target_ref.kind=" + expectedKind);
         }
-        if (configId == null && (bindingKey == null || bindingKey.isBlank())) {
-            throw new BusinessException("INFRA_TARGET_REF_INVALID：target_ref 必须包含正数 config_id 或 binding_key");
+        Long slotId = configIdValue(targetRef.get("slot_id"));
+        if ("project_environment".equals(targetScope)) {
+            if (slotId == null) {
+                throw new BusinessException("INFRA_TARGET_REF_INVALID：环境资源引用必须包含正数 slot_id");
+            }
+            return new ResolvedStep(context, actionType, targetKind, null, slotId, null, rawStep);
         }
-        return new ResolvedStep(context, actionType, targetKind, configId, bindingKey, rawStep);
+        if (!"project_config".equals(targetScope)) {
+            throw new BusinessException("INFRA_TARGET_REF_INVALID：target_ref.scope 必须为 project_environment 或 project_config");
+        }
+        if (configId == null && (bindingKey == null || bindingKey.isBlank())) {
+            throw new BusinessException("INFRA_TARGET_REF_INVALID：旧目标引用必须包含正数 config_id 或 binding_key");
+        }
+        return new ResolvedStep(context, actionType, targetKind, configId, null, bindingKey, rawStep);
     }
 
     private Map<String, Object> extractFrozenRawStep(String definitionJson, String caseId, String stepId) {
         List<CaseDO> frozenCases;
         try {
-            frozenCases = objectMapper.readValue(definitionJson, new TypeReference<List<CaseDO>>() {
-            });
+            frozenCases = AutomationUiDefinitionSnapshotMapper.readCases(objectMapper, definitionJson);
         } catch (Exception e) {
             throw new BusinessException("DEFINITION_REVISION_INVALID：定义 revision JSON 无法解析");
         }
@@ -585,25 +594,40 @@ public class AutomationInfrastructureTaskServiceImpl implements AutomationInfras
         }
     }
 
-    private ResolvedTarget resolveTarget(Long projectId, String targetKind, Long configId, String legacyBindingKey) {
+    private ResolvedTarget resolveTarget(Long projectId,
+                                         Long environmentId,
+                                         String targetKind,
+                                         Long configId,
+                                         Long slotId,
+                                         String legacyBindingKey) {
         if ("agent".equals(targetKind)) {
-            return new ResolvedTarget(null, Map.of());
+            return new ResolvedTarget(null, "agent", Map.of());
         }
-        if (configId != null) {
-            return loadTargetById(projectId, targetKind, configId);
+        Map<String, Object> targetRef = new LinkedHashMap<>();
+        targetRef.put("scope", slotId == null ? "project_config" : "project_environment");
+        targetRef.put("kind", targetKind);
+        if (slotId != null) {
+            targetRef.put("slot_id", slotId);
+        } else if (configId != null) {
+            targetRef.put("config_id", configId);
+        } else {
+            targetRef.put("binding_key", legacyBindingKey);
         }
-        return loadLegacyTargetByBindingKey(projectId, targetKind, legacyBindingKey);
+        AutomationEnvironmentResourceService.ResolvedResource resolved = environmentResourceService
+            .resolve(environmentId, projectId, targetKind, targetRef);
+        ResolvedTarget target = loadTargetById(projectId, targetKind, resolved.resourceId());
+        return new ResolvedTarget(target.configId(), resolved.resourceCode(), target.config());
     }
 
     private ResolvedTarget loadTargetById(Long projectId, String targetKind, Long configId) {
         if ("server".equals(targetKind)) {
             ProjectServerConfigDO config = serverConfigMapper.selectById(configId);
             validateServerTarget(config, projectId);
-            return new ResolvedTarget(config.getId(), readMap(config));
+            return new ResolvedTarget(config.getId(), "LEGACY_CONFIG", readMap(config));
         }
         ProjectDataBaseConfigDO config = dataBaseConfigMapper.selectById(configId);
         validateDataBaseTarget(config, projectId);
-        return new ResolvedTarget(config.getId(), readMap(config));
+        return new ResolvedTarget(config.getId(), "LEGACY_CONFIG", readMap(config));
     }
 
     private ResolvedTarget loadLegacyTargetByBindingKey(Long projectId, String targetKind, String bindingKey) {
@@ -617,7 +641,7 @@ public class AutomationInfrastructureTaskServiceImpl implements AutomationInfras
             }
             ProjectServerConfigDO config = matches.get(0);
             validateServerTarget(config, projectId);
-            return new ResolvedTarget(config.getId(), readMap(config));
+            return new ResolvedTarget(config.getId(), bindingKey, readMap(config));
         }
         List<ProjectDataBaseConfigDO> matches = dataBaseConfigMapper.selectList(Wrappers
             .<ProjectDataBaseConfigDO>lambdaQuery()
@@ -628,7 +652,7 @@ public class AutomationInfrastructureTaskServiceImpl implements AutomationInfras
         }
         ProjectDataBaseConfigDO config = matches.get(0);
         validateDataBaseTarget(config, projectId);
-        return new ResolvedTarget(config.getId(), readMap(config));
+        return new ResolvedTarget(config.getId(), bindingKey, readMap(config));
     }
 
     private void validateServerTarget(ProjectServerConfigDO config, Long projectId) {
@@ -1383,9 +1407,9 @@ public class AutomationInfrastructureTaskServiceImpl implements AutomationInfras
     }
 
     private record ResolvedStep(ExecutionContextRef context, String actionType, String targetKind, Long configId,
-                                String bindingKey, Map<String, Object> rawStep) {
+                                Long slotId, String bindingKey, Map<String, Object> rawStep) {
         private ResolvedStep withRawStep(Map<String, Object> newRawStep) {
-            return new ResolvedStep(context, actionType, targetKind, configId, bindingKey, newRawStep);
+            return new ResolvedStep(context, actionType, targetKind, configId, slotId, bindingKey, newRawStep);
         }
     }
 
@@ -1395,7 +1419,7 @@ public class AutomationInfrastructureTaskServiceImpl implements AutomationInfras
                                        String capabilityDigest, LocalDateTime capabilityExpiresAt) {
     }
 
-    private record ResolvedTarget(Long configId, Map<String, Object> config) {
+    private record ResolvedTarget(Long configId, String bindingKey, Map<String, Object> config) {
     }
 
     private record DatabaseDriverSpec(String profile, String driverClass) {

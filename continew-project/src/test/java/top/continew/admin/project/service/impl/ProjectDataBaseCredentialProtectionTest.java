@@ -16,7 +16,10 @@
 
 package top.continew.admin.project.service.impl;
 
+import java.time.LocalDateTime;
+
 import com.alibaba.excel.annotation.ExcelProperty;
+import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
 import org.junit.jupiter.api.Test;
 import top.continew.admin.project.model.entity.ProjectDataBaseConfigDO;
 import top.continew.admin.project.model.req.ProjectDataBaseConfigReq;
@@ -27,6 +30,7 @@ import top.continew.starter.security.crypto.annotation.FieldEncrypt;
 import top.continew.starter.security.mask.annotation.JsonMask;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.Mockito.mock;
 
 class ProjectDataBaseCredentialProtectionTest {
@@ -72,6 +76,10 @@ class ProjectDataBaseCredentialProtectionTest {
         source.setPassWord("db-secret");
         source.setUrl("jdbc:mysql://127.0.0.1/db");
         source.setConfigList(java.util.List.of(java.util.Map.of("token", "secret")));
+        source.setCreateUser(1L);
+        source.setCreateTime(LocalDateTime.of(2026, 8, 14, 17, 11, 33));
+        source.setUpdateUser(2L);
+        source.setUpdateTime(LocalDateTime.of(2026, 8, 14, 17, 12, 33));
 
         ProjectDataBaseConfigDO snapshot = ProjectEnvironmentConfigServiceImpl.toEnvironmentDatabaseSnapshot(source);
 
@@ -81,5 +89,11 @@ class ProjectDataBaseCredentialProtectionTest {
         assertThat(snapshot.getPassWord()).isNull();
         assertThat(snapshot.getUrl()).isNull();
         assertThat(snapshot.getConfigList()).isNull();
+        assertThat(snapshot.getCreateUser()).isNull();
+        assertThat(snapshot.getCreateTime()).isNull();
+        assertThat(snapshot.getUpdateUser()).isNull();
+        assertThat(snapshot.getUpdateTime()).isNull();
+        assertThatCode(() -> new JacksonTypeHandler(Object.class).toJson(java.util.List.of(snapshot)))
+            .doesNotThrowAnyException();
     }
 }

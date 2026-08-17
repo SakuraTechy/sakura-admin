@@ -21,10 +21,12 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -37,13 +39,15 @@ class AutomationOperationStepAssemblerTest {
     private AutomationOperationStepAssembler assembler;
     private AutomationOperationCatalogServiceImpl catalogService;
     private AutomationOperationConfigValidator configValidator;
+    private ObjectMapper objectMapper;
 
     @BeforeEach
     void setUp() {
-        catalogService = new AutomationOperationCatalogServiceImpl(new ObjectMapper());
+        objectMapper = new ObjectMapper();
+        catalogService = new AutomationOperationCatalogServiceImpl(objectMapper);
         catalogService.initialize();
         configValidator = new AutomationOperationConfigValidator();
-        assembler = new AutomationOperationStepAssembler(new ObjectMapper(), catalogService, configValidator);
+        assembler = new AutomationOperationStepAssembler(objectMapper, catalogService, configValidator);
     }
 
     @Test
@@ -69,6 +73,129 @@ class AutomationOperationStepAssemblerTest {
         assertThat(configs.get("playwright_step")).contains("\"action_type\":\"click\"")
             .contains("\"target_xpath\":\"//button[@id='login']\"");
         assertThat(configs.get("canonical_digest")).hasSize(64);
+    }
+
+    @Test
+    void shouldProjectTypedSemanticLocatorWithoutLosingLocatorMeta() throws Exception {
+        StepDO step = step("检查标题", List
+            .of(config("method_code", "assertion.element.match"), config("method_version", "1"), config("method_config", "{\"target_ref\":{\"strategy\":\"text\",\"value\":\"防统方系统 - 系统管理平台\",\"exact\":true},\"read_mode\":\"text\",\"match_mode\":\"contains\",\"expect\":\"系统管理平台\"}")));
+
+        StepDO assembled = assembler.assembleManualStep(step);
+        Map<String, String> configs = assembled.getConfigList()
+            .stream()
+            .collect(Collectors.toMap(StepDO.Config::getParamsName, StepDO.Config::getParamsValue));
+        JsonNode playwrightStep = objectMapper.readTree(configs.get("playwright_step"));
+
+        assertThat(playwrightStep.path("target_xpath").asText()).contains("normalize-space(.)=");
+        assertThat(playwrightStep.path("locator_meta").path("version").asInt()).isEqualTo(1);
+        assertThat(playwrightStep.path("locator_meta").path("candidates").get(0).path("type").asText())
+            .isEqualTo("text_exact");
+        assertThat(playwrightStep.path("locator_meta").path("candidates").get(0).path("value").asText())
+            .isEqualTo("防统方系统 - 系统管理平台");
+        assertThat(configs.get("locator")).startsWith("xpath=");
+    }
+
+    @Test
+    void shouldProjectEverySupportedTypedAndLegacyLocatorStrategy() throws Exception {
+        List<Map<String, String>> cases = List.of(Map
+            .of("strategy", "css", "value", ".user-title", "field", "target_selector", "projection", ".user-title"), Map
+                .of("strategy", "xpath", "value", "(//span[@class='user-title'])[1]", "field", "target_xpath", "projection", "(//span[@class='user-title'])[1]"), Map
+                    .of("strategy", "text", "value", "系统管理平台", "field", "candidate", "projection", "text_exact"), Map
+                        .of("strategy", "role", "value", "heading", "field", "candidate", "projection", "css_attr_role"), Map
+                            .of("strategy", "label", "value", "用户名", "field", "candidate", "projection", "xpath_fallback"), Map
+                                .of("strategy", "placeholder", "value", "请输入用户名", "field", "candidate", "projection", "css_attr_placeholder"), Map
+                                    .of("strategy", "testid", "value", "user-title", "field", "candidate", "projection", "css_attr_data-testid"));
+
+        for (Map<String, String> locatorCase : cases) {
+            for (boolean typed : List.of(true, false)) {
+                Object targetRef = typed
+                    ? Map.of("strategy", locatorCase.get("strategy"), "value", locatorCase.get("value"), "exact", true)
+                    : locatorCase.get("strategy") + "=" + locatorCase.get("value");
+                String methodConfig = objectMapper.writeValueAsString(Map
+                    .of("target_ref", targetRef, "read_mode", "text", "match_mode", "visible"));
+                StepDO assembled = assembler.assembleManualStep(step("检查定位", List
+                    .of(config("method_code", "assertion.element.match"), config("method_version", "1"), config("method_config", methodConfig))));
+                Map<String, String> configs = assembled.getConfigList()
+                    .stream()
+                    .collect(Collectors.toMap(StepDO.Config::getParamsName, StepDO.Config::getParamsValue));
+                JsonNode playwrightStep = objectMapper.readTree(configs.get("playwright_step"));
+
+                if (locatorCase.get("field").startsWith("target_")) {
+                    assertThat(playwrightStep.path(locatorCase.get("field")).asText()).isEqualTo(locatorCase
+                        .get("projection"));
+                } else {
+                    assertThat(playwrightStep.path("locator_meta").path("candidates").get(0).path("type").asText())
+                        .isEqualTo(locatorCase.get("projection"));
+                }
+            }
+        }
+    }
+
+    @Test
+    void shouldKeepExistingLocatorMetaWhenProjectingTypedLocator() throws Exception {
+        Map<String, Object> targetRef = Map
+            .of("strategy", "placeholder", "value", "请输入用户名", "exact", true, "locator_meta", Map
+                .of("version", 1, "candidates", List.of(Map
+                    .of("type", "css_attr_name", "value", "[name=us]", "score", 0.8)), "context", Map
+                        .of("label_text", "用户名")));
+        StepDO assembled = assembler.assembleManualStep(step("输入用户名", List
+            .of(config("method_code", "input.text"), config("method_version", "1"), config("method_config", objectMapper
+                .writeValueAsString(Map.of("target_ref", targetRef, "value", "sysadmin"))))));
+        Map<String, String> configs = assembled.getConfigList()
+            .stream()
+            .collect(Collectors.toMap(StepDO.Config::getParamsName, StepDO.Config::getParamsValue));
+        JsonNode meta = objectMapper.readTree(configs.get("playwright_step")).path("locator_meta");
+
+        assertThat(meta.path("context").path("label_text").asText()).isEqualTo("用户名");
+        assertThat(meta.path("candidates").toString()).contains("css_attr_placeholder", "css_attr_name");
+    }
+
+    @Test
+    void shouldRejectExecutableOrPrivateLocatorStrategies() {
+        for (String locator : List
+            .of("jquery=$('.user-title')", "js=document.querySelector('.user-title')", "testrigor=防统方系统", "document.querySelectorAll('.user-title')", "window.querySelector('.user-title')")) {
+            StepDO step = step("检查标题", List
+                .of(config("method_code", "assertion.element.match"), config("method_version", "1"), config("method_config", objectMapper
+                    .createObjectNode()
+                    .put("target_ref", locator)
+                    .put("read_mode", "text")
+                    .put("match_mode", "visible")
+                    .toString())));
+
+            assertThatThrownBy(() -> assembler.assembleManualStep(step))
+                .hasMessageContaining("LOCATOR_STRATEGY_UNSUPPORTED");
+        }
+
+        StepDO typedUnknown = step("检查标题", List
+            .of(config("method_code", "assertion.element.match"), config("method_version", "1"), config("method_config", "{\"target_ref\":{\"strategy\":\"shadow-piercing\",\"value\":\"user-title\"},\"match_mode\":\"visible\"}")));
+        assertThatThrownBy(() -> assembler.assembleManualStep(typedUnknown))
+            .hasMessageContaining("LOCATOR_STRATEGY_UNSUPPORTED");
+    }
+
+    @Test
+    void shouldGeneratePlaywrightDownloadAssertion() throws Exception {
+        StepDO step = step("下载并校验报表", List
+            .of(config("method_code", "assertion.download"), config("method_version", "1"), config("method_config", "{\"target_ref\":\"css=button.download\",\"filename\":\"report.xlsx\",\"mime\":\"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet\",\"min_bytes\":100,\"max_bytes\":10485760,\"sha256\":\"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\"}")));
+
+        StepDO assembled = assembler.assembleManualStep(step);
+        Map<String, String> configs = assembled.getConfigList()
+            .stream()
+            .collect(Collectors.toMap(StepDO.Config::getParamsName, StepDO.Config::getParamsValue));
+        JsonNode playwrightStep = objectMapper.readTree(configs.get("playwright_step"));
+        JsonNode expected = objectMapper.readTree(playwrightStep.path("value").asText());
+
+        assertThat(assembled.getOperationValue()).isEqualTo("pw-assert-download");
+        assertThat(assembled.getOperationName()).isEqualTo("点击并校验浏览器下载文件");
+        assertThat(configs).containsEntry("action_type", "assert_download")
+            .containsEntry("locator", "css=button.download")
+            .containsEntry("value", playwrightStep.path("value").asText());
+        assertThat(playwrightStep.path("action_type").asText()).isEqualTo("assert_download");
+        assertThat(playwrightStep.path("target_selector").asText()).isEqualTo("button.download");
+        assertThat(expected.path("filename").asText()).isEqualTo("report.xlsx");
+        assertThat(expected.path("mime").asText()).contains("spreadsheetml.sheet");
+        assertThat(expected.path("min_bytes").asInt()).isEqualTo(100);
+        assertThat(expected.path("max_bytes").asInt()).isEqualTo(10485760);
+        assertThat(expected.path("sha256").asText()).hasSize(64);
     }
 
     @Test
@@ -183,6 +310,28 @@ class AutomationOperationStepAssemblerTest {
             .of("scope", "project_config", "kind", "server", "config_id", 12), "command", "hostname", "shell", "bash", "timeout_ms", 30000);
 
         assertThatCode(() -> configValidator.validate(method("server.shell"), config)).doesNotThrowAnyException();
+    }
+
+    @Test
+    void shouldNormalizeLegacyShellDisplayValueBeforeSaving() {
+        Map<String, Object> config = new LinkedHashMap<>();
+        config.put("target_ref", Map.of("scope", "project_config", "kind", "server", "config_id", 12));
+        config.put("command", "hostname");
+        config.put("shell", "PowerShell");
+
+        assertThatCode(() -> configValidator.validate(method("server.shell"), config)).doesNotThrowAnyException();
+        assertThat(config).containsEntry("shell", "powershell");
+    }
+
+    @Test
+    void shouldMigrateLegacyShellTypeFieldBeforeSaving() {
+        Map<String, Object> config = new LinkedHashMap<>();
+        config.put("target_ref", Map.of("scope", "project_config", "kind", "server", "config_id", 12));
+        config.put("command", "hostname");
+        config.put("shell_type", "pwsh");
+
+        assertThatCode(() -> configValidator.validate(method("server.shell"), config)).doesNotThrowAnyException();
+        assertThat(config).containsEntry("shell", "powershell").doesNotContainKey("shell_type");
     }
 
     private AutomationOperationCatalog.OperationMethod method(String methodCode) {

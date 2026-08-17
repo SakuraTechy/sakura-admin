@@ -35,7 +35,8 @@ import top.continew.starter.core.exception.BusinessException;
  * 在提交执行 Agent 前，将冻结步骤中实际声明的运行时变量替换为本次值。
  *
  * <p>绑定值只存在于该次请求和发给 Agent 的内存载荷中，绝不能写入任务表、任务日志或异常日志。
- * 仅允许替换原始步骤文本中出现的 {@code ${name}}，避免调用方借运行时参数向未声明字段注入数据。</p>
+ * 仅允许替换原始步骤文本中出现的 {@code {{name}}} 或兼容旧数据的 {@code ${name}}，
+ * 避免调用方借运行时参数向未声明字段注入数据。</p>
  */
 @Component
 @RequiredArgsConstructor
@@ -43,7 +44,8 @@ public class AutomationInfrastructureRuntimeBindingResolver {
 
     private static final TypeReference<Map<String, Object>> MAP_TYPE = new TypeReference<>() {
     };
-    private static final Pattern VARIABLE_PATTERN = Pattern.compile("\\$\\{([A-Za-z_][A-Za-z0-9_.-]{0,127})}");
+    private static final Pattern VARIABLE_PATTERN = Pattern
+        .compile("\\$\\{([A-Za-z_][A-Za-z0-9_.-]{0,127})}|\\{\\{([A-Za-z_][A-Za-z0-9_.-]{0,127})}}");
 
     private final ObjectMapper objectMapper;
 
@@ -110,13 +112,14 @@ public class AutomationInfrastructureRuntimeBindingResolver {
             return text;
         }
         if (matcher.start() == 0 && matcher.end() == text.length()) {
-            return copyBinding(bindings.get(matcher.group(1)));
+            return copyBinding(bindings.get(variableName(matcher)));
         }
         StringBuffer result = new StringBuffer();
         do {
-            Object value = bindings.get(matcher.group(1));
+            String variableName = variableName(matcher);
+            Object value = bindings.get(variableName);
             if (value instanceof Map<?, ?> || value instanceof List<?>) {
-                throw new BusinessException("嵌入文本的运行时变量只能使用标量值：" + matcher.group(1));
+                throw new BusinessException("嵌入文本的运行时变量只能使用标量值：" + variableName);
             }
             matcher.appendReplacement(result, Matcher.quoteReplacement(value == null ? "" : String.valueOf(value)));
         } while (matcher.find());
@@ -145,8 +148,12 @@ public class AutomationInfrastructureRuntimeBindingResolver {
         }
         Matcher matcher = VARIABLE_PATTERN.matcher(text);
         while (matcher.find()) {
-            result.add(matcher.group(1));
+            result.add(variableName(matcher));
         }
+    }
+
+    private String variableName(Matcher matcher) {
+        return matcher.group(1) != null ? matcher.group(1) : matcher.group(2);
     }
 
     private boolean containsVariable(Object source) {

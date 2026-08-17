@@ -46,6 +46,7 @@ import top.continew.admin.automation.model.req.infrastructure.AutomationInfrastr
 import top.continew.admin.automation.model.req.infrastructure.AutomationInfrastructureTaskDispositionReq;
 import top.continew.admin.automation.model.resp.infrastructure.AutomationInfrastructureStatementResp;
 import top.continew.admin.automation.service.AutomationUiExecutionRecordService;
+import top.continew.admin.automation.service.AutomationEnvironmentResourceService;
 import top.continew.admin.automation.support.AutomationExecutionAgentClient;
 import top.continew.admin.automation.support.AutomationInfrastructureResultSanitizer;
 import top.continew.admin.automation.support.AutomationInfrastructureRiskPolicy;
@@ -80,7 +81,7 @@ class AutomationInfrastructureTaskUncertainOutcomeTest {
         when(stepExtractor.extract(any(), eq(0))).thenReturn(Map
             .of("action_type", "database_sql", "sql_mode", "query", "sql", "SELECT user_id FROM sys_user", "target_ref", Map
                 .of("scope", "project_config", "kind", "database", "config_id", 1)));
-        AutomationInfrastructureTaskServiceImpl service = new AutomationInfrastructureTaskServiceImpl(taskMapper, mock(AutomationInfrastructureTaskLogMapper.class), mock(AutomationUiSceneMapper.class), mock(ProjectEnvironmentConfigMapper.class), mock(ProjectServerConfigMapper.class), mock(ProjectDataBaseConfigMapper.class), stepExtractor, bindingResolver, objectMapper, mock(AutomationExecutionAgentClient.class), mock(AutomationUiExecutionRecordService.class), jdbcTemplate, new AutomationInfrastructureResultSanitizer(objectMapper), new AutomationInfrastructureRiskPolicy(""));
+        AutomationInfrastructureTaskServiceImpl service = new AutomationInfrastructureTaskServiceImpl(taskMapper, mock(AutomationInfrastructureTaskLogMapper.class), mock(AutomationUiSceneMapper.class), mock(ProjectEnvironmentConfigMapper.class), mock(ProjectServerConfigMapper.class), mock(ProjectDataBaseConfigMapper.class), stepExtractor, bindingResolver, objectMapper, mock(AutomationExecutionAgentClient.class), mock(AutomationUiExecutionRecordService.class), jdbcTemplate, new AutomationInfrastructureResultSanitizer(objectMapper), new AutomationInfrastructureRiskPolicy(""), mock(AutomationEnvironmentResourceService.class));
         try {
             UserContext owner = new UserContext();
             owner.setId(101L);
@@ -121,7 +122,7 @@ class AutomationInfrastructureTaskUncertainOutcomeTest {
         AutomationExecutionAgentClient agentClient = mock(AutomationExecutionAgentClient.class);
         when(logMapper.selectList(any())).thenReturn(List.of());
         when(agentClient.submit(any())).thenThrow(new BusinessException("connection closed before response"));
-        AutomationInfrastructureTaskServiceImpl service = new AutomationInfrastructureTaskServiceImpl(taskMapper, logMapper, mock(AutomationUiSceneMapper.class), mock(ProjectEnvironmentConfigMapper.class), mock(ProjectServerConfigMapper.class), mock(ProjectDataBaseConfigMapper.class), mock(AutomationPlaywrightStepExtractor.class), mock(AutomationInfrastructureRuntimeBindingResolver.class), objectMapper, agentClient, mock(AutomationUiExecutionRecordService.class), mock(JdbcTemplate.class), new AutomationInfrastructureResultSanitizer(objectMapper), new AutomationInfrastructureRiskPolicy(""));
+        AutomationInfrastructureTaskServiceImpl service = new AutomationInfrastructureTaskServiceImpl(taskMapper, logMapper, mock(AutomationUiSceneMapper.class), mock(ProjectEnvironmentConfigMapper.class), mock(ProjectServerConfigMapper.class), mock(ProjectDataBaseConfigMapper.class), mock(AutomationPlaywrightStepExtractor.class), mock(AutomationInfrastructureRuntimeBindingResolver.class), objectMapper, agentClient, mock(AutomationUiExecutionRecordService.class), mock(JdbcTemplate.class), new AutomationInfrastructureResultSanitizer(objectMapper), new AutomationInfrastructureRiskPolicy(""), mock(AutomationEnvironmentResourceService.class));
         AutomationInfrastructureTaskDO task = new AutomationInfrastructureTaskDO();
         task.setTaskId("INFRA_UNCERTAIN");
         task.setActionType("global_variable_system_info");
@@ -156,7 +157,7 @@ class AutomationInfrastructureTaskUncertainOutcomeTest {
         when(agentClient.downloadArtifact("INFRA_OWNED"))
             .thenReturn(new AutomationExecutionAgentClient.ArtifactDownload("INFRA_OWNED.json", "application/json", "{}"
                 .getBytes(StandardCharsets.UTF_8), "a".repeat(64)));
-        AutomationInfrastructureTaskServiceImpl service = new AutomationInfrastructureTaskServiceImpl(taskMapper, logMapper, mock(AutomationUiSceneMapper.class), mock(ProjectEnvironmentConfigMapper.class), mock(ProjectServerConfigMapper.class), mock(ProjectDataBaseConfigMapper.class), mock(AutomationPlaywrightStepExtractor.class), mock(AutomationInfrastructureRuntimeBindingResolver.class), objectMapper, agentClient, mock(AutomationUiExecutionRecordService.class), mock(JdbcTemplate.class), new AutomationInfrastructureResultSanitizer(objectMapper), new AutomationInfrastructureRiskPolicy(""));
+        AutomationInfrastructureTaskServiceImpl service = new AutomationInfrastructureTaskServiceImpl(taskMapper, logMapper, mock(AutomationUiSceneMapper.class), mock(ProjectEnvironmentConfigMapper.class), mock(ProjectServerConfigMapper.class), mock(ProjectDataBaseConfigMapper.class), mock(AutomationPlaywrightStepExtractor.class), mock(AutomationInfrastructureRuntimeBindingResolver.class), objectMapper, agentClient, mock(AutomationUiExecutionRecordService.class), mock(JdbcTemplate.class), new AutomationInfrastructureResultSanitizer(objectMapper), new AutomationInfrastructureRiskPolicy(""), mock(AutomationEnvironmentResourceService.class));
         try {
             UserContext owner = new UserContext();
             owner.setId(101L);
@@ -188,7 +189,7 @@ class AutomationInfrastructureTaskUncertainOutcomeTest {
         ObjectMapper objectMapper = new ObjectMapper();
         AutomationInfrastructureTaskMapper taskMapper = mock(AutomationInfrastructureTaskMapper.class);
         AutomationInfrastructureTaskLogMapper logMapper = mock(AutomationInfrastructureTaskLogMapper.class);
-        AutomationInfrastructureTaskServiceImpl service = new AutomationInfrastructureTaskServiceImpl(taskMapper, logMapper, mock(AutomationUiSceneMapper.class), mock(ProjectEnvironmentConfigMapper.class), mock(ProjectServerConfigMapper.class), mock(ProjectDataBaseConfigMapper.class), mock(AutomationPlaywrightStepExtractor.class), mock(AutomationInfrastructureRuntimeBindingResolver.class), objectMapper, mock(AutomationExecutionAgentClient.class), mock(AutomationUiExecutionRecordService.class), mock(JdbcTemplate.class), new AutomationInfrastructureResultSanitizer(objectMapper), new AutomationInfrastructureRiskPolicy(""));
+        AutomationInfrastructureTaskServiceImpl service = new AutomationInfrastructureTaskServiceImpl(taskMapper, logMapper, mock(AutomationUiSceneMapper.class), mock(ProjectEnvironmentConfigMapper.class), mock(ProjectServerConfigMapper.class), mock(ProjectDataBaseConfigMapper.class), mock(AutomationPlaywrightStepExtractor.class), mock(AutomationInfrastructureRuntimeBindingResolver.class), objectMapper, mock(AutomationExecutionAgentClient.class), mock(AutomationUiExecutionRecordService.class), mock(JdbcTemplate.class), new AutomationInfrastructureResultSanitizer(objectMapper), new AutomationInfrastructureRiskPolicy(""), mock(AutomationEnvironmentResourceService.class));
         AutomationInfrastructureTaskCreateReq request = new AutomationInfrastructureTaskCreateReq();
         request.setExecutionId("EXEC_UNBOUND");
         request.setCaseKey("CASE_UNBOUND");
@@ -214,7 +215,7 @@ class AutomationInfrastructureTaskUncertainOutcomeTest {
         task.setActionType("database_sql");
         when(taskMapper.selectOne(any())).thenReturn(task);
         when(logMapper.selectList(any())).thenReturn(List.of());
-        AutomationInfrastructureTaskServiceImpl service = new AutomationInfrastructureTaskServiceImpl(taskMapper, logMapper, mock(AutomationUiSceneMapper.class), mock(ProjectEnvironmentConfigMapper.class), mock(ProjectServerConfigMapper.class), mock(ProjectDataBaseConfigMapper.class), mock(AutomationPlaywrightStepExtractor.class), mock(AutomationInfrastructureRuntimeBindingResolver.class), objectMapper, mock(AutomationExecutionAgentClient.class), mock(AutomationUiExecutionRecordService.class), mock(JdbcTemplate.class), new AutomationInfrastructureResultSanitizer(objectMapper), new AutomationInfrastructureRiskPolicy(""));
+        AutomationInfrastructureTaskServiceImpl service = new AutomationInfrastructureTaskServiceImpl(taskMapper, logMapper, mock(AutomationUiSceneMapper.class), mock(ProjectEnvironmentConfigMapper.class), mock(ProjectServerConfigMapper.class), mock(ProjectDataBaseConfigMapper.class), mock(AutomationPlaywrightStepExtractor.class), mock(AutomationInfrastructureRuntimeBindingResolver.class), objectMapper, mock(AutomationExecutionAgentClient.class), mock(AutomationUiExecutionRecordService.class), mock(JdbcTemplate.class), new AutomationInfrastructureResultSanitizer(objectMapper), new AutomationInfrastructureRiskPolicy(""), mock(AutomationEnvironmentResourceService.class));
         AutomationInfrastructureTaskDispositionReq request = new AutomationInfrastructureTaskDispositionReq();
         request.setResolution("confirmed_succeeded");
         request.setVerificationNote("已在目标数据库核对事务提交记录");

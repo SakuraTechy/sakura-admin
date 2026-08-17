@@ -25,7 +25,14 @@ import org.springframework.web.multipart.MultipartFile;
  */
 public interface AutomationPlaywrightArtifactService {
 
-    Artifact store(String runId, String artifactType, MultipartFile file);
+    default Artifact store(String runId, String artifactType, MultipartFile file) {
+        return store(runId, artifactType, "", file);
+    }
+
+    /**
+     * 按 Runner 产物目录中的安全相对路径保存文件。
+     */
+    Artifact store(String runId, String artifactType, String relativePath, MultipartFile file);
 
     /**
      * 读取新链路中由系统文件管理持久化的 Playwright artifact。
@@ -37,10 +44,10 @@ public interface AutomationPlaywrightArtifactService {
      */
     ArtifactResource loadLegacy(String runId, String fileName);
 
-    record Artifact(Long fileId, String runId, String artifactType, String fileName, String url, String contentType,
-                    long size, String md5, String storageCode) {
+    record Artifact(Long fileId, String runId, String artifactType, String relativePath, String fileName, String url,
+                    String contentType, long size, String md5, String storageCode) {
     }
 
-    record ArtifactResource(byte[] content, String contentType, String fileName) {
+    record ArtifactResource(byte[] content, String contentType, String fileName, boolean attachment) {
     }
 }

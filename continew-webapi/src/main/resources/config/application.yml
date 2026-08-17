@@ -22,6 +22,11 @@ project:
 
 --- ### Playwright Runner 配置
 automation:
+  cdp-playback:
+    # 受控 BrowserContext 三种会话模式默认关闭；仅在真实 Chrome 验收通过后为测试账号显式开启。
+    enabled: ${SAKURA_CDP_PLAYBACK_ENABLED:true}
+    # 逗号分隔的登录用户名；生产环境禁止使用 *，避免未经灰度验收的账号进入受控会话。
+    allowed-users: ${SAKURA_CDP_PLAYBACK_ALLOWED_USERS:admin}
   storage-pressure:
     enabled: ${SAKURA_AUTOMATION_STORAGE_PRESSURE_ENABLED:true}
     # MySQL 分容器部署时，把数据盘只读挂载到 admin，并在这里配置挂载路径。

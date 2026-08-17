@@ -147,7 +147,7 @@ class AutomationUiCaseTreeServiceImplTest {
         StepDO existing = step("STEP_001", parent.getId(), 1);
         existing.setOperationValue("real-password");
         existing.setConfigList(new ArrayList<>(List
-            .of(config("source", "sakura-playwright"), config("value_masked", "1"), config("value", "real-password"), config("playwright_step", "{\"value\":\"real-password\"}"), config("locator_meta", "{\"role\":\"textbox\"}"), config("screenshot_url", "/files/1"))));
+            .of(config("source", "sakura-playwright"), config("value_masked", "1"), config("value", "real-password"), config("playwright_step", "{\"value\":\"real-password\"}"), config("locator_meta", "{\"role\":\"textbox\"}"), config("target_selector", "#password"), config("target_xpath", "//*[@id='password']"), config("url", "https://example.test/login"), config("screenshot_url", "/files/1"))));
         parent.setStepList(new ArrayList<>(List.of(existing)));
         AutomationUiSceneDO scene = scene(parent);
         prepareMutation(scene);
@@ -156,7 +156,7 @@ class AutomationUiCaseTreeServiceImplTest {
         request.setExpectedDefinitionVersion(0L);
         request.setOperationValue("******");
         request.setConfigList(new ArrayList<>(List
-            .of(config("value_masked", "1"), config("value", "******"), config("playwright_step", "******"), config("locator_meta", "{\"role\":\"button\"}"), config("custom", "updated"))));
+            .of(config("value_masked", "1"), config("value", "******"), config("playwright_step", "******"), config("locator_meta", "{\"role\":\"button\"}"), config("target_selector", "#changed"), config("target_xpath", "//changed"), config("url", "https://changed.example"), config("custom", "updated"))));
         service.updateStep(scene.getId(), request);
 
         ArgumentCaptor<List<CaseDO>> cases = caseListCaptor();
@@ -168,8 +168,31 @@ class AutomationUiCaseTreeServiceImplTest {
         assertThat(configValue(saved, "locator_meta")).isEqualTo("{\"role\":\"button\"}");
         assertThat(configValue(saved, "original_playwright_step")).isEqualTo("{\"value\":\"real-password\"}");
         assertThat(configValue(saved, "original_locator_meta")).isEqualTo("{\"role\":\"textbox\"}");
+        assertThat(configValue(saved, "target_selector")).isEqualTo("#password");
+        assertThat(configValue(saved, "target_xpath")).isEqualTo("//*[@id='password']");
+        assertThat(configValue(saved, "url")).isEqualTo("https://example.test/login");
         assertThat(configValue(saved, "screenshot_url")).isEqualTo("/files/1");
         assertThat(configValue(saved, "custom")).isEqualTo("updated");
+    }
+
+    @Test
+    void shouldPersistDisabledStatusWhenEditingStep() {
+        CaseDO parent = caseDO("CASE_001", 1);
+        StepDO existing = step("STEP_001", parent.getId(), 1);
+        existing.setStatus(StatusTypeEnum.ENABLE);
+        parent.setStepList(new ArrayList<>(List.of(existing)));
+        AutomationUiSceneDO scene = scene(parent);
+        prepareMutation(scene);
+
+        StepDO request = step(existing.getId(), parent.getId(), 1);
+        request.setStatus(StatusTypeEnum.DISABLE);
+        request.setExpectedDefinitionVersion(0L);
+        service.updateStep(scene.getId(), request);
+
+        ArgumentCaptor<List<CaseDO>> cases = caseListCaptor();
+        verify(sceneMapper).updateDefinition(anyLong(), anyLong(), cases.capture(), anyInt(), anyInt());
+        StepDO saved = cases.getValue().get(0).getStepList().get(0);
+        assertThat(saved.getStatus()).isEqualTo(StatusTypeEnum.DISABLE);
     }
 
     @Test
@@ -211,6 +234,7 @@ class AutomationUiCaseTreeServiceImplTest {
         prepareMutation(scene);
 
         AutomationUiStepCopyReq stepOverride = new AutomationUiStepCopyReq();
+        stepOverride.setOrder(1);
         stepOverride.setName("复制后步骤");
         stepOverride.setRemark("复制后备注");
         stepOverride.setOperationType("新操作类型");
@@ -234,9 +258,9 @@ class AutomationUiCaseTreeServiceImplTest {
         verify(sceneMapper).updateDefinition(anyLong(), anyLong(), cases.capture(), anyInt(), anyInt());
         List<StepDO> savedSteps = cases.getValue().get(0).getStepList();
         assertThat(savedSteps).hasSize(2);
-        assertThat(savedSteps.get(0).getName()).isEqualTo("STEP_001");
-        StepDO copied = savedSteps.get(1);
+        StepDO copied = savedSteps.get(0);
         assertThat(copied.getId()).isEqualTo("STEP_002");
+        assertThat(copied.getOrder()).isEqualTo(1);
         assertThat(copied.getPid()).isEqualTo(parent.getId());
         assertThat(copied.getName()).isEqualTo("复制后步骤");
         assertThat(copied.getRemark()).isEqualTo("复制后备注");
@@ -245,6 +269,27 @@ class AutomationUiCaseTreeServiceImplTest {
         assertThat(copied.getOperationValue()).isEqualTo("new_action");
         assertThat(copied.getStatus()).isEqualTo(StatusTypeEnum.DISABLE);
         assertThat(configValue(copied, "custom")).isEqualTo("new");
+        assertThat(savedSteps.get(1).getName()).isEqualTo("STEP_001");
+        assertThat(savedSteps.get(1).getOrder()).isEqualTo(2);
+    }
+
+    @Test
+    void shouldMoveStepToRequestedOrderWhenEditingStep() {
+        CaseDO parent = caseDO("CASE_001", 1);
+        parent.setStepList(new ArrayList<>(List.of(step("STEP_001", parent.getId(), 1), step("STEP_002", parent
+            .getId(), 2), step("STEP_003", parent.getId(), 3))));
+        AutomationUiSceneDO scene = scene(parent);
+        prepareMutation(scene);
+
+        StepDO request = step("STEP_003", parent.getId(), 1);
+        request.setExpectedDefinitionVersion(0L);
+        service.updateStep(scene.getId(), request);
+
+        ArgumentCaptor<List<CaseDO>> cases = caseListCaptor();
+        verify(sceneMapper).updateDefinition(anyLong(), anyLong(), cases.capture(), anyInt(), anyInt());
+        List<StepDO> savedSteps = cases.getValue().get(0).getStepList();
+        assertThat(savedSteps).extracting(StepDO::getId).containsExactly("STEP_003", "STEP_001", "STEP_002");
+        assertThat(savedSteps).extracting(StepDO::getOrder).containsExactly(1, 2, 3);
     }
 
     @Test

@@ -31,6 +31,9 @@ public class AutomationEnvironmentResourceResp {
     private Boolean required;
     private Long resourceId;
     private String resourceLabel;
+    private String databaseIp;
+    private Integer databasePort;
+    private String databaseName;
     private String fileName;
     private Long fileSize;
     private String sha256;

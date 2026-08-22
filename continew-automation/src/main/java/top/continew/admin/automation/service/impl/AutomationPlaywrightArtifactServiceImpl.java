@@ -31,17 +31,22 @@ import java.util.regex.Pattern;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import cn.hutool.json.JSONUtil;
+import cn.hutool.json.JSONObject;
 import lombok.RequiredArgsConstructor;
 import org.dromara.x.file.storage.core.FileInfo;
 import org.dromara.x.file.storage.core.FileStorageService;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import top.continew.admin.automation.mapper.AutomationPlaywrightJobMapper;
+import top.continew.admin.automation.mapper.AutomationUiSceneQueryMapper;
 import top.continew.admin.automation.model.entity.AutomationPlaywrightJobDO;
 import top.continew.admin.automation.model.resp.playwright.AutomationPlaywrightCaseResp;
 import top.continew.admin.automation.service.AutomationPlaywrightArtifactService;
 import top.continew.admin.automation.service.AutomationPlaywrightCaseService;
+import top.continew.admin.automation.support.AutomationUiQueryBaselineRecorder;
+import top.continew.admin.automation.support.AutomationUiSceneAccessScopeResolver;
 import top.continew.admin.system.model.entity.FileDO;
 import top.continew.admin.system.model.entity.StorageDO;
 import top.continew.admin.system.service.FileService;
@@ -79,6 +84,12 @@ public class AutomationPlaywrightArtifactServiceImpl implements AutomationPlaywr
     private final FileStorageService fileStorageService;
     private final AutomationPlaywrightJobMapper jobMapper;
     private final AutomationPlaywrightCaseService caseService;
+
+    @Autowired(required = false)
+    private AutomationUiSceneQueryMapper sceneQueryMapper;
+
+    @Autowired(required = false)
+    private AutomationUiSceneAccessScopeResolver accessScopeResolver;
 
     @Value("${automation.playwright-artifact.unified-storage-enabled:true}")
     private boolean unifiedStorageEnabled;
@@ -123,11 +134,29 @@ public class AutomationPlaywrightArtifactServiceImpl implements AutomationPlaywr
         if (fileId == null || fileId <= 0) {
             throw new BusinessException("Playwright artifact 文件 ID 非法");
         }
-        FileDO file = fileService.getById(fileId);
+        AutomationUiQueryBaselineRecorder.recordSql();
+        long queryStartedNanos = AutomationUiQueryBaselineRecorder.startTimedSection();
+        FileDO file;
+        try {
+            file = fileService.getById(fileId);
+        } finally {
+            AutomationUiQueryBaselineRecorder
+                .recordTiming(AutomationUiQueryBaselineRecorder.Phase.OTHER_QUERY, queryStartedNanos);
+        }
         if (file == null || !isPlaywrightArtifact(file.getMetadata())) {
             throw new BusinessException("Playwright artifact 不存在");
         }
-        StorageDO storage = storageService.getById(file.getStorageId());
+        JSONObject metadata = JSONUtil.parseObj(file.getMetadata());
+        requireArtifactAccess(metadata.getStr("sceneId"));
+        AutomationUiQueryBaselineRecorder.recordSql();
+        queryStartedNanos = AutomationUiQueryBaselineRecorder.startTimedSection();
+        StorageDO storage;
+        try {
+            storage = storageService.getById(file.getStorageId());
+        } finally {
+            AutomationUiQueryBaselineRecorder
+                .recordTiming(AutomationUiQueryBaselineRecorder.Phase.OTHER_QUERY, queryStartedNanos);
+        }
         if (storage == null) {
             throw new BusinessException("Playwright artifact 存储不存在");
         }
@@ -136,7 +165,16 @@ public class AutomationPlaywrightArtifactServiceImpl implements AutomationPlaywr
         if (file.getAbsPath() != null && !file.getAbsPath().isBlank()) {
             fileInfo.setPath(file.getAbsPath());
         }
-        byte[] content = fileStorageService.download(fileInfo).bytes();
+        long downloadStartedNanos = AutomationUiQueryBaselineRecorder.startExternalCall();
+        long usedHeapBeforeBytes = AutomationUiQueryBaselineRecorder.startHeapSample();
+        byte[] content;
+        try {
+            content = fileStorageService.download(fileInfo).bytes();
+        } finally {
+            AutomationUiQueryBaselineRecorder.recordHeapSample(usedHeapBeforeBytes);
+            AutomationUiQueryBaselineRecorder.recordExternalCall(downloadStartedNanos);
+        }
+        AutomationUiQueryBaselineRecorder.recordInMemoryPayloadBytes(content == null ? 0 : content.length);
         String artifactType = JSONUtil.parseObj(file.getMetadata()).getStr("artifactType");
         return new ArtifactResource(content, defaultContentType(file
             .getContentType()), storedFileName(file), DOWNLOAD_ARTIFACT_TYPE.equals(artifactType));
@@ -149,15 +187,25 @@ public class AutomationPlaywrightArtifactServiceImpl implements AutomationPlaywr
         if (!legacyReadEnabled) {
             throw new BusinessException("历史 Playwright artifact 读取已关闭");
         }
+        requireLegacyArtifactAccess(safeRunId);
         Path runRoot = legacyRoot().resolve(safeRunId).normalize();
         Path target = runRoot.resolve(safeRelativePath).normalize();
         if (!target.startsWith(runRoot) || !Files.isRegularFile(target)) {
             throw new BusinessException("历史 Playwright artifact 不存在");
         }
         try {
-            return new ArtifactResource(Files
-                .readAllBytes(target), resolveContentType(target, null), relativeFileName(safeRelativePath), safeRelativePath
-                    .startsWith("downloads/"));
+            long downloadStartedNanos = AutomationUiQueryBaselineRecorder.startExternalCall();
+            long usedHeapBeforeBytes = AutomationUiQueryBaselineRecorder.startHeapSample();
+            byte[] content;
+            try {
+                content = Files.readAllBytes(target);
+            } finally {
+                AutomationUiQueryBaselineRecorder.recordHeapSample(usedHeapBeforeBytes);
+                AutomationUiQueryBaselineRecorder.recordExternalCall(downloadStartedNanos);
+            }
+            AutomationUiQueryBaselineRecorder.recordInMemoryPayloadBytes(content.length);
+            return new ArtifactResource(content, resolveContentType(target, null), relativeFileName(safeRelativePath), safeRelativePath
+                .startsWith("downloads/"));
         } catch (IOException e) {
             throw new BusinessException("读取历史 Playwright artifact 失败：" + e.getMessage());
         }
@@ -247,6 +295,32 @@ public class AutomationPlaywrightArtifactServiceImpl implements AutomationPlaywr
             return false;
         }
         return BUSINESS_TYPE.equals(JSONUtil.parseObj(metadata).getStr("businessType"));
+    }
+
+    private void requireLegacyArtifactAccess(String runId) {
+        if (sceneQueryMapper == null || accessScopeResolver == null) {
+            return;
+        }
+        AutomationPlaywrightJobDO job = jobMapper.selectOne(Wrappers.<AutomationPlaywrightJobDO>lambdaQuery()
+            .eq(AutomationPlaywrightJobDO::getExecutionId, runId)
+            .last("LIMIT 1"));
+        if (job == null) {
+            throw new BusinessException("历史 Playwright artifact 不存在或无法确认访问范围");
+        }
+        requireArtifactAccess(job.getSceneKey());
+    }
+
+    private void requireArtifactAccess(String sceneKey) {
+        if (sceneQueryMapper == null || accessScopeResolver == null) {
+            return;
+        }
+        if (sceneKey == null || sceneKey.isBlank()) {
+            throw new BusinessException("Playwright artifact 缺少场景访问范围");
+        }
+        AutomationUiSceneAccessScopeResolver.AccessScope scope = accessScopeResolver.currentScope();
+        if (sceneQueryMapper.selectAuthorizedSceneDbIdByKey(sceneKey, scope.userId(), scope.admin()) == null) {
+            throw new BusinessException("Playwright artifact 不存在或无访问权限");
+        }
     }
 
     private String requireArtifactType(String artifactType) {

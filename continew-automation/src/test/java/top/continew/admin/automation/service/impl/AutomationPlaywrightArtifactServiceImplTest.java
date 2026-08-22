@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
+import java.util.Set;
 import java.util.UUID;
 
 import org.junit.jupiter.api.AfterEach;
@@ -28,10 +29,12 @@ import org.dromara.x.file.storage.core.FileStorageService;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.util.ReflectionTestUtils;
 import top.continew.admin.automation.mapper.AutomationPlaywrightJobMapper;
+import top.continew.admin.automation.mapper.AutomationUiSceneQueryMapper;
 import top.continew.admin.automation.model.entity.AutomationPlaywrightJobDO;
 import top.continew.admin.automation.service.AutomationPlaywrightArtifactService.Artifact;
 import top.continew.admin.automation.service.AutomationPlaywrightCaseService;
 import top.continew.admin.automation.model.resp.playwright.AutomationPlaywrightCaseResp;
+import top.continew.admin.automation.support.AutomationUiSceneAccessScopeResolver;
 import top.continew.admin.system.service.FileService;
 import top.continew.admin.system.service.StorageService;
 
@@ -65,6 +68,21 @@ class AutomationPlaywrightArtifactServiceImplTest {
                 }
             });
         }
+    }
+
+    @Test
+    void shouldDenyArtifactWhenSceneObjectScopeCannotBeProven() {
+        AutomationUiSceneQueryMapper queryMapper = mock(AutomationUiSceneQueryMapper.class);
+        AutomationUiSceneAccessScopeResolver scopeResolver = mock(AutomationUiSceneAccessScopeResolver.class);
+        when(scopeResolver.currentScope())
+            .thenReturn(new AutomationUiSceneAccessScopeResolver.AccessScope(7L, false, Set.of(), Set.of()));
+        when(queryMapper.selectAuthorizedSceneDbIdByKey("SCENE_001", 7L, false)).thenReturn(null);
+        ReflectionTestUtils.setField(service, "sceneQueryMapper", queryMapper);
+        ReflectionTestUtils.setField(service, "accessScopeResolver", scopeResolver);
+
+        assertThatThrownBy(() -> ReflectionTestUtils.invokeMethod(service, "requireArtifactAccess", "SCENE_001"))
+            .isInstanceOf(top.continew.starter.core.exception.BusinessException.class)
+            .hasMessageContaining("无访问权限");
     }
 
     @Test

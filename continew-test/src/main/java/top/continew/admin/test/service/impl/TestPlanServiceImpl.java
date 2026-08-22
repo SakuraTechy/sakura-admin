@@ -185,7 +185,7 @@ public class TestPlanServiceImpl extends BaseServiceImpl<TestPlanMapper, TestPla
             .set(AutomationUiSceneDO::getReportId, report.getId())
             .update();
 
-        plan.setStatus("RUNNING");
+        initializePlanExecution(plan);
         baseMapper.updateById(plan);
         try {
             return switch (engine) {
@@ -200,6 +200,11 @@ public class TestPlanServiceImpl extends BaseServiceImpl<TestPlanMapper, TestPla
             report.setRuntimeEnvironment(runtime);
             testReportMapper.updateById(report);
             plan.setStatus("COMPLETED");
+            plan.setActualEndTime(LocalDateTime.now());
+            if (plan.getActualStartTime() != null) {
+                plan.setRunTime(Math.max(0, java.time.Duration.between(plan.getActualStartTime(), plan
+                    .getActualEndTime()).toMillis()));
+            }
             baseMapper.updateById(plan);
             throw e;
         }
@@ -276,6 +281,16 @@ public class TestPlanServiceImpl extends BaseServiceImpl<TestPlanMapper, TestPla
         resp.setDispatchMode(engine.getDispatchMode());
         resp.setStatus("RUNNING");
         return resp;
+    }
+
+    private void initializePlanExecution(TestPlanDO plan) {
+        plan.setStatus("RUNNING");
+        plan.setExecutedCount(0);
+        plan.setPassedCount(0);
+        plan.setTestProgress(BigDecimal.ZERO);
+        plan.setRunTime(0L);
+        plan.setActualStartTime(LocalDateTime.now());
+        plan.setActualEndTime(null);
     }
 
     private Map<String, Object> buildRuntimeEnvironment(TestPlanExecuteReq req,

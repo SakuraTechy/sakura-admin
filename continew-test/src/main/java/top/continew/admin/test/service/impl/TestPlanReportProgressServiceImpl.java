@@ -35,6 +35,7 @@ import top.continew.starter.core.exception.BusinessException;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.ArrayList;
@@ -220,8 +221,17 @@ public class TestPlanReportProgressServiceImpl implements AutomationPlanReportPr
         plan.setTestProgress(planSceneTotal == 0
             ? BigDecimal.ZERO
             : BigDecimal.valueOf(aggregate.sceneCompleted * 100.0 / planSceneTotal).setScale(2, RoundingMode.HALF_UP));
+        plan.setRunTime(resolveRunTime(plan));
+        plan.setActualEndTime(aggregate.terminal ? LocalDateTime.now() : null);
         plan.setStatus(aggregate.terminal ? "COMPLETED" : "RUNNING");
         testPlanMapper.updateById(plan);
+    }
+
+    private long resolveRunTime(TestPlanDO plan) {
+        if (plan.getActualStartTime() == null) {
+            return plan.getRunTime() == null ? 0 : plan.getRunTime();
+        }
+        return Math.max(0, java.time.Duration.between(plan.getActualStartTime(), LocalDateTime.now()).toMillis());
     }
 
     private void markIncompleteRecordsFailed(TestReportDO report) {

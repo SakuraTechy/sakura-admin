@@ -76,6 +76,8 @@ public class AutomationRecordingImportServiceImpl implements AutomationRecording
     private final AutomationUiSceneService automationUiSceneService;
     private final PlaywrightRecordingAssembler playwrightRecordingAssembler;
     private final ProjectConfigMapper projectConfigMapper;
+    @jakarta.annotation.Resource
+    private top.continew.admin.automation.service.AutomationUiDefinitionProjectionService definitionProjectionService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -110,6 +112,8 @@ public class AutomationRecordingImportServiceImpl implements AutomationRecording
         CaseDO caseDO = playwrightRecordingAssembler.toCase(recordedCase, context);
         AutomationUiSceneDO scene = buildScene(sceneReq, caseDO);
         automationUiSceneMapper.insert(scene);
+        if (definitionProjectionService != null)
+            definitionProjectionService.recordDefinitionWrite(scene.getId(), 0L, scene.getCaseList());
         return new AutomationRecordingImportResp(scene.getId(), scene.getSceneId(), caseDO
             .getId(), recordingId, recordedCase.getSteps().size(), MODE_CREATE_SCENE);
     }
@@ -500,6 +504,9 @@ public class AutomationRecordingImportServiceImpl implements AutomationRecording
             .getCaseList(), scene.getCaseTotal(), scene.getStepTotal());
         CheckUtils.throwIf(updated != 1, "场景定义已被其他操作修改，请刷新后重试");
         scene.setDefinitionVersion(req.getExpectedDefinitionVersion() + 1);
+        if (definitionProjectionService != null)
+            definitionProjectionService.recordDefinitionWrite(scene.getId(), scene.getDefinitionVersion(), scene
+                .getCaseList());
     }
 
     private void checkModePermission(String mode) {

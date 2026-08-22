@@ -52,7 +52,7 @@ import top.continew.starter.core.exception.BusinessException;
 public class AutomationEnvironmentResourceServiceImpl implements AutomationEnvironmentResourceService {
 
     private static final List<DefaultSlot> DEFAULT_SLOTS = List
-        .of(new DefaultSlot("APP_SERVER", "应用服务器", SERVER), new DefaultSlot("BUSINESS_DB", "业务数据库", DATABASE), new DefaultSlot("CLIENT_LICENSE", "客户端证书", CERTIFICATE));
+        .of(new DefaultSlot("APP_SERVER", "应用服务器", SERVER, true), new DefaultSlot("BUSINESS_DB", "业务数据库", DATABASE, true), new DefaultSlot("CLIENT_LICENSE", "客户端证书", CERTIFICATE, true));
 
     private final ProjectResourceSlotMapper slotMapper;
     private final ProjectEnvironmentResourceBindingMapper bindingMapper;
@@ -64,8 +64,14 @@ public class AutomationEnvironmentResourceServiceImpl implements AutomationEnvir
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public List<AutomationEnvironmentResourceResp> listSlots(Long projectId, String kind) {
+    public List<AutomationEnvironmentResourceResp> listSlots(Long projectId, String kind, Long environmentId) {
         requireProjectId(projectId);
+        if (environmentId != null) {
+            ProjectEnvironmentConfigDO environment = requireEnvironment(environmentId);
+            if (!Objects.equals(projectId, environment.getProjectId())) {
+                throw new BusinessException("环境资源角色查询失败：环境不属于当前项目");
+            }
+        }
         ensureDefaultSlots(projectId);
         String normalizedKind = normalizeKind(kind, false);
         return slotMapper.selectList(Wrappers.<ProjectResourceSlotDO>lambdaQuery()
@@ -74,8 +80,109 @@ public class AutomationEnvironmentResourceServiceImpl implements AutomationEnvir
             .eq(ProjectResourceSlotDO::getStatus, DisEnableStatusEnum.ENABLE)
             .orderByAsc(ProjectResourceSlotDO::getResourceKind, ProjectResourceSlotDO::getResourceCode))
             .stream()
-            .map(slot -> toResp(slot, null))
+            .map(slot -> {
+                AutomationEnvironmentResourceResp response = toResp(slot, environmentId == null
+                    ? null
+                    : findBinding(environmentId, slot.getId()));
+                if (environmentId == null && DATABASE.equals(slot.getResourceKind()) && !response.getBound()) {
+                    enrichDatabaseRole(response, slot.getId(), projectId);
+                }
+                return response;
+            })
             .toList();
+    }
+
+    /** 场景编辑没有选定产品环境时，展示项目数据库配置作为角色信息回退。 */
+    private void enrichBusinessDatabase(AutomationEnvironmentResourceResp response, Long projectId) {
+        ProjectDataBaseConfigDO database = databaseMapper.selectList(Wrappers.<ProjectDataBaseConfigDO>lambdaQuery()
+            .eq(ProjectDataBaseConfigDO::getProjectId, projectId)
+            .eq(ProjectDataBaseConfigDO::getStatus, DisEnableStatusEnum.ENABLE)
+            .orderByAsc(ProjectDataBaseConfigDO::getIp, ProjectDataBaseConfigDO::getPort)
+            .last("LIMIT 1")).stream().findFirst().orElse(null);
+        if (database != null) {
+            response.setResourceLabel(address(database.getIp(), database.getPort(), database.getDataBase()));
+            response.setDatabaseIp(database.getIp());
+            response.setDatabasePort(database.getPort());
+            response.setDatabaseName(database.getDataBase());
+        }
+    }
+
+    /** 自定义数据库没有项目级配置，编辑步骤时回退展示该角色首个环境绑定。 */
+    private void enrichDatabaseRole(AutomationEnvironmentResourceResp response, Long slotId, Long projectId) {
+        ProjectEnvironmentResourceBindingDO binding = bindingMapper.selectList(Wrappers
+            .<ProjectEnvironmentResourceBindingDO>lambdaQuery()
+            .eq(ProjectEnvironmentResourceBindingDO::getResourceSlotId, slotId)
+            .eq(ProjectEnvironmentResourceBindingDO::getStatus, DisEnableStatusEnum.ENABLE)
+            .orderByAsc(ProjectEnvironmentResourceBindingDO::getEnvironmentId)
+            .last("LIMIT 1")).stream().findFirst().orElse(null);
+        if (binding == null) {
+            if ("BUSINESS_DB".equals(response.getResourceCode())) {
+                enrichBusinessDatabase(response, projectId);
+            }
+            return;
+        }
+        ProjectDataBaseConfigDO database = databaseMapper.selectById(binding.getResourceId());
+        if (database != null && Objects.equals(projectId, database.getProjectId()) && database
+            .getStatus() == DisEnableStatusEnum.ENABLE) {
+            response.setResourceLabel(address(database.getIp(), database.getPort(), database.getDataBase()));
+            response.setDatabaseIp(database.getIp());
+            response.setDatabasePort(database.getPort());
+            response.setDatabaseName(database.getDataBase());
+        }
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public AutomationEnvironmentResourceResp createCustomDatabaseSlot(Long projectId) {
+        requireProjectId(projectId);
+        ensureDefaultSlots(projectId);
+        // 角色属于项目，环境只保存该角色对应的实际数据库绑定。
+        for (int attempt = 0; attempt < 5; attempt++) {
+            List<ProjectResourceSlotDO> existing = slotMapper.selectList(Wrappers.<ProjectResourceSlotDO>lambdaQuery()
+                .eq(ProjectResourceSlotDO::getProjectId, projectId));
+            int next = existing.stream()
+                .map(ProjectResourceSlotDO::getResourceCode)
+                .filter(Objects::nonNull)
+                .filter(code -> code.startsWith("CUSTOM_DB_"))
+                .map(code -> code.substring("CUSTOM_DB_".length()))
+                .filter(value -> value.matches("\\d+"))
+                .mapToInt(Integer::parseInt)
+                .max()
+                .orElse(0) + 1;
+            ProjectResourceSlotDO slot = new ProjectResourceSlotDO();
+            slot.setProjectId(projectId);
+            slot.setResourceCode("CUSTOM_DB_" + next);
+            slot.setResourceName("自定义数据库" + next);
+            slot.setResourceKind(DATABASE);
+            slot.setRequired(0);
+            slot.setStatus(DisEnableStatusEnum.ENABLE);
+            try {
+                slotMapper.insert(slot);
+                return toResp(slot, null);
+            } catch (DuplicateKeyException ignored) {
+                // 并发新增时重新读取编号，唯一索引保证角色编码不重复。
+            }
+        }
+        throw new BusinessException("自定义数据库角色创建失败，请稍后重试");
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteCustomDatabaseSlot(Long slotId) {
+        ProjectResourceSlotDO slot = slotId == null ? null : slotMapper.selectById(slotId);
+        if (slot == null || slot.getStatus() != DisEnableStatusEnum.ENABLE) {
+            throw new BusinessException("资源角色不存在或未启用");
+        }
+        if (!slot.getResourceCode().startsWith("CUSTOM_DB_")) {
+            throw new BusinessException("仅支持删除自定义数据库角色");
+        }
+        long bindingCount = bindingMapper.selectCount(Wrappers.<ProjectEnvironmentResourceBindingDO>lambdaQuery()
+            .eq(ProjectEnvironmentResourceBindingDO::getResourceSlotId, slotId)
+            .eq(ProjectEnvironmentResourceBindingDO::getStatus, DisEnableStatusEnum.ENABLE));
+        if (bindingCount > 0) {
+            throw new BusinessException("该自定义数据库已绑定环境，请先解除环境绑定后再删除");
+        }
+        slotMapper.deleteById(slotId);
     }
 
     @Override
@@ -215,7 +322,7 @@ public class AutomationEnvironmentResourceServiceImpl implements AutomationEnvir
             slot.setResourceCode(spec.code());
             slot.setResourceName(spec.name());
             slot.setResourceKind(spec.kind());
-            slot.setRequired(1);
+            slot.setRequired(spec.required() ? 1 : 0);
             slot.setStatus(DisEnableStatusEnum.ENABLE);
             try {
                 slotMapper.insert(slot);
@@ -307,7 +414,11 @@ public class AutomationEnvironmentResourceServiceImpl implements AutomationEnvir
             ProjectDataBaseConfigDO database = databaseMapper.selectById(binding.getResourceId());
             return builder.resourceLabel(database == null
                 ? "配置已失效"
-                : address(database.getIp(), database.getPort(), database.getDataBase())).build();
+                : address(database.getIp(), database.getPort(), database.getDataBase()))
+                .databaseIp(database == null ? null : database.getIp())
+                .databasePort(database == null ? null : database.getPort())
+                .databaseName(database == null ? null : database.getDataBase())
+                .build();
         }
         AutomationFileAssetDO asset = fileAssetMapper.selectById(binding.getResourceId());
         return builder.resourceLabel(asset == null ? "证书已失效" : asset.getOriginalName())
@@ -445,6 +556,6 @@ public class AutomationEnvironmentResourceServiceImpl implements AutomationEnvir
         return database == null || database.isBlank() ? result : result + "/" + database;
     }
 
-    private record DefaultSlot(String code, String name, String kind) {
+    private record DefaultSlot(String code, String name, String kind, boolean required) {
     }
 }

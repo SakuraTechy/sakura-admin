@@ -22,8 +22,11 @@ import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.test.util.ReflectionTestUtils;
 import top.continew.admin.automation.mapper.AutomationUiSceneMapper;
 import top.continew.admin.automation.model.entity.AutomationUiSceneDO;
+import top.continew.admin.automation.model.entity.ui.CaseDO;
+import top.continew.admin.automation.model.entity.ui.StepDO;
 import top.continew.admin.automation.model.resp.playwright.AutomationPlaywrightBatchResp;
 import top.continew.admin.automation.model.resp.playwright.AutomationPlaywrightCaseCancellationResp;
 import top.continew.admin.automation.model.resp.playwright.AutomationPlaywrightRunnerJobResp;
@@ -146,5 +149,37 @@ class TestPlanExecutionDispatchServiceTest {
             .getCaseKey())), anyString());
         verify(runnerJobService, never()).create(argThat(request -> "100:CASE_DISABLED".equals(request
             .getCaseKey())), anyString());
+    }
+
+    @Test
+    void shouldKeepSelectedCaseOrderForSingleScenePlanExecution() {
+        AutomationUiSceneDO scene = new AutomationUiSceneDO();
+        scene.setCaseList(List.of(caseWithStep("CASE_A", 2), caseWithStep("CASE_B", 1)));
+        TestPlanExecuteReq req = new TestPlanExecuteReq();
+        req.setCaseIds(List.of("CASE_A", "CASE_B"));
+
+        @SuppressWarnings("unchecked") List<String> result = ReflectionTestUtils
+            .invokeMethod(service, "resolveExecutionCaseIds", scene, req.getCaseIds());
+
+        org.junit.jupiter.api.Assertions.assertEquals(List.of("CASE_B", "CASE_A"), result);
+    }
+
+    @Test
+    void shouldRejectUnknownCaseForSingleScenePlanExecution() {
+        AutomationUiSceneDO scene = new AutomationUiSceneDO();
+        scene.setCaseList(List.of(caseWithStep("CASE_A", 1)));
+
+        org.junit.jupiter.api.Assertions.assertThrows(RuntimeException.class, () -> ReflectionTestUtils
+            .invokeMethod(service, "resolveExecutionCaseIds", scene, List.of("CASE_X")));
+    }
+
+    private CaseDO caseWithStep(String id, int order) {
+        CaseDO item = new CaseDO();
+        item.setId(id);
+        item.setOrder(order);
+        StepDO step = new StepDO();
+        step.setId(id + "_STEP");
+        item.setStepList(List.of(step));
+        return item;
     }
 }

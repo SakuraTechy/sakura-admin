@@ -77,6 +77,7 @@ public class AutomationOperationCatalogServiceImpl implements AutomationOperatio
     private final Set<String> knownActions = new HashSet<>();
 
     private AutomationOperationCatalog catalog;
+    private byte[] serializedCatalog;
 
     @PostConstruct
     public void initialize() {
@@ -87,6 +88,12 @@ public class AutomationOperationCatalogServiceImpl implements AutomationOperatio
             throw new IllegalStateException("自动化操作目录加载失败：" + CATALOG_RESOURCE, e);
         }
         validateAndIndex(catalog);
+        try {
+            // 静态目录只序列化一次；请求仅反序列化隔离副本并叠加动态可用性。
+            serializedCatalog = objectMapper.writeValueAsBytes(catalog);
+        } catch (IOException e) {
+            throw new IllegalStateException("自动化操作目录静态缓存初始化失败：" + CATALOG_RESOURCE, e);
+        }
     }
 
     @Override
@@ -101,7 +108,12 @@ public class AutomationOperationCatalogServiceImpl implements AutomationOperatio
                                                  Set<String> agentFeatures) {
         cleanupExpiredSnapshots();
         CatalogRequestScope scope = new CatalogRequestScope(sceneId, projectEnvironmentId, executorInstanceId, principalScope, sessionId, canAddStep, canExecuteInfrastructure, normalizeSet(agentTypes), normalizeSet(agentFeatures));
-        AutomationOperationCatalog response = objectMapper.convertValue(catalog, AutomationOperationCatalog.class);
+        AutomationOperationCatalog response;
+        try {
+            response = objectMapper.readValue(serializedCatalog, AutomationOperationCatalog.class);
+        } catch (IOException e) {
+            throw new IllegalStateException("自动化操作目录静态缓存读取失败", e);
+        }
         for (AutomationOperationCatalog.OperationType type : response.getTypes()) {
             for (AutomationOperationCatalog.OperationMethod method : type.getMethods()) {
                 applyAvailability(method, scope);

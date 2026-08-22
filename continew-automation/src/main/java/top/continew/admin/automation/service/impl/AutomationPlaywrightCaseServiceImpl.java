@@ -276,10 +276,11 @@ public class AutomationPlaywrightCaseServiceImpl implements AutomationPlaywright
         Map<String, Object> sessionConfig = resolveBatchSessionConfig(executionType, req.getCdpOptions());
         Map<String, Object> executionOverrides = resolveBatchExecutionOverrides(req, sessionConfig);
 
+        List<String> requestedCaseIds = resolveBatchCaseIds(req, scene);
         List<Object> caseResults = new ArrayList<>();
         Map<String, Object> effectiveExecutionConfigs = new LinkedHashMap<>();
         List<AutomationPlaywrightBatchResp.CaseExecution> responseCases = new ArrayList<>();
-        for (String caseId : req.getCaseIds()) {
+        for (String caseId : requestedCaseIds) {
             CaseDO caseDO = findCase(scene, caseId);
             if (caseDO == null) {
                 throw new BusinessException("批次目标用例不存在，caseId=" + caseId);
@@ -400,6 +401,42 @@ public class AutomationPlaywrightCaseServiceImpl implements AutomationPlaywright
         response.setSessionConfig(sessionConfig);
         response.setCases(responseCases);
         return response;
+    }
+
+    private List<String> resolveBatchCaseIds(AutomationPlaywrightBatchCreateReq req, AutomationUiSceneDO scene) {
+        List<String> explicitCaseIds = req.getCaseIds() == null
+            ? List.of()
+            : req.getCaseIds().stream().filter(StringUtils::isNotBlank).map(StringUtils::trim).toList();
+        boolean selectAllCases = Boolean.TRUE.equals(req.getSelectAllCases());
+        if (selectAllCases && !explicitCaseIds.isEmpty()) {
+            throw new BusinessException("执行范围不能同时指定 caseIds 和 selectAllCases");
+        }
+        long currentDefinitionVersion = scene.getDefinitionVersion() == null ? 0L : scene.getDefinitionVersion();
+        if (req.getExpectedDefinitionVersion() != null && !Objects.equals(req
+            .getExpectedDefinitionVersion(), currentDefinitionVersion)) {
+            throw new BusinessException("DEFINITION_VERSION_CONFLICT：场景定义已变化，请重新确认执行范围");
+        }
+        if (!selectAllCases) {
+            if (explicitCaseIds.isEmpty()) {
+                throw new BusinessException("执行用例不能为空");
+            }
+            if (explicitCaseIds.stream().distinct().count() != explicitCaseIds.size()) {
+                throw new BusinessException("执行用例不能重复");
+            }
+            return explicitCaseIds;
+        }
+        if (req.getExpectedDefinitionVersion() == null) {
+            throw new BusinessException("DEFINITION_VERSION_REQUIRED：全选执行必须携带场景定义版本");
+        }
+        return scene.getCaseList() == null
+            ? List.of()
+            : scene.getCaseList()
+                .stream()
+                .filter(Objects::nonNull)
+                .map(CaseDO::getId)
+                .filter(StringUtils::isNotBlank)
+                .distinct()
+                .toList();
     }
 
     private Map<String, Object> resolveBatchSessionConfig(String executionType,

@@ -21,6 +21,8 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
+import java.util.Map;
+import java.util.LinkedHashMap;
 
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import cn.dev33.satoken.annotation.SaMode;
@@ -33,7 +35,11 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.CacheControl;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -51,6 +57,8 @@ import top.continew.admin.automation.model.req.AutomationUiSceneClearReq;
 import top.continew.admin.automation.model.req.AutomationUiSceneExecAllReq;
 import top.continew.admin.automation.model.req.AutomationUiSceneExecReq;
 import top.continew.admin.automation.model.req.AutomationUiSceneReq;
+import top.continew.admin.automation.model.req.AutomationUiSceneSummariesReq;
+import top.continew.admin.automation.model.req.AutomationUiExecutionScopeReq;
 import top.continew.admin.automation.model.req.AutomationUiSceneUploadResultReq;
 import top.continew.admin.automation.model.req.AutomationUiTreeCopyReq;
 import top.continew.admin.automation.model.req.AutomationUiTreeDeleteReq;
@@ -59,6 +67,8 @@ import top.continew.admin.automation.model.resp.AutomationUiSceneDetailResp;
 import top.continew.admin.automation.model.resp.AutomationUiSceneExecResp;
 import top.continew.admin.automation.model.resp.AutomationUiSceneResp;
 import top.continew.admin.automation.model.resp.AutomationUiSceneRevisionResp;
+import top.continew.admin.automation.model.resp.AutomationUiSceneSummaryResp;
+import top.continew.admin.automation.model.resp.AutomationUiExecutionSummaryResp;
 import top.continew.admin.automation.model.resp.AutomationUiTreeMutationResp;
 import top.continew.admin.automation.model.req.ui.AutomationUiCaseEditReq;
 import top.continew.admin.automation.model.req.ui.AutomationUiStepEditReq;
@@ -71,6 +81,9 @@ import top.continew.admin.automation.service.AutomationUiCaseTreeService;
 import top.continew.admin.automation.service.AutomationUiCaseDetailService;
 import top.continew.admin.automation.service.AutomationUiSceneDefinitionScanService;
 import top.continew.admin.automation.service.AutomationUiSceneService;
+import top.continew.admin.automation.service.AutomationUiSceneQueryService;
+import top.continew.admin.automation.support.AutomationUiQueryBaselineRecorder;
+import top.continew.admin.automation.support.AutomationUiDefinitionProjectionUnavailableException;
 import top.continew.admin.automation.model.resp.AutomationUiSceneDefinitionScanResp;
 import top.continew.admin.common.controller.BaseController;
 import top.continew.admin.common.enums.StatusTypeEnum;
@@ -78,7 +91,9 @@ import top.continew.starter.core.validation.CheckUtils;
 import top.continew.starter.extension.crud.annotation.CrudRequestMapping;
 import top.continew.starter.extension.crud.enums.Api;
 import top.continew.starter.extension.crud.model.query.SortQuery;
+import top.continew.starter.extension.crud.model.query.PageQuery;
 import top.continew.starter.extension.crud.model.resp.BaseIdResp;
+import top.continew.starter.extension.crud.model.resp.PageResp;
 import top.continew.starter.extension.crud.validation.CrudValidationGroup;
 import top.continew.starter.file.excel.util.ExcelUtils;
 import top.continew.starter.web.model.R;
@@ -100,6 +115,185 @@ public class AutomationUiSceneController extends BaseController<AutomationUiScen
     private final AutomationUiCaseDetailService caseDetailService;
     private final AutomationUiSceneDefinitionScanService definitionScanService;
     private final AutomationCertificateWorkspaceService certificateWorkspaceService;
+    private final AutomationUiSceneQueryService sceneQueryService;
+
+    @Operation(summary = "分页查询场景摘要", description = "不读取场景定义、执行历史正文或诊断数据")
+    @SaCheckPermission("automation:automationUiScene:list")
+    @GetMapping("/summaries/page")
+    public PageResp<AutomationUiSceneSummaryResp> summaryPage(@Validated AutomationUiSceneQuery query,
+                                                              @RequestParam(required = false) String recordSource,
+                                                              @RequestParam(required = false) @Positive Long scopeTestPlanId,
+                                                              @RequestParam(required = false) @Positive Long scopeTestReportId,
+                                                              @RequestParam(required = false) @Positive Integer scopeBuildNumber,
+                                                              @Validated PageQuery pageQuery) {
+        AutomationUiExecutionScopeReq executionScope = buildExecutionScope(recordSource, scopeTestPlanId, scopeTestReportId, scopeBuildNumber);
+        return sceneQueryService.page(query, pageQuery, executionScope);
+    }
+
+    @Operation(summary = "以请求体分页查询场景摘要", description = "用于携带较大的排除 ID 集合；查询语义与 GET Summary 分页完全一致")
+    @SaCheckPermission("automation:automationUiScene:list")
+    @PostMapping("/summaries/page")
+    public PageResp<AutomationUiSceneSummaryResp> summaryPagePost(@Validated @RequestBody AutomationUiSceneQuery query,
+                                                                  @RequestParam(required = false) String recordSource,
+                                                                  @RequestParam(required = false) @Positive Long scopeTestPlanId,
+                                                                  @RequestParam(required = false) @Positive Long scopeTestReportId,
+                                                                  @RequestParam(required = false) @Positive Integer scopeBuildNumber,
+                                                                  @Validated PageQuery pageQuery) {
+        AutomationUiExecutionScopeReq executionScope = buildExecutionScope(recordSource, scopeTestPlanId, scopeTestReportId, scopeBuildNumber);
+        return sceneQueryService.page(query, pageQuery, executionScope);
+    }
+
+    private AutomationUiExecutionScopeReq buildExecutionScope(String recordSource,
+                                                              Long testPlanId,
+                                                              Long testReportId,
+                                                              Integer buildNumber) {
+        if (recordSource == null && testPlanId == null && testReportId == null && buildNumber == null) {
+            return null;
+        }
+        // 分页作用域使用 scope* 参数，避免与场景表遗留的同名查询字段发生隐式双重绑定。
+        AutomationUiExecutionScopeReq executionScope = new AutomationUiExecutionScopeReq();
+        executionScope.setRecordSource(recordSource);
+        executionScope.setTestPlanId(testPlanId);
+        executionScope.setTestReportId(testReportId);
+        executionScope.setBuildNumber(buildNumber);
+        return executionScope;
+    }
+
+    @Operation(summary = "批量查询场景摘要", description = "只返回场景基础字段和全局执行 revision")
+    @SaCheckPermission("automation:automationUiScene:list")
+    @PostMapping("/summaries")
+    public R<List<AutomationUiSceneSummaryResp>> summaries(@Validated @RequestBody AutomationUiSceneSummariesReq request) {
+        return R.ok(sceneQueryService.summaries(request.getSceneDbIds(), request.getExecutionScope()));
+    }
+
+    @Operation(summary = "查询作用域内最新执行", description = "recordSource 必填，不回退到全局 latest")
+    @SaCheckPermission("automation:automationUiScene:get")
+    @GetMapping("/{sceneDbId}/execution-summary")
+    public R<AutomationUiExecutionSummaryResp> executionSummary(@PathVariable Long sceneDbId,
+                                                                @Validated AutomationUiExecutionScopeReq executionScope) {
+        return R.ok(sceneQueryService.latestExecution(sceneDbId, executionScope));
+    }
+
+    @Operation(summary = "查询场景定义", description = "低于阈值时返回脱敏 inline 定义；大定义等待只读投影")
+    @SaCheckPermission("automation:automationUiScene:get")
+    @GetMapping("/{sceneDbId}/definition")
+    public ResponseEntity<?> definition(@PathVariable @Positive Long sceneDbId,
+                                        jakarta.servlet.http.HttpServletRequest request) {
+        try {
+            AutomationUiSceneQueryService.DefinitionView view = sceneQueryService.definition(sceneDbId);
+            return conditionalResponse(request, view.etag(), view.body());
+        } catch (AutomationUiDefinitionProjectionUnavailableException e) {
+            return projectionUnavailable(e);
+        }
+    }
+
+    @Operation(summary = "分页查询大定义用例节点")
+    @SaCheckPermission("automation:automationUiScene:get")
+    @GetMapping("/{sceneDbId}/definition/cases")
+    public ResponseEntity<?> definitionCases(@PathVariable @Positive Long sceneDbId,
+                                             @RequestParam(defaultValue = "1") @Positive int page,
+                                             @RequestParam(defaultValue = "50") @Positive int size,
+                                             @RequestParam(required = false) String keyword,
+                                             jakarta.servlet.http.HttpServletRequest request) {
+        try {
+            var view = sceneQueryService.definitionCases(sceneDbId, page, size, keyword);
+            return conditionalResponse(request, view.etag(), view.body());
+        } catch (AutomationUiDefinitionProjectionUnavailableException e) {
+            return projectionUnavailable(e);
+        }
+    }
+
+    @Operation(summary = "查询大定义单个用例节点")
+    @SaCheckPermission("automation:automationUiScene:get")
+    @GetMapping("/{sceneDbId}/definition/case")
+    public ResponseEntity<?> definitionCase(@PathVariable @Positive Long sceneDbId,
+                                            @RequestParam String caseId,
+                                            jakarta.servlet.http.HttpServletRequest request) {
+        try {
+            var view = sceneQueryService.definitionCase(sceneDbId, caseId);
+            return conditionalResponse(request, view.etag(), view.body());
+        } catch (AutomationUiDefinitionProjectionUnavailableException e) {
+            return projectionUnavailable(e);
+        }
+    }
+
+    @Operation(summary = "分页查询大定义步骤节点")
+    @SaCheckPermission("automation:automationUiScene:get")
+    @GetMapping("/{sceneDbId}/definition/steps")
+    public ResponseEntity<?> definitionSteps(@PathVariable @Positive Long sceneDbId,
+                                             @RequestParam String caseId,
+                                             @RequestParam(defaultValue = "1") @Positive int page,
+                                             @RequestParam(defaultValue = "100") @Positive int size,
+                                             jakarta.servlet.http.HttpServletRequest request) {
+        try {
+            var view = sceneQueryService.definitionSteps(sceneDbId, caseId, page, size);
+            return conditionalResponse(request, view.etag(), view.body());
+        } catch (AutomationUiDefinitionProjectionUnavailableException e) {
+            return projectionUnavailable(e);
+        }
+    }
+
+    @Operation(summary = "查询大定义单个步骤节点")
+    @SaCheckPermission("automation:automationUiScene:get")
+    @GetMapping("/{sceneDbId}/definition/step")
+    public ResponseEntity<?> definitionStep(@PathVariable @Positive Long sceneDbId,
+                                            @RequestParam String caseId,
+                                            @RequestParam String stepId,
+                                            jakarta.servlet.http.HttpServletRequest request) {
+        try {
+            var view = sceneQueryService.definitionStep(sceneDbId, caseId, stepId);
+            return conditionalResponse(request, view.etag(), view.body());
+        } catch (AutomationUiDefinitionProjectionUnavailableException e) {
+            return projectionUnavailable(e);
+        }
+    }
+
+    private ResponseEntity<?> conditionalResponse(jakarta.servlet.http.HttpServletRequest request,
+                                                  String etag,
+                                                  Object body) {
+        HttpHeaders headers = definitionHeaders(etag);
+        if (matchesEtag(request.getHeader(HttpHeaders.IF_NONE_MATCH), etag)) {
+            return ResponseEntity.status(304).headers(headers).build();
+        }
+        return ResponseEntity.ok().headers(headers).body(body);
+    }
+
+    private ResponseEntity<?> projectionUnavailable(AutomationUiDefinitionProjectionUnavailableException exception) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setCacheControl(CacheControl.noStore().cachePrivate());
+        if (exception.isRetryable()) {
+            headers.set(HttpHeaders.RETRY_AFTER, "2");
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("code", "DEFINITION_PROJECTION_PENDING");
+            if (exception.getSceneDbId() != null)
+                body.put("sceneDbId", exception.getSceneDbId());
+            if (exception.getDefinitionVersion() != null)
+                body.put("definitionVersion", exception.getDefinitionVersion());
+            body.put("projectionStatus", exception.getProjectionStatus());
+            return ResponseEntity.status(202).headers(headers).body(body);
+        }
+        return ResponseEntity.status(503)
+            .headers(headers)
+            .body(Map.of("code", "DEFINITION_PROJECTION_FAILED", "retryable", false, "errorId", exception
+                .getErrorId()));
+    }
+
+    private HttpHeaders definitionHeaders(String etag) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setETag(etag);
+        headers.setCacheControl(CacheControl.noCache().cachePrivate());
+        headers.setVary(List.of(HttpHeaders.AUTHORIZATION, HttpHeaders.COOKIE, HttpHeaders.ACCEPT_ENCODING));
+        return headers;
+    }
+
+    private boolean matchesEtag(String ifNoneMatch, String currentEtag) {
+        if (ifNoneMatch == null || ifNoneMatch.isBlank()) {
+            return false;
+        }
+        return Arrays.stream(ifNoneMatch.split(","))
+            .map(String::trim)
+            .anyMatch(candidate -> "*".equals(candidate) || currentEtag.equals(candidate));
+    }
 
     @Operation(summary = "上传证书到 Playwright Runner 工作区")
     @SaCheckPermission("automation:automationUiScene:updateStep")
@@ -165,7 +359,13 @@ public class AutomationUiSceneController extends BaseController<AutomationUiScen
     @GetMapping("/{id}")
     public AutomationUiSceneDetailResp get(@PathVariable("id") Long id) {
         AutomationUiSceneDetailResp detail = super.get(id);
-        detail.setCaseList(maskDisplayCaseList(detail.getCaseList()));
+        long maskingStartedNanos = AutomationUiQueryBaselineRecorder.startTimedSection();
+        try {
+            detail.setCaseList(maskDisplayCaseList(detail.getCaseList()));
+        } finally {
+            AutomationUiQueryBaselineRecorder
+                .recordTiming(AutomationUiQueryBaselineRecorder.Phase.MASKING, maskingStartedNanos);
+        }
         return detail;
     }
 

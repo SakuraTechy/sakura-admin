@@ -54,4 +54,9 @@ public class TestPlanExecuteReq implements Serializable {
      * 执行范围。缺省表示计划全部关联场景；传值时必须是计划关联场景的非空子集。
      */
     private List<Long> sceneIds;
+
+    /**
+     * 单场景执行时的用例范围。缺省表示执行场景内全部可执行用例。
+     */
+    private List<String> caseIds;
 }

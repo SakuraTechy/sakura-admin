@@ -38,6 +38,7 @@ public class AutomationUiStepCopyReq implements Serializable {
     private String operationType;
     private String operationName;
     private String operationValue;
+    private Boolean continueOnFailure;
     @Valid
     private List<AutomationUiStepConfigEditReq> configList;
 }

@@ -63,6 +63,7 @@ public class AutomationPlaywrightStepExtractor {
             }
             // 原始 playwright_step 不包含中台启用状态；必须以 StepDO 为准，供 Runner 最后过滤。
             step.put("status", stepStatus(stepDO));
+            step.put("continue_on_failure", Boolean.TRUE.equals(stepDO.getContinueOnFailure()));
             step.putIfAbsent("step_index", index);
             Object description = step.get("description");
             if (description == null || description.toString().isBlank()) {
@@ -85,6 +86,7 @@ public class AutomationPlaywrightStepExtractor {
         step.put("id", stepDO.getId());
         // legacy 步骤同样以 StepDO.status 为执行开关，不能只依赖 operation 字段。
         step.put("status", stepStatus(stepDO));
+        step.put("continue_on_failure", Boolean.TRUE.equals(stepDO.getContinueOnFailure()));
         step.put("step_index", index);
         step.put("description", stepDO.getName());
         step.putIfAbsent("value_masked", configs.getOrDefault("value_masked", "0"));

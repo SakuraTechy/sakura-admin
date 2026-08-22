@@ -97,6 +97,7 @@ import top.continew.admin.automation.service.AutomationUiExecutionRecordService;
 import top.continew.admin.automation.service.AutomationJenkinsExecutionConfigResolver;
 import top.continew.admin.automation.service.AutomationJenkinsExecutionConfigResolver.ResolvedScene;
 import top.continew.admin.automation.support.AutomationStoragePressureGuard;
+import top.continew.admin.automation.support.AutomationUiQueryBaselineRecorder;
 import top.continew.admin.automation.service.AutomationPlanReportProgressService;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -124,6 +125,8 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
     private final AutomationJenkinsExecutionConfigResolver jenkinsExecutionConfigResolver;
     /** 所有场景树结构写入统一委托，兼容接口不再保留独立排序算法。 */
     private final top.continew.admin.automation.service.AutomationUiCaseTreeService caseTreeService;
+    @Resource
+    private top.continew.admin.automation.service.AutomationUiDefinitionProjectionService definitionProjectionService;
 
     @Resource
     private AutomationStoragePressureGuard storagePressureGuard;
@@ -152,8 +155,11 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
         // 空场景也持久化为 []，否则首次新增用例会被误判为历史定义损坏。
         baseMapper.initializeEmptyDefinition(entity.getId());
         entity.setCaseList(new ArrayList<>());
+        entity.setDefinitionVersion(0L);
         entity.setCaseTotal(0);
         entity.setStepTotal(0);
+        if (definitionProjectionService != null)
+            definitionProjectionService.recordDefinitionWrite(entity.getId(), 0L, entity.getCaseList());
     }
 
     @Override
@@ -189,7 +195,15 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
         String executeStatus = query.getExecuteStatus();
         // 最新状态已迁到窄表，不能再用场景表中的兼容旧值过滤。
         query.setExecuteStatus(null);
-        List<AutomationUiSceneResp> result = super.list(query, sortQuery);
+        AutomationUiQueryBaselineRecorder.recordSql();
+        long queryStartedNanos = AutomationUiQueryBaselineRecorder.startTimedSection();
+        List<AutomationUiSceneResp> result;
+        try {
+            result = super.list(query, sortQuery);
+        } finally {
+            AutomationUiQueryBaselineRecorder
+                .recordTiming(AutomationUiQueryBaselineRecorder.Phase.SCENE_QUERY, queryStartedNanos);
+        }
         query.setExecuteStatus(executeStatus);
         if (result == null || result.isEmpty()) {
             return result;
@@ -235,8 +249,16 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
             List<AutomationUiSceneResp> filteredList = this.list(query, pageQuery);
             return PageResp.build(pageQuery.getPage(), pageQuery.getSize(), filteredList);
         }
-        IPage<AutomationUiSceneDO> pageDO = baseMapper.selectPage(new Page<>(pageQuery.getPage(), pageQuery
-            .getSize()), buildQueryWrapper(query));
+        AutomationUiQueryBaselineRecorder.recordSql(2);
+        long queryStartedNanos = AutomationUiQueryBaselineRecorder.startTimedSection();
+        IPage<AutomationUiSceneDO> pageDO;
+        try {
+            pageDO = baseMapper.selectPage(new Page<>(pageQuery.getPage(), pageQuery
+                .getSize()), buildQueryWrapper(query));
+        } finally {
+            AutomationUiQueryBaselineRecorder
+                .recordTiming(AutomationUiQueryBaselineRecorder.Phase.SCENE_QUERY, queryStartedNanos);
+        }
         PageResp<AutomationUiSceneResp> pageResp = PageResp.build(pageDO, AutomationUiSceneResp.class);
         pageResp.getList().forEach(item -> {
             item.setCreateUserString(UserContextHolder.getNickname(item.getCreateUser()));
@@ -266,7 +288,15 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
 
     @Override
     public AutomationUiSceneDetailResp get(Long id) {
-        AutomationUiSceneDetailResp detail = super.get(id);
+        AutomationUiQueryBaselineRecorder.recordSql();
+        long queryStartedNanos = AutomationUiQueryBaselineRecorder.startTimedSection();
+        AutomationUiSceneDetailResp detail;
+        try {
+            detail = super.get(id);
+        } finally {
+            AutomationUiQueryBaselineRecorder
+                .recordTiming(AutomationUiQueryBaselineRecorder.Phase.SCENE_QUERY, queryStartedNanos);
+        }
         hydrateExecutionData(detail, 100);
         return detail;
     }
@@ -364,6 +394,7 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public Long copy(Long sourceId, AutomationUiSceneReq req) {
         AutomationUiSceneDO source = baseMapper.selectById(sourceId);
         CheckUtils.throwIfNull(source, "源场景不存在，无法复制 UI 自动化场景");
@@ -441,6 +472,8 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
         target.setDebugRecord(defaultDebugRecord);
 
         baseMapper.insert(target);
+        if (definitionProjectionService != null)
+            definitionProjectionService.recordDefinitionWrite(target.getId(), 0L, copiedCases);
         return target.getId();
     }
 
@@ -711,6 +744,7 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
         query.setProjectId(req.getProjectId());
         query.setVersionId(req.getVersionId());
         query.setModuleId(req.getModuleId());
+        query.setModuleIds(req.getModuleIds());
         query.setLevel(req.getLevel());
         query.setExecuteStatus(req.getExecuteStatus());
         query.setExecuteResult(req.getExecuteResult());
@@ -744,7 +778,15 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
         if (ids == null || ids.isEmpty()) {
             return new ArrayList<>();
         }
-        List<AutomationUiSceneDO> sceneList = baseMapper.selectBatchIds(ids);
+        AutomationUiQueryBaselineRecorder.recordSql();
+        long queryStartedNanos = AutomationUiQueryBaselineRecorder.startTimedSection();
+        List<AutomationUiSceneDO> sceneList;
+        try {
+            sceneList = baseMapper.selectBatchIds(ids);
+        } finally {
+            AutomationUiQueryBaselineRecorder
+                .recordTiming(AutomationUiQueryBaselineRecorder.Phase.SCENE_QUERY, queryStartedNanos);
+        }
         sceneList.sort(Comparator.comparing(AutomationUiSceneDO::getSceneId, Comparator.nullsLast(String::compareTo)));
         List<AutomationUiSceneResp> result = BeanUtil.copyToList(sceneList, AutomationUiSceneResp.class);
         result.forEach(item -> hydrateExecutionData(item, 100));
@@ -757,27 +799,34 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
         }
         item.setDebugRecord(executionRecordService.listRecords(item.getId(), false, historyLimit));
         item.setTestRecord(executionRecordService.listRecords(item.getId(), true, historyLimit));
-        jdbcTemplate
-            .query("SELECT execution_revision, execute_status, execute_result, case_total, case_pass, case_fail, case_skip," + " pass_rate, last_result, step_total, step_pass, step_fail, step_skip, update_time" + " FROM automation_ui_scene_execution_state WHERE scene_id = ?", rs -> {
-                if (!rs.next())
-                    return;
-                item.setExecutionRevision(rs.getLong("execution_revision"));
-                item.setExecuteStatus(rs.getString("execute_status"));
-                item.setExecuteResult(rs.getString("execute_result"));
-                item.setCaseTotal((Integer)rs.getObject("case_total"));
-                item.setCasePass((Integer)rs.getObject("case_pass"));
-                item.setCaseFail((Integer)rs.getObject("case_fail"));
-                item.setCaseSkip((Integer)rs.getObject("case_skip"));
-                item.setPassRate(rs.getString("pass_rate"));
-                item.setLastResult(rs.getString("last_result"));
-                item.setStepTotal((Integer)rs.getObject("step_total"));
-                item.setStepPass((Integer)rs.getObject("step_pass"));
-                item.setStepFail((Integer)rs.getObject("step_fail"));
-                item.setStepSkip((Integer)rs.getObject("step_skip"));
-                Timestamp timestamp = rs.getTimestamp("update_time");
-                if (timestamp != null)
-                    item.setUpdateTime(timestamp.toLocalDateTime());
-            }, item.getId());
+        AutomationUiQueryBaselineRecorder.recordSql();
+        long queryStartedNanos = AutomationUiQueryBaselineRecorder.startTimedSection();
+        try {
+            jdbcTemplate
+                .query("SELECT execution_revision, execute_status, execute_result, case_total, case_pass, case_fail, case_skip," + " pass_rate, last_result, step_total, step_pass, step_fail, step_skip, update_time" + " FROM automation_ui_scene_execution_state WHERE scene_id = ?", rs -> {
+                    if (!rs.next())
+                        return;
+                    item.setExecutionRevision(rs.getLong("execution_revision"));
+                    item.setExecuteStatus(rs.getString("execute_status"));
+                    item.setExecuteResult(rs.getString("execute_result"));
+                    item.setCaseTotal((Integer)rs.getObject("case_total"));
+                    item.setCasePass((Integer)rs.getObject("case_pass"));
+                    item.setCaseFail((Integer)rs.getObject("case_fail"));
+                    item.setCaseSkip((Integer)rs.getObject("case_skip"));
+                    item.setPassRate(rs.getString("pass_rate"));
+                    item.setLastResult(rs.getString("last_result"));
+                    item.setStepTotal((Integer)rs.getObject("step_total"));
+                    item.setStepPass((Integer)rs.getObject("step_pass"));
+                    item.setStepFail((Integer)rs.getObject("step_fail"));
+                    item.setStepSkip((Integer)rs.getObject("step_skip"));
+                    Timestamp timestamp = rs.getTimestamp("update_time");
+                    if (timestamp != null)
+                        item.setUpdateTime(timestamp.toLocalDateTime());
+                }, item.getId());
+        } finally {
+            AutomationUiQueryBaselineRecorder
+                .recordTiming(AutomationUiQueryBaselineRecorder.Phase.SCENE_QUERY, queryStartedNanos);
+        }
     }
 
     private void hydrateExecutionData(AutomationUiSceneDetailResp item, int historyLimit) {
@@ -786,24 +835,31 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
         }
         item.setDebugRecord(executionRecordService.listRecords(item.getId(), false, historyLimit));
         item.setTestRecord(executionRecordService.listRecords(item.getId(), true, historyLimit));
-        jdbcTemplate
-            .query("SELECT execution_revision, execute_status, execute_result, case_total, case_pass, case_fail, case_skip," + " pass_rate, last_result, step_total, step_pass, step_fail, step_skip" + " FROM automation_ui_scene_execution_state WHERE scene_id = ?", rs -> {
-                if (!rs.next())
-                    return;
-                item.setExecutionRevision(rs.getLong("execution_revision"));
-                item.setExecuteStatus(rs.getString("execute_status"));
-                item.setExecuteResult(rs.getString("execute_result"));
-                item.setCaseTotal((Integer)rs.getObject("case_total"));
-                item.setCasePass((Integer)rs.getObject("case_pass"));
-                item.setCaseFail((Integer)rs.getObject("case_fail"));
-                item.setCaseSkip((Integer)rs.getObject("case_skip"));
-                item.setPassRate(rs.getString("pass_rate"));
-                item.setLastResult(rs.getString("last_result"));
-                item.setStepTotal((Integer)rs.getObject("step_total"));
-                item.setStepPass((Integer)rs.getObject("step_pass"));
-                item.setStepFail((Integer)rs.getObject("step_fail"));
-                item.setStepSkip((Integer)rs.getObject("step_skip"));
-            }, item.getId());
+        AutomationUiQueryBaselineRecorder.recordSql();
+        long queryStartedNanos = AutomationUiQueryBaselineRecorder.startTimedSection();
+        try {
+            jdbcTemplate
+                .query("SELECT execution_revision, execute_status, execute_result, case_total, case_pass, case_fail, case_skip," + " pass_rate, last_result, step_total, step_pass, step_fail, step_skip" + " FROM automation_ui_scene_execution_state WHERE scene_id = ?", rs -> {
+                    if (!rs.next())
+                        return;
+                    item.setExecutionRevision(rs.getLong("execution_revision"));
+                    item.setExecuteStatus(rs.getString("execute_status"));
+                    item.setExecuteResult(rs.getString("execute_result"));
+                    item.setCaseTotal((Integer)rs.getObject("case_total"));
+                    item.setCasePass((Integer)rs.getObject("case_pass"));
+                    item.setCaseFail((Integer)rs.getObject("case_fail"));
+                    item.setCaseSkip((Integer)rs.getObject("case_skip"));
+                    item.setPassRate(rs.getString("pass_rate"));
+                    item.setLastResult(rs.getString("last_result"));
+                    item.setStepTotal((Integer)rs.getObject("step_total"));
+                    item.setStepPass((Integer)rs.getObject("step_pass"));
+                    item.setStepFail((Integer)rs.getObject("step_fail"));
+                    item.setStepSkip((Integer)rs.getObject("step_skip"));
+                }, item.getId());
+        } finally {
+            AutomationUiQueryBaselineRecorder
+                .recordTiming(AutomationUiQueryBaselineRecorder.Phase.SCENE_QUERY, queryStartedNanos);
+        }
     }
 
     @Override

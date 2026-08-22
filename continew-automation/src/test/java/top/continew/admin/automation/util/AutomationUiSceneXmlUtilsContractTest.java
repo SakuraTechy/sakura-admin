@@ -47,6 +47,7 @@ class AutomationUiSceneXmlUtilsContractTest {
             .contains("actionType=\"navigate\"")
             .contains("diagnosticProfile=\"navigation\"")
             .contains("action=\"web-geturl\"")
+            .contains("continueOnFailure=\"true\"")
             .contains("url=\"https://frozen.example/login\"")
             .contains("action=\"web-assert-element-match\"")
             .contains("locator=\"cssSelector=#title\"")
@@ -106,6 +107,7 @@ class AutomationUiSceneXmlUtilsContractTest {
         step.setOperationType("浏览器");
         step.setOperationName("访问地址");
         step.setOperationValue("web-geturl");
+        step.setContinueOnFailure(true);
         step.setConfigList(List
             .of(config("url", "https://old.example/login"), config("method_code", "browser.navigate.default"), config("method_version", "1"), config("type_code", "browser"), config("type_label", "浏览器操作"), config("method_label", "打开默认网页"), config("diagnostic_profile", "navigation"), config("action_type", "navigate"), config("playwright_step", "raw-secret"), config("locator_meta", "raw-secret")));
         return step;

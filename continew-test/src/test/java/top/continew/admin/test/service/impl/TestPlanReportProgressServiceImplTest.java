@@ -24,6 +24,7 @@ import static org.mockito.Mockito.when;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.time.LocalDateTime;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -62,6 +63,7 @@ class TestPlanReportProgressServiceImplTest {
     @Test
     void shouldAggregateOnlyRecordsBelongingToCurrentReport() {
         TestPlanDO plan = plan();
+        plan.setActualStartTime(LocalDateTime.now().minusSeconds(1));
         TestReportDO report = report();
         Map<Long, Map<String, Object>> records = Map.of(11L, Map
             .of("testReportId", "101", "executeStatus", "completed", "executeResult", "passed", "caseTotal", 2, "casePass", 2, "stepTotal", 3, "stepPass", 3), 12L, Map
@@ -76,6 +78,8 @@ class TestPlanReportProgressServiceImplTest {
         assertThat(plan.getStatus()).isEqualTo("COMPLETED");
         assertThat(plan.getExecutedCount()).isEqualTo(2);
         assertThat(plan.getPassedCount()).isEqualTo(1);
+        assertThat(plan.getRunTime()).isPositive();
+        assertThat(plan.getActualEndTime()).isNotNull();
         @SuppressWarnings("unchecked") Map<String, Object> ui = (Map<String, Object>)report.getStatisticAnalysis()
             .get("ui");
         assertThat(ui).containsEntry("sceneTotal", 2)

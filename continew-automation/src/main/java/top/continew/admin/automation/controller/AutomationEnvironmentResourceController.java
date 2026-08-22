@@ -47,8 +47,22 @@ public class AutomationEnvironmentResourceController {
     @GetMapping("/slots")
     @SaCheckPermission("automation:automationUiScene:get")
     public R<List<AutomationEnvironmentResourceResp>> listSlots(@RequestParam Long projectId,
-                                                                @RequestParam(required = false) String kind) {
-        return R.ok(resourceService.listSlots(projectId, kind));
+                                                                @RequestParam(required = false) String kind,
+                                                                @RequestParam(required = false) Long environmentId) {
+        return R.ok(resourceService.listSlots(projectId, kind, environmentId));
+    }
+
+    @PostMapping("/slots/custom-database")
+    @SaCheckPermission("project:projectEnvironmentConfig:update")
+    public R<AutomationEnvironmentResourceResp> createCustomDatabaseSlot(@RequestParam Long projectId) {
+        return R.ok(resourceService.createCustomDatabaseSlot(projectId));
+    }
+
+    @DeleteMapping("/slots/{slotId}")
+    @SaCheckPermission("project:projectEnvironmentConfig:update")
+    public R<Void> deleteCustomDatabaseSlot(@PathVariable Long slotId) {
+        resourceService.deleteCustomDatabaseSlot(slotId);
+        return R.ok();
     }
 
     @GetMapping("/environments/{environmentId}")

@@ -88,6 +88,14 @@ public class AutomationUiSceneQuery implements Serializable {
     private Long moduleId;
 
     /**
+     * 所属模块 ID 范围
+     */
+    @Schema(description = "所属模块 ID 范围（包含所选模块及其后代模块）")
+    @Size(max = 1000, message = "所属模块 ID 数量不能超过 1000")
+    @Query(columns = {"module_id"}, type = QueryType.IN)
+    private List<Long> moduleIds;
+
+    /**
      * 场景等级
      */
     @Schema(description = "场景等级")
@@ -178,6 +186,13 @@ public class AutomationUiSceneQuery implements Serializable {
     @Schema(description = "执行结果类型: report-计划执行, debug-调试")
     @QueryIgnore
     private String executeResultType;
+
+    /**
+     * 是否只返回显式执行作用域内存在 latest execution 的场景。
+     */
+    @Schema(description = "是否只返回执行作用域内存在记录的场景")
+    @QueryIgnore
+    private Boolean executionMatchedOnly;
 
     /**
      * 仅场景用例树等定义接口启用；普通列表必须避免读取 case_list。

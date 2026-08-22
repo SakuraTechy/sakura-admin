@@ -64,6 +64,10 @@ automation:
     # 留空时使用系统默认存储；生产环境建议配置对象存储或共享存储编码。
     storage-code: ${SAKURA_PLAYWRIGHT_ARTIFACT_STORAGE_CODE:}
     path-prefix: ${SAKURA_PLAYWRIGHT_ARTIFACT_PATH_PREFIX:automation/playwright}
+  operation-catalog:
+    # 共享短 TTL 缓存避免页面请求逐次同步探测 Agent；失联时运行态高风险能力安全关闭。
+    health-cache-enabled: ${SAKURA_OPERATION_CATALOG_HEALTH_CACHE_ENABLED:true}
+    health-cache-ttl: ${SAKURA_OPERATION_CATALOG_HEALTH_CACHE_TTL:5s}
   # 基础设施执行 Agent 配置。Token 由 install-agent.ps1 生成；同一安装账号可从
   # C:\ProgramData\Sakura\execution-agent\conf\agent-token.operator.clixml 读取后临时填入，严禁提交该值。
   execution-agent:

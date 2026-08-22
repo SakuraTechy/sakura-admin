@@ -1,0 +1,536 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="top.continew.admin.automation.mapper.AutomationUiExecutionQueryMapper">
+
+    <resultMap id="executionSummaryResultMap"
+               type="top.continew.admin.automation.model.resp.AutomationUiExecutionSummaryResp">
+        <id property="executionDbId" column="execution_db_id"/>
+        <result property="sceneDbId" column="scene_db_id"/>
+    </resultMap>
+
+    <resultMap id="executionDetailResultMap"
+               type="top.continew.admin.automation.model.resp.AutomationUiExecutionDetailResp"
+               extends="executionSummaryResultMap"/>
+
+    <resultMap id="executionCaseResultMap"
+               type="top.continew.admin.automation.model.resp.AutomationUiExecutionCaseResp">
+        <id property="caseExecutionDbId" column="case_execution_db_id"/>
+        <result property="executionDbId" column="execution_db_id"/>
+        <result property="definitionCaseId" column="definition_case_id"/>
+    </resultMap>
+
+    <resultMap id="executionCaseHistoryResultMap"
+               type="top.continew.admin.automation.model.resp.AutomationUiExecutionCaseHistoryResp"
+               extends="executionCaseResultMap">
+        <result property="sceneDbId" column="scene_db_id"/>
+    </resultMap>
+
+    <resultMap id="executionStepResultMap"
+               type="top.continew.admin.automation.model.resp.AutomationUiExecutionStepResp">
+        <id property="stepExecutionDbId" column="step_execution_db_id"/>
+        <result property="caseExecutionDbId" column="case_execution_db_id"/>
+        <result property="definitionStepId" column="definition_step_id"/>
+    </resultMap>
+
+    <resultMap id="executionStepDetailResultMap"
+               type="top.continew.admin.automation.model.resp.AutomationUiExecutionStepDetailResp"
+               extends="executionStepResultMap">
+        <result property="diagnostics" column="diagnostics"
+                typeHandler="com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler"/>
+    </resultMap>
+
+    <resultMap id="executionArtifactResultMap"
+               type="top.continew.admin.automation.model.resp.AutomationUiExecutionArtifactResp">
+        <id property="artifactDbId" column="artifact_db_id"/>
+        <result property="executionDbId" column="execution_db_id"/>
+        <result property="caseExecutionDbId" column="case_execution_db_id"/>
+        <result property="stepExecutionDbId" column="step_execution_db_id"/>
+    </resultMap>
+
+    <sql id="authorizedExecutionJoins">
+        JOIN automation_ui_scene s
+          ON s.id = e.scene_id
+         AND s.del_flag = 3
+        JOIN project_config p
+          ON p.id = s.project_id
+         AND p.del_flag = 3
+        JOIN project_version_config pv
+          ON pv.id = s.version_id
+         AND pv.project_id = s.project_id
+         AND pv.del_flag = 3
+        JOIN project_module_config pm
+          ON pm.id = s.module_id
+         AND pm.project_id = s.project_id
+         AND pm.version_id = s.version_id
+         AND pm.del_flag = 3
+    </sql>
+
+    <sql id="executionAccessPredicate">
+        AND (
+            #{admin} = TRUE
+            OR p.create_user = #{userId}
+            OR JSON_CONTAINS(COALESCE(p.member, JSON_ARRAY()), JSON_QUOTE(CAST(#{userId} AS CHAR)))
+        )
+    </sql>
+
+    <!-- 优先读取服务端双写来源；可空迁移窗口内仅对旧行使用与 Java 分类器相同的 trim/lower 固定规则回退，build_number 不参与分类。 -->
+    <sql id="executionScopePredicate">
+        <choose>
+            <when test="scope.recordSource == 'debug'">
+                AND (
+                    e.record_source = 'debug'
+                    OR (
+                        e.record_source IS NULL
+                        AND (e.record_type IS NULL
+                            OR LOWER(TRIM(e.record_type)) NOT IN ('internal-interactive-context', 'interactive-execution-context'))
+                        AND e.test_plan_id IS NULL
+                        AND e.test_report_id IS NULL
+                        AND (e.trigger_type IS NULL OR LOWER(TRIM(e.trigger_type)) NOT IN ('test-plan', 'schedule'))
+                    )
+                )
+            </when>
+            <otherwise>
+                AND (
+                    e.record_source = 'test'
+                    OR (
+                        e.record_source IS NULL
+                        AND (e.record_type IS NULL
+                            OR LOWER(TRIM(e.record_type)) NOT IN ('internal-interactive-context', 'interactive-execution-context'))
+                        AND (
+                            e.test_plan_id IS NOT NULL
+                            OR e.test_report_id IS NOT NULL
+                            OR LOWER(TRIM(e.trigger_type)) IN ('test-plan', 'schedule')
+                        )
+                    )
+                )
+            </otherwise>
+        </choose>
+        <if test="scope.testPlanId != null">AND e.test_plan_id = #{scope.testPlanId}</if>
+        <if test="scope.testReportId != null">AND e.test_report_id = #{scope.testReportId}</if>
+        <if test="scope.buildNumber != null">AND e.build_number = #{scope.buildNumber}</if>
+    </sql>
+
+    <sql id="recordSourceColumn">
+        COALESCE(e.record_source, CASE
+            WHEN LOWER(TRIM(e.record_type)) IN ('internal-interactive-context', 'interactive-execution-context') THEN 'internal'
+            WHEN e.test_plan_id IS NOT NULL
+              OR e.test_report_id IS NOT NULL
+              OR LOWER(TRIM(e.trigger_type)) IN ('test-plan', 'schedule') THEN 'test'
+            ELSE 'debug'
+        END) AS record_source
+    </sql>
+
+    <sql id="executionSummaryColumns">
+        e.id AS execution_db_id,
+        e.execution_key,
+        e.scene_id AS scene_db_id,
+        e.scene_key,
+        e.batch_id,
+        <include refid="recordSourceColumn"/>,
+        e.test_plan_id,
+        e.test_report_id,
+        e.build_number,
+        e.record_type,
+        e.trigger_type,
+        e.execution_engine,
+        e.status,
+        e.result,
+        e.execute_user_id,
+        e.execute_username,
+        e.execute_name,
+        e.execute_email,
+        e.project_environment_id,
+        e.project_environment_name,
+        e.case_total,
+        e.case_pass,
+        e.case_fail,
+        e.case_skip,
+        e.case_cancelled,
+        e.step_total,
+        e.step_pass,
+        e.step_fail,
+        e.step_skip,
+        e.started_at,
+        e.finished_at,
+        COALESCE(
+            NULLIF(e.duration_ms, 0),
+            CASE WHEN e.started_at IS NOT NULL AND e.finished_at IS NOT NULL
+                THEN TIMESTAMPDIFF(MICROSECOND, e.started_at, e.finished_at) / 1000
+                ELSE (
+                    SELECT COALESCE(SUM(COALESCE(
+                        NULLIF(cw.wall_clock_duration_ms, 0),
+                        NULLIF(cw.duration_ms, 0),
+                        CASE WHEN cw.started_at IS NOT NULL AND cw.finished_at IS NOT NULL
+                            THEN TIMESTAMPDIFF(MICROSECOND, cw.started_at, cw.finished_at) / 1000
+                            ELSE 0 END
+                    )), 0)
+                    FROM automation_ui_execution_case cw
+                    WHERE cw.execution_id = e.id
+                )
+            END,
+            0
+        ) AS duration_ms,
+        e.error_code,
+        LEFT(e.error_message, 512) AS error_message,
+        e.create_time,
+        e.update_time
+    </sql>
+
+    <select id="selectSceneAccess" resultType="top.continew.admin.automation.model.query.AutomationUiExecutionAccessRow">
+        SELECT s.id AS scene_db_id,
+               COALESCE(es.execution_revision, 0) AS global_execution_revision
+        FROM automation_ui_scene s
+        JOIN project_config p ON p.id = s.project_id AND p.del_flag = 3
+        JOIN project_version_config pv
+          ON pv.id = s.version_id AND pv.project_id = s.project_id AND pv.del_flag = 3
+        JOIN project_module_config pm
+          ON pm.id = s.module_id AND pm.project_id = s.project_id
+         AND pm.version_id = s.version_id AND pm.del_flag = 3
+        LEFT JOIN automation_ui_scene_execution_state es ON es.scene_id = s.id
+        WHERE s.id = #{sceneDbId}
+          AND s.del_flag = 3
+        <include refid="executionAccessPredicate"/>
+    </select>
+
+    <select id="selectScopedLatest" resultMap="executionSummaryResultMap">
+        SELECT <include refid="executionSummaryColumns"/>
+        FROM automation_ui_execution e
+        <include refid="authorizedExecutionJoins"/>
+        WHERE e.scene_id = #{sceneDbId}
+        <include refid="executionScopePredicate"/>
+        <include refid="executionAccessPredicate"/>
+        ORDER BY e.create_time DESC, e.id DESC
+        LIMIT 1
+    </select>
+
+    <select id="selectScopedLatestBatch" resultMap="executionSummaryResultMap">
+        SELECT <include refid="executionSummaryColumns"/>
+        FROM (
+            SELECT candidate.*,
+                   ROW_NUMBER() OVER (
+                       PARTITION BY candidate.scene_id
+                       ORDER BY candidate.create_time DESC, candidate.id DESC
+                   ) AS scoped_rank
+            FROM automation_ui_execution candidate
+            WHERE candidate.scene_id IN
+            <foreach collection="sceneDbIds" item="sceneDbId" open="(" separator="," close=")">
+                #{sceneDbId}
+            </foreach>
+            <choose>
+                <when test="scope.recordSource == 'debug'">
+                    AND (
+                        candidate.record_source = 'debug'
+                        OR (
+                            candidate.record_source IS NULL
+                            AND (candidate.record_type IS NULL
+                                OR LOWER(TRIM(candidate.record_type)) NOT IN ('internal-interactive-context', 'interactive-execution-context'))
+                            AND candidate.test_plan_id IS NULL
+                            AND candidate.test_report_id IS NULL
+                            AND (candidate.trigger_type IS NULL
+                                OR LOWER(TRIM(candidate.trigger_type)) NOT IN ('test-plan', 'schedule'))
+                        )
+                    )
+                </when>
+                <otherwise>
+                    AND (
+                        candidate.record_source = 'test'
+                        OR (
+                            candidate.record_source IS NULL
+                            AND (candidate.record_type IS NULL
+                                OR LOWER(TRIM(candidate.record_type)) NOT IN ('internal-interactive-context', 'interactive-execution-context'))
+                            AND (
+                                candidate.test_plan_id IS NOT NULL
+                                OR candidate.test_report_id IS NOT NULL
+                                OR LOWER(TRIM(candidate.trigger_type)) IN ('test-plan', 'schedule')
+                            )
+                        )
+                    )
+                </otherwise>
+            </choose>
+            <if test="scope.testPlanId != null">AND candidate.test_plan_id = #{scope.testPlanId}</if>
+            <if test="scope.testReportId != null">AND candidate.test_report_id = #{scope.testReportId}</if>
+            <if test="scope.buildNumber != null">AND candidate.build_number = #{scope.buildNumber}</if>
+        ) e
+        <include refid="authorizedExecutionJoins"/>
+        WHERE e.scoped_rank = 1
+        <include refid="executionAccessPredicate"/>
+        ORDER BY e.scene_id
+    </select>
+
+    <select id="selectExecutionPageCount"
+            resultType="top.continew.admin.automation.model.query.AutomationUiExecutionAccessRow">
+        SELECT s.id AS scene_db_id,
+               COALESCE(es.execution_revision, 0) AS global_execution_revision,
+               COUNT(e.id) AS total
+        FROM automation_ui_scene s
+        JOIN project_config p ON p.id = s.project_id AND p.del_flag = 3
+        JOIN project_version_config pv
+          ON pv.id = s.version_id AND pv.project_id = s.project_id AND pv.del_flag = 3
+        JOIN project_module_config pm
+          ON pm.id = s.module_id AND pm.project_id = s.project_id
+         AND pm.version_id = s.version_id AND pm.del_flag = 3
+        LEFT JOIN automation_ui_scene_execution_state es ON es.scene_id = s.id
+        LEFT JOIN automation_ui_execution e ON e.scene_id = s.id
+        <include refid="executionScopePredicate"/>
+        <if test="query.status != null and query.status != ''">AND e.status = #{query.status}</if>
+        <if test="query.result != null and query.result != ''">AND e.result = #{query.result}</if>
+        WHERE s.id = #{query.sceneDbId}
+          AND s.del_flag = 3
+        <include refid="executionAccessPredicate"/>
+        GROUP BY s.id, es.execution_revision
+    </select>
+
+    <select id="selectExecutionPage" resultMap="executionSummaryResultMap">
+        SELECT <include refid="executionSummaryColumns"/>
+        FROM automation_ui_execution e
+        <include refid="authorizedExecutionJoins"/>
+        WHERE e.scene_id = #{query.sceneDbId}
+        <include refid="executionScopePredicate"/>
+        <if test="query.status != null and query.status != ''">AND e.status = #{query.status}</if>
+        <if test="query.result != null and query.result != ''">AND e.result = #{query.result}</if>
+        <include refid="executionAccessPredicate"/>
+        ORDER BY e.create_time
+        <choose><when test="ascending">ASC</when><otherwise>DESC</otherwise></choose>,
+                 e.id
+        <choose><when test="ascending">ASC</when><otherwise>DESC</otherwise></choose>
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="selectExecutionCursor" resultMap="executionSummaryResultMap">
+        SELECT <include refid="executionSummaryColumns"/>
+        FROM automation_ui_execution e
+        <include refid="authorizedExecutionJoins"/>
+        WHERE e.scene_id = #{query.sceneDbId}
+        <include refid="executionScopePredicate"/>
+        <if test="query.status != null and query.status != ''">AND e.status = #{query.status}</if>
+        <if test="query.result != null and query.result != ''">AND e.result = #{query.result}</if>
+        <if test="cursorTime != null">
+            AND
+            <choose>
+                <when test="ascending">
+                    (e.create_time &gt; #{cursorTime} OR (e.create_time = #{cursorTime} AND e.id &gt; #{cursorId}))
+                </when>
+                <otherwise>
+                    (e.create_time &lt; #{cursorTime} OR (e.create_time = #{cursorTime} AND e.id &lt; #{cursorId}))
+                </otherwise>
+            </choose>
+        </if>
+        <include refid="executionAccessPredicate"/>
+        ORDER BY e.create_time
+        <choose><when test="ascending">ASC</when><otherwise>DESC</otherwise></choose>,
+                 e.id
+        <choose><when test="ascending">ASC</when><otherwise>DESC</otherwise></choose>
+        LIMIT #{limit}
+    </select>
+
+    <select id="selectExecutionDetail" resultMap="executionDetailResultMap">
+        SELECT <include refid="executionSummaryColumns"/>,
+               e.definition_revision_id,
+               e.console_url,
+               e.test_report_url,
+               e.executor_node,
+               e.heartbeat_at,
+               e.lease_until,
+               e.cancel_requested
+        FROM automation_ui_execution e
+        <include refid="authorizedExecutionJoins"/>
+        WHERE e.id = #{executionDbId}
+        <include refid="executionAccessPredicate"/>
+    </select>
+
+    <select id="selectCasePageCount"
+            resultType="top.continew.admin.automation.model.query.AutomationUiExecutionAccessRow">
+        SELECT s.id AS scene_db_id,
+               e.id AS execution_db_id,
+               COALESCE(es.execution_revision, 0) AS global_execution_revision,
+               COUNT(c.id) AS total
+        FROM automation_ui_execution e
+        <include refid="authorizedExecutionJoins"/>
+        LEFT JOIN automation_ui_scene_execution_state es ON es.scene_id = s.id
+        LEFT JOIN automation_ui_execution_case c ON c.execution_id = e.id
+        WHERE e.id = #{executionDbId}
+        <include refid="executionAccessPredicate"/>
+        GROUP BY s.id, e.id, es.execution_revision
+    </select>
+
+    <sql id="caseColumns">
+        c.id AS case_execution_db_id,
+        c.execution_id AS execution_db_id,
+        c.case_id AS definition_case_id,
+        c.case_key,
+        c.case_execution_key,
+        c.case_name,
+        c.case_index,
+        c.attempt_no,
+        c.job_id,
+        c.status,
+        c.result,
+        c.execute_status,
+        c.execute_result,
+        c.step_total,
+        c.step_pass,
+        c.step_fail,
+        c.step_skip,
+        c.started_at,
+        c.finished_at,
+        c.duration_ms,
+        c.step_duration_ms,
+        c.wall_clock_duration_ms,
+        c.error_code,
+        LEFT(c.error_message, 512) AS error_message,
+        c.event_sequence,
+        c.create_time,
+        c.update_time
+    </sql>
+
+    <select id="selectCasePage" resultMap="executionCaseResultMap">
+        SELECT <include refid="caseColumns"/>
+        FROM automation_ui_execution_case c
+        JOIN automation_ui_execution e ON e.id = c.execution_id
+        <include refid="authorizedExecutionJoins"/>
+        WHERE e.id = #{executionDbId}
+        <include refid="executionAccessPredicate"/>
+        ORDER BY c.case_index, c.attempt_no, c.id
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="selectCaseHistoryPageCount"
+            resultType="top.continew.admin.automation.model.query.AutomationUiExecutionAccessRow">
+        SELECT s.id AS scene_db_id,
+               COALESCE(es.execution_revision, 0) AS global_execution_revision,
+               COUNT(c.id) AS total
+        FROM automation_ui_execution e
+        <include refid="authorizedExecutionJoins"/>
+        LEFT JOIN automation_ui_scene_execution_state es ON es.scene_id = s.id
+        LEFT JOIN automation_ui_execution_case c
+          ON c.execution_id = e.id
+         AND (c.case_id = #{query.caseId} OR c.case_key = #{query.caseId})
+        WHERE e.scene_id = #{query.sceneDbId}
+        <include refid="executionScopePredicate"/>
+        <include refid="executionAccessPredicate"/>
+        GROUP BY s.id, es.execution_revision
+    </select>
+
+    <select id="selectCaseHistoryPage" resultMap="executionCaseHistoryResultMap">
+        SELECT <include refid="caseColumns"/>,
+               e.execution_key,
+               e.batch_id,
+               s.id AS scene_db_id,
+               e.scene_key,
+               <include refid="recordSourceColumn"/>,
+               e.test_plan_id,
+               e.test_report_id,
+               e.build_number,
+               e.execution_engine,
+               e.execute_username,
+               e.execute_name,
+               e.project_environment_id,
+               e.project_environment_name
+        FROM automation_ui_execution_case c
+        JOIN automation_ui_execution e ON e.id = c.execution_id
+        <include refid="authorizedExecutionJoins"/>
+        WHERE e.scene_id = #{query.sceneDbId}
+          AND (c.case_id = #{query.caseId} OR c.case_key = #{query.caseId})
+        <include refid="executionScopePredicate"/>
+        <include refid="executionAccessPredicate"/>
+        ORDER BY COALESCE(c.started_at, c.create_time) DESC, c.id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="selectStepPageCount"
+            resultType="top.continew.admin.automation.model.query.AutomationUiExecutionAccessRow">
+        SELECT s.id AS scene_db_id,
+               e.id AS execution_db_id,
+               c.id AS case_execution_db_id,
+               COALESCE(es.execution_revision, 0) AS global_execution_revision,
+               COUNT(st.id) AS total
+        FROM automation_ui_execution_case c
+        JOIN automation_ui_execution e ON e.id = c.execution_id
+        <include refid="authorizedExecutionJoins"/>
+        LEFT JOIN automation_ui_scene_execution_state es ON es.scene_id = s.id
+        LEFT JOIN automation_ui_execution_step st ON st.execution_case_id = c.id
+        WHERE c.id = #{caseExecutionDbId}
+        <include refid="executionAccessPredicate"/>
+        GROUP BY s.id, e.id, c.id, es.execution_revision
+    </select>
+
+    <sql id="stepColumns">
+        st.id AS step_execution_db_id,
+        st.execution_case_id AS case_execution_db_id,
+        st.step_id AS definition_step_id,
+        st.source_step_id,
+        st.step_index,
+        st.attempt_no,
+        st.action_type,
+        st.step_name,
+        st.description,
+        st.status,
+        st.duration_ms,
+        st.locator_source,
+        st.locator_type,
+        st.error_code,
+        LEFT(st.error_message, 512) AS error_message,
+        st.event_sequence,
+        st.create_time,
+        st.update_time
+    </sql>
+
+    <select id="selectStepPage" resultMap="executionStepResultMap">
+        SELECT <include refid="stepColumns"/>
+        FROM automation_ui_execution_step st
+        JOIN automation_ui_execution_case c ON c.id = st.execution_case_id
+        JOIN automation_ui_execution e ON e.id = c.execution_id
+        <include refid="authorizedExecutionJoins"/>
+        WHERE c.id = #{caseExecutionDbId}
+        <include refid="executionAccessPredicate"/>
+        ORDER BY st.step_index, st.attempt_no, st.id
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="selectStepDetail" resultMap="executionStepDetailResultMap">
+        SELECT <include refid="stepColumns"/>,
+               st.locator_value,
+               st.diagnostics
+        FROM automation_ui_execution_step st
+        JOIN automation_ui_execution_case c ON c.id = st.execution_case_id
+        JOIN automation_ui_execution e ON e.id = c.execution_id
+        <include refid="authorizedExecutionJoins"/>
+        WHERE st.id = #{stepExecutionDbId}
+        <include refid="executionAccessPredicate"/>
+    </select>
+
+    <select id="selectArtifactPageCount"
+            resultType="top.continew.admin.automation.model.query.AutomationUiExecutionAccessRow">
+        SELECT s.id AS scene_db_id,
+               e.id AS execution_db_id,
+               COALESCE(es.execution_revision, 0) AS global_execution_revision,
+               COUNT(a.id) AS total
+        FROM automation_ui_execution e
+        <include refid="authorizedExecutionJoins"/>
+        LEFT JOIN automation_ui_scene_execution_state es ON es.scene_id = s.id
+        LEFT JOIN automation_ui_execution_artifact a ON a.execution_id = e.id
+        WHERE e.id = #{executionDbId}
+        <include refid="executionAccessPredicate"/>
+        GROUP BY s.id, e.id, es.execution_revision
+    </select>
+
+    <select id="selectArtifactPage" resultMap="executionArtifactResultMap">
+        SELECT a.id AS artifact_db_id,
+               a.execution_id AS execution_db_id,
+               NULLIF(a.execution_case_id, 0) AS case_execution_db_id,
+               NULLIF(a.execution_step_id, 0) AS step_execution_db_id,
+               a.artifact_type,
+               a.storage_status,
+               a.size_bytes,
+               a.expires_at,
+               a.create_time,
+               a.update_time
+        FROM automation_ui_execution_artifact a
+        JOIN automation_ui_execution e ON e.id = a.execution_id
+        <include refid="authorizedExecutionJoins"/>
+        WHERE e.id = #{executionDbId}
+        <include refid="executionAccessPredicate"/>
+        ORDER BY a.create_time DESC, a.id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+</mapper>

@@ -71,6 +71,14 @@ class AutomationOperationCatalogServiceImplTest {
     }
 
     @Test
+    void shouldIsolateDynamicResponseFromCachedStaticCatalog() {
+        AutomationOperationCatalog first = catalog();
+        first.getTypes().clear();
+
+        assertThat(catalog().getTypes()).hasSize(13);
+    }
+
+    @Test
     void shouldCoverEveryMethodWithADiagnosticProfile() {
         AutomationOperationCatalog catalog = catalog();
         assertThat(catalog.getDiagnosticProfiles())

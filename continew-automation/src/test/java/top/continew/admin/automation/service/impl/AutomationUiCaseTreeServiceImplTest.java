@@ -28,6 +28,7 @@ import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -36,10 +37,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 import top.continew.admin.automation.converter.AutomationOperationStepAssembler;
 import top.continew.admin.automation.converter.AutomationOperationStepReverseAdapter;
 import top.continew.admin.automation.mapper.AutomationPlaywrightJobMapper;
 import top.continew.admin.automation.mapper.AutomationUiSceneMapper;
+import top.continew.admin.automation.mapper.AutomationUiSceneQueryMapper;
 import top.continew.admin.automation.model.entity.AutomationUiSceneDO;
 import top.continew.admin.automation.model.entity.ui.CaseDO;
 import top.continew.admin.automation.model.entity.ui.CaseExecutionConfigDO;
@@ -54,6 +57,7 @@ import top.continew.admin.automation.model.req.ui.AutomationUiStepConfigEditReq;
 import top.continew.admin.automation.model.req.ui.AutomationUiStepCopyReq;
 import top.continew.admin.automation.model.resp.AutomationUiTreeMutationResp;
 import top.continew.admin.common.enums.StatusTypeEnum;
+import top.continew.admin.automation.support.AutomationUiSceneAccessScopeResolver;
 import top.continew.starter.core.exception.BusinessException;
 
 @ExtendWith(MockitoExtension.class)
@@ -77,6 +81,24 @@ class AutomationUiCaseTreeServiceImplTest {
         lenient().when(operationStepAssembler.assembleManualStep(org.mockito.ArgumentMatchers.any(StepDO.class)))
             .thenAnswer(invocation -> invocation.getArgument(0));
         service = new AutomationUiCaseTreeServiceImpl(sceneMapper, playwrightJobMapper, operationStepAssembler, operationStepReverseAdapter, objectMapper);
+    }
+
+    @Test
+    void shouldRejectMutationBeforeLockingWideDefinitionWhenObjectScopeDenied() {
+        AutomationUiSceneQueryMapper queryMapper = org.mockito.Mockito.mock(AutomationUiSceneQueryMapper.class);
+        AutomationUiSceneAccessScopeResolver scopeResolver = org.mockito.Mockito
+            .mock(AutomationUiSceneAccessScopeResolver.class);
+        when(scopeResolver.currentScope())
+            .thenReturn(new AutomationUiSceneAccessScopeResolver.AccessScope(7L, false, Set.of(), Set.of()));
+        when(queryMapper.selectAuthorizedProjectId(1L, 7L, false)).thenReturn(null);
+        ReflectionTestUtils.setField(service, "sceneQueryMapper", queryMapper);
+        ReflectionTestUtils.setField(service, "accessScopeResolver", scopeResolver);
+        CaseDO request = new CaseDO();
+        request.setExpectedDefinitionVersion(1L);
+
+        assertThatThrownBy(() -> service.addCase(1L, request)).isInstanceOf(BusinessException.class)
+            .hasMessageContaining("无访问权限");
+        verify(sceneMapper, never()).selectByIdForUpdate(1L);
     }
 
     @Test

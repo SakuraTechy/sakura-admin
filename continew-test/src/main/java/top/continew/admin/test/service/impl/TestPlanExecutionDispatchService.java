@@ -42,12 +42,14 @@ import top.continew.admin.test.model.enums.TestExecutionEngineEnum;
 import top.continew.admin.test.model.req.TestPlanExecuteReq;
 import top.continew.admin.test.model.resp.TestPlanExecuteResp;
 import top.continew.admin.test.mapper.TestPlanMapper;
+import top.continew.starter.core.exception.BusinessException;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -84,6 +86,9 @@ public class TestPlanExecutionDispatchService {
                                                                String reportId,
                                                                TestExecutionEngineEnum engine,
                                                                TestPlanExecuteReq req) {
+        if (req.getCaseIds() != null && executionSceneIds.size() != 1) {
+            throw new BusinessException("指定用例范围时只能执行一个场景");
+        }
         List<AutomationUiSceneDO> scenes = automationUiSceneMapper.selectBatchIds(executionSceneIds);
         Map<Long, AutomationUiSceneDO> sceneMap = new LinkedHashMap<>();
         scenes.forEach(scene -> sceneMap.put(scene.getId(), scene));
@@ -93,7 +98,7 @@ public class TestPlanExecutionDispatchService {
             if (scene == null) {
                 continue;
             }
-            List<String> caseIds = executableCaseIds(scene);
+            List<String> caseIds = resolveExecutionCaseIds(scene, req.getCaseIds());
             TestPlanExecuteResp.SceneExecution item = new TestPlanExecuteResp.SceneExecution();
             item.setSceneKey(String.valueOf(scene.getId()));
             item.setSceneId(scene.getSceneId());
@@ -413,6 +418,27 @@ public class TestPlanExecutionDispatchService {
         return result;
     }
 
+    /**
+     * 单场景执行保留用户选择的用例范围，同时按场景定义顺序调度。
+     */
+    private List<String> resolveExecutionCaseIds(AutomationUiSceneDO scene, List<String> requestedCaseIds) {
+        List<String> executableIds = executableCaseIds(scene);
+        if (requestedCaseIds == null) {
+            return executableIds;
+        }
+        if (requestedCaseIds.isEmpty() || requestedCaseIds.stream().anyMatch(StringUtils::isBlank)) {
+            throw new BusinessException("执行用例不能为空");
+        }
+        LinkedHashSet<String> requestedSet = new LinkedHashSet<>(requestedCaseIds);
+        if (requestedSet.size() != requestedCaseIds.size()) {
+            throw new BusinessException("执行用例不能重复");
+        }
+        if (!executableIds.containsAll(requestedSet)) {
+            throw new BusinessException("执行用例不存在、已禁用或没有有效步骤");
+        }
+        return executableIds.stream().filter(requestedSet::contains).toList();
+    }
+
     private int executableStepTotal(AutomationUiSceneDO scene, List<String> caseIds) {
         if (scene.getCaseList() == null) {
             return 0;
@@ -437,8 +463,9 @@ public class TestPlanExecutionDispatchService {
                 .filter(step -> step.getStatus() == null || StatusTypeEnum.ENABLE.equals(step.getStatus()))
                 .count();
         }
-        return item.getStep() != null && (item.getStep().getStatus() == null || StatusTypeEnum.ENABLE
-            .equals(item.getStep().getStatus())) ? 1 : 0;
+        return item.getStep() != null && (item.getStep().getStatus() == null || StatusTypeEnum.ENABLE.equals(item
+            .getStep()
+            .getStatus())) ? 1 : 0;
     }
 
     private void cancelSceneRecords(String testPlanId, String reportId) {

@@ -23,7 +23,6 @@ import java.util.Map;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
@@ -42,8 +41,17 @@ public class AutomationPlaywrightBatchCreateReq implements Serializable {
     @NotBlank(message = "执行方式不能为空")
     private String executionType;
 
-    @NotEmpty(message = "执行用例不能为空")
     private List<String> caseIds;
+
+    /**
+     * 由服务端按当前冻结定义选择全部可执行用例。
+     *
+     * <p>超大场景不能要求浏览器先下载完整用例 ID 集合；该字段与 caseIds 互斥。</p>
+     */
+    private Boolean selectAllCases;
+
+    /** 浏览器读取到的定义版本；全选时必须一致，避免场景修改后执行了未确认的范围。 */
+    private Long expectedDefinitionVersion;
 
     @NotNull(message = "产品环境不能为空")
     private Long projectEnvironmentId;

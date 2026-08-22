@@ -20,8 +20,18 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.Test;
 import top.continew.admin.automation.model.query.AutomationUiSceneQuery;
+import top.continew.starter.data.core.annotation.Query;
+import top.continew.starter.data.core.enums.QueryType;
 
 class AutomationUiSceneServiceImplTest {
+
+    @Test
+    void moduleScopeShouldUseDatabaseColumnForInQuery() throws NoSuchFieldException {
+        Query query = AutomationUiSceneQuery.class.getDeclaredField("moduleIds").getAnnotation(Query.class);
+
+        assertThat(query.columns()).containsExactly("module_id");
+        assertThat(query.type()).isEqualTo(QueryType.IN);
+    }
 
     @Test
     void shouldNotHideScenesWhenOnlyRecordTypeIsRequested() {

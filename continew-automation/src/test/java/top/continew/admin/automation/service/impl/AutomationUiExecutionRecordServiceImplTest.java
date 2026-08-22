@@ -141,19 +141,24 @@ class AutomationUiExecutionRecordServiceImplTest {
     }
 
     @Test
-    void shouldExcludeInternalInteractiveContextsFromExecutionHistory() {
+    void shouldUseStoredSourceAndNormalizedLegacyFallbackForCompatibilityHistory() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
         IdentifierGenerator identifierGenerator = mock(IdentifierGenerator.class);
         when(jdbcTemplate.query(anyString(), any(RowMapper.class), any(Object[].class))).thenReturn(List.of());
         AutomationUiExecutionRecordServiceImpl service = new AutomationUiExecutionRecordServiceImpl(jdbcTemplate, identifierGenerator, new ObjectMapper(), null);
 
         assertThat(service.listRecords(1L, false, 100)).isEmpty();
+        assertThat(service.listRecords(1L, true, 100)).isEmpty();
 
         ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
         ArgumentCaptor<Object[]> argsCaptor = ArgumentCaptor.forClass(Object[].class);
-        verify(jdbcTemplate).query(sqlCaptor.capture(), any(RowMapper.class), argsCaptor.capture());
-        assertThat(sqlCaptor.getValue()).contains("record_type <> ?");
-        assertThat(argsCaptor.getValue()).containsExactly(1L, "interactive-execution-context");
+        verify(jdbcTemplate, times(2)).query(sqlCaptor.capture(), any(RowMapper.class), argsCaptor.capture());
+        assertThat(sqlCaptor.getAllValues().get(0))
+            .contains("record_source = 'debug'", "record_source IS NULL", "LOWER(TRIM(record_type)) NOT IN (?, ?)", "test_report_id IS NULL", "LOWER(TRIM(trigger_type)) NOT IN (?, ?)", "ORDER BY create_time DESC, id DESC");
+        assertThat(sqlCaptor.getAllValues().get(1))
+            .contains("record_source = 'test'", "record_source IS NULL", "LOWER(TRIM(record_type)) NOT IN (?, ?)", "test_report_id IS NOT NULL", "LOWER(TRIM(trigger_type)) IN (?, ?)", "ORDER BY create_time DESC, id DESC");
+        assertThat(argsCaptor.getAllValues()).allSatisfy(arguments -> assertThat(arguments)
+            .containsExactly(1L, "internal-interactive-context", "interactive-execution-context", "test-plan", "schedule"));
     }
 
     @Test
@@ -173,6 +178,7 @@ class AutomationUiExecutionRecordServiceImplTest {
         record.put("batchId", "JENKINS_BATCH_001");
         record.put("executionType", "jenkins");
         record.put("executeStatus", "queued");
+        record.put("recordSource", "test");
 
         service.saveExternalExecutionRecord(scene, record);
 
@@ -199,7 +205,9 @@ class AutomationUiExecutionRecordServiceImplTest {
                 assertThat(args[0]).isEqualTo(8L);
                 assertThat(args[4]).isEqualTo(7L);
                 assertThat(args[7]).isEqualTo("JENKINS_BATCH_001");
-                assertThat(args[13]).isEqualTo(true);
+                // 调用方提交的 recordSource 不可信；无计划/报告的 Jenkins 记录仍由服务端判为 debug。
+                assertThat(args[9]).isEqualTo("debug");
+                assertThat(args[14]).isEqualTo(true);
             }
         }
         assertThat(revisionInserted).isTrue();
@@ -252,6 +260,30 @@ class AutomationUiExecutionRecordServiceImplTest {
         Map<String, Object> record = new LinkedHashMap<>();
         record.put("recordType", "interactive-execution-context");
         record.put("batchId", "interactive-1-example");
+        record.put("executeStatus", "running");
+
+        service.saveRecord(scene, record, null);
+
+        ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
+        verify(jdbcTemplate, atLeastOnce()).update(sqlCaptor.capture(), any(Object[].class));
+        assertThat(sqlCaptor.getAllValues()).noneMatch(sql -> sql.contains("automation_ui_scene_execution_state"));
+    }
+
+    @Test
+    void shouldNotPublishLegacyInternalContextAsLatestSceneExecution() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        IdentifierGenerator identifierGenerator = mock(IdentifierGenerator.class);
+        when(identifierGenerator.nextId(any())).thenReturn(7L, 8L);
+        when(jdbcTemplate.query(anyString(), any(RowMapper.class), any(Object[].class))).thenReturn(List.of());
+        AutomationUiExecutionRecordServiceImpl service = new AutomationUiExecutionRecordServiceImpl(jdbcTemplate, identifierGenerator, new ObjectMapper(), null);
+        AutomationUiSceneDO scene = new AutomationUiSceneDO();
+        scene.setId(1L);
+        scene.setSceneId("SCENE_001");
+        scene.setDefinitionVersion(3L);
+        scene.setCaseList(List.of());
+        Map<String, Object> record = new LinkedHashMap<>();
+        record.put("recordType", "internal-interactive-context");
+        record.put("batchId", "legacy-internal-1");
         record.put("executeStatus", "running");
 
         service.saveRecord(scene, record, null);

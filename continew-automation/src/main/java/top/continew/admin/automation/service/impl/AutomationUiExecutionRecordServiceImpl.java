@@ -53,6 +53,8 @@ import top.continew.admin.automation.model.entity.ui.StepDO;
 import top.continew.admin.automation.service.AutomationUiExecutionRecordService;
 import top.continew.admin.automation.service.AutomationOperationCatalogService;
 import top.continew.admin.automation.support.AutomationExecutionCapability;
+import top.continew.admin.automation.support.AutomationUiQueryBaselineRecorder;
+import top.continew.admin.automation.support.AutomationUiRecordSourceSupport;
 import top.continew.admin.common.enums.StatusTypeEnum;
 import top.continew.admin.project.mapper.ProjectConfigMapper;
 import top.continew.admin.project.model.entity.ProjectConfigDO;
@@ -75,7 +77,6 @@ public class AutomationUiExecutionRecordServiceImpl implements AutomationUiExecu
     private static final int MAX_STEP_DIAGNOSTICS_BYTES = 64 * 1024;
     private static final int MAX_ERROR_LENGTH = 2000;
     private static final int MAX_TEXT_LENGTH = 8192;
-    private static final String INTERNAL_INTERACTIVE_CONTEXT = "interactive-execution-context";
     private static final List<String> TERMINAL_EXECUTION_STATUSES = List
         .of("completed", "passed", "failed", "cancelled", "interrupted", "blocked", "skipped");
     private static final Set<String> OPERATION_PROFILES = Set
@@ -138,7 +139,7 @@ public class AutomationUiExecutionRecordServiceImpl implements AutomationUiExecu
         updateExecution(executionId, scene, record, definitionRevisionId);
         persistCases(executionId, definitionRevisionId, record, changedCaseId, operationDiagnosticEnabled);
         // 交互式基础设施上下文仅承载鉴权和冻结定义，不能伪装成一次用户执行或覆盖场景状态。
-        if (!INTERNAL_INTERACTIVE_CONTEXT.equals(value(record.get("recordType")))) {
+        if (!AutomationUiRecordSourceSupport.isInternal(value(record.get("recordType")))) {
             upsertSceneState(scene, record, executionId);
         }
         removeReplacedPlaceholder(scene.getId(), nullableLong(record.get("testReportId")), executionId, value(record
@@ -221,12 +222,26 @@ public class AutomationUiExecutionRecordServiceImpl implements AutomationUiExecu
             return List.of();
         }
         int safeLimit = Math.max(1, Math.min(MAX_HISTORY_RECORDS, limit));
-        String planPredicate = testRecord ? "test_plan_id IS NOT NULL" : "test_plan_id IS NULL";
-        List<Long> ids = jdbcTemplate
-            .query("SELECT id FROM automation_ui_execution WHERE scene_id = ? AND " + planPredicate + " AND (record_type IS NULL OR record_type <> ?)" + " ORDER BY create_time DESC LIMIT " + safeLimit, (rs,
-                                                                                                                                                                                                           rowNum) -> rs
-                                                                                                                                                                                                               .getLong(1), sceneId, INTERNAL_INTERACTIVE_CONTEXT);
+        AutomationUiQueryBaselineRecorder.recordHistoryLimit(safeLimit);
+        // 兼容窗口内仅对 record_source 为空的旧行回退，并与回填任务使用相同的大小写和空白归一化规则。
+        String legacyNonInternal = "(record_type IS NULL OR LOWER(TRIM(record_type)) NOT IN (?, ?))";
+        String sourcePredicate = testRecord
+            ? "(record_source = 'test' OR (record_source IS NULL AND " + legacyNonInternal + " AND (test_plan_id IS NOT NULL OR test_report_id IS NOT NULL OR LOWER(TRIM(trigger_type)) IN (?, ?))))"
+            : "(record_source = 'debug' OR (record_source IS NULL AND " + legacyNonInternal + " AND test_plan_id IS NULL AND test_report_id IS NULL AND (trigger_type IS NULL OR LOWER(TRIM(trigger_type)) NOT IN (?, ?)))))";
+        AutomationUiQueryBaselineRecorder.recordSql();
+        long queryStartedNanos = AutomationUiQueryBaselineRecorder.startTimedSection();
+        List<Long> ids;
+        try {
+            ids = jdbcTemplate
+                .query("SELECT id FROM automation_ui_execution WHERE scene_id = ? AND " + sourcePredicate + " ORDER BY create_time DESC, id DESC LIMIT " + safeLimit, (rs,
+                                                                                                                                                                       rowNum) -> rs
+                                                                                                                                                                           .getLong(1), sceneId, "internal-interactive-context", "interactive-execution-context", "test-plan", "schedule");
+        } finally {
+            AutomationUiQueryBaselineRecorder
+                .recordTiming(AutomationUiQueryBaselineRecorder.Phase.EXECUTION_IDS_QUERY, queryStartedNanos);
+        }
         List<Object> result = new ArrayList<>(ids.size());
+        AutomationUiQueryBaselineRecorder.recordExecutionRows(ids.size());
         ids.forEach(id -> result.add(loadRecord(id)));
         return result;
     }
@@ -400,15 +415,20 @@ public class AutomationUiExecutionRecordServiceImpl implements AutomationUiExecu
                                  Map<String, Object> record,
                                  Long definitionRevisionId,
                                  boolean operationDiagnosticEnabled) {
+        String recordType = firstNonBlank(value(record.get("recordType")), "execution");
+        String triggerType = resolveTriggerType(record);
+        Long testPlanId = nullableLong(record.get("testPlanId"));
+        Long testReportId = nullableLong(record.get("testReportId"));
+        String recordSource = AutomationUiRecordSourceSupport
+            .classify(recordType, triggerType, testPlanId, testReportId);
         jdbcTemplate
-            .update("INSERT INTO automation_ui_execution (id, execution_key, scene_id, scene_key," + " definition_revision_id, execution_capability_digest, execution_capability_expires_at, batch_id, record_type, trigger_type, execution_engine, status, result, operation_diagnostic_v1," + " create_user, create_time, update_user, update_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?," + " CURRENT_TIMESTAMP(3), ?, CURRENT_TIMESTAMP(3))", id, executionKey, scene
+            .update("INSERT INTO automation_ui_execution (id, execution_key, scene_id, scene_key," + " definition_revision_id, execution_capability_digest, execution_capability_expires_at, batch_id, record_type, record_source, trigger_type, execution_engine, status, result, operation_diagnostic_v1," + " create_user, create_time, update_user, update_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?," + " CURRENT_TIMESTAMP(3), ?, CURRENT_TIMESTAMP(3))", id, executionKey, scene
                 .getId(), firstNonBlank(scene.getSceneId(), String.valueOf(scene
                     .getId())), definitionRevisionId, capabilityDigest(record), capabilityExpiresAt(record), nullableText(record
-                        .get("batchId")), firstNonBlank(value(record
-                            .get("recordType")), "execution"), resolveTriggerType(record), resolveEngine(record), firstNonBlank(value(record
-                                .get("executeStatus")), "queued"), nullableText(record
-                                    .get("executeResult")), operationDiagnosticEnabled, scene.getCreateUser(), scene
-                                        .getUpdateUser());
+                        .get("batchId")), recordType, recordSource, triggerType, resolveEngine(record), firstNonBlank(value(record
+                            .get("executeStatus")), "queued"), nullableText(record
+                                .get("executeResult")), operationDiagnosticEnabled, scene.getCreateUser(), scene
+                                    .getUpdateUser());
     }
 
     private void updateExecution(Long executionId,
@@ -421,41 +441,41 @@ public class AutomationUiExecutionRecordServiceImpl implements AutomationUiExecu
         summary.remove("executionCapability");
         String summaryJson = boundedSummary(summary, MAX_EXECUTION_SUMMARY_BYTES);
         String executionConfig = boundedSummary(asMap(record.get("executionConfig")), MAX_EXECUTION_SUMMARY_BYTES);
+        String recordType = firstNonBlank(value(record.get("recordType")), "execution");
+        String triggerType = resolveTriggerType(record);
+        Long testPlanId = nullableLong(record.get("testPlanId"));
+        Long testReportId = nullableLong(record.get("testReportId"));
+        String recordSource = AutomationUiRecordSourceSupport
+            .classify(recordType, triggerType, testPlanId, testReportId);
         jdbcTemplate
-            .update("UPDATE automation_ui_execution SET definition_revision_id = ?, execution_capability_digest = COALESCE(?, execution_capability_digest), execution_capability_expires_at = COALESCE(?, execution_capability_expires_at), batch_id = ?," + " test_plan_id = ?, test_report_id = ?, record_type = ?, trigger_type = ?, execution_engine = ?," + " status = ?, result = ?, execute_user_id = ?, execute_username = ?, execute_name = ?, execute_email = ?," + " project_environment_id = ?, project_environment_name = ?, execution_config = CAST(? AS JSON)," + " build_number = ?, console_url = ?, test_report_url = ?, case_total = ?, case_pass = ?, case_fail = ?," + " case_skip = ?, case_cancelled = ?, step_total = ?, step_pass = ?, step_fail = ?, step_skip = ?," + " executor_node = ?, heartbeat_at = ?, lease_until = ?, cancel_requested = ?, started_at = ?," + " finished_at = ?, duration_ms = ?, error_code = ?, error_message = ?, summary_json = CAST(? AS JSON)," + " version = version + 1, update_user = ?, update_time = CURRENT_TIMESTAMP(3) WHERE id = ?", definitionRevisionId, capabilityDigest(record), capabilityExpiresAt(record), nullableText(record
-                .get("batchId")), nullableLong(record.get("testPlanId")), nullableLong(record
-                    .get("testReportId")), firstNonBlank(value(record
-                        .get("recordType")), "execution"), resolveTriggerType(record), resolveEngine(record), firstNonBlank(value(record
-                            .get("executeStatus")), "queued"), nullableText(record
-                                .get("executeResult")), nullableLong(record.get("executeUserId")), nullableText(record
-                                    .get("executeUsername")), nullableText(record
-                                        .get("executeName")), nullableText(record
-                                            .get("executeEmail")), nullableLong(record
-                                                .get("projectEnvironmentId")), nullableText(record
-                                                    .get("projectEnvironmentName")), executionConfig, nullableInteger(record
-                                                        .get("buildNumber")), nullableText(record
-                                                            .get("consoleUrl")), nullableText(record
-                                                                .get("testReportUrl")), number(record
-                                                                    .get("caseTotal")), number(record
-                                                                        .get("casePass")), number(record
-                                                                            .get("caseFail")), number(record
-                                                                                .get("caseSkip")), number(record
-                                                                                    .get("caseCancelled")), number(record
-                                                                                        .get("stepTotal")), number(record
-                                                                                            .get("stepPass")), number(record
-                                                                                                .get("stepFail")), number(record
-                                                                                                    .get("stepSkip")), nullableText(record
-                                                                                                        .get("executorNode")), timestamp(record
-                                                                                                            .get("heartbeatAt")), timestamp(record
-                                                                                                                .get("leaseUntil")), truthy(record
-                                                                                                                    .get("cancelRequested")), timestamp(record
-                                                                                                                        .get("startedAt")), timestamp(record
-                                                                                                                            .get("finishedAt")), nullableLong(record
-                                                                                                                                .get("duration")), nullableText(record
-                                                                                                                                    .get("errorCode")), abbreviate(firstNonBlank(value(record
-                                                                                                                                        .get("error")), value(record
-                                                                                                                                            .get("playwrightError"))), MAX_ERROR_LENGTH), summaryJson, scene
-                                                                                                                                                .getUpdateUser(), executionId);
+            .update("UPDATE automation_ui_execution SET definition_revision_id = ?, execution_capability_digest = COALESCE(?, execution_capability_digest), execution_capability_expires_at = COALESCE(?, execution_capability_expires_at), batch_id = ?," + " test_plan_id = ?, test_report_id = ?, record_type = ?, record_source = ?, trigger_type = ?, execution_engine = ?," + " status = ?, result = ?, execute_user_id = ?, execute_username = ?, execute_name = ?, execute_email = ?," + " project_environment_id = ?, project_environment_name = ?, execution_config = CAST(? AS JSON)," + " build_number = ?, console_url = ?, test_report_url = ?, case_total = ?, case_pass = ?, case_fail = ?," + " case_skip = ?, case_cancelled = ?, step_total = ?, step_pass = ?, step_fail = ?, step_skip = ?," + " executor_node = ?, heartbeat_at = ?, lease_until = ?, cancel_requested = ?, started_at = ?," + " finished_at = ?, duration_ms = ?, error_code = ?, error_message = ?, summary_json = CAST(? AS JSON)," + " version = version + 1, update_user = ?, update_time = CURRENT_TIMESTAMP(3) WHERE id = ?", definitionRevisionId, capabilityDigest(record), capabilityExpiresAt(record), nullableText(record
+                .get("batchId")), testPlanId, testReportId, recordType, recordSource, triggerType, resolveEngine(record), firstNonBlank(value(record
+                    .get("executeStatus")), "queued"), nullableText(record.get("executeResult")), nullableLong(record
+                        .get("executeUserId")), nullableText(record.get("executeUsername")), nullableText(record
+                            .get("executeName")), nullableText(record.get("executeEmail")), nullableLong(record
+                                .get("projectEnvironmentId")), nullableText(record
+                                    .get("projectEnvironmentName")), executionConfig, nullableInteger(record
+                                        .get("buildNumber")), nullableText(record
+                                            .get("consoleUrl")), nullableText(record
+                                                .get("testReportUrl")), number(record.get("caseTotal")), number(record
+                                                    .get("casePass")), number(record.get("caseFail")), number(record
+                                                        .get("caseSkip")), number(record
+                                                            .get("caseCancelled")), number(record
+                                                                .get("stepTotal")), number(record
+                                                                    .get("stepPass")), number(record
+                                                                        .get("stepFail")), number(record
+                                                                            .get("stepSkip")), nullableText(record
+                                                                                .get("executorNode")), timestamp(record
+                                                                                    .get("heartbeatAt")), timestamp(record
+                                                                                        .get("leaseUntil")), truthy(record
+                                                                                            .get("cancelRequested")), timestamp(record
+                                                                                                .get("startedAt")), timestamp(record
+                                                                                                    .get("finishedAt")), nullableLong(record
+                                                                                                        .get("duration")), nullableText(record
+                                                                                                            .get("errorCode")), abbreviate(firstNonBlank(value(record
+                                                                                                                .get("error")), value(record
+                                                                                                                    .get("playwrightError"))), MAX_ERROR_LENGTH), summaryJson, scene
+                                                                                                                        .getUpdateUser(), executionId);
     }
 
     private void persistCases(Long executionId,
@@ -706,33 +726,40 @@ public class AutomationUiExecutionRecordServiceImpl implements AutomationUiExecu
     }
 
     private Map<String, Object> loadRecord(Long executionId) {
-        List<ExecutionRow> rows = jdbcTemplate.query("SELECT * FROM automation_ui_execution WHERE id = ?", (rs,
-                                                                                                            rowNum) -> {
-            ExecutionRow row = new ExecutionRow();
-            row.id = rs.getLong("id");
-            row.batchId = rs.getString("batch_id");
-            row.testPlanId = nullableLong(rs.getObject("test_plan_id"));
-            row.testReportId = nullableLong(rs.getObject("test_report_id"));
-            row.recordType = rs.getString("record_type");
-            row.engine = rs.getString("execution_engine");
-            row.status = rs.getString("status");
-            row.result = rs.getString("result");
-            row.startedAt = toLocalDateTime(rs.getTimestamp("started_at"));
-            row.finishedAt = toLocalDateTime(rs.getTimestamp("finished_at"));
-            row.durationMs = nullableLong(rs.getObject("duration_ms"));
-            row.error = rs.getString("error_message");
-            row.caseTotal = rs.getInt("case_total");
-            row.casePass = rs.getInt("case_pass");
-            row.caseFail = rs.getInt("case_fail");
-            row.caseSkip = rs.getInt("case_skip");
-            row.caseCancelled = rs.getInt("case_cancelled");
-            row.stepTotal = rs.getInt("step_total");
-            row.stepPass = rs.getInt("step_pass");
-            row.stepFail = rs.getInt("step_fail");
-            row.stepSkip = rs.getInt("step_skip");
-            row.summaryJson = rs.getString("summary_json");
-            return row;
-        }, executionId);
+        AutomationUiQueryBaselineRecorder.recordSql();
+        long queryStartedNanos = AutomationUiQueryBaselineRecorder.startTimedSection();
+        List<ExecutionRow> rows;
+        try {
+            rows = jdbcTemplate.query("SELECT * FROM automation_ui_execution WHERE id = ?", (rs, rowNum) -> {
+                ExecutionRow row = new ExecutionRow();
+                row.id = rs.getLong("id");
+                row.batchId = rs.getString("batch_id");
+                row.testPlanId = nullableLong(rs.getObject("test_plan_id"));
+                row.testReportId = nullableLong(rs.getObject("test_report_id"));
+                row.recordType = rs.getString("record_type");
+                row.engine = rs.getString("execution_engine");
+                row.status = rs.getString("status");
+                row.result = rs.getString("result");
+                row.startedAt = toLocalDateTime(rs.getTimestamp("started_at"));
+                row.finishedAt = toLocalDateTime(rs.getTimestamp("finished_at"));
+                row.durationMs = nullableLong(rs.getObject("duration_ms"));
+                row.error = rs.getString("error_message");
+                row.caseTotal = rs.getInt("case_total");
+                row.casePass = rs.getInt("case_pass");
+                row.caseFail = rs.getInt("case_fail");
+                row.caseSkip = rs.getInt("case_skip");
+                row.caseCancelled = rs.getInt("case_cancelled");
+                row.stepTotal = rs.getInt("step_total");
+                row.stepPass = rs.getInt("step_pass");
+                row.stepFail = rs.getInt("step_fail");
+                row.stepSkip = rs.getInt("step_skip");
+                row.summaryJson = rs.getString("summary_json");
+                return row;
+            }, executionId);
+        } finally {
+            AutomationUiQueryBaselineRecorder
+                .recordTiming(AutomationUiQueryBaselineRecorder.Phase.EXECUTION_QUERY, queryStartedNanos);
+        }
         if (rows.isEmpty()) {
             return null;
         }
@@ -768,49 +795,69 @@ public class AutomationUiExecutionRecordServiceImpl implements AutomationUiExecu
     }
 
     private List<Object> loadCases(Long executionId) {
-        return jdbcTemplate
-            .query("SELECT * FROM automation_ui_execution_case WHERE execution_id = ?" + " ORDER BY case_index, attempt_no", (rs,
-                                                                                                                              rowNum) -> {
-                Long caseExecutionId = rs.getLong("id");
-                Map<String, Object> result = parseMap(rs.getString("summary_json"));
-                result.put("case_id", rs.getString("case_id"));
-                putIfNotBlank(result, "case_key", rs.getString("case_key"));
-                putIfNotBlank(result, "execution_id", rs.getString("case_execution_key"));
-                putIfNotBlank(result, "case_name", rs.getString("case_name"));
-                result.put("status", rs.getString("status"));
-                putIfNotBlank(result, "executeStatus", rs.getString("execute_status"));
-                putIfNotBlank(result, "executeResult", rs.getString("execute_result"));
-                result.put("step_total", rs.getInt("step_total"));
-                result.put("step_pass", rs.getInt("step_pass"));
-                result.put("step_fail", rs.getInt("step_fail"));
-                result.put("step_skip", rs.getInt("step_skip"));
-                result.put("duration_ms", rs.getLong("duration_ms"));
-                putIfNotBlank(result, "error", rs.getString("error_message"));
-                result.put("steps", loadSteps(caseExecutionId));
-                return (Object)result;
-            }, executionId);
+        AutomationUiQueryBaselineRecorder.recordSql();
+        long queryStartedNanos = AutomationUiQueryBaselineRecorder.startTimedSection();
+        List<Object> cases;
+        try {
+            cases = jdbcTemplate
+                .query("SELECT * FROM automation_ui_execution_case WHERE execution_id = ?" + " ORDER BY case_index, attempt_no", (rs,
+                                                                                                                                  rowNum) -> {
+                    Long caseExecutionId = rs.getLong("id");
+                    Map<String, Object> result = parseMap(rs.getString("summary_json"));
+                    result.put("case_id", rs.getString("case_id"));
+                    putIfNotBlank(result, "case_key", rs.getString("case_key"));
+                    putIfNotBlank(result, "execution_id", rs.getString("case_execution_key"));
+                    putIfNotBlank(result, "case_name", rs.getString("case_name"));
+                    result.put("status", rs.getString("status"));
+                    putIfNotBlank(result, "executeStatus", rs.getString("execute_status"));
+                    putIfNotBlank(result, "executeResult", rs.getString("execute_result"));
+                    result.put("step_total", rs.getInt("step_total"));
+                    result.put("step_pass", rs.getInt("step_pass"));
+                    result.put("step_fail", rs.getInt("step_fail"));
+                    result.put("step_skip", rs.getInt("step_skip"));
+                    result.put("duration_ms", rs.getLong("duration_ms"));
+                    putIfNotBlank(result, "error", rs.getString("error_message"));
+                    result.put("steps", loadSteps(caseExecutionId));
+                    return (Object)result;
+                }, executionId);
+        } finally {
+            AutomationUiQueryBaselineRecorder
+                .recordTiming(AutomationUiQueryBaselineRecorder.Phase.CASE_QUERY, queryStartedNanos);
+        }
+        AutomationUiQueryBaselineRecorder.recordCaseRows(cases.size());
+        return cases;
     }
 
     private List<Object> loadSteps(Long caseExecutionId) {
-        return jdbcTemplate
-            .query("SELECT diagnostics, step_id, source_step_id, step_index, attempt_no, action_type," + " step_name, description, status, duration_ms, locator_source, locator_type, locator_value, error_message" + " FROM automation_ui_execution_step WHERE execution_case_id = ? ORDER BY step_index, attempt_no", (rs,
-                                                                                                                                                                                                                                                                                                                         rowNum) -> {
-                Map<String, Object> step = parseMap(rs.getString("diagnostics"));
-                putIfNotBlank(step, "step_id", rs.getString("step_id"));
-                putIfNotBlank(step, "source_step_id", rs.getString("source_step_id"));
-                step.put("step_index", rs.getInt("step_index"));
-                step.put("attempt_no", rs.getInt("attempt_no"));
-                putIfNotBlank(step, "action_type", rs.getString("action_type"));
-                putIfNotBlank(step, "step_name", rs.getString("step_name"));
-                putIfNotBlank(step, "description", rs.getString("description"));
-                step.put("status", rs.getString("status"));
-                step.put("duration_ms", rs.getLong("duration_ms"));
-                putIfNotBlank(step, "actual_locator_source", rs.getString("locator_source"));
-                putIfNotBlank(step, "actual_locator_type", rs.getString("locator_type"));
-                putIfNotBlank(step, "actual_locator_value", rs.getString("locator_value"));
-                putIfNotBlank(step, "error", rs.getString("error_message"));
-                return (Object)step;
-            }, caseExecutionId);
+        AutomationUiQueryBaselineRecorder.recordSql();
+        long queryStartedNanos = AutomationUiQueryBaselineRecorder.startTimedSection();
+        List<Object> steps;
+        try {
+            steps = jdbcTemplate
+                .query("SELECT diagnostics, step_id, source_step_id, step_index, attempt_no, action_type," + " step_name, description, status, duration_ms, locator_source, locator_type, locator_value, error_message" + " FROM automation_ui_execution_step WHERE execution_case_id = ? ORDER BY step_index, attempt_no", (rs,
+                                                                                                                                                                                                                                                                                                                             rowNum) -> {
+                    Map<String, Object> step = parseMap(rs.getString("diagnostics"));
+                    putIfNotBlank(step, "step_id", rs.getString("step_id"));
+                    putIfNotBlank(step, "source_step_id", rs.getString("source_step_id"));
+                    step.put("step_index", rs.getInt("step_index"));
+                    step.put("attempt_no", rs.getInt("attempt_no"));
+                    putIfNotBlank(step, "action_type", rs.getString("action_type"));
+                    putIfNotBlank(step, "step_name", rs.getString("step_name"));
+                    putIfNotBlank(step, "description", rs.getString("description"));
+                    step.put("status", rs.getString("status"));
+                    step.put("duration_ms", rs.getLong("duration_ms"));
+                    putIfNotBlank(step, "actual_locator_source", rs.getString("locator_source"));
+                    putIfNotBlank(step, "actual_locator_type", rs.getString("locator_type"));
+                    putIfNotBlank(step, "actual_locator_value", rs.getString("locator_value"));
+                    putIfNotBlank(step, "error", rs.getString("error_message"));
+                    return (Object)step;
+                }, caseExecutionId);
+        } finally {
+            AutomationUiQueryBaselineRecorder
+                .recordTiming(AutomationUiQueryBaselineRecorder.Phase.STEP_QUERY, queryStartedNanos);
+        }
+        AutomationUiQueryBaselineRecorder.recordStepRows(steps.size());
+        return steps;
     }
 
     private void deleteExecutions(List<Long> executionIds) {

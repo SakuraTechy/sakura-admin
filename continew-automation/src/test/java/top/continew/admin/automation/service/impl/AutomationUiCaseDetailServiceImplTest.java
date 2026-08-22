@@ -17,6 +17,9 @@
 package top.continew.admin.automation.service.impl;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -31,6 +34,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 import top.continew.admin.automation.converter.AutomationOperationStepReverseAdapter;
 import top.continew.admin.automation.converter.AutomationOperationConfigValidator;
 import top.continew.admin.automation.converter.AutomationRecordingActionResolver;
@@ -43,6 +47,8 @@ import top.continew.admin.automation.model.req.ui.AutomationUiStepConfigEditReq;
 import top.continew.admin.automation.model.req.ui.AutomationUiStepEditReq;
 import top.continew.admin.automation.model.resp.ui.AutomationUiStepDetailResp;
 import top.continew.admin.automation.service.AutomationUiCaseTreeService;
+import top.continew.admin.automation.service.AutomationUiSceneQueryService;
+import top.continew.admin.automation.model.resp.AutomationUiSceneDefinitionResp;
 import top.continew.admin.common.enums.StatusTypeEnum;
 
 @ExtendWith(MockitoExtension.class)
@@ -151,6 +157,23 @@ class AutomationUiCaseDetailServiceImplTest {
             .satisfies(config -> assertThat(config.getParamsValue()).doesNotContain("secret").contains("******"));
         assertThat(detail.getConfigList()).noneMatch(config -> "value".equals(config.getParamsName()) && "secret"
             .equals(config.getParamsValue()));
+    }
+
+    @Test
+    void shouldRejectLegacyFullDetailForProjectedDefinitionWithoutWideFallback() {
+        AutomationUiSceneQueryService queryService = mock(AutomationUiSceneQueryService.class);
+        AutomationUiSceneDefinitionResp.Projected projected = new AutomationUiSceneDefinitionResp.Projected();
+        projected.setSceneDbId(1L);
+        projected.setDefinitionVersion(3L);
+        projected.setProjectionId(9L);
+        when(queryService.definition(1L))
+            .thenReturn(new AutomationUiSceneQueryService.DefinitionView(projected, "etag"));
+        ReflectionTestUtils.setField(service, "sceneQueryService", queryService);
+
+        assertThatThrownBy(() -> service.getCaseDetail(1L, "CASE_001"))
+            .isInstanceOf(top.continew.starter.core.exception.BusinessException.class)
+            .hasMessageContaining("DEFINITION_PROJECTED_NODE_API_REQUIRED");
+        verify(sceneMapper, never()).selectById(1L);
     }
 
     private AutomationUiSceneDO scene(StepDO step) {

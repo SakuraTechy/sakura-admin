@@ -52,6 +52,9 @@ public class StepDO implements Serializable {
 
     private String setting;
 
+    /** 步骤失败后是否仅跳过当前步骤并继续执行后续步骤。 */
+    private Boolean continueOnFailure = false;
+
     private List<Config> configList;
 
     @Data

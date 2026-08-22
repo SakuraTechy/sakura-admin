@@ -18,6 +18,8 @@ package top.continew.admin.automation.model.req;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+import java.util.List;
 import lombok.Data;
 import top.continew.admin.automation.model.enums.AutomationUiExecutionEngineEnum;
 import top.continew.admin.common.enums.StatusTypeEnum;
@@ -42,6 +44,10 @@ public class AutomationUiSceneExecAllReq {
 
     @Schema(description = "所属模块 ID")
     private Long moduleId;
+
+    @Schema(description = "所属模块 ID 范围（包含所选模块及其后代模块）")
+    @Size(max = 1000, message = "所属模块 ID 数量不能超过 1000")
+    private List<Long> moduleIds;
 
     @Schema(description = "场景等级")
     private String level;

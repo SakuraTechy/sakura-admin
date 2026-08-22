@@ -91,6 +91,25 @@ class TestPlanServiceImplTest {
         assertThatThrownBy(() -> resolveExecutionSceneIds(plan, List.of(11L))).hasMessageContaining("关联场景不存在");
     }
 
+    @Test
+    void shouldResetExecutionSummaryWhenStartingPlan() {
+        TestPlanDO plan = plan();
+        plan.setExecutedCount(2);
+        plan.setPassedCount(2);
+        plan.setTestProgress(new java.math.BigDecimal("100"));
+        plan.setRunTime(1000L);
+
+        ReflectionTestUtils.invokeMethod(service, "initializePlanExecution", plan);
+
+        assertThat(plan.getStatus()).isEqualTo("RUNNING");
+        assertThat(plan.getExecutedCount()).isZero();
+        assertThat(plan.getPassedCount()).isZero();
+        assertThat(plan.getTestProgress()).isZero();
+        assertThat(plan.getRunTime()).isZero();
+        assertThat(plan.getActualStartTime()).isNotNull();
+        assertThat(plan.getActualEndTime()).isNull();
+    }
+
     @SuppressWarnings("unchecked")
     private List<Long> resolveExecutionSceneIds(TestPlanDO plan, List<Long> requestedSceneIds) {
         return ReflectionTestUtils.invokeMethod(service, "resolveExecutionSceneIds", plan, requestedSceneIds);

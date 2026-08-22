@@ -1,0 +1,477 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="top.continew.admin.automation.mapper.AutomationUiSceneQueryMapper">
+
+    <resultMap id="sceneSummaryResultMap" type="top.continew.admin.automation.model.resp.AutomationUiSceneSummaryResp">
+        <id property="sceneDbId" column="scene_db_id"/>
+        <result property="sceneKey" column="scene_key"/>
+        <result property="projectDbId" column="project_db_id"/>
+        <result property="versionDbId" column="version_db_id"/>
+        <result property="moduleDbId" column="module_db_id"/>
+        <result property="tags" column="tags"
+                typeHandler="com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler"/>
+        <result property="globalExecutionRevision" column="global_execution_revision"/>
+    </resultMap>
+
+    <resultMap id="definitionMetadataResultMap"
+               type="top.continew.admin.automation.model.query.AutomationUiSceneDefinitionRow">
+        <id property="sceneDbId" column="scene_db_id"/>
+        <result property="sceneKey" column="scene_key"/>
+        <result property="projectDbId" column="project_db_id"/>
+        <result property="versionDbId" column="version_db_id"/>
+        <result property="moduleDbId" column="module_db_id"/>
+        <result property="tags" column="tags"
+                typeHandler="com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler"/>
+        <result property="definitionBytes" column="definition_bytes"/>
+        <result property="definitionStepCount" column="definition_step_count"/>
+    </resultMap>
+
+    <resultMap id="inlineDefinitionResultMap"
+               type="top.continew.admin.automation.model.query.AutomationUiSceneInlineDefinitionRow">
+        <result property="caseList" column="case_list"
+                typeHandler="com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler"/>
+    </resultMap>
+
+    <resultMap id="projectionStateResultMap"
+               type="top.continew.admin.automation.model.query.AutomationUiDefinitionProjectionStateRow">
+        <result property="projectionId" column="published_projection_id"/>
+        <result property="definitionVersion" column="definition_version"/>
+        <result property="sourceSha256" column="source_sha256"/>
+        <result property="status" column="status"/>
+        <result property="caseCount" column="case_count"/>
+        <result property="stepCount" column="step_count"/>
+        <result property="buildToken" column="build_token"/>
+        <result property="publishedProjectionId" column="published_projection_id"/>
+        <result property="retryable" column="retryable"/>
+        <result property="errorId" column="last_error"/>
+    </resultMap>
+
+    <resultMap id="projectedCaseResultMap"
+               type="top.continew.admin.automation.model.query.AutomationUiDefinitionCaseReadRow">
+        <id property="id" column="id"/>
+        <result property="caseId" column="case_id"/>
+        <result property="caseIndex" column="case_index"/>
+        <result property="caseName" column="case_name"/>
+        <result property="stepCount" column="step_count"/>
+        <result property="caseJson" column="case_json"/>
+        <result property="nodeSha256" column="node_sha256"/>
+    </resultMap>
+
+    <resultMap id="projectedStepResultMap"
+               type="top.continew.admin.automation.model.query.AutomationUiDefinitionStepReadRow">
+        <id property="id" column="id"/>
+        <result property="caseId" column="case_id"/>
+        <result property="stepId" column="step_id"/>
+        <result property="stepIndex" column="step_index"/>
+        <result property="stepJson" column="step_json"/>
+        <result property="nodeSha256" column="node_sha256"/>
+    </resultMap>
+
+    <sql id="authorizedSceneJoins">
+        JOIN project_config p
+          ON p.id = s.project_id
+         AND p.del_flag = 3
+        JOIN project_version_config pv
+          ON pv.id = s.version_id
+         AND pv.project_id = s.project_id
+         AND pv.del_flag = 3
+        JOIN project_module_config pm
+          ON pm.id = s.module_id
+         AND pm.project_id = s.project_id
+         AND pm.version_id = s.version_id
+         AND pm.del_flag = 3
+    </sql>
+
+    <sql id="sceneAccessPredicate">
+        AND (
+            #{admin} = TRUE
+            OR p.create_user = #{userId}
+            OR JSON_CONTAINS(COALESCE(p.member, JSON_ARRAY()), JSON_QUOTE(CAST(#{userId} AS CHAR)))
+        )
+    </sql>
+
+    <sql id="summaryQueryPredicate">
+        <if test="query.id != null">AND s.id = #{query.id}</if>
+        <if test="query.sceneId != null and query.sceneId != ''">
+            AND s.scene_id LIKE CONCAT('%', #{query.sceneId}, '%')
+        </if>
+        <if test="query.name != null and query.name != ''">
+            AND s.name LIKE CONCAT('%', #{query.name}, '%')
+        </if>
+        <if test="query.projectId != null">AND s.project_id = #{query.projectId}</if>
+        <if test="query.versionId != null">AND s.version_id = #{query.versionId}</if>
+        <choose>
+            <when test="query.moduleIds != null and !query.moduleIds.isEmpty()">
+                AND s.module_id IN
+                <foreach collection="query.moduleIds" item="moduleId" open="(" separator="," close=")">
+                    #{moduleId}
+                </foreach>
+            </when>
+            <when test="query.moduleId != null">AND s.module_id = #{query.moduleId}</when>
+        </choose>
+        <if test="query.level != null and query.level != ''">AND s.level = #{query.level}</if>
+        <if test="query.status != null">AND s.status = #{query.status}</if>
+        <if test="query.createUser != null">AND s.create_user = #{query.createUser}</if>
+        <if test="query.updateUser != null">AND s.update_user = #{query.updateUser}</if>
+        <if test="query.createTime != null and query.createTime.size() == 2">
+            AND s.create_time BETWEEN #{query.createTime[0]} AND #{query.createTime[1]}
+        </if>
+        <if test="query.excludeIds != null and !query.excludeIds.isEmpty()">
+            AND s.id NOT IN
+            <foreach collection="query.excludeIds" item="excludedId" open="(" separator="," close=")">
+                #{excludedId}
+            </foreach>
+        </if>
+    </sql>
+
+    <!-- 作用域 latest 必须先按 create_time,id 冻结，再应用状态/结果筛选；旧行来源回退与 Java 分类器保持 trim/lower 一致。 -->
+    <sql id="scopedLatestExecutionJoin">
+        LEFT JOIN automation_ui_execution scoped_latest
+          ON scoped_latest.id = (
+            SELECT candidate.id
+            FROM automation_ui_execution candidate
+            WHERE candidate.scene_id = s.id
+            <choose>
+                <when test="executionScope.recordSource == 'debug'">
+                    AND (
+                        candidate.record_source = 'debug'
+                        OR (
+                            candidate.record_source IS NULL
+                            AND (candidate.record_type IS NULL
+                                OR LOWER(TRIM(candidate.record_type)) NOT IN ('internal-interactive-context', 'interactive-execution-context'))
+                            AND candidate.test_plan_id IS NULL
+                            AND candidate.test_report_id IS NULL
+                            AND (candidate.trigger_type IS NULL
+                                OR LOWER(TRIM(candidate.trigger_type)) NOT IN ('test-plan', 'schedule'))
+                        )
+                    )
+                </when>
+                <otherwise>
+                    AND (
+                        candidate.record_source = 'test'
+                        OR (
+                            candidate.record_source IS NULL
+                            AND (candidate.record_type IS NULL
+                                OR LOWER(TRIM(candidate.record_type)) NOT IN ('internal-interactive-context', 'interactive-execution-context'))
+                            AND (
+                                candidate.test_plan_id IS NOT NULL
+                                OR candidate.test_report_id IS NOT NULL
+                                OR LOWER(TRIM(candidate.trigger_type)) IN ('test-plan', 'schedule')
+                            )
+                        )
+                    )
+                </otherwise>
+            </choose>
+            <if test="executionScope.testPlanId != null">
+                AND candidate.test_plan_id = #{executionScope.testPlanId}
+            </if>
+            <if test="executionScope.testReportId != null">
+                AND candidate.test_report_id = #{executionScope.testReportId}
+            </if>
+            <if test="executionScope.buildNumber != null">
+                AND candidate.build_number = #{executionScope.buildNumber}
+            </if>
+            ORDER BY candidate.create_time DESC, candidate.id DESC
+            LIMIT 1
+          )
+    </sql>
+
+    <sql id="scopedLatestExecutionFilter">
+        <if test="query.executionMatchedOnly == true">
+            AND scoped_latest.id IS NOT NULL
+        </if>
+        <if test="query.executeStatus != null and query.executeStatus != ''">
+            AND scoped_latest.status = #{query.executeStatus}
+        </if>
+        <if test="query.executeResult != null and query.executeResult != ''">
+            AND scoped_latest.result = #{query.executeResult}
+        </if>
+    </sql>
+
+    <sql id="summaryColumns">
+        s.id AS scene_db_id,
+        s.scene_id AS scene_key,
+        s.name,
+        s.description,
+        s.project_id AS project_db_id,
+        p.name AS project_name,
+        s.version_id AS version_db_id,
+        pv.name AS version_name,
+        s.module_id AS module_db_id,
+        pm.path AS module_path,
+        s.level,
+        s.status,
+        s.tags,
+        COALESCE(s.definition_version, 0) AS definition_version,
+        COALESCE(es.execution_revision, 0) AS global_execution_revision,
+        COALESCE(cu.nickname, '-') AS create_user_string,
+        COALESCE(uu.nickname, '-') AS update_user_string,
+        s.create_time,
+        s.update_time
+    </sql>
+
+    <!-- 操作目录只需要项目 ID；禁止为此加载 case_list 和历史 JSON。 -->
+    <select id="selectAuthorizedProjectId" resultType="java.lang.Long">
+        SELECT s.project_id
+        FROM automation_ui_scene s
+        <include refid="authorizedSceneJoins"/>
+        WHERE s.id = #{sceneDbId}
+          AND s.del_flag = 3
+        <include refid="sceneAccessPredicate"/>
+        LIMIT 1
+    </select>
+
+    <!-- 历史 Artifact 仅保存 scene_key；兼容读取先解析成已授权数据库 ID。 -->
+    <select id="selectAuthorizedSceneDbIdByKey" resultType="java.lang.Long">
+        SELECT s.id
+        FROM automation_ui_scene s
+        <include refid="authorizedSceneJoins"/>
+        WHERE (s.scene_id = #{sceneKey} OR CAST(s.id AS CHAR) = #{sceneKey})
+          AND s.del_flag = 3
+        <include refid="sceneAccessPredicate"/>
+        ORDER BY CASE WHEN s.scene_id = #{sceneKey} THEN 0 ELSE 1 END
+        LIMIT 1
+    </select>
+
+    <select id="countSummaries" resultType="long">
+        SELECT COUNT(*)
+        FROM automation_ui_scene s
+        <include refid="authorizedSceneJoins"/>
+        WHERE s.del_flag = 3
+        <include refid="sceneAccessPredicate"/>
+        <include refid="summaryQueryPredicate"/>
+    </select>
+
+    <select id="selectSummaryPage" resultMap="sceneSummaryResultMap">
+        SELECT <include refid="summaryColumns"/>
+        FROM automation_ui_scene s
+        <include refid="authorizedSceneJoins"/>
+        LEFT JOIN automation_ui_scene_execution_state es ON es.scene_id = s.id
+        LEFT JOIN sys_user cu ON cu.id = s.create_user
+        LEFT JOIN sys_user uu ON uu.id = s.update_user
+        WHERE s.del_flag = 3
+        <include refid="sceneAccessPredicate"/>
+        <include refid="summaryQueryPredicate"/>
+        ORDER BY
+        <choose>
+            <when test="sortField == 'sceneDbId'">s.id</when>
+            <when test="sortField == 'name'">s.name</when>
+            <when test="sortField == 'updateTime'">s.update_time</when>
+            <otherwise>s.create_time</otherwise>
+        </choose>
+        <choose>
+            <when test="ascending">ASC</when>
+            <otherwise>DESC</otherwise>
+        </choose>, s.id
+        <choose>
+            <when test="ascending">ASC</when>
+            <otherwise>DESC</otherwise>
+        </choose>
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countScopedSummaries" resultType="long">
+        SELECT COUNT(*)
+        FROM automation_ui_scene s
+        <include refid="authorizedSceneJoins"/>
+        <include refid="scopedLatestExecutionJoin"/>
+        WHERE s.del_flag = 3
+        <include refid="sceneAccessPredicate"/>
+        <include refid="summaryQueryPredicate"/>
+        <include refid="scopedLatestExecutionFilter"/>
+    </select>
+
+    <select id="selectScopedSummaryPage" resultMap="sceneSummaryResultMap">
+        SELECT <include refid="summaryColumns"/>
+        FROM automation_ui_scene s
+        <include refid="authorizedSceneJoins"/>
+        LEFT JOIN automation_ui_scene_execution_state es ON es.scene_id = s.id
+        LEFT JOIN sys_user cu ON cu.id = s.create_user
+        LEFT JOIN sys_user uu ON uu.id = s.update_user
+        <include refid="scopedLatestExecutionJoin"/>
+        WHERE s.del_flag = 3
+        <include refid="sceneAccessPredicate"/>
+        <include refid="summaryQueryPredicate"/>
+        <include refid="scopedLatestExecutionFilter"/>
+        ORDER BY
+        <choose>
+            <when test="sortField == 'sceneDbId'">s.id</when>
+            <when test="sortField == 'name'">s.name</when>
+            <when test="sortField == 'updateTime'">s.update_time</when>
+            <otherwise>s.create_time</otherwise>
+        </choose>
+        <choose>
+            <when test="ascending">ASC</when>
+            <otherwise>DESC</otherwise>
+        </choose>, s.id
+        <choose>
+            <when test="ascending">ASC</when>
+            <otherwise>DESC</otherwise>
+        </choose>
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="selectSummaries" resultMap="sceneSummaryResultMap">
+        SELECT <include refid="summaryColumns"/>
+        FROM automation_ui_scene s
+        <include refid="authorizedSceneJoins"/>
+        LEFT JOIN automation_ui_scene_execution_state es ON es.scene_id = s.id
+        LEFT JOIN sys_user cu ON cu.id = s.create_user
+        LEFT JOIN sys_user uu ON uu.id = s.update_user
+        WHERE s.del_flag = 3
+          AND s.id IN
+        <foreach collection="sceneDbIds" item="sceneDbId" open="(" separator="," close=")">
+            #{sceneDbId}
+        </foreach>
+        <include refid="sceneAccessPredicate"/>
+        ORDER BY s.id
+    </select>
+
+    <select id="selectRevisions"
+            resultType="top.continew.admin.automation.model.resp.AutomationUiSceneGlobalRevisionResp">
+        SELECT s.id AS scene_db_id,
+               COALESCE(es.execution_revision, 0) AS global_execution_revision,
+               es.update_time
+        FROM automation_ui_scene s
+        <include refid="authorizedSceneJoins"/>
+        LEFT JOIN automation_ui_scene_execution_state es ON es.scene_id = s.id
+        WHERE s.del_flag = 3
+          AND s.id IN
+        <foreach collection="sceneDbIds" item="sceneDbId" open="(" separator="," close=")">
+            #{sceneDbId}
+        </foreach>
+        <include refid="sceneAccessPredicate"/>
+        ORDER BY s.id
+    </select>
+
+    <select id="selectDefinitionMetadata" resultMap="definitionMetadataResultMap">
+        SELECT s.id AS scene_db_id,
+               s.scene_id AS scene_key,
+               s.name,
+               s.description,
+               s.project_id AS project_db_id,
+               p.name AS project_name,
+               s.version_id AS version_db_id,
+               pv.name AS version_name,
+               s.module_id AS module_db_id,
+               pm.path AS module_path,
+               s.level,
+               s.status,
+               s.tags,
+               COALESCE(s.definition_version, 0) AS definition_version,
+               s.definition_size_bytes AS definition_bytes,
+               s.definition_step_count AS definition_step_count
+        FROM automation_ui_scene s
+        <include refid="authorizedSceneJoins"/>
+        WHERE s.id = #{sceneDbId}
+          AND s.del_flag = 3
+        <include refid="sceneAccessPredicate"/>
+    </select>
+
+    <select id="selectInlineDefinition" resultMap="inlineDefinitionResultMap">
+        SELECT s.case_list
+        FROM automation_ui_scene s
+        <include refid="authorizedSceneJoins"/>
+        WHERE s.id = #{sceneDbId}
+          AND COALESCE(s.definition_version, 0) = #{definitionVersion}
+          AND s.del_flag = 3
+        <include refid="sceneAccessPredicate"/>
+    </select>
+
+    <select id="selectProjectionState" resultMap="projectionStateResultMap">
+        SELECT rs.published_projection_id, rs.definition_version, rs.source_sha256, rs.status,
+               rs.case_count, rs.step_count, rs.build_token, (rs.next_retry_at IS NOT NULL) AS retryable,
+               rs.last_error
+        FROM automation_ui_scene s
+        <include refid="authorizedSceneJoins"/>
+        JOIN automation_ui_scene_definition_read_state rs
+          ON rs.scene_id = s.id
+         AND rs.definition_version = COALESCE(s.definition_version, 0)
+        WHERE s.id = #{sceneDbId} AND s.del_flag = 3
+          <include refid="sceneAccessPredicate"/>
+    </select>
+
+    <sql id="projectionAuthorization">
+        JOIN automation_ui_scene s ON s.id = #{sceneDbId} AND s.id = c.scene_id
+        <include refid="authorizedSceneJoins"/>
+        JOIN automation_ui_scene_definition_read_state rs
+          ON rs.scene_id = s.id
+         AND rs.definition_version = COALESCE(s.definition_version, 0)
+         AND rs.status = 'ready'
+         AND rs.published_projection_id = #{projectionId}
+        WHERE s.id = #{sceneDbId} AND s.del_flag = 3
+          AND COALESCE(s.definition_version, 0) = #{definitionVersion}
+          <include refid="sceneAccessPredicate"/>
+    </sql>
+
+    <sql id="stepProjectionAuthorization">
+        JOIN automation_ui_scene s ON s.id = #{sceneDbId} AND s.id = st.scene_id
+        <include refid="authorizedSceneJoins"/>
+        JOIN automation_ui_scene_definition_read_state rs
+          ON rs.scene_id = s.id
+         AND rs.definition_version = COALESCE(s.definition_version, 0)
+         AND rs.status = 'ready'
+         AND rs.published_projection_id = #{projectionId}
+        WHERE s.id = #{sceneDbId} AND s.del_flag = 3
+          AND COALESCE(s.definition_version, 0) = #{definitionVersion}
+          <include refid="sceneAccessPredicate"/>
+    </sql>
+
+    <select id="countProjectedCases" resultType="long">
+        SELECT COUNT(*) FROM automation_ui_scene_definition_case_read c
+        <include refid="projectionAuthorization"/>
+        AND c.projection_id = rs.published_projection_id
+        <if test="keyword != null and keyword != ''">
+            AND (c.case_id LIKE CONCAT('%', #{keyword}, '%') ESCAPE '\\'
+              OR c.case_name LIKE CONCAT('%', #{keyword}, '%') ESCAPE '\\')
+        </if>
+    </select>
+
+    <select id="selectProjectedCases" resultMap="projectedCaseResultMap">
+        SELECT c.id, c.case_id, c.case_index, c.case_name, c.step_count, CAST(c.case_json AS CHAR) AS case_json,
+               c.node_sha256
+        FROM automation_ui_scene_definition_case_read c
+        <include refid="projectionAuthorization"/>
+        AND c.projection_id = rs.published_projection_id
+        <if test="keyword != null and keyword != ''">
+            AND (c.case_id LIKE CONCAT('%', #{keyword}, '%') ESCAPE '\\'
+              OR c.case_name LIKE CONCAT('%', #{keyword}, '%') ESCAPE '\\')
+        </if>
+        ORDER BY c.case_index, c.id
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="selectProjectedCase" resultMap="projectedCaseResultMap">
+        SELECT c.id, c.case_id, c.case_index, c.case_name, c.step_count, CAST(c.case_json AS CHAR) AS case_json,
+               c.node_sha256
+        FROM automation_ui_scene_definition_case_read c
+        <include refid="projectionAuthorization"/>
+        AND c.projection_id = rs.published_projection_id AND c.case_id = #{caseId}
+        LIMIT 1
+    </select>
+
+    <select id="countProjectedSteps" resultType="long">
+        SELECT COUNT(*) FROM automation_ui_scene_definition_step_read st
+        <include refid="stepProjectionAuthorization"/>
+        AND st.projection_id = rs.published_projection_id AND st.case_id = #{caseId}
+    </select>
+
+    <select id="selectProjectedSteps" resultMap="projectedStepResultMap">
+        SELECT st.id, st.case_id, st.step_id, st.step_index, CAST(st.step_json AS CHAR) AS step_json,
+               st.node_sha256
+        FROM automation_ui_scene_definition_step_read st
+        <include refid="stepProjectionAuthorization"/>
+        AND st.projection_id = rs.published_projection_id AND st.case_id = #{caseId}
+        ORDER BY st.step_index, st.id
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="selectProjectedStep" resultMap="projectedStepResultMap">
+        SELECT st.id, st.case_id, st.step_id, st.step_index, CAST(st.step_json AS CHAR) AS step_json,
+               st.node_sha256
+        FROM automation_ui_scene_definition_step_read st
+        <include refid="stepProjectionAuthorization"/>
+        AND st.projection_id = rs.published_projection_id AND st.case_id = #{caseId} AND st.step_id = #{stepId}
+        LIMIT 1
+    </select>
+</mapper>

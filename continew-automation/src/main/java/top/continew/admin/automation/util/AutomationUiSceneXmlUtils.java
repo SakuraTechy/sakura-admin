@@ -252,6 +252,9 @@ public final class AutomationUiSceneXmlUtils {
                 putIfNotBlank(orderedAttributes, "operationType", stepDO.getOperationType());
                 putIfNotBlank(orderedAttributes, "operationName", stepDO.getOperationName());
                 putIfNotBlank(orderedAttributes, "operationValue", stepDO.getOperationValue());
+                if (Boolean.TRUE.equals(stepDO.getContinueOnFailure())) {
+                    orderedAttributes.put("continueOnFailure", "true");
+                }
                 putIfNotBlank(orderedAttributes, "typeCode", configValue(stepDO, "type_code"));
                 putIfNotBlank(orderedAttributes, "typeLabel", configValue(stepDO, "type_label"));
                 putIfNotBlank(orderedAttributes, "methodCode", configValue(stepDO, "method_code"));

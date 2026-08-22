@@ -20,6 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
 
 import java.util.List;
 import java.util.Map;
@@ -105,6 +106,20 @@ class AutomationEnvironmentResourceServiceImplTest {
         assertThatThrownBy(() -> service.resolve(7L, 11L, "CERTIFICATE", Map
             .of("scope", "project_environment", "slot_id", 103L))).hasMessageContaining("测试环境")
             .hasMessageContaining("客户端证书");
+    }
+
+    @Test
+    void shouldCreateCustomDatabaseSlotForAdditionalDatabase() {
+        when(slotMapper.selectList(any())).thenReturn(List
+            .of(slot(101L, 11L, "APP_SERVER", "应用服务器", "SERVER"), slot(102L, 11L, "BUSINESS_DB", "业务数据库", "DATABASE"), slot(103L, 11L, "CUSTOM_DB_1", "自定义数据库1", "DATABASE"), slot(104L, 11L, "CLIENT_LICENSE", "客户端证书", "CERTIFICATE")));
+
+        var result = service.createCustomDatabaseSlot(11L);
+
+        assertThat(result.getResourceCode()).isEqualTo("CUSTOM_DB_2");
+        assertThat(result.getResourceName()).isEqualTo("自定义数据库2");
+        assertThat(result.getResourceKind()).isEqualTo("DATABASE");
+        assertThat(result.getRequired()).isFalse();
+        verify(slotMapper).insert(any(ProjectResourceSlotDO.class));
     }
 
     private ProjectEnvironmentConfigDO environment(Long id, Long projectId, String name) {

@@ -231,6 +231,53 @@ class AutomationPlaywrightCaseServiceImplTest {
     }
 
     @Test
+    void shouldResolveSelectAllCasesFromExpectedDefinitionVersion() {
+        AutomationUiSceneDO storedScene = scene(1L);
+        storedScene.setDefinitionVersion(7L);
+        CaseDO secondCase = new CaseDO();
+        secondCase.setId("CASE_002");
+        secondCase.setName("查询");
+        secondCase.setStepList(List.of(step("STEP_002", "查询用户", 1, StatusTypeEnum.ENABLE)));
+        storedScene.setCaseList(List.of(storedScene.getCaseList().get(0), secondCase));
+        when(sceneMapper.selectById(100L)).thenReturn(storedScene);
+        when(environmentMapper.selectById(47L)).thenReturn(environment(1L));
+        AutomationPlaywrightBatchCreateReq request = batchRequest();
+        request.setCaseIds(List.of());
+        request.setSelectAllCases(true);
+        request.setExpectedDefinitionVersion(7L);
+
+        AutomationPlaywrightBatchResp response = service.createBatch(request);
+
+        assertThat(response.getCases()).extracting(AutomationPlaywrightBatchResp.CaseExecution::getCaseId)
+            .containsExactly("CASE_001", "CASE_002");
+    }
+
+    @Test
+    void shouldRejectSelectAllCasesWhenDefinitionChanged() {
+        AutomationUiSceneDO storedScene = scene(1L);
+        storedScene.setDefinitionVersion(8L);
+        when(sceneMapper.selectById(100L)).thenReturn(storedScene);
+        when(environmentMapper.selectById(47L)).thenReturn(environment(1L));
+        AutomationPlaywrightBatchCreateReq request = batchRequest();
+        request.setCaseIds(List.of());
+        request.setSelectAllCases(true);
+        request.setExpectedDefinitionVersion(7L);
+
+        assertThatThrownBy(() -> service.createBatch(request)).hasMessageContaining("DEFINITION_VERSION_CONFLICT");
+    }
+
+    @Test
+    void shouldRejectAmbiguousExplicitAndSelectAllCaseScope() {
+        when(sceneMapper.selectById(100L)).thenReturn(scene(1L));
+        when(environmentMapper.selectById(47L)).thenReturn(environment(1L));
+        AutomationPlaywrightBatchCreateReq request = batchRequest();
+        request.setSelectAllCases(true);
+        request.setExpectedDefinitionVersion(1L);
+
+        assertThatThrownBy(() -> service.createBatch(request)).hasMessageContaining("不能同时指定 caseIds 和 selectAllCases");
+    }
+
+    @Test
     @SuppressWarnings("unchecked")
     void shouldFreezeManagedCdpSessionConfigAtBatchLevel() {
         AutomationUiSceneDO storedScene = scene(1L);

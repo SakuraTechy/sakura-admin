@@ -25,6 +25,7 @@ import java.util.Objects;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import top.continew.admin.automation.converter.AutomationRecordingActionResolver;
 import top.continew.admin.automation.mapper.AutomationUiSceneMapper;
@@ -45,6 +46,7 @@ import top.continew.admin.automation.model.resp.ui.AutomationUiStepDetailResp;
 import top.continew.admin.automation.service.AutomationUiCaseDetailService;
 import top.continew.admin.automation.service.AutomationUiCaseTreeService;
 import top.continew.admin.automation.service.AutomationOperationCatalogService;
+import top.continew.admin.automation.service.AutomationUiSceneQueryService;
 import top.continew.starter.core.exception.BusinessException;
 
 /** DTO 组装器和服务端字段白名单的唯一实现。 */
@@ -63,10 +65,14 @@ public class AutomationUiCaseDetailServiceImpl implements AutomationUiCaseDetail
     private final AutomationOperationCatalogService operationCatalogService;
     private final ObjectMapper objectMapper;
 
+    /** 单元测试可直接构造旧依赖；Spring 运行时必须优先走带对象授权的分层读服务。 */
+    @Autowired(required = false)
+    private AutomationUiSceneQueryService sceneQueryService;
+
     @Override
     public AutomationUiCaseDetailResp getCaseDetail(Long sceneDbId, String caseId) {
         ResolvedCase resolved = resolveCase(sceneDbId, caseId);
-        return toCaseDetail(resolved.scene(), resolved.caseDO());
+        return toCaseDetail(resolved.definitionVersion(), resolved.caseDO());
     }
 
     @Override
@@ -77,6 +83,7 @@ public class AutomationUiCaseDetailServiceImpl implements AutomationUiCaseDetail
 
     @Override
     public AutomationUiCaseDetailResp updateCase(Long sceneDbId, AutomationUiCaseEditReq request) {
+        requireLegacyDetailCompatible(sceneDbId);
         CaseDO command = new CaseDO();
         command.setId(request.getId());
         command.setName(request.getName());
@@ -90,6 +97,7 @@ public class AutomationUiCaseDetailServiceImpl implements AutomationUiCaseDetail
 
     @Override
     public AutomationUiStepDetailResp updateStep(Long sceneDbId, AutomationUiStepEditReq request) {
+        requireLegacyDetailCompatible(sceneDbId);
         StepDO command = new StepDO();
         command.setPid(request.getPid());
         command.setId(request.getId());
@@ -106,6 +114,7 @@ public class AutomationUiCaseDetailServiceImpl implements AutomationUiCaseDetail
         command.setOperationType(operationType);
         command.setOperationName(request.getOperationName());
         command.setOperationValue(request.getOperationValue());
+        command.setContinueOnFailure(request.getContinueOnFailure());
         command.setExpectedDefinitionVersion(request.getExpectedDefinitionVersion());
         List<StepDO.Config> configs = new ArrayList<>();
         if (request.getConfigList() != null) {
@@ -134,7 +143,7 @@ public class AutomationUiCaseDetailServiceImpl implements AutomationUiCaseDetail
         return getStepDetail(sceneDbId, request.getPid(), request.getId());
     }
 
-    private AutomationUiCaseDetailResp toCaseDetail(AutomationUiSceneDO scene, CaseDO caseDO) {
+    private AutomationUiCaseDetailResp toCaseDetail(Long definitionVersion, CaseDO caseDO) {
         AutomationUiCaseDetailResp result = new AutomationUiCaseDetailResp();
         result.setId(caseDO.getId());
         result.setName(caseDO.getName());
@@ -142,7 +151,7 @@ public class AutomationUiCaseDetailServiceImpl implements AutomationUiCaseDetail
         result.setType(caseDO.getType());
         result.setOrder(caseDO.getOrder());
         result.setStatus(caseDO.getStatus());
-        result.setDefinitionVersion(scene.getDefinitionVersion());
+        result.setDefinitionVersion(definitionVersion);
         result.setExecutionConfig(toExecutionConfigResp(caseDO.getExecutionConfig()));
         result.setOrigin(toOriginResp(caseDO.getOrigin()));
         List<AutomationUiStepDetailResp> steps = caseDO.getStepList() == null
@@ -186,6 +195,7 @@ public class AutomationUiCaseDetailServiceImpl implements AutomationUiCaseDetail
         recoverOriginalRecordingValues(values, masked);
         result.setValueMasked(masked);
         result.setOperationValue(masked ? "******" : step.getOperationValue());
+        result.setContinueOnFailure(Boolean.TRUE.equals(step.getContinueOnFailure()));
         result.setTargetSummary(resolveTargetSummary(values));
         result.setConfigList(toConfigResp(step, masked, values));
         return result;
@@ -376,13 +386,27 @@ public class AutomationUiCaseDetailServiceImpl implements AutomationUiCaseDetail
     }
 
     private ResolvedCase resolveCase(Long sceneDbId, String caseId) {
+        if (sceneQueryService != null) {
+            AutomationUiSceneQueryService.DefinitionView definition = sceneQueryService.definition(sceneDbId);
+            if (!(definition
+                .body() instanceof top.continew.admin.automation.model.resp.AutomationUiSceneDefinitionResp.Inline inline)) {
+                // projected 场景禁止旧接口重新组装完整 caseList；前端必须切换到 case/step 节点 API。
+                throw new BusinessException("DEFINITION_PROJECTED_NODE_API_REQUIRED：大场景请使用 Definition 节点接口");
+            }
+            if (inline.getCaseList() != null)
+                for (CaseDO item : inline.getCaseList()) {
+                    if (item != null && Objects.equals(item.getId(), caseId))
+                        return new ResolvedCase(inline.getDefinitionVersion(), item);
+                }
+            throw new BusinessException("CASE_NOT_FOUND：用例不存在");
+        }
         AutomationUiSceneDO scene = sceneMapper.selectById(sceneDbId);
         if (scene == null)
             throw new BusinessException("SCENE_NOT_FOUND：场景不存在");
         if (scene.getCaseList() != null)
             for (CaseDO item : scene.getCaseList()) {
                 if (item != null && Objects.equals(item.getId(), caseId))
-                    return new ResolvedCase(scene, item);
+                    return new ResolvedCase(scene.getDefinitionVersion(), item);
             }
         throw new BusinessException("CASE_NOT_FOUND：用例不存在");
     }
@@ -392,14 +416,22 @@ public class AutomationUiCaseDetailServiceImpl implements AutomationUiCaseDetail
         if (resolved.caseDO().getStepList() != null)
             for (StepDO step : resolved.caseDO().getStepList()) {
                 if (step != null && Objects.equals(step.getId(), stepId))
-                    return new ResolvedStep(resolved.scene(), step);
+                    return new ResolvedStep(step);
             }
         throw new BusinessException("STEP_NOT_FOUND：步骤不存在");
     }
 
-    private record ResolvedCase(AutomationUiSceneDO scene, CaseDO caseDO) {
+    private record ResolvedCase(Long definitionVersion, CaseDO caseDO) {
     }
 
-    private record ResolvedStep(AutomationUiSceneDO scene, StepDO step) {
+    private void requireLegacyDetailCompatible(Long sceneDbId) {
+        if (sceneQueryService != null && !(sceneQueryService.definition(sceneDbId)
+            .body() instanceof top.continew.admin.automation.model.resp.AutomationUiSceneDefinitionResp.Inline)) {
+            // 在节点写接口接管前先拒绝旧 projected 编辑，避免写成功后因旧详情回读失败而返回误导性错误。
+            throw new BusinessException("DEFINITION_PROJECTED_NODE_API_REQUIRED：大场景请使用 Definition 节点接口");
+        }
+    }
+
+    private record ResolvedStep(StepDO step) {
     }
 }

@@ -69,7 +69,8 @@ public class AutomationExecutionAgentClient {
     }
 
     public Map<String, Object> health() {
-        return exchange("GET", "/health", null);
+        // 健康检查位于页面请求链，使用独立短超时且不重试，不能复用任务接口的 35 秒等待。
+        return exchange("GET", "/health", null, Duration.ofSeconds(2), false);
     }
 
     public ArtifactDownload downloadArtifact(String taskId) {
@@ -114,13 +115,21 @@ public class AutomationExecutionAgentClient {
     }
 
     private Map<String, Object> exchange(String method, String path, Object body) {
+        return exchange(method, path, body, Duration.ofSeconds(35), true);
+    }
+
+    private Map<String, Object> exchange(String method,
+                                         String path,
+                                         Object body,
+                                         Duration requestTimeout,
+                                         boolean retryTransportFailure) {
         if (token == null || token.isBlank()) {
             throw new BusinessException("执行 Agent 令牌未配置");
         }
         URI uri = requireLoopbackUri(path);
         try {
             HttpRequest.Builder builder = HttpRequest.newBuilder(uri)
-                .timeout(Duration.ofSeconds(35))
+                .timeout(requestTimeout)
                 .header("Authorization", "Bearer " + token)
                 .header("Accept", "application/json");
             if (body == null) {
@@ -134,6 +143,9 @@ public class AutomationExecutionAgentClient {
             try {
                 response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
             } catch (IOException firstFailure) {
+                if (!retryTransportFailure) {
+                    throw firstFailure;
+                }
                 // Agent 重启或连接半关闭时 Java 可能报“header parser received no bytes”。
                 // submit 使用 taskId 幂等，短暂重试不会重复执行；其它请求也只重试一次。
                 try {

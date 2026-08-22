@@ -29,7 +29,12 @@ public interface AutomationEnvironmentResourceService {
     String DATABASE = "DATABASE";
     String CERTIFICATE = "CERTIFICATE";
 
-    List<AutomationEnvironmentResourceResp> listSlots(Long projectId, String kind);
+    List<AutomationEnvironmentResourceResp> listSlots(Long projectId, String kind, Long environmentId);
+
+    /** 创建一个项目级自定义数据库角色，供各环境分别绑定实际数据库。 */
+    AutomationEnvironmentResourceResp createCustomDatabaseSlot(Long projectId);
+
+    void deleteCustomDatabaseSlot(Long slotId);
 
     List<AutomationEnvironmentResourceResp> listEnvironmentResources(Long environmentId);
 

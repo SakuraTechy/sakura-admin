@@ -113,6 +113,12 @@ public class AutomationUiSceneDO extends BaseDO {
      */
     private Long definitionVersion;
 
+    /** caseList 紧凑 JSON 的 UTF-8 字节数，查询热路径禁止再次扫描大 JSON。 */
+    private Long definitionSizeBytes;
+
+    /** 后端解析得到的定义步骤数，和 definitionVersion 同事务更新。 */
+    private Integer definitionStepCount;
+
     /**
      * 关联的测试计划
      */

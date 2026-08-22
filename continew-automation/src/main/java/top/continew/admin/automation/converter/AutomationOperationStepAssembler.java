@@ -129,6 +129,8 @@ public class AutomationOperationStepAssembler {
         }
         canonical.put("action_type", method.getActionType());
         canonical.putAll(methodConfig);
+        // 失败跳过是步骤级控制，不依赖具体操作类型，必须同时进入新执行器快照。
+        canonical.put("continue_on_failure", Boolean.TRUE.equals(step.getContinueOnFailure()));
         applyLocator(canonical, methodConfig);
         applyCanonicalCompatibility(method, canonical);
         canonical.put("description", step.getName());

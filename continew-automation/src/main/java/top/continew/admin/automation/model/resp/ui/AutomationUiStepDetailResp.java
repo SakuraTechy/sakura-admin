@@ -41,6 +41,7 @@ public class AutomationUiStepDetailResp implements Serializable {
     private String operationType;
     private String operationName;
     private String operationValue;
+    private Boolean continueOnFailure;
     private String methodCode;
     private Integer methodVersion;
     private Map<String, Object> methodConfig;

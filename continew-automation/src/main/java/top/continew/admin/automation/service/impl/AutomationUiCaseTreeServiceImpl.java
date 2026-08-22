@@ -31,6 +31,7 @@ import top.continew.admin.automation.converter.AutomationOperationStepAssembler;
 import top.continew.admin.automation.converter.AutomationOperationStepReverseAdapter;
 import top.continew.admin.automation.mapper.AutomationPlaywrightJobMapper;
 import top.continew.admin.automation.mapper.AutomationUiSceneMapper;
+import top.continew.admin.automation.mapper.AutomationUiSceneQueryMapper;
 import top.continew.admin.automation.model.entity.AutomationUiSceneDO;
 import top.continew.admin.automation.model.entity.ui.CaseDO;
 import top.continew.admin.automation.model.entity.ui.CaseExecutionConfigDO;
@@ -47,6 +48,7 @@ import top.continew.admin.automation.model.req.ui.AutomationUiStepCopyReq;
 import top.continew.admin.automation.model.resp.AutomationUiTreeMutationResp;
 import top.continew.admin.automation.model.resp.AutomationUiTreeNodeRefResp;
 import top.continew.admin.automation.service.AutomationUiCaseTreeService;
+import top.continew.admin.automation.support.AutomationUiSceneAccessScopeResolver;
 import top.continew.admin.automation.util.AutomationUiSceneStatusCodes;
 import top.continew.starter.core.exception.BusinessException;
 
@@ -66,12 +68,19 @@ public class AutomationUiCaseTreeServiceImpl implements AutomationUiCaseTreeServ
             .entry("TREE_SOURCE_NOT_FOUND", "源节点不存在，请刷新后重试"), Map.entry("TREE_TARGET_NOT_FOUND", "目标节点不存在，请刷新后重试"), Map
                 .entry("TREE_DROP_NOT_ALLOWED", "当前节点不能移动到所选位置"), Map
                     .entry("TREE_DELETE_TARGET_EMPTY", "请选择要删除的用例或步骤"), Map
-                        .entry("TREE_CONCURRENT_MODIFICATION", "场景定义已被其他操作修改，请刷新后重试"), Map
-                            .entry("TREE_SCENE_EXECUTING", "场景正在执行，暂不能修改用例树"));
+                        .entry("SCENE_NOT_FOUND_OR_ACCESS_DENIED", "场景不存在或无访问权限"), Map
+                            .entry("TREE_CONCURRENT_MODIFICATION", "场景定义已被其他操作修改，请刷新后重试"), Map
+                                .entry("TREE_SCENE_EXECUTING", "场景正在执行，暂不能修改用例树"));
     private static final Set<String> IMMUTABLE_RECORDING_CONFIGS = Set
         .of("playwright_step", "original_case_id", "original_step_id", "recording_id", "value_masked", "target_selector", "target_xpath", "url", "screenshot_url", "screenshot_file_id", "screenshot_path", "screenshot_present");
 
     private final AutomationUiSceneMapper sceneMapper;
+    @jakarta.annotation.Resource
+    private top.continew.admin.automation.service.AutomationUiDefinitionProjectionService definitionProjectionService;
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private AutomationUiSceneQueryMapper sceneQueryMapper;
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private AutomationUiSceneAccessScopeResolver accessScopeResolver;
     private final AutomationPlaywrightJobMapper playwrightJobMapper;
     private final AutomationOperationStepAssembler operationStepAssembler;
     private final AutomationOperationStepReverseAdapter operationStepReverseAdapter;
@@ -168,6 +177,9 @@ public class AutomationUiCaseTreeServiceImpl implements AutomationUiCaseTreeServ
         }
         // 展示接口返回的是掩码，编辑或复制时必须保留数据库中的真实操作值。
         target.setOperationValue(maskedValue ? existingOperationValue : assembledRequest.getOperationValue());
+        if (assembledRequest.getContinueOnFailure() != null) {
+            target.setContinueOnFailure(assembledRequest.getContinueOnFailure());
+        }
         target.setStatus(assembledRequest.getStatus());
         boolean replaceCanonicalStep = hasConfig(assembledRequest, "method_code") || "admin-manual"
             .equals(configValue(assembledRequest, "source")) || isInfrastructureStep(assembledRequest);
@@ -413,6 +425,7 @@ public class AutomationUiCaseTreeServiceImpl implements AutomationUiCaseTreeServ
                                                 Long expectedVersion,
                                                 boolean initializeEmptyDefinition,
                                                 Mutation mutation) {
+        requireMutationAccess(id);
         // 自定义 FOR UPDATE 查询只负责加锁；JSON 字段需由 MyBatis-Plus 的实体映射读取，
         // 否则 JacksonTypeHandler 不会还原 caseList，合法移动会被误判为空数据。
         if (sceneMapper.selectByIdForUpdate(id) == null)
@@ -444,7 +457,19 @@ public class AutomationUiCaseTreeServiceImpl implements AutomationUiCaseTreeServ
         if (updated != 1)
             throw error("TREE_CONCURRENT_MODIFICATION");
         response.setDefinitionVersion(expectedVersion + 1);
+        if (definitionProjectionService != null)
+            definitionProjectionService.recordDefinitionWrite(id, expectedVersion + 1, scene.getCaseList());
         return response;
+    }
+
+    private void requireMutationAccess(Long sceneDbId) {
+        if (sceneQueryMapper == null || accessScopeResolver == null) {
+            return;
+        }
+        AutomationUiSceneAccessScopeResolver.AccessScope scope = accessScopeResolver.currentScope();
+        if (sceneQueryMapper.selectAuthorizedProjectId(sceneDbId, scope.userId(), scope.admin()) == null) {
+            throw error("SCENE_NOT_FOUND_OR_ACCESS_DENIED");
+        }
     }
 
     private void assertNoActiveRunner(AutomationUiSceneDO scene) {
@@ -680,6 +705,7 @@ public class AutomationUiCaseTreeServiceImpl implements AutomationUiCaseTreeServ
         copy.setOperationType(source.getOperationType());
         copy.setOperationName(source.getOperationName());
         copy.setOperationValue(source.getOperationValue());
+        copy.setContinueOnFailure(source.getContinueOnFailure());
         copy.setSetting(source.getSetting());
         copy.setOrder(source.getOrder());
         copy.setStatus(source.getStatus());
@@ -717,6 +743,9 @@ public class AutomationUiCaseTreeServiceImpl implements AutomationUiCaseTreeServ
         }
         if (request.getOperationValue() != null) {
             editRequest.setOperationValue(request.getOperationValue());
+        }
+        if (request.getContinueOnFailure() != null) {
+            editRequest.setContinueOnFailure(request.getContinueOnFailure());
         }
         if (request.getConfigList() != null) {
             List<StepDO.Config> configs = new ArrayList<>();

@@ -10,8 +10,16 @@ COPY ${JAR_FILE} /app/bin/app.jar
 WORKDIR /app/bin
 
 ENTRYPOINT ["java", \
-            "-jar", \
             "-XX:+UseZGC", \
             "-Djava.security.egd=file:/dev/./urandom", \
             "-Dspring.profiles.active=prod", \
-            "app.jar"]
+            "-jar", \
+            "/app/bin/app.jar"]
+
+# ENTRYPOINT ["java", \
+#             "-XX:+UseZGC", \
+#             "-Djava.security.egd=file:/dev/./urandom", \
+#             "-Dspring.profiles.active=prod", \
+#             "-cp", \
+#             "/app/bin/app.jar:/app/lib/*:/app/config", \
+#             "top.continew.admin.ContiNewAdminApplication"]            

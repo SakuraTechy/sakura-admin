@@ -2,17 +2,25 @@ databaseChangeLog:
   - include:
       file: db/changelog/mysql/main_table.sql
   - include:
+      file: db/changelog/mysql/project_config_baseline.sql
+  - include:
+      file: db/changelog/mysql/automation_config_baseline.sql
+  - include:
       file: db/changelog/mysql/automation_ui_scene.sql
   - include:
       file: db/changelog/mysql/main_column.sql
   - include:
       file: db/changelog/mysql/main_data.sql
   - include:
+      file: db/changelog/mysql/project_menu.sql
+  - include:
       file: db/changelog/mysql/test_table.sql
   - include:
       file: db/changelog/mysql/test_schedule_v2.sql
   - include:
       file: db/changelog/mysql/test_data.sql
+  - include:
+      file: db/changelog/mysql/automation_menu.sql
   - include:
       file: db/changelog/mysql/automation_playwright_job.sql
   - include:
@@ -33,6 +41,8 @@ databaseChangeLog:
       file: db/changelog/mysql/automation_executor_registration.sql
   - include:
       file: db/changelog/mysql/automation_environment_resource_binding.sql
+  - include:
+      file: db/changelog/mysql/automation_menu_repair.sql
   - include:
       file: db/changelog/mysql/plugin/plugin_schedule.sql
   - include:

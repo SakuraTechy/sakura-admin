@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS `automation_executor_registration` (
 INSERT IGNORE INTO `sys_menu`
     (`id`, `title`, `parent_id`, `type`, `permission`, `sort`, `status`, `create_user`, `create_time`)
 VALUES
-    (1933371197522239500, '管理执行器注册', 1933371197518045184, 3,
+    (1933371197522239509, '管理执行器注册', 1933371197518045184, 3,
      'automation:executor:registration:manage', 13, 1, 1, NOW());
 
 -- 兼容已执行旧版建表 changeset 的数据库；新建表时前置检查会将补列 changeset 标记为已执行。
@@ -53,5 +53,5 @@ ALTER TABLE `automation_executor_registration`
 ALTER TABLE `automation_executor_registration`
     ADD COLUMN `last_features` text DEFAULT NULL COMMENT '最近一次上报的运行特性 JSON 清单' AFTER `last_actions`;
 
--- rollback DELETE FROM `sys_menu` WHERE `id` = 1933371197522239500;
+-- rollback DELETE FROM `sys_menu` WHERE `id` = 1933371197522239509;
 -- rollback DROP TABLE `automation_executor_registration`;

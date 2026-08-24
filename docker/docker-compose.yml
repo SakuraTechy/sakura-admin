@@ -1,31 +1,53 @@
-version: '3'
+networks:
+  sakura-admin-network:
+    # 使用默认的 bridge 网络
+    # external: true
+    # name: bridge
+    # 使用自定义的 bridge 网络
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 192.172.0.0/24    # 子网范围
+          gateway: 192.172.0.1      # 网关地址
+          
 services:
   mysql:
     image: mysql:8.0.33
     restart: always
-    container_name: mysql
+    container_name: sakura-admin-mysql
+    networks:
+      - sakura-admin-network
     ports:
-      - '3306:3306'
+      - '53306:3306'
     environment:
       TZ: Asia/Shanghai
-      MYSQL_ROOT_PASSWORD: 你的root用户密码
+      MYSQL_ROOT_PASSWORD: 3edc%RFV
       # 初始化数据库（后续的初始化 SQL 会在这个库执行）
       MYSQL_DATABASE: continew_admin
       #MYSQL_USER: 你的数据库用户名
       #MYSQL_PASSWORD: 你的数据库密码
     volumes:
-      - /docker/mysql/conf/:/etc/mysql/conf.d/
-      - /docker/mysql/data/:/var/lib/mysql/
+      - ./mysql/conf/:/etc/mysql/conf.d/
+      - ./mysql/data/:/var/lib/mysql/
+      # 仅在首次初始化空数据目录时执行，用于创建独立的调度数据库。
+      - ./mysql/init/:/docker-entrypoint-initdb.d/:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$${MYSQL_ROOT_PASSWORD}\" --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
     command:
       --default-authentication-plugin=mysql_native_password
       --character-set-server=utf8mb4
       --collation-server=utf8mb4_general_ci
       --explicit_defaults_for_timestamp=true
       --lower_case_table_names=1
+      
 #  postgresql:
 #    image: postgres:14.2
 #    restart: always
-#    container_name: postgresql
+#    container_name: sakura-admin-postgresql
 #    ports:
 #      - '5432:5432'
 #    environment:
@@ -34,79 +56,121 @@ services:
 #      POSTGRES_PASSWORD: 你的用户密码
 #      POSTGRES_DB: continew_admin
 #    volumes:
-#      - /docker/postgresql/data/:/var/lib/postgresql/data/
+#      - ./postgresql/data/:/var/lib/postgresql/data/
+
   redis:
     image: redis:7.2.3
     restart: always
-    container_name: redis
+    container_name: sakura-admin-redis
+    networks:
+      - sakura-admin-network
     ports:
-      - '6379:6379'
+      - '56379:6379'
     environment:
       TZ: Asia/Shanghai
     volumes:
-      - /docker/redis/conf/redis.conf:/usr/local/redis/config/redis.conf
-      - /docker/redis/data/:/data/
-      - /docker/redis/logs/:/logs/
-    command: 'redis-server /usr/local/redis/config/redis.conf --appendonly yes --requirepass 你的 Redis 密码'
+      - ./redis/conf/redis.conf:/usr/local/redis/config/redis.conf
+      - ./redis/data/:/data/
+      - ./redis/logs/:/logs/
+    command: 'redis-server /usr/local/redis/config/redis.conf --appendonly yes --requirepass 3edc%RFV'
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a '3edc%RFV' ping | grep PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  mysql-init:
+    image: mysql:8.0.33
+    restart: "no"
+    networks:
+      - sakura-admin-network
+    environment:
+      MYSQL_ROOT_PASSWORD: 3edc%RFV
+    depends_on:
+      mysql:
+        condition: service_healthy
+    # 幂等创建调度库，兼容已有 MySQL 数据目录。
+    command:
+      - /bin/sh
+      - -c
+      - >-
+        mysql --protocol=tcp -hmysql -uroot
+        -p"$${MYSQL_ROOT_PASSWORD}"
+        -e "CREATE DATABASE IF NOT EXISTS continew_admin_job DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;"
+    
   continew-admin-server:
     build: ./continew-admin
     restart: always
-    container_name: continew-admin-server
+    container_name: sakura-admin-server
+    networks:
+      - sakura-admin-network
     ports:
       - '18000:18000'
-      - '1789:1789'
+      - '51789:1789'
     environment:
       TZ: Asia/Shanghai
-      DB_HOST: 172.17.0.1
+      DB_HOST: mysql
       DB_PORT: 3306
-      DB_USER: 你的数据库用户名
-      DB_PWD: 你的数据库密码
+      DB_USER: root
+      DB_PWD: 3edc%RFV
       DB_NAME: continew_admin
-      REDIS_HOST: 172.17.0.1
+      REDIS_HOST: redis
       REDIS_PORT: 6379
-      REDIS_PWD: 你的 Redis 密码
+      REDIS_PWD: 3edc%RFV
       REDIS_DB: 0
-      SCHEDULE_HOST: 172.17.0.1
+      SCHEDULE_HOST: schedule-server
       SCHEDULE_PORT: 1788
-      SCHEDULE_TOKEN: 任务调度服务端 Token
+      SCHEDULE_HTTP_PORT: 18001
+      # 必须与调度库 snail-job_data.sql 中的客户端 Token 一致。
+      SCHEDULE_TOKEN: SJ_Wyz3dmsdbDOkDujOTSSoBjGQP1BMsVnj
     volumes:
-      - /docker/continew-admin/config/:/app/config/
-      - /docker/continew-admin/data/file/:/app/data/file/
-      - /docker/continew-admin/logs/:/app/logs/
-      - /docker/continew-admin/lib/:/app/lib/
+      - ./continew-admin/config/:/app/config/
+      - ./continew-admin/data/file/:/app/data/file/
+      - ./continew-admin/logs/:/app/logs/
+      - ./continew-admin/lib/:/app/lib/
     depends_on:
-      - redis
-      - mysql
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      
   schedule-server:
     build: ./schedule-server
     restart: always
-    container_name: continew-admin-schedule-server
+    container_name: sakura-admin-schedule-server
+    networks:
+      - sakura-admin-network
     ports:
       - '18001:18001'
-      - '1788:1788'
+      - '51788:1788'
     environment:
       TZ: Asia/Shanghai
-      DB_HOST: 172.17.0.1
+      DB_HOST: mysql
       DB_PORT: 3306
-      DB_USER: 你的数据库用户名
-      DB_PWD: 你的数据库密码
+      DB_USER: root
+      DB_PWD: 3edc%RFV
       DB_NAME: continew_admin_job
     volumes:
-      - /docker/schedule-server/logs/:/app/logs/
+      - ./schedule-server/logs/:/app/logs/
     depends_on:
-      - mysql
+      mysql:
+        condition: service_healthy
+      mysql-init:
+        condition: service_completed_successfully
+      
   nginx:
     image: nginx:1.25.3
     restart: always
-    container_name: nginx
+    container_name: sakura-admin-nginx
+    networks:
+      - sakura-admin-network
     ports:
-      - '80:80'
-      - '443:443'
+      - '5183:80'
     environment:
       TZ: Asia/Shanghai
     volumes:
-      - /docker/nginx/conf/nginx.conf:/etc/nginx/nginx.conf
-      - /docker/nginx/cert/:/etc/nginx/cert/
-      - /docker/nginx/logs/:/var/log/nginx/
+      - ./nginx/conf/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/logs/:/var/log/nginx/
       # 前端页面目录
-      - /docker/continew-admin/html/:/usr/share/nginx/html/
+      - ./continew-admin/html/:/usr/share/nginx/html/

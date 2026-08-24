@@ -1,7 +1,7 @@
 --- ### 项目配置
 project:
   # URL（跨域配置默认放行此 URL，第三方登录回调默认使用此 URL 为前缀，请注意更改为你实际的前端 URL）
-  url: https://admin.continew.top
+  url: http://172.19.5.223:5183
   # 是否为生产环境
   production: true
 
@@ -14,9 +14,9 @@ server:
 spring.datasource:
   type: com.zaxxer.hikari.HikariDataSource
   # 请务必提前创建好名为 continew_admin 的数据库，如果使用其他数据库名请注意同步修改 DB_NAME 配置
-  url: jdbc:mysql://${DB_HOST:127.0.0.1}:${DB_PORT:3306}/${DB_NAME:continew_admin}?serverTimezone=Asia/Shanghai&useSSL=true&useUnicode=true&characterEncoding=utf8&rewriteBatchedStatements=true&autoReconnect=true&allowPublicKeyRetrieval=true&nullCatalogMeansCurrent=true
+  url: jdbc:mysql://${DB_HOST:mysql}:${DB_PORT:3306}/${DB_NAME:continew_admin}?serverTimezone=Asia/Shanghai&useSSL=true&useUnicode=true&characterEncoding=utf8&rewriteBatchedStatements=true&autoReconnect=true&allowPublicKeyRetrieval=true&nullCatalogMeansCurrent=true
   username: ${DB_USER:root}
-  password: ${DB_PWD:123456}
+  password: ${DB_PWD:3edc%RFV}
   driver-class-name: com.mysql.cj.jdbc.Driver
 #  # PostgreSQL 配置
 #  url: jdbc:postgresql://${DB_HOST:127.0.0.1}:${DB_PORT:5432}/${DB_NAME:continew_admin}?serverTimezone=Asia/Shanghai&useSSL=true&useUnicode=true&characterEncoding=utf8&rewriteBatchedStatements=true&autoReconnect=true&stringtype=unspecified
@@ -48,11 +48,11 @@ spring.data:
   ## Redis 配置（单机模式）
   redis:
     # 地址
-    host: ${REDIS_HOST:127.0.0.1}
+    host: ${REDIS_HOST:redis}
     # 端口（默认 6379）
     port: ${REDIS_PORT:6379}
     # 密码（未设置密码时请注释掉）
-    password: ${REDIS_PWD:123456}
+    password: ${REDIS_PWD:3edc%RFV}
     # 数据库索引
     database: ${REDIS_DB:0}
     # 连接超时时间
@@ -240,6 +240,15 @@ sa-token.extension:
     - /*/*.css
     - /*/*.js
     - /websocket/**
+    # 接口文档相关资源
+    - /favicon.ico
+    - /doc.html
+    - /webjars/**
+    - /swagger-ui/**
+    - /swagger-resources/**
+    - /*/api-docs/**
+    - /system/user/signup
+    - /system/user/password
     # 本地存储资源
     - /file/**
 
@@ -295,13 +304,13 @@ snail-job:
   ## 服务端配置（任务调度中心）
   server:
     # 服务端地址，若服务端集群部署则此处配置域名
-    host: ${SCHEDULE_HOST:127.0.0.1}
+    host: ${SCHEDULE_HOST:schedule-server}
     # Netty 端口号
     port: ${SCHEDULE_PORT:1788}
     # API 配置
     api:
       # URL
-      url: http://127.0.0.1:8001/snail-job
+      url: http://${SCHEDULE_HOST:schedule-server}:${SCHEDULE_HTTP_PORT:18001}/snail-job
       # 用户名
       username:  ${SCHEDULE_USERNAME:admin}
       # 密码

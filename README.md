@@ -323,9 +323,16 @@ mvn -f .\continew-webapi\pom.xml exec:exec '-Dexec.executable=java' '-Dexec.args
 # 5.1 Docker 部署
 #   5.1.1 服务器安装好 docker 及 docker-compose（参考：https://blog.charles7c.top/categories/fragments/2022/10/31/CentOS%E5%AE%89%E8%A3%85Docker）
 #   5.1.2 执行 mvn package 进行项目打包，将 target/app 目录下的所有内容放到 /docker/continew-admin 目录下
-#   5.1.3 将 docker 目录上传到服务器 / 目录下，并授权（chmod -R 777 /docker）
+#   Windows 下可直接执行 .\deploy.ps1，脚本会先执行 mvn clean package，将 continew-webapi\target\app 同步到 docker\continew-admin，并复制调度服务 JAR 到 docker\schedule-server
+#   如仅需重新复制已有产物，可执行 .\deploy.ps1 -SkipPackage
+#   Linux 或 Git Bash 下执行 sh ./deploy.sh；仅复制已有产物时执行 sh ./deploy.sh --skip-package
+#   5.1.3 Windows 执行 .\deploy.ps1 或 Linux/Git Bash 执行 sh ./deploy.sh 时，会自动将同级 ../sakura-playwright 复制到 docker/sakura-playwright；也可通过 -PlaywrightSource 或 SAKURA_PLAYWRIGHT_SOURCE 指定源码目录，然后将 docker 目录上传到服务器 / 目录下
+#          复制时会排除 .git、.agents、node_modules、artifacts、data、logs 和 .env；npm 依赖与 Chromium 由容器启动命令安装
 #   5.1.4 修改 docker-compose.yml 中的 MySQL 配置、Redis 配置、continew-admin-server 配置、Nginx 配置
-#   5.1.5 执行 docker-compose up -d 创建并后台运行所有容器
+#   5.1.5 执行 docker-compose up -d --build 创建并后台运行所有容器
+#   5.1.6 continew-admin-server 启动时会自动安装 Runner 依赖和 Chromium；默认使用 npm、Debian 和 Chrome for Testing 国内镜像，首次启动需要等待安装完成
+#          如需更换镜像，可在执行前设置 NPM_REGISTRY、DEBIAN_MIRROR、PLAYWRIGHT_CHROMIUM_DOWNLOAD_HOST
+#          Runner 在容器内通过 http://127.0.0.1:18000 访问 Admin，不要把挂载目录 .env 中的本地开发地址带入生产容器
 # 5.2 其他方式部署
 ```
 

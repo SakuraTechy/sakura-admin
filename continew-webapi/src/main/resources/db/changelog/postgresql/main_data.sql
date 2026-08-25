@@ -292,7 +292,7 @@ INSERT INTO "sys_storage"
 ("id", "name", "code", "type", "access_key", "secret_key", "endpoint", "bucket_name", "domain", "description", "is_default", "sort", "status", "create_user", "create_time")
 VALUES
 (1, '开发环境', 'local_dev', 1, NULL, NULL, NULL, 'C:/continew-admin/data/file/', 'http://localhost:8000/file', '本地存储', true, 1, 1, 1, NOW()),
-(2, '生产环境', 'local_prod', 1, NULL, NULL, NULL, '../data/file/', 'http://172.19.5.223:580/file', '本地存储', false, 2, 2, 1, NOW());
+(2, '生产环境', 'local_prod', 1, NULL, NULL, NULL, '../data/file/', '/file', '本地存储', false, 2, 2, 1, NOW());
 
 -- 初始化终端数据
 INSERT INTO "sys_client"

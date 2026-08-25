@@ -1,6 +1,5 @@
 HELP.md
 target/
-docker/
 !.mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
@@ -45,3 +44,10 @@ build/
 *.diff
 *.patch
 *.tmp
+
+### Docker ###
+docker/continew-admin/
+docker/sakura-playwright/
+docker/sakura-execution-agent/
+docker/schedule-server/*.jar
+docker/.env

@@ -123,4 +123,9 @@ public interface AutomationUiExecutionQueryMapper {
                                                                @Param("admin") boolean admin,
                                                                @Param("offset") long offset,
                                                                @Param("limit") int limit);
+
+    Long selectArtifactFileId(@Param("executionDbId") Long executionDbId,
+                              @Param("artifactDbId") Long artifactDbId,
+                              @Param("userId") Long userId,
+                              @Param("admin") boolean admin);
 }

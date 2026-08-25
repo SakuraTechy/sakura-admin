@@ -44,7 +44,8 @@ automation:
   playwright-runner:
     # Runner 在 admin 所在节点启动，生产环境必须限制 runner-root 和 node-command 的可执行范围。
     enabled: ${SAKURA_PLAYWRIGHT_RUNNER_ENABLED:true}
-    root: ${SAKURA_PLAYWRIGHT_RUNNER_ROOT:sakura-playwright}
+    # Docker 部署将 Runner 挂载到 /app/sakura-playwright；本机开发请通过环境变量覆盖为实际路径。
+    root: ${SAKURA_PLAYWRIGHT_RUNNER_ROOT:/app/sakura-playwright}
     node-command: ${SAKURA_PLAYWRIGHT_NODE_COMMAND:node}
     max-concurrent: ${SAKURA_PLAYWRIGHT_RUNNER_MAX_CONCURRENT:2}
     # Admin 托管 Runner 的稳定身份；为空时自动生成 playwright-<本机名>。
@@ -68,11 +69,11 @@ automation:
     # 共享短 TTL 缓存避免页面请求逐次同步探测 Agent；失联时运行态高风险能力安全关闭。
     health-cache-enabled: ${SAKURA_OPERATION_CATALOG_HEALTH_CACHE_ENABLED:true}
     health-cache-ttl: ${SAKURA_OPERATION_CATALOG_HEALTH_CACHE_TTL:5s}
-  # 基础设施执行 Agent 配置。Token 由 install-agent.ps1 生成；同一安装账号可从
-  # C:\ProgramData\Sakura\execution-agent\conf\agent-token.operator.clixml 读取后临时填入，严禁提交该值。
+  # 基础设施执行 Agent 配置。Token 由 install-agent.ps1/install-agent.sh 生成；从同一安装目录的
+  # conf\agent.env 读取后注入，严禁提交该值。
   execution-agent:
-    base-url: http://127.0.0.1:19091
-    token: 'XUl/G49hcAzJlovKHZJUah/2YnQ8WH2XMW55JrWTODSyHvR2kJ8hZcU8msL8REvX'
+    base-url: ${AUTOMATION_EXECUTION_AGENT_BASE_URL:http://127.0.0.1:19091}
+    token: ${AUTOMATION_EXECUTION_AGENT_TOKEN:9Ufl0BiSq3xcK70Tv1Fj2FLzpcD7cy9aqReLXG2vV7FBqJmaEjX0jxw7LRAm6Eu5}
   # 执行迁移任务配置
   execution-migration:
     batch-size: ${SAKURA_AUTOMATION_EXECUTION_MIGRATION_BATCH_SIZE:20}

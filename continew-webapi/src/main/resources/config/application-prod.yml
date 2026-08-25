@@ -1,7 +1,7 @@
 --- ### 项目配置
 project:
   # URL（跨域配置默认放行此 URL，第三方登录回调默认使用此 URL 为前缀，请注意更改为你实际的前端 URL）
-  url: http://172.19.5.223:5183
+  url: ${PROJECT_URL:http://localhost:5183}
   # 是否为生产环境
   production: true
 
@@ -160,8 +160,7 @@ logging:
 continew-starter.web.cors:
   enabled: true
   # 配置允许跨域的域名
-  allowed-origins:
-    - ${project.url}
+  allowed-origins: '*'
   # 配置允许跨域的请求方式
   allowed-methods: '*'
   # 配置允许跨域的请求头
@@ -186,6 +185,7 @@ continew-starter.messaging.websocket:
 --- ### 短信配置
 # 配置文件方式和 [短信配置] 功能可任选其一方式使用，也可共同使用，但实际开发时建议选择一种，注释或删除另一方
 sms:
+  http-log: true
   is-print: false
 #  # 从 YAML 读取配置
 #  config-type: YAML
@@ -200,19 +200,19 @@ sms:
 
 --- ### 邮件配置
 # 配置文件方式和 [邮件配置] 功能可任选其一方式使用，实际开发时请注释或删除另一方
-#spring.mail:
-#  # 根据需要更换
-#  host: smtp.126.com
-#  port: 465
-#  username: 你的邮箱
-#  password: 你的邮箱授权码
-#  properties:
-#    mail:
-#      smtp:
-#        auth: true
-#        socketFactory:
-#          class: javax.net.ssl.SSLSocketFactory
-#          port: 465
+spring.mail:
+ # 根据需要更换
+ host: smtp.126.com
+ port: 465
+ username: 你的邮箱
+ password: 你的邮箱授权码
+ properties:
+   mail:
+     smtp:
+       auth: true
+       socketFactory:
+         class: javax.net.ssl.SSLSocketFactory
+         port: 465
 
 --- ### Just Auth 配置
 justauth:

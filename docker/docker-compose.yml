@@ -1,5 +1,6 @@
 networks:
   sakura-admin-network:
+    name: ${NETWORK_NAME:-sakura-admin-network}
     # 使用默认的 bridge 网络
     # external: true
     # name: bridge
@@ -7,23 +8,27 @@ networks:
     driver: bridge
     ipam:
       config:
-        - subnet: 192.172.0.0/24    # 子网范围
-          gateway: 192.172.0.1      # 网关地址
+        - subnet: ${NETWORK_SUBNET:-192.172.0.0/24}    # 子网范围
+          gateway: ${NETWORK_GATEWAY:-192.172.0.1}      # 网关地址
+
+# 由 sakura-execution-agent/scripts/install-agent.sh 生成，禁止提交到仓库。
+x-execution-agent-env-file: &execution-agent-env-file
+  - ${SAKURA_AGENT_ENV_FILE:-./sakura-execution-agent/conf/agent.env}
           
 services:
   mysql:
-    image: mysql:8.0.33
+    image: ${MYSQL_IMAGE:-mysql:8.0.33}
     restart: always
     container_name: sakura-admin-mysql
     networks:
       - sakura-admin-network
     ports:
-      - '53306:3306'
+      - '${MYSQL_HOST_PORT:-53306}:3306'
     environment:
       TZ: Asia/Shanghai
-      MYSQL_ROOT_PASSWORD: 3edc%RFV
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD must be set in .env}
       # 初始化数据库（后续的初始化 SQL 会在这个库执行）
-      MYSQL_DATABASE: continew_admin
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-continew_admin}
       #MYSQL_USER: 你的数据库用户名
       #MYSQL_PASSWORD: 你的数据库密码
     volumes:
@@ -59,34 +64,34 @@ services:
 #      - ./postgresql/data/:/var/lib/postgresql/data/
 
   redis:
-    image: redis:7.2.3
+    image: ${REDIS_IMAGE:-redis:7.2.3}
     restart: always
     container_name: sakura-admin-redis
     networks:
       - sakura-admin-network
     ports:
-      - '56379:6379'
+      - '${REDIS_HOST_PORT:-56379}:6379'
     environment:
       TZ: Asia/Shanghai
     volumes:
       - ./redis/conf/redis.conf:/usr/local/redis/config/redis.conf
       - ./redis/data/:/data/
       - ./redis/logs/:/logs/
-    command: 'redis-server /usr/local/redis/config/redis.conf --appendonly yes --requirepass 3edc%RFV'
+    command: 'redis-server /usr/local/redis/config/redis.conf --appendonly yes --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}'
     healthcheck:
-      test: ["CMD-SHELL", "redis-cli -a '3edc%RFV' ping | grep PONG"]
+      test: ["CMD-SHELL", "redis-cli -a '${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}' ping | grep PONG"]
       interval: 10s
       timeout: 5s
       retries: 10
       start_period: 10s
 
   mysql-init:
-    image: mysql:8.0.33
+    image: ${MYSQL_IMAGE:-mysql:8.0.33}
     restart: "no"
     networks:
       - sakura-admin-network
     environment:
-      MYSQL_ROOT_PASSWORD: 3edc%RFV
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD must be set in .env}
     depends_on:
       mysql:
         condition: service_healthy
@@ -97,44 +102,8 @@ services:
       - >-
         mysql --protocol=tcp -hmysql -uroot
         -p"$${MYSQL_ROOT_PASSWORD}"
-        -e "CREATE DATABASE IF NOT EXISTS continew_admin_job DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;"
-    
-  continew-admin-server:
-    build: ./continew-admin
-    restart: always
-    container_name: sakura-admin-server
-    networks:
-      - sakura-admin-network
-    ports:
-      - '18000:18000'
-      - '51789:1789'
-    environment:
-      TZ: Asia/Shanghai
-      DB_HOST: mysql
-      DB_PORT: 3306
-      DB_USER: root
-      DB_PWD: 3edc%RFV
-      DB_NAME: continew_admin
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      REDIS_PWD: 3edc%RFV
-      REDIS_DB: 0
-      SCHEDULE_HOST: schedule-server
-      SCHEDULE_PORT: 1788
-      SCHEDULE_HTTP_PORT: 18001
-      # 必须与调度库 snail-job_data.sql 中的客户端 Token 一致。
-      SCHEDULE_TOKEN: SJ_Wyz3dmsdbDOkDujOTSSoBjGQP1BMsVnj
-    volumes:
-      - ./continew-admin/config/:/app/config/
-      - ./continew-admin/data/file/:/app/data/file/
-      - ./continew-admin/logs/:/app/logs/
-      - ./continew-admin/lib/:/app/lib/
-    depends_on:
-      mysql:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      
+        -e "CREATE DATABASE IF NOT EXISTS ${SCHEDULE_DATABASE:-continew_admin_job} DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;"
+
   schedule-server:
     build: ./schedule-server
     restart: always
@@ -142,15 +111,15 @@ services:
     networks:
       - sakura-admin-network
     ports:
-      - '18001:18001'
-      - '51788:1788'
+      - '${SCHEDULE_HTTP_HOST_PORT:-18001}:18001'
+      - '${SCHEDULE_NETTY_HOST_PORT:-51788}:1788'
     environment:
       TZ: Asia/Shanghai
       DB_HOST: mysql
       DB_PORT: 3306
       DB_USER: root
-      DB_PWD: 3edc%RFV
-      DB_NAME: continew_admin_job
+      DB_PWD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD must be set in .env}
+      DB_NAME: ${SCHEDULE_DATABASE:-continew_admin_job}
     volumes:
       - ./schedule-server/logs/:/app/logs/
     depends_on:
@@ -158,7 +127,115 @@ services:
         condition: service_healthy
       mysql-init:
         condition: service_completed_successfully
-      
+
+  continew-admin-server:
+    build:
+      context: ./continew-admin
+      args:
+        DEBIAN_MIRROR: ${DEBIAN_MIRROR:-mirrors.aliyun.com}
+    restart: always
+    container_name: sakura-admin-server
+    # 与 Agent 共享网络命名空间，保留 Admin 客户端的回环地址安全约束。
+    network_mode: service:sakura-execution-agent
+    # 读取安装脚本生成的同一份共享 Token，不在 Compose 中重新生成。
+    env_file: *execution-agent-env-file
+    environment:
+      TZ: Asia/Shanghai
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: root
+      DB_PWD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD must be set in .env}
+      DB_NAME: ${MYSQL_DATABASE:-continew_admin}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PWD: ${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}
+      REDIS_DB: 0
+      SCHEDULE_HOST: schedule-server
+      SCHEDULE_PORT: 1788
+      SCHEDULE_HTTP_PORT: 18001
+      # SCHEDULE_TOKEN 必须与调度库 snail-job_data.sql 中的客户端 Token 一致。
+      SCHEDULE_TOKEN: ${SCHEDULE_TOKEN:?SCHEDULE_TOKEN must be set in .env}
+      # 对外访问地址由部署环境提供，不把服务器 IP 写入镜像或配置文件。
+      PROJECT_URL: ${PROJECT_URL:-http://localhost:5183}
+      # Sakura Playwright Runner 根目录与容器内挂载路径保持一致。
+      SAKURA_PLAYWRIGHT_RUNNER_ENABLED: ${SAKURA_PLAYWRIGHT_RUNNER_ENABLED:-true}
+      SAKURA_PLAYWRIGHT_RUNNER_ROOT: ${SAKURA_PLAYWRIGHT_RUNNER_ROOT:-/app/sakura-playwright}
+      # Sakura Playwright Runner 调用 Admin API 配置
+      SAKURA_ADMIN_API: ${SAKURA_ADMIN_API:-${CUECAST_ADMIN_API:-true}}
+      # Sakura Playwright Runner 与 Admin 在同一容器内，使用 Admin 的本地生产端口。
+      SAKURA_ADMIN_API_BASE: ${SAKURA_ADMIN_API_BASE:-${CUECAST_API_BASE:-http://127.0.0.1:18000}}
+      # NPM 的标准配置变量；NPM_REGISTRY 只作为 Compose 外部配置名称。
+      NPM_CONFIG_REGISTRY: ${NPM_REGISTRY:-https://registry.npmmirror.com}
+      # 当前 Playwright chromium 下载路径为 builds/cft，使用 npmmirror 的 Playwright 二进制镜像。
+      PLAYWRIGHT_DOWNLOAD_HOST: ${PLAYWRIGHT_DOWNLOAD_HOST:-https://cdn.npmmirror.com/binaries/playwright}
+      PLAYWRIGHT_CHROMIUM_DOWNLOAD_HOST: ${PLAYWRIGHT_CHROMIUM_DOWNLOAD_HOST:-https://cdn.npmmirror.com/binaries/playwright}
+      PLAYWRIGHT_DOWNLOAD_CONNECTION_TIMEOUT: ${PLAYWRIGHT_DOWNLOAD_CONNECTION_TIMEOUT:-120000}
+      # Sakura Execution Agent 配置
+      AUTOMATION_EXECUTION_AGENT_BASE_URL: ${AUTOMATION_EXECUTION_AGENT_BASE_URL:-http://127.0.0.1:19091}
+    # 启动 admin 前自动安装 Runner 依赖和 Chromium；$$ 用于延迟到容器内展开环境变量。
+    entrypoint: ['/bin/sh', '-c']
+    command:
+      - >-
+        if [ "$${SAKURA_PLAYWRIGHT_RUNNER_ENABLED:-true}" = "true" ] || [ "$${SAKURA_PLAYWRIGHT_RUNNER_ENABLED:-true}" = "1" ]; then
+        runner_root="$${SAKURA_PLAYWRIGHT_RUNNER_ROOT:-/app/sakura-playwright}";
+        test -f "$$runner_root/package.json" && test -f "$$runner_root/package-lock.json" && test -f "$$runner_root/src/index.js" || { echo "Playwright Runner 未部署：$$runner_root 需要包含 package.json、package-lock.json 和 src/index.js" >&2; exit 1; };
+        cd "$$runner_root";
+        package_hash="$$(sha256sum package-lock.json | awk '{print $$1}')";
+        stamp_file="node_modules/.sakura-package-lock.sha256";
+        installed_hash="$$(cat "$$stamp_file" 2>/dev/null || true)";
+        if [ ! -x node_modules/.bin/playwright ] || [ "$$installed_hash" != "$$package_hash" ]; then npm ci; fi;
+        npx playwright install --with-deps chromium;
+        mkdir -p node_modules;
+        printf '%s\n' "$$package_hash" > "$$stamp_file";
+        fi;
+        exec java -XX:+UseZGC -Djava.security.egd=file:/dev/./urandom
+        -Dspring.profiles.active=prod -jar /app/bin/app.jar
+    volumes:
+      - ./continew-admin/config/:/app/config/
+      - ./continew-admin/data/file/:/app/data/file/
+      - ./continew-admin/logs/:/app/logs/
+      - ./continew-admin/lib/:/app/lib/
+      # 服务器上需准备 ./sakura-playwright，启动命令会自动安装 npm 依赖和 Chromium。
+      - ./sakura-playwright/:/app/sakura-playwright/
+      - playwright-cache:/root/.cache/ms-playwright/
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      sakura-execution-agent:
+        condition: service_healthy
+
+  sakura-execution-agent:
+    build:
+      context: ../../sakura-execution-agent
+      dockerfile: Dockerfile
+    restart: always
+    container_name: sakura-execution-agent
+    env_file: *execution-agent-env-file
+    networks:
+      sakura-admin-network:
+        aliases:
+          # Nginx 继续使用 continew-admin-server:18000，实际端口由共享命名空间中的 Admin 监听。
+          - continew-admin-server
+    ports:
+      - '${ADMIN_HOST_PORT:-18000}:18000'
+      - '${ADMIN_SNAIL_PORT:-51789}:1789'
+    environment:
+      TZ: Asia/Shanghai
+    volumes:
+      # 生产环境挂载经过带外核对的 known_hosts，不能使用仓库示例文件。
+      - ./execution-agent/conf/:/app/sakura-execution-agent/conf/:ro
+      - ./execution-agent/data/:/app/sakura-execution-agent/data/
+      - ./execution-agent/logs/:/app/sakura-execution-agent/logs/
+      - ./execution-agent/workspace/:/app/sakura-execution-agent/workspace/
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://127.0.0.1:19091/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
   nginx:
     image: nginx:1.25.3
     restart: always
@@ -166,11 +243,18 @@ services:
     networks:
       - sakura-admin-network
     ports:
-      - '5183:80'
+      - '${NGINX_HOST_PORT:-5183}:80'
     environment:
       TZ: Asia/Shanghai
+    depends_on:
+      continew-admin-server:
+        condition: service_started
     volumes:
       - ./nginx/conf/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/cert/:/etc/nginx/cert/
       - ./nginx/logs/:/var/log/nginx/
       # 前端页面目录
       - ./continew-admin/html/:/usr/share/nginx/html/
+
+volumes:
+  playwright-cache:

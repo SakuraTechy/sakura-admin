@@ -45,4 +45,7 @@ public interface AutomationUiExecutionQueryService {
     AutomationUiExecutionStepDetailResp stepDetail(Long stepExecutionDbId);
 
     PageResp<AutomationUiExecutionArtifactResp> artifacts(Long executionDbId, AutomationUiPageReq pageQuery);
+
+    /** 返回已授权执行记录下 artifact 的文件 ID，文件内容由专用下载接口读取。 */
+    Long artifactFileId(Long executionDbId, Long artifactDbId);
 }

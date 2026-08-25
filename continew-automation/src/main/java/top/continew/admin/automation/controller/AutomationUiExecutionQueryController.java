@@ -22,6 +22,9 @@ import cn.dev33.satoken.annotation.SaCheckPermission;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.CacheControl;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -37,6 +40,8 @@ import top.continew.admin.automation.model.resp.AutomationUiExecutionCaseHistory
 import top.continew.admin.automation.model.resp.AutomationUiExecutionDetailResp;
 import top.continew.admin.automation.model.resp.AutomationUiExecutionPageResp;
 import top.continew.admin.automation.service.AutomationUiExecutionQueryService;
+import top.continew.admin.automation.service.AutomationPlaywrightArtifactService;
+import top.continew.admin.automation.service.AutomationPlaywrightArtifactService.ArtifactResource;
 import top.continew.admin.automation.service.AutomationUiSceneQueryService;
 import top.continew.starter.extension.crud.model.resp.PageResp;
 import top.continew.starter.web.model.R;
@@ -50,6 +55,7 @@ public class AutomationUiExecutionQueryController {
 
     private final AutomationUiSceneQueryService sceneQueryService;
     private final AutomationUiExecutionQueryService executionQueryService;
+    private final AutomationPlaywrightArtifactService artifactService;
 
     @Operation(summary = "分页查询执行历史", description = "只返回执行摘要，不包含 case、step、诊断或原始结果")
     @SaCheckPermission("automation:automationUiScene:get")
@@ -88,6 +94,23 @@ public class AutomationUiExecutionQueryController {
     public PageResp<AutomationUiExecutionArtifactResp> artifacts(@org.springframework.web.bind.annotation.PathVariable Long executionDbId,
                                                                  @Validated AutomationUiPageReq pageQuery) {
         return executionQueryService.artifacts(executionDbId, pageQuery);
+    }
+
+    @Operation(summary = "读取已授权执行 Artifact 内容")
+    @SaCheckPermission("automation:automationUiScene:get")
+    @GetMapping("/{executionDbId}/artifacts/{artifactDbId}/content")
+    public ResponseEntity<byte[]> artifactContent(@org.springframework.web.bind.annotation.PathVariable Long executionDbId,
+                                                  @org.springframework.web.bind.annotation.PathVariable Long artifactDbId) {
+        Long fileId = executionQueryService.artifactFileId(executionDbId, artifactDbId);
+        ArtifactResource resource = artifactService.loadByFileId(fileId);
+        return ResponseEntity.ok()
+            .cacheControl(CacheControl.noCache())
+            .header("Content-Disposition", (resource.attachment()
+                ? "attachment"
+                : "inline") + "; filename=\"" + resource.fileName() + "\"")
+            .contentLength(resource.content().length)
+            .contentType(MediaType.parseMediaType(resource.contentType()))
+            .body(resource.content());
     }
 
     @Operation(summary = "查询场景全局执行版本", description = "无权限和不存在的场景统一省略")

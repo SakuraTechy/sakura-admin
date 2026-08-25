@@ -533,4 +533,14 @@
         ORDER BY a.create_time DESC, a.id DESC
         LIMIT #{limit} OFFSET #{offset}
     </select>
+
+    <select id="selectArtifactFileId" resultType="long">
+        SELECT a.file_id
+        FROM automation_ui_execution_artifact a
+        JOIN automation_ui_execution e ON e.id = a.execution_id
+        <include refid="authorizedExecutionJoins"/>
+        WHERE a.id = #{artifactDbId}
+          AND e.id = #{executionDbId}
+        <include refid="executionAccessPredicate"/>
+    </select>
 </mapper>

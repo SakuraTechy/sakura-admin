@@ -181,7 +181,7 @@ CREATE TABLE IF NOT EXISTS `sys_dict_item` (
     `update_user` bigint(20)   DEFAULT NULL                COMMENT '修改人',
     `update_time` datetime     DEFAULT NULL                COMMENT '修改时间',
     PRIMARY KEY (`id`),
-    UNIQUE INDEX `uk_value_dict_id`(`value`, `dict_id`),
+    UNIQUE INDEX `uk_value_dict_id`(`label`,`value`, `dict_id`),
     INDEX `idx_dict_id`(`dict_id`),
     INDEX `idx_create_user`(`create_user`),
     INDEX `idx_update_user`(`update_user`)

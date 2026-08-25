@@ -6,6 +6,10 @@ databaseChangeLog:
   - include:
       file: db/changelog/mysql/automation_config_baseline.sql
   - include:
+      file: db/changelog/mysql/dictionary_schema_repair.sql
+  - include:
+      file: db/changelog/mysql/dictionary_data_baseline.sql
+  - include:
       file: db/changelog/mysql/automation_ui_scene.sql
   - include:
       file: db/changelog/mysql/main_column.sql

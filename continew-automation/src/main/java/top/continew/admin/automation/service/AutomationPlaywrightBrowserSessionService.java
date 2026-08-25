@@ -136,6 +136,8 @@ public class AutomationPlaywrightBrowserSessionService {
                 .redirectErrorStream(true)
                 .redirectOutput(outputFile.toFile());
             Map<String, String> environment = builder.environment();
+            environment.put("SAKURA_ADMIN_API", "true");
+            // 保留旧变量，兼容未升级的 Runner 子进程和外部脚本。
             environment.put("CUECAST_ADMIN_API", "true");
             if (StringUtils.isNotBlank(token)) {
                 environment.put("CUECAST_TOKEN", token);

@@ -240,6 +240,18 @@ public class AutomationUiExecutionQueryServiceImpl implements AutomationUiExecut
         return new PageResp<>(list, total);
     }
 
+    @Override
+    public Long artifactFileId(Long executionDbId, Long artifactDbId) {
+        requirePositive(executionDbId, "executionDbId");
+        requirePositive(artifactDbId, "artifactDbId");
+        AccessScope scope = accessScopeResolver.currentScope();
+        Long fileId = queryMapper.selectArtifactFileId(executionDbId, artifactDbId, scope.userId(), scope.admin());
+        if (fileId == null || fileId <= 0) {
+            throw hiddenResource();
+        }
+        return fileId;
+    }
+
     private PageBounds pageBounds(AutomationUiPageReq pageQuery, String allowedSortField) {
         AutomationUiPageReq safePage = pageQuery == null ? new AutomationUiPageReq() : pageQuery;
         int page = requirePositive(safePage.getPage(), "page");

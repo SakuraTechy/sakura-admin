@@ -80,7 +80,13 @@
 
     <!-- 生产环境：打印到控制台并输出到文件 -->
     <springProfile name="prod">
-        <root level="INFO">
+        <!-- 如果配置的日志等级，和 application.yml 中的日志等级配置重叠，application.yml 配置优先级高 -->
+        <!-- <root level="INFO"> 
+            <appender-ref ref="CONSOLE_PROD"/>
+            <appender-ref ref="ASYNC_FILE"/>
+        </root> -->
+        <!-- TRACE 是最低级别，用于生产排查时输出所有级别日志。 -->
+        <root level="TRACE">
             <appender-ref ref="CONSOLE_PROD"/>
             <appender-ref ref="ASYNC_FILE"/>
         </root>

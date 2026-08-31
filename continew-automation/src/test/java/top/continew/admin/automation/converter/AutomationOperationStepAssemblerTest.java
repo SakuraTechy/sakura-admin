@@ -76,6 +76,38 @@ class AutomationOperationStepAssemblerTest {
     }
 
     @Test
+    void shouldKeepConditionalClickInPlaywrightSnapshotAndLegacyDetails() {
+        StepDO step = step("打开开关", List
+            .of(config("method_code", "click.element"), config("method_version", "1"), config("method_config", "{\"target_ref\":{\"xpath\":\"//button[@role='switch']\"},\"click_when\":\"off\"}")));
+
+        StepDO assembled = assembler.assembleManualStep(step);
+        Map<String, String> configs = assembled.getConfigList()
+            .stream()
+            .collect(Collectors.toMap(StepDO.Config::getParamsName, StepDO.Config::getParamsValue));
+
+        assertThat(configs.get("playwright_step")).contains("\"click_when\":\"off\"");
+        assertThat(configs.get("details")).contains("click_when:off");
+    }
+
+    @Test
+    void shouldProjectClickConditionElementIntoPlaywrightAndLegacyConfigs() throws Exception {
+        StepDO step = step("按 OFF 标记打开开关", List
+            .of(config("method_code", "click.element"), config("method_version", "1"), config("method_config", "{\"target_ref\":{\"xpath\":\"//button[@role='switch']\"},\"click_when\":\"element_exists\",\"click_condition_ref\":{\"strategy\":\"xpath\",\"value\":\"(//span[contains(text(),'OFF')])[2]\",\"exact\":true}}")));
+
+        StepDO assembled = assembler.assembleManualStep(step);
+        Map<String, String> configs = assembled.getConfigList()
+            .stream()
+            .collect(Collectors.toMap(StepDO.Config::getParamsName, StepDO.Config::getParamsValue));
+        JsonNode playwrightStep = objectMapper.readTree(configs.get("playwright_step"));
+
+        assertThat(playwrightStep.path("click_when").asText()).isEqualTo("element_exists");
+        assertThat(playwrightStep.path("click_condition_xpath").asText())
+            .isEqualTo("(//span[contains(text(),'OFF')])[2]");
+        assertThat(configs.get("details")).contains("click_when:element_exists")
+            .contains("click_condition_locator:xpath=(//span[contains(text(),'OFF')])[2]");
+    }
+
+    @Test
     void shouldProjectTypedSemanticLocatorWithoutLosingLocatorMeta() throws Exception {
         StepDO step = step("检查标题", List
             .of(config("method_code", "assertion.element.match"), config("method_version", "1"), config("method_config", "{\"target_ref\":{\"strategy\":\"text\",\"value\":\"防统方系统 - 系统管理平台\",\"exact\":true},\"read_mode\":\"text\",\"match_mode\":\"contains\",\"expect\":\"系统管理平台\"}")));

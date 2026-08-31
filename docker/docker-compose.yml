@@ -29,6 +29,8 @@ services:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD must be set in .env}
       # 初始化数据库（后续的初始化 SQL 会在这个库执行）
       MYSQL_DATABASE: ${MYSQL_DATABASE:-continew_admin}
+      # 调度服务使用独立数据库；由 MySQL 首次初始化脚本创建。
+      SCHEDULE_DATABASE: ${SCHEDULE_DATABASE:-continew_admin_job}
       #MYSQL_USER: 你的数据库用户名
       #MYSQL_PASSWORD: 你的数据库密码
     volumes:
@@ -85,25 +87,6 @@ services:
       retries: 10
       start_period: 10s
 
-  mysql-init:
-    image: ${MYSQL_IMAGE:-mysql:8.0.33}
-    restart: "no"
-    networks:
-      - sakura-admin-network
-    environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD must be set in .env}
-    depends_on:
-      mysql:
-        condition: service_healthy
-    # 幂等创建调度库，兼容已有 MySQL 数据目录。
-    command:
-      - /bin/sh
-      - -c
-      - >-
-        mysql --protocol=tcp -hmysql -uroot
-        -p"$${MYSQL_ROOT_PASSWORD}"
-        -e "CREATE DATABASE IF NOT EXISTS ${SCHEDULE_DATABASE:-continew_admin_job} DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;"
-
   schedule-server:
     build: ./schedule-server
     restart: always
@@ -125,8 +108,6 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
-      mysql-init:
-        condition: service_completed_successfully
 
   continew-admin-server:
     build:
@@ -135,6 +116,8 @@ services:
         DEBIAN_MIRROR: ${DEBIAN_MIRROR:-mirrors.aliyun.com}
     restart: always
     container_name: sakura-admin-server
+    # 共享浏览器和批次录屏需要更大的 Chromium 共享内存，避免 newPage 后 Target 被系统关闭。
+    shm_size: ${ADMIN_SHM_SIZE:-1gb}
     # 与 Agent 共享网络命名空间，保留 Admin 客户端的回环地址安全约束。
     network_mode: service:sakura-execution-agent
     # 读取安装脚本生成的同一份共享 Token，不在 Compose 中重新生成。
@@ -225,10 +208,10 @@ services:
       TZ: Asia/Shanghai
     volumes:
       # 生产环境挂载经过带外核对的 known_hosts，不能使用仓库示例文件。
-      - ./execution-agent/conf/:/app/sakura-execution-agent/conf/:ro
-      - ./execution-agent/data/:/app/sakura-execution-agent/data/
-      - ./execution-agent/logs/:/app/sakura-execution-agent/logs/
-      - ./execution-agent/workspace/:/app/sakura-execution-agent/workspace/
+      - ./sakura-execution-agent/conf/:/app/sakura-execution-agent/conf/:rw
+      - ./sakura-execution-agent/data/:/app/sakura-execution-agent/data/
+      - ./sakura-execution-agent/logs/:/app/sakura-execution-agent/logs/
+      - ./sakura-execution-agent/workspace/:/app/sakura-execution-agent/workspace/
     healthcheck:
       test: ["CMD", "curl", "--fail", "--silent", "http://127.0.0.1:19091/health"]
       interval: 10s

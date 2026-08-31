@@ -92,9 +92,9 @@ class AutomationOperationCatalogServiceImplTest {
         List<AutomationOperationCatalog.OperationMethod> methods = methods();
         List<Map<String, Object>> fields = methods.stream().flatMap(method -> method.getFormSchema().stream()).toList();
 
-        assertThat(fields).hasSize(125);
-        assertThat(catalog().getDiagnosticFieldDefaults()).hasSize(51);
-        assertThat(fields.stream().filter(field -> field.containsKey("default"))).hasSize(17);
+        assertThat(fields).hasSize(127);
+        assertThat(catalog().getDiagnosticFieldDefaults()).hasSize(53);
+        assertThat(fields.stream().filter(field -> field.containsKey("default"))).hasSize(18);
         for (AutomationOperationCatalog.OperationMethod method : methods) {
             Set<String> fieldNames = new HashSet<>();
             for (Map<String, Object> field : method.getFormSchema()) {

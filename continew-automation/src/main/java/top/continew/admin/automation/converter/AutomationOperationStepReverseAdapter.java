@@ -220,6 +220,19 @@ public class AutomationOperationStepReverseAdapter {
         }
         if (legacy.containsKey("details")) {
             Map<String, String> details = parseDetails(legacy.get("details"));
+            // 旧 XML 将点击条件放在 details；回显时恢复到目录配置，避免编辑后条件静默丢失。
+            if (!result.containsKey("click_when") && hasField(method, "click_when")) {
+                String clickWhen = first(details, "click_when");
+                if (!clickWhen.isBlank()) {
+                    result.put("click_when", clickWhen);
+                }
+            }
+            if (!result.containsKey("click_condition_ref") && hasField(method, "click_condition_ref")) {
+                String conditionLocator = first(details, "click_condition_locator");
+                if (!conditionLocator.isBlank()) {
+                    result.put("click_condition_ref", locatorReference(conditionLocator));
+                }
+            }
             if (!result.containsKey("variable_name")) {
                 String variable = first(details, "key", "variable_name");
                 if (!variable.isBlank() && hasField(method, "variable_name")) {

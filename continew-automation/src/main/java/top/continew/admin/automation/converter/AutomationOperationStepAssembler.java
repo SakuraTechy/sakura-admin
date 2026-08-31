@@ -132,6 +132,9 @@ public class AutomationOperationStepAssembler {
         // 失败跳过是步骤级控制，不依赖具体操作类型，必须同时进入新执行器快照。
         canonical.put("continue_on_failure", Boolean.TRUE.equals(step.getContinueOnFailure()));
         applyLocator(canonical, methodConfig);
+        if ("click".equals(method.getActionType())) {
+            applyClickConditionLocator(canonical, methodConfig);
+        }
         applyCanonicalCompatibility(method, canonical);
         canonical.put("description", step.getName());
         canonical.put("source", "admin-manual");
@@ -194,6 +197,8 @@ public class AutomationOperationStepAssembler {
             case "web-click" -> {
                 putLocator(legacy, locator);
                 putElementOptions(legacy, methodConfig);
+                putDetails(legacy, "click_when", methodConfig
+                    .get("click_when"), "click_condition_locator", legacyClickConditionLocator(canonical));
             }
             case "select-click" -> {
                 putLocator(legacy, locator);
@@ -513,6 +518,29 @@ public class AutomationOperationStepAssembler {
         }
     }
 
+    private void applyClickConditionLocator(Map<String, Object> canonical, Map<String, Object> methodConfig) {
+        Object conditionRef = methodConfig.get("click_condition_ref");
+        if (conditionRef == null) {
+            return;
+        }
+        LinkedHashMap<String, Object> condition = new LinkedHashMap<>();
+        if (conditionRef instanceof Map<?, ?> rawRef) {
+            putIfText(condition, "target_selector", firstValue(rawRef, "target_selector", "selector", "css"));
+            putIfText(condition, "target_xpath", firstValue(rawRef, "target_xpath", "xpath"));
+            Object strategy = firstValue(rawRef, "strategy", "type");
+            Object value = firstValue(rawRef, "value", "locator_value", "locatorValue");
+            if (!condition.containsKey("target_selector") && !condition
+                .containsKey("target_xpath") && (!stringValue(strategy).isBlank() || !stringValue(value).isBlank())) {
+                applyTypedLocator(condition, stringValue(strategy), stringValue(value), Boolean.TRUE.equals(rawRef
+                    .get("exact")));
+            }
+        } else {
+            applyLegacyLocator(condition, stringValue(conditionRef));
+        }
+        putIfText(canonical, "click_condition_selector", condition.get("target_selector"));
+        putIfText(canonical, "click_condition_xpath", condition.get("target_xpath"));
+    }
+
     private void applyLegacyLocator(Map<String, Object> canonical, String locator) {
         if (locator.isBlank()) {
             return;
@@ -654,6 +682,15 @@ public class AutomationOperationStepAssembler {
             return "xpath=" + xpath;
         }
         String selector = stringValue(canonical.get("target_selector"));
+        return selector.isBlank() ? "" : "css=" + selector;
+    }
+
+    private String legacyClickConditionLocator(Map<String, Object> canonical) {
+        String xpath = stringValue(canonical.get("click_condition_xpath"));
+        if (!xpath.isBlank()) {
+            return "xpath=" + xpath;
+        }
+        String selector = stringValue(canonical.get("click_condition_selector"));
         return selector.isBlank() ? "" : "css=" + selector;
     }
 

@@ -16,6 +16,12 @@ RUN set -eux; \
         sed -i -E "s#https?://(deb.debian.org|security.debian.org)#https://${DEBIAN_MIRROR}#g" "$source_file"; \
     done
 
+# 批次共享录屏在关闭浏览器后由 finalizer 使用 ffmpeg 按用例时间切片。
+RUN set -eux; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends ffmpeg; \
+    rm -rf /var/lib/apt/lists/*
+
 ARG JAR_FILE=./bin/*.jar
 COPY ${JAR_FILE} /app/bin/app.jar
 # Admin 在容器内直接启动 Playwright Runner，必须同时具备 Node.js、npm 和 npx。

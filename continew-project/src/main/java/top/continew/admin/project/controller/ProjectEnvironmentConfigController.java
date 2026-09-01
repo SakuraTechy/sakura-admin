@@ -64,7 +64,7 @@ public class ProjectEnvironmentConfigController extends BaseController<ProjectEn
 
     @Override
     @Operation(summary = "查询数据", description = "根据查询条件查询数据")
-    @SaCheckPermission("automation:projectEnvironmentConfig:list")
+    @SaCheckPermission("project:projectEnvironmentConfig:list")
     @GetMapping("/list")
     public List<ProjectEnvironmentConfigResp> list(@Validated ProjectEnvironmentConfigQuery query,
                                                    @Validated SortQuery sortQuery) {

@@ -54,3 +54,32 @@ VALUES
 (1922831076226027526, '导出', 713345400139943940, 3, 'project:projectEnvironmentConfig:export', 6, 1, 1, NOW());
 
 -- rollback DELETE FROM `sys_menu` WHERE `id` IN (721428764654829579, 707246181427707960, 711255299943567371, 713345400139943940);
+
+-- changeset codex:project-menu-permission-contract-20260831
+-- comment 统一项目管理列表权限码，避免角色授权后项目页面仍校验 automation 前缀。
+UPDATE `sys_menu`
+SET `permission` = CASE `permission`
+    WHEN 'automation:projectVersionConfig:list' THEN 'project:projectVersionConfig:list'
+    WHEN 'automation:projectServerConfig:list' THEN 'project:projectServerConfig:list'
+    WHEN 'automation:projectDataBaseConfig:list' THEN 'project:projectDataBaseConfig:list'
+    WHEN 'project:ProjectModuleConfig:export' THEN 'project:projectModuleConfig:export'
+    ELSE `permission`
+END
+WHERE `permission` IN (
+    'automation:projectVersionConfig:list', 'automation:projectServerConfig:list',
+    'automation:projectDataBaseConfig:list', 'project:ProjectModuleConfig:export'
+);
+
+UPDATE `sys_menu`
+SET `permission` = 'project:projectEnvironmentConfig:list'
+WHERE `permission` = 'automation:projectEnvironmentConfig:list'
+  AND `parent_id` = 713345400139943940;
+
+-- rollback UPDATE `sys_menu` SET `permission` = 'automation:projectVersionConfig:list'
+-- WHERE `permission` = 'project:projectVersionConfig:list';
+-- rollback UPDATE `sys_menu` SET `permission` = 'automation:projectServerConfig:list'
+-- WHERE `permission` = 'project:projectServerConfig:list';
+-- rollback UPDATE `sys_menu` SET `permission` = 'automation:projectDataBaseConfig:list'
+-- WHERE `permission` = 'project:projectDataBaseConfig:list';
+-- rollback UPDATE `sys_menu` SET `permission` = 'project:ProjectModuleConfig:export'
+-- WHERE `permission` = 'project:projectModuleConfig:export';

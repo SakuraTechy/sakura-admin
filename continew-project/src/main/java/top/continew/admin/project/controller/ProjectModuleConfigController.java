@@ -134,7 +134,7 @@ public class ProjectModuleConfigController extends BaseController<ProjectModuleC
 
     @Operation(summary = "导出数据", description = "根据ID列表导出数据")
     @Parameter(name = "ids", description = "逗号分隔的ID列表", example = "1,2", in = ParameterIn.PATH)
-    @SaCheckPermission("project:ProjectModuleConfig:export")
+    @SaCheckPermission("project:projectModuleConfig:export")
     @GetMapping("/export")
     public void export(@Validated ProjectModuleConfigQuery query,
                        @Validated SortQuery sortQuery,

@@ -64,7 +64,7 @@ public class ProjectServerConfigController extends BaseController<ProjectServerC
 
     @Override
     @Operation(summary = "查询数据", description = "根据查询条件查询数据")
-    @SaCheckPermission("automation:projectServerConfig:list")
+    @SaCheckPermission("project:projectServerConfig:list")
     @GetMapping("/list")
     public List<ProjectServerConfigResp> list(@Validated ProjectServerConfigQuery query,
                                               @Validated SortQuery sortQuery) {

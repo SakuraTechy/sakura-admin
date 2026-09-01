@@ -70,7 +70,7 @@ public class ProjectVersionConfigController extends BaseController<ProjectVersio
 
     @Override
     @Operation(summary = "查询数据", description = "根据查询条件查询数据")
-    @SaCheckPermission("automation:projectVersionConfig:list")
+    @SaCheckPermission("project:projectVersionConfig:list")
     @GetMapping("/list")
     public List<ProjectVersionConfigResp> list(@Validated ProjectVersionConfigQuery query,
                                                @Validated SortQuery sortQuery) {

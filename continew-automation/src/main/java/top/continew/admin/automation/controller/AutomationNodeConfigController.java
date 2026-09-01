@@ -87,7 +87,7 @@ public class AutomationNodeConfigController extends BaseController<AutomationNod
 
     @Override
     @Operation(summary = "修改数据", description = "修改数据")
-    @SaCheckPermission("project:automationNodeConfig:update")
+    @SaCheckPermission("automation:automationNodeConfig:update")
     public void update(@Validated(CrudValidationGroup.Update.class) @RequestBody AutomationNodeConfigReq req,
                        @PathVariable("id") Long id) {
         Object[] param = new Object[] {req.getName()};
@@ -96,7 +96,7 @@ public class AutomationNodeConfigController extends BaseController<AutomationNod
     }
 
     @Operation(summary = "添加节点配置", description = "添加节点配置")
-    @SaCheckPermission("project:automationNodeConfig:create")
+    @SaCheckPermission("automation:automationNodeConfig:create")
     @PostMapping("/addNode")
     public R addNode(@RequestBody AutomationNodeConfigDO automationNodeConfigDO) {
         return baseService.addNode(automationNodeConfigDO)
@@ -105,7 +105,7 @@ public class AutomationNodeConfigController extends BaseController<AutomationNod
     }
 
     @Operation(summary = "修改节点配置", description = "修改节点配置")
-    @SaCheckPermission("project:automationNodeConfig:update")
+    @SaCheckPermission("automation:automationNodeConfig:update")
     @PostMapping("/updateNode")
     public R updateNode(@RequestBody AutomationNodeConfigDO automationNodeConfigDO) {
         return baseService.updateNode(automationNodeConfigDO)
@@ -115,7 +115,7 @@ public class AutomationNodeConfigController extends BaseController<AutomationNod
 
     @Operation(summary = "删除数据", description = "根据ID列表删除数据")
     @Parameter(name = "ids", description = "逗号分隔的ID列表", example = "1,2", in = ParameterIn.PATH)
-    @SaCheckPermission("project:automationNodeConfig:delete")
+    @SaCheckPermission("automation:automationNodeConfig:delete")
     @DeleteMapping("/{ids}")
     public void delete(@PathVariable List<Long> ids) {
         //        baseService.deleteByIds(ids);
@@ -138,7 +138,7 @@ public class AutomationNodeConfigController extends BaseController<AutomationNod
 
     @Operation(summary = "导出数据", description = "根据ID列表导出数据")
     @Parameter(name = "ids", description = "逗号分隔的ID列表", example = "1,2", in = ParameterIn.PATH)
-    @SaCheckPermission("project:automationNodeConfig:export")
+    @SaCheckPermission("automation:automationNodeConfig:export")
     @GetMapping("/export")
     public void export(@Validated AutomationNodeConfigQuery query,
                        @Validated SortQuery sortQuery,
@@ -165,7 +165,7 @@ public class AutomationNodeConfigController extends BaseController<AutomationNod
 
     @Operation(summary = "同步所有节点", description = "同步所有节点")
     @Parameter(name = "jenkinsId", description = "jenkinsId", example = "1", in = ParameterIn.PATH)
-    @SaCheckPermission("project:automationNodeConfig:sync")
+    @SaCheckPermission("automation:automationNodeConfig:sync")
     @GetMapping("/syncAllNode/{jenkinsId}")
     public R syncAllNode(@PathVariable Long jenkinsId) {
         return baseService.syncAllNode(jenkinsId)
@@ -175,7 +175,7 @@ public class AutomationNodeConfigController extends BaseController<AutomationNod
 
     @Operation(summary = "同步单个节点", description = "根据ID列表同步单个节点")
     @Parameter(name = "ids", description = "逗号分隔的ID列表", example = "1,2", in = ParameterIn.PATH)
-    @SaCheckPermission("project:automationNodeConfig:sync")
+    @SaCheckPermission("automation:automationNodeConfig:sync")
     @GetMapping("/syncNode/{ids}")
     public R syncNode(@PathVariable List<Long> ids) {
         return baseService.syncNode(ids)

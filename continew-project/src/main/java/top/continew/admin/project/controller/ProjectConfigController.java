@@ -61,7 +61,7 @@ import top.continew.starter.extension.crud.validation.CrudValidationGroup;
 public class ProjectConfigController extends BaseController<ProjectConfigService, ProjectConfigResp, ProjectConfigDetailResp, ProjectConfigQuery, ProjectConfigReq> {
     @Override
     @Operation(summary = "查询数据", description = "根据查询条件查询数据")
-    @SaCheckPermission("automation:projectDataBaseConfig:list")
+    @SaCheckPermission("project:projectConfig:list")
     @GetMapping("/list")
     public List<ProjectConfigResp> list(@Validated ProjectConfigQuery query, @Validated SortQuery sortQuery) {
         return super.list(query, sortQuery);

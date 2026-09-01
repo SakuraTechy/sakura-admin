@@ -531,7 +531,7 @@ public class AutomationUiSceneController extends BaseController<AutomationUiScen
      */
     @Operation(summary = "导出数据", description = "根据 ID 列表导出数据")
     @Parameter(name = "ids", description = "逗号分隔的 ID 列表", example = "1,2", in = ParameterIn.PATH)
-    @SaCheckPermission("automation:AutomationUiScene:export")
+    @SaCheckPermission("automation:automationUiScene:export")
     @GetMapping("/export")
     public void export(@Validated AutomationUiSceneQuery query,
                        @Validated SortQuery sortQuery,

@@ -112,7 +112,7 @@ public class AutomationBrowserConfigController extends BaseController<Automation
 
     @Operation(summary = "导出数据", description = "根据ID列表导出数据")
     @Parameter(name = "ids", description = "逗号分隔的ID列表", example = "1,2", in = ParameterIn.PATH)
-    @SaCheckPermission("automation:AutomationBrowserConfig:export")
+    @SaCheckPermission("automation:automationBrowserConfig:export")
     @GetMapping("/export")
     public void export(@Validated AutomationBrowserConfigQuery query,
                        @Validated SortQuery sortQuery,

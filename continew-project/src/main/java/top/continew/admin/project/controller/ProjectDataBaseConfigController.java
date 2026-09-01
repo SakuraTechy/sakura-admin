@@ -64,7 +64,7 @@ public class ProjectDataBaseConfigController extends BaseController<ProjectDataB
 
     @Override
     @Operation(summary = "查询数据", description = "根据查询条件查询数据")
-    @SaCheckPermission("automation:projectDataBaseConfig:list")
+    @SaCheckPermission("project:projectDataBaseConfig:list")
     @GetMapping("/list")
     public List<ProjectDataBaseConfigResp> list(@Validated ProjectDataBaseConfigQuery query,
                                                 @Validated SortQuery sortQuery) {

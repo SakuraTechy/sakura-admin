@@ -64,7 +64,7 @@ public class AutomationEnvironmentConfigController extends BaseController<Automa
 
     @Override
     @Operation(summary = "查询数据", description = "根据查询条件查询数据")
-    @SaCheckPermission("automation:projectEnvironmentConfig:list")
+    @SaCheckPermission("automation:automationEnvironmentConfig:list")
     @GetMapping("/list")
     public List<AutomationEnvironmentConfigResp> list(@Validated AutomationEnvironmentConfigQuery query,
                                                       @Validated SortQuery sortQuery) {
@@ -105,7 +105,7 @@ public class AutomationEnvironmentConfigController extends BaseController<Automa
 
     @Operation(summary = "导出数据", description = "根据ID列表导出数据")
     @Parameter(name = "ids", description = "逗号分隔的ID列表", example = "1,2", in = ParameterIn.PATH)
-    @SaCheckPermission("automation:AutomationEnvironmentConfig:export")
+    @SaCheckPermission("automation:automationEnvironmentConfig:export")
     @GetMapping("/export")
     public void export(@Validated AutomationEnvironmentConfigQuery query,
                        @Validated SortQuery sortQuery,

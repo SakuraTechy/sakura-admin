@@ -65,7 +65,7 @@ public class AutomationProjectConfigController extends BaseController<Automation
 
     @Override
     @Operation(summary = "新增数据", description = "新增数据")
-    @SaCheckPermission("project:AutomationProjectConfig:create")
+    @SaCheckPermission("automation:automationProjectConfig:create")
     public BaseIdResp<Long> create(@Validated(CrudValidationGroup.Create.class) @RequestBody AutomationProjectConfigReq req) {
         Object[] param = new Object[] {req.getName(), req.getUrl()};
         CheckUtils.throwIf(baseService.isExists(null, param), "新增失败，自动化管理-项目配置 [{}] 已存在", param[1]);
@@ -74,7 +74,7 @@ public class AutomationProjectConfigController extends BaseController<Automation
 
     @Override
     @Operation(summary = "修改数据", description = "修改数据")
-    @SaCheckPermission("project:AutomationProjectConfig:update")
+    @SaCheckPermission("automation:automationProjectConfig:update")
     public void update(@Validated(CrudValidationGroup.Update.class) @RequestBody AutomationProjectConfigReq req,
                        @PathVariable("id") Long id) {
         Object[] param = new Object[] {req.getName(), req.getUrl()};
@@ -86,7 +86,7 @@ public class AutomationProjectConfigController extends BaseController<Automation
 
     @Operation(summary = "删除数据", description = "根据ID列表删除数据")
     @Parameter(name = "ids", description = "逗号分隔的ID列表", example = "1,2", in = ParameterIn.PATH)
-    @SaCheckPermission("project:AutomationProjectConfig:delete")
+    @SaCheckPermission("automation:automationProjectConfig:delete")
     @DeleteMapping("/{ids}")
     public void delete(@PathVariable List<Long> ids) {
         //        baseService.deleteByIds(ids);
@@ -101,7 +101,7 @@ public class AutomationProjectConfigController extends BaseController<Automation
 
     @Operation(summary = "导出数据", description = "根据ID列表导出数据")
     @Parameter(name = "ids", description = "逗号分隔的ID列表", example = "1,2", in = ParameterIn.PATH)
-    @SaCheckPermission("project:AutomationProjectConfig:export")
+    @SaCheckPermission("automation:automationProjectConfig:export")
     @GetMapping("/export")
     public void export(@Validated AutomationProjectConfigQuery query,
                        @Validated SortQuery sortQuery,

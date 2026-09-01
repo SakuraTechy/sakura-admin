@@ -65,7 +65,7 @@ public class AutomationJenkinsConfigController extends BaseController<Automation
 
     @Override
     @Operation(summary = "新增数据", description = "新增数据")
-    @SaCheckPermission("project:AutomationJenkinsConfig:create")
+    @SaCheckPermission("automation:automationJenkinsConfig:create")
     public BaseIdResp<Long> create(@Validated(CrudValidationGroup.Create.class) @RequestBody AutomationJenkinsConfigReq req) {
         Object[] param = new Object[] {req.getIp(), req.getPort()};
         CheckUtils.throwIf(baseService.isExists(null, param), "新增失败，自动化管理-Jenkins配置 [{}] 已存在", param[0]);
@@ -74,7 +74,7 @@ public class AutomationJenkinsConfigController extends BaseController<Automation
 
     @Override
     @Operation(summary = "修改数据", description = "修改数据")
-    @SaCheckPermission("project:AutomationJenkinsConfig:update")
+    @SaCheckPermission("automation:automationJenkinsConfig:update")
     public void update(@Validated(CrudValidationGroup.Update.class) @RequestBody AutomationJenkinsConfigReq req,
                        @PathVariable("id") Long id) {
         Object[] param = new Object[] {req.getIp(), req.getPort()};
@@ -87,7 +87,7 @@ public class AutomationJenkinsConfigController extends BaseController<Automation
 
     @Operation(summary = "删除数据", description = "根据ID列表删除数据")
     @Parameter(name = "ids", description = "逗号分隔的ID列表", example = "1,2", in = ParameterIn.PATH)
-    @SaCheckPermission("project:AutomationJenkinsConfig:delete")
+    @SaCheckPermission("automation:automationJenkinsConfig:delete")
     @DeleteMapping("/{ids}")
     public void delete(@PathVariable List<Long> ids) {
         //        baseService.deleteByIds(ids);
@@ -104,7 +104,7 @@ public class AutomationJenkinsConfigController extends BaseController<Automation
 
     @Operation(summary = "导出数据", description = "根据ID列表导出数据")
     @Parameter(name = "ids", description = "逗号分隔的ID列表", example = "1,2", in = ParameterIn.PATH)
-    @SaCheckPermission("project:AutomationJenkinsConfig:export")
+    @SaCheckPermission("automation:automationJenkinsConfig:export")
     @GetMapping("/export")
     public void export(@Validated AutomationJenkinsConfigQuery query,
                        @Validated SortQuery sortQuery,

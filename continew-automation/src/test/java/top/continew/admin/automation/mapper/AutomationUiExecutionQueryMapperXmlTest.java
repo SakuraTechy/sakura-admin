@@ -99,6 +99,7 @@ class AutomationUiExecutionQueryMapperXmlTest {
         }
         assertThat(xml)
             .doesNotContain("id=\"countExecutions\"", "id=\"countCases\"", "id=\"countSteps\"", "id=\"countArtifacts\"");
+        assertThat(xml).contains("OR s.create_user = #{userId}", "JSON_CONTAINS(COALESCE(p.member, JSON_ARRAY())");
     }
 
     @Test

@@ -209,13 +209,14 @@ spring.mail:
 justauth:
   enabled: true
   type:
+    # 第三方登录配置
     GITEE: # https://gitee.com/oauth/applications
-      client-id: ae3f673e62d8f6c4c9af73d4e9d002a82e860180a904c14f476eb0aba4e612d7d
-      client-secret: b148d283945c3c634030ffebfe85c32037b6ceab1a732272027ef7fc4a2e2c6fa
+      client-id: e3f673e62d8f6c4c9af73d4********14f476eb0aba4e612d7d
+      client-secret: 3f943da403f3da444e425e8********db3bdb9de48123ba9adf81
       redirect-uri: ${project.url}/social/callback?source=gitee
     GITHUB: # https://github.com/settings/developers
-      client-id: cOv23liSyskmprwv4ihzO
-      client-secret: deebdc1ff22f50aae986f5b388709996ca7a39cfe
+      client-id: Ov23l********4ihzO
+      client-secret: eebdc1ff22f50a********996ca7a39cfe
       redirect-uri: ${project.url}/social/callback?source=github
   cache:
     type: REDIS

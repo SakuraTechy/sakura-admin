@@ -128,6 +128,8 @@ captcha:
     templatePath: mail/captcha.ftl
   ## 短信验证码配置
   sms:
+    # 万能验证码（限调试时使用）
+    code: 111111
     # 内容长度
     length: 6
     # 过期时间
@@ -221,13 +223,14 @@ spring.mail:
 justauth:
   enabled: true
   type:
-    GITEE:
-      client-id: 5d271b7f638941812aaf8bfc2e2f08f06d6235ef934e0e39537e2364eb8452c4
-      client-secret: 1f7d08**********5b7**********29e
+    # 第三方登录配置
+    GITEE: # https://gitee.com/oauth/applications
+      client-id: e3f673e62d8f6c4c9af********4c14f476eb0aba4e612d7d
+      client-secret: 3f943da403f3da444e425e805********3db3bdb9de48123ba9adf81
       redirect-uri: ${project.url}/social/callback?source=gitee
-    GITHUB:
-      client-id: 38080dad08cfbdfacca9
-      client-secret: 1f7d08**********5b7**********29e
+    GITHUB: # https://github.com/settings/developers
+      client-id: Ov23liSy********wv4ihzO
+      client-secret: eebdc1ff22f50********96ca7a39cfe
       redirect-uri: ${project.url}/social/callback?source=github
   cache:
     type: REDIS

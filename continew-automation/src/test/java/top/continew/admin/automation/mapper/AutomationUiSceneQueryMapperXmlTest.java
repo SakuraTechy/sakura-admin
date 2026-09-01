@@ -78,7 +78,7 @@ class AutomationUiSceneQueryMapperXmlTest {
         assertThat(scopedFilter).contains("query.executionMatchedOnly == true", "scoped_latest.id IS NOT NULL");
         assertThat(scopedPage).contains("scopedLatestExecutionJoin", "scopedLatestExecutionFilter")
             .doesNotContain("SELECT *", "case_list", "debug_record", "test_record", "summary_json");
-        assertThat(xml).contains("JSON_CONTAINS(COALESCE(p.member, JSON_ARRAY())")
+        assertThat(xml).contains("OR s.create_user = #{userId}", "JSON_CONTAINS(COALESCE(p.member, JSON_ARRAY())")
             .contains("pv.project_id = s.project_id")
             .contains("pm.version_id = s.version_id")
             .contains("query.moduleIds", "s.module_id IN");

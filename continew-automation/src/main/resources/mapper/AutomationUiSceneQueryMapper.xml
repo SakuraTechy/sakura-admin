@@ -85,6 +85,8 @@
     <sql id="sceneAccessPredicate">
         AND (
             #{admin} = TRUE
+            <!-- 普通用户可访问自己创建的场景，即使所属项目由其他用户创建且未加入项目成员。 -->
+            OR s.create_user = #{userId}
             OR p.create_user = #{userId}
             OR JSON_CONTAINS(COALESCE(p.member, JSON_ARRAY()), JSON_QUOTE(CAST(#{userId} AS CHAR)))
         )

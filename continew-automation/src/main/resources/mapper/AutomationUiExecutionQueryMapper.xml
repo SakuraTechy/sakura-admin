@@ -68,6 +68,8 @@
     <sql id="executionAccessPredicate">
         AND (
             #{admin} = TRUE
+            <!-- 执行记录跟随场景所有者授权，避免场景已可见但执行详情仍被项目权限拦截。 -->
+            OR s.create_user = #{userId}
             OR p.create_user = #{userId}
             OR JSON_CONTAINS(COALESCE(p.member, JSON_ARRAY()), JSON_QUOTE(CAST(#{userId} AS CHAR)))
         )

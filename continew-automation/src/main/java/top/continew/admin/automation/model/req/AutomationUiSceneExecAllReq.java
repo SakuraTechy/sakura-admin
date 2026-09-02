@@ -18,6 +18,7 @@ package top.continew.admin.automation.model.req;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.Data;
 import top.continew.admin.automation.model.enums.AutomationUiExecutionEngineEnum;
 import top.continew.admin.common.enums.StatusTypeEnum;
@@ -77,4 +78,8 @@ public class AutomationUiSceneExecAllReq {
 
     @Schema(description = "测试报告 ID")
     private String testReportId;
+
+    @Size(max = 1000)
+    @Schema(description = "评审管理员放行原因；仅项目开启强制门禁且当前版本未批准时使用")
+    private String reviewGateBypassReason;
 }

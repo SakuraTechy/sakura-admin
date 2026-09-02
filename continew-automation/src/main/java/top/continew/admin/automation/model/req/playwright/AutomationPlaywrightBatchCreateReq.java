@@ -21,10 +21,12 @@ import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 /**
@@ -59,6 +61,13 @@ public class AutomationPlaywrightBatchCreateReq implements Serializable {
 
     /** 正式报告 ID；存在时必须同时携带测试计划 ID。 */
     private String testReportId;
+
+    @Size(max = 1000)
+    private String reviewGateBypassReason;
+
+    /** 仅测试计划同步入口可设置，HTTP 请求无法绑定该内部授权。 */
+    @JsonIgnore
+    private boolean reviewGateBypassAuthorized;
 
     /** 执行配置快照，仅用于历史诊断，不回写场景主数据。 */
     private Map<String, Object> executionConfig;

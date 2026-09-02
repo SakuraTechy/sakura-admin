@@ -261,6 +261,8 @@ public class TestPlanServiceImpl extends BaseServiceImpl<TestPlanMapper, TestPla
         execReq.setExecuteEmail(req.getExecuteEmail());
         execReq.setTestPlanId(String.valueOf(plan.getId()));
         execReq.setTestReportId(String.valueOf(report.getId()));
+        execReq.setReviewGateBypassReason(req.getReviewGateBypassReason());
+        execReq.setReviewGateBypassAuthorized(req.isReviewGateBypassAuthorized());
         AutomationUiSceneExecResp seleniumResp = automationUiSceneService.exec(execReq);
         if (seleniumResp != null) {
             String buildNumber = seleniumResp.getBuildNumber() == null

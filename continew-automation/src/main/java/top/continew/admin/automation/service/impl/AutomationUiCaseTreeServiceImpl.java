@@ -25,6 +25,7 @@ import java.util.Set;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import top.continew.admin.automation.converter.AutomationOperationStepAssembler;
@@ -47,6 +48,7 @@ import top.continew.admin.automation.model.req.ui.AutomationUiStepCopyReq;
 import top.continew.admin.automation.model.resp.AutomationUiTreeMutationResp;
 import top.continew.admin.automation.model.resp.AutomationUiTreeNodeRefResp;
 import top.continew.admin.automation.service.AutomationUiCaseTreeService;
+import top.continew.admin.automation.service.AutomationUiCaseReviewMutationService;
 import top.continew.admin.automation.util.AutomationUiSceneStatusCodes;
 import top.continew.starter.core.exception.BusinessException;
 
@@ -76,6 +78,10 @@ public class AutomationUiCaseTreeServiceImpl implements AutomationUiCaseTreeServ
     private final AutomationOperationStepAssembler operationStepAssembler;
     private final AutomationOperationStepReverseAdapter operationStepReverseAdapter;
     private final ObjectMapper objectMapper;
+
+    /** Optional to preserve direct-construction tests while enabling review invalidation in Spring. */
+    @Autowired(required = false)
+    private AutomationUiCaseReviewMutationService caseReviewMutationService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -427,6 +433,9 @@ public class AutomationUiCaseTreeServiceImpl implements AutomationUiCaseTreeServ
                 throw error("场景用例树数据异常：用例列表不能为空");
             scene.setCaseList(new ArrayList<>());
         }
+        if (caseReviewMutationService != null) {
+            caseReviewMutationService.captureBefore(scene);
+        }
         scene.setCaseList(copyCases(scene.getCaseList()));
         validate(scene.getCaseList());
         // 删除前先记录当前最大后缀，保证删除最大编号后也不会复用旧业务 ID。
@@ -444,6 +453,10 @@ public class AutomationUiCaseTreeServiceImpl implements AutomationUiCaseTreeServ
         if (updated != 1)
             throw error("TREE_CONCURRENT_MODIFICATION");
         response.setDefinitionVersion(expectedVersion + 1);
+        if (caseReviewMutationService != null) {
+            caseReviewMutationService.afterDefinitionChanged(id, expectedVersion + 1, scene
+                .getCaseList(), "TREE_MUTATION");
+        }
         return response;
     }
 

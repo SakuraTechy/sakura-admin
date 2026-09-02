@@ -31,6 +31,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import top.continew.admin.automation.converter.PlaywrightRecordingAssembler;
@@ -45,6 +46,7 @@ import top.continew.admin.automation.model.req.recording.PlaywrightRecordedCaseR
 import top.continew.admin.automation.model.req.recording.RecordingSceneReq;
 import top.continew.admin.automation.model.resp.recording.AutomationRecordingImportResp;
 import top.continew.admin.automation.service.AutomationRecordingImportService;
+import top.continew.admin.automation.service.AutomationUiCaseReviewMutationService;
 import top.continew.admin.automation.service.AutomationUiSceneService;
 import top.continew.admin.automation.util.AutomationUiSceneStatusCodes;
 import top.continew.admin.common.enums.StatusTypeEnum;
@@ -76,6 +78,9 @@ public class AutomationRecordingImportServiceImpl implements AutomationRecording
     private final AutomationUiSceneService automationUiSceneService;
     private final PlaywrightRecordingAssembler playwrightRecordingAssembler;
     private final ProjectConfigMapper projectConfigMapper;
+
+    @Autowired(required = false)
+    private AutomationUiCaseReviewMutationService caseReviewMutationService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -110,6 +115,10 @@ public class AutomationRecordingImportServiceImpl implements AutomationRecording
         CaseDO caseDO = playwrightRecordingAssembler.toCase(recordedCase, context);
         AutomationUiSceneDO scene = buildScene(sceneReq, caseDO);
         automationUiSceneMapper.insert(scene);
+        if (caseReviewMutationService != null) {
+            caseReviewMutationService.afterDefinitionChanged(scene.getId(), 0L, scene
+                .getCaseList(), "RECORDING_IMPORT");
+        }
         return new AutomationRecordingImportResp(scene.getId(), scene.getSceneId(), caseDO
             .getId(), recordingId, recordedCase.getSteps().size(), MODE_CREATE_SCENE);
     }
@@ -270,6 +279,9 @@ public class AutomationRecordingImportServiceImpl implements AutomationRecording
             throw new BusinessException("场景正在执行，暂不能修改用例树");
         }
         syncNodeIdSequences(scene);
+        if (caseReviewMutationService != null) {
+            caseReviewMutationService.captureBefore(scene);
+        }
         return scene;
     }
 
@@ -500,6 +512,10 @@ public class AutomationRecordingImportServiceImpl implements AutomationRecording
             .getCaseList(), scene.getCaseTotal(), scene.getStepTotal());
         CheckUtils.throwIf(updated != 1, "场景定义已被其他操作修改，请刷新后重试");
         scene.setDefinitionVersion(req.getExpectedDefinitionVersion() + 1);
+        if (caseReviewMutationService != null) {
+            caseReviewMutationService.afterDefinitionChanged(scene.getId(), scene.getDefinitionVersion(), scene
+                .getCaseList(), "RECORDING_IMPORT");
+        }
     }
 
     private void checkModePermission(String mode) {

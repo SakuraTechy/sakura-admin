@@ -16,7 +16,9 @@
 
 package top.continew.admin.test.model.req;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Size;
 import lombok.Data;
 import top.continew.admin.automation.model.req.playwright.AutomationPlaywrightRunnerOptionsReq;
 import top.continew.admin.test.model.enums.TestExecutionEngineEnum;
@@ -54,4 +56,11 @@ public class TestPlanExecuteReq implements Serializable {
      * 执行范围。缺省表示计划全部关联场景；传值时必须是计划关联场景的非空子集。
      */
     private List<Long> sceneIds;
+
+    @Size(max = 1000)
+    private String reviewGateBypassReason;
+
+    /** 由同步控制器完成管理员权限校验后设置，不能由客户端绑定。 */
+    @JsonIgnore
+    private boolean reviewGateBypassAuthorized;
 }

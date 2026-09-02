@@ -65,6 +65,7 @@ import top.continew.admin.automation.service.AutomationPlanReportProgressService
 import top.continew.admin.automation.service.AutomationPlaywrightSessionStateService;
 import top.continew.admin.automation.service.AutomationCaseExecutionClassifier;
 import top.continew.admin.automation.service.AutomationUiExecutionRecordService;
+import top.continew.admin.automation.service.AutomationUiCaseReviewGateService;
 import top.continew.admin.automation.service.AutomationUiExecutionRecordService.FrozenExecutionCase;
 import top.continew.admin.automation.service.EffectiveExecutionConfigResolver;
 import top.continew.admin.automation.support.AutomationExecutionCapability;
@@ -106,6 +107,7 @@ public class AutomationPlaywrightCaseServiceImpl implements AutomationPlaywright
     private final List<AutomationPlanReportProgressService> planReportProgressServices;
     private final AutomationPlaywrightSessionStateService sessionStateService;
     private final AutomationUiExecutionRecordService executionRecordService;
+    private final AutomationUiCaseReviewGateService caseReviewGateService;
     private final EffectiveExecutionConfigResolver effectiveExecutionConfigResolver;
     private final AutomationCaseExecutionClassifier executionClassifier;
     private final AutomationCdpPlaybackPolicy cdpPlaybackPolicy;
@@ -266,6 +268,11 @@ public class AutomationPlaywrightCaseServiceImpl implements AutomationPlaywright
         if (!DisEnableStatusEnum.ENABLE.equals(environment.getStatus())) {
             throw new BusinessException("批次产品环境未启用，projectEnvironmentId=" + req.getProjectEnvironmentId());
         }
+        caseReviewGateService.assertExecutionAllowed(List.of(scene), Map.of(scene.getId(), req
+            .getCaseIds()), StringUtils.isNotBlank(testPlanId)
+                ? "TEST_PLAN_" + executionType.toUpperCase()
+                : "MANUAL_" + executionType.toUpperCase(), req.getReviewGateBypassReason(), req
+                    .isReviewGateBypassAuthorized());
         String batchId = nextExecutionId();
         String executionCapability = AutomationExecutionCapability.issue();
         String startedAt = now();

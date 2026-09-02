@@ -276,6 +276,11 @@ git clone https://github.com/continew-org/continew-admin.git
 
 # 4.启动程序
 # 4.1 开发态热重启启动（推荐用于改代码后实时验证）
+# 检查端口占用
+netstat -ano | findstr :8000
+# 杀死占用进程
+taskkill /PID 119696 /F
+
 cd D:\King\sakura\sakura-admin
 .\dev-start.ps1
 

@@ -47,10 +47,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import top.continew.admin.automation.converter.AutomationUiDefinitionSnapshotMapper;
+import top.continew.admin.automation.converter.AutomationUiCaseFingerprint;
 import top.continew.admin.automation.model.entity.AutomationUiSceneDO;
 import top.continew.admin.automation.model.entity.ui.CaseDO;
 import top.continew.admin.automation.model.entity.ui.StepDO;
 import top.continew.admin.automation.service.AutomationUiExecutionRecordService;
+import top.continew.admin.automation.service.AutomationUiDefinitionRevisionService;
 import top.continew.admin.automation.service.AutomationOperationCatalogService;
 import top.continew.admin.automation.support.AutomationExecutionCapability;
 import top.continew.admin.common.enums.StatusTypeEnum;
@@ -89,6 +91,10 @@ public class AutomationUiExecutionRecordServiceImpl implements AutomationUiExecu
     /** 允许直接构造服务的单元测试不提供项目配置；Spring 运行时会注入真实 Mapper。 */
     @Autowired(required = false)
     private ProjectConfigMapper projectConfigMapper;
+
+    /** Optional to preserve direct-construction unit tests while sharing revision creation in Spring. */
+    @Autowired(required = false)
+    private AutomationUiDefinitionRevisionService definitionRevisionService;
 
     @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW, rollbackFor = Exception.class)
@@ -336,6 +342,9 @@ public class AutomationUiExecutionRecordServiceImpl implements AutomationUiExecu
     }
 
     private Long ensureDefinitionRevision(AutomationUiSceneDO scene) {
+        if (definitionRevisionService != null) {
+            return definitionRevisionService.ensure(scene).id();
+        }
         Long definitionVersion = scene.getDefinitionVersion();
         if (definitionVersion == null || definitionVersion < 0) {
             throw new BusinessException("DEFINITION_VERSION_REQUIRED：场景定义版本不能为空");
@@ -481,16 +490,23 @@ public class AutomationUiExecutionRecordServiceImpl implements AutomationUiExecu
                 continue;
             }
             CaseDO frozenCase = loadFrozenCase(definitionRevisionId, caseId);
+            AutomationUiCaseFingerprint.Fingerprint fingerprint = frozenCase == null
+                ? null
+                : AutomationUiCaseFingerprint.compute(frozenCase);
             int attemptNo = Math.max(1, number(caseResult.get("attempt_no")));
             Long caseExecutionId = queryLong("SELECT id FROM automation_ui_execution_case" + " WHERE execution_id = ? AND case_id = ? AND attempt_no = ? LIMIT 1", executionId, caseId, attemptNo);
             if (caseExecutionId == null) {
                 caseExecutionId = nextId(caseResult);
                 try {
                     jdbcTemplate
-                        .update("INSERT INTO automation_ui_execution_case (id, execution_id, case_id," + " case_index, attempt_no, status, step_total, step_pass, step_fail, step_skip, event_sequence," + " version, create_time, update_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0," + " CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3))", caseExecutionId, executionId, caseId, caseIndex, attemptNo, firstNonBlank(value(caseResult
-                            .get("status")), "queued"), number(caseResult.get("step_total")), number(caseResult
-                                .get("step_pass")), number(caseResult.get("step_fail")), number(caseResult
-                                    .get("step_skip")));
+                        .update("INSERT INTO automation_ui_execution_case (id, execution_id, case_id, case_content_hash," + " hash_schema_version, case_index, attempt_no, status, step_total, step_pass, step_fail, step_skip," + " event_sequence, version, create_time, update_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0," + " CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3))", caseExecutionId, executionId, caseId, fingerprint == null
+                            ? null
+                            : fingerprint.hash(), fingerprint == null
+                                ? null
+                                : fingerprint.schemaVersion(), caseIndex, attemptNo, firstNonBlank(value(caseResult
+                                    .get("status")), "queued"), number(caseResult.get("step_total")), number(caseResult
+                                        .get("step_pass")), number(caseResult.get("step_fail")), number(caseResult
+                                            .get("step_skip")));
                 } catch (DuplicateKeyException ignored) {
                     caseExecutionId = queryLong("SELECT id FROM automation_ui_execution_case" + " WHERE execution_id = ? AND case_id = ? AND attempt_no = ? LIMIT 1", executionId, caseId, attemptNo);
                 }
@@ -498,7 +514,7 @@ public class AutomationUiExecutionRecordServiceImpl implements AutomationUiExecu
             if (caseExecutionId == null) {
                 throw new IllegalStateException("创建 UI 自动化用例执行事实失败，caseId=" + caseId);
             }
-            updateCase(caseExecutionId, caseIndex, caseResult);
+            updateCase(caseExecutionId, caseIndex, caseResult, fingerprint);
             persistSteps(caseExecutionId, caseResult, frozenCase, operationDiagnosticEnabled);
             ensureDefinitionStepExecutions(caseExecutionId, definitionRevisionId, caseId);
             persistArtifacts(executionId, caseExecutionId, caseResult);
@@ -553,26 +569,35 @@ public class AutomationUiExecutionRecordServiceImpl implements AutomationUiExecu
         }
     }
 
-    private void updateCase(Long caseExecutionId, int caseIndex, Map<String, Object> caseResult) {
+    private void updateCase(Long caseExecutionId,
+                            int caseIndex,
+                            Map<String, Object> caseResult,
+                            AutomationUiCaseFingerprint.Fingerprint fingerprint) {
         Map<String, Object> summary = sanitizedMap(caseResult);
         summary.remove("steps");
         String summaryJson = boundedSummary(summary, MAX_CASE_SUMMARY_BYTES);
         jdbcTemplate
-            .update("UPDATE automation_ui_execution_case SET case_key = ?, case_execution_key = ?, case_name = ?," + " case_index = ?, job_id = ?, status = ?, result = ?, execute_status = ?, execute_result = ?, step_total = ?," + " step_pass = ?, step_fail = ?, step_skip = ?, started_at = ?, finished_at = ?, duration_ms = ?," + " step_duration_ms = ?, wall_clock_duration_ms = ?, error_code = ?, error_message = ?," + " summary_json = CAST(? AS JSON), event_sequence = event_sequence + 1, version = version + 1," + " update_time = CURRENT_TIMESTAMP(3) WHERE id = ?", nullableText(caseResult
-                .get("case_key")), nullableText(caseResult.get("execution_id")), nullableText(caseResult
-                    .get("case_name")), caseIndex, nullableText(caseResult
-                        .get("job_id")), firstNonBlank(value(caseResult
-                            .get("status")), "queued"), nullableText(caseResult.get("result")), nullableText(caseResult
-                                .get("executeStatus")), nullableText(caseResult.get("executeResult")), number(caseResult
-                                    .get("step_total")), number(caseResult.get("step_pass")), number(caseResult
-                                        .get("step_fail")), number(caseResult.get("step_skip")), timestamp(caseResult
-                                            .get("started_at")), timestamp(caseResult
-                                                .get("finished_at")), nullableLong(caseResult
-                                                    .get("duration_ms")), nullableLong(caseResult
-                                                        .get("step_duration_ms")), nullableLong(caseResult
-                                                            .get("wall_clock_duration_ms")), nullableText(caseResult
-                                                                .get("error_code")), abbreviate(value(caseResult
-                                                                    .get("error")), MAX_ERROR_LENGTH), summaryJson, caseExecutionId);
+            .update("UPDATE automation_ui_execution_case SET case_content_hash = ?, hash_schema_version = ?," + " case_key = ?, case_execution_key = ?, case_name = ?, case_index = ?, job_id = ?, status = ?, result = ?," + " execute_status = ?, execute_result = ?, step_total = ?, step_pass = ?, step_fail = ?, step_skip = ?," + " started_at = ?, finished_at = ?, duration_ms = ?, step_duration_ms = ?, wall_clock_duration_ms = ?," + " error_code = ?, error_message = ?, summary_json = CAST(? AS JSON)," + " event_sequence = event_sequence + 1, version = version + 1, update_time = CURRENT_TIMESTAMP(3) WHERE id = ?", fingerprint == null
+                ? null
+                : fingerprint.hash(), fingerprint == null ? null : fingerprint.schemaVersion(), nullableText(caseResult
+                    .get("case_key")), nullableText(caseResult.get("execution_id")), nullableText(caseResult
+                        .get("case_name")), caseIndex, nullableText(caseResult
+                            .get("job_id")), firstNonBlank(value(caseResult
+                                .get("status")), "queued"), nullableText(caseResult
+                                    .get("result")), nullableText(caseResult
+                                        .get("executeStatus")), nullableText(caseResult
+                                            .get("executeResult")), number(caseResult
+                                                .get("step_total")), number(caseResult
+                                                    .get("step_pass")), number(caseResult
+                                                        .get("step_fail")), number(caseResult
+                                                            .get("step_skip")), timestamp(caseResult
+                                                                .get("started_at")), timestamp(caseResult
+                                                                    .get("finished_at")), nullableLong(caseResult
+                                                                        .get("duration_ms")), nullableLong(caseResult
+                                                                            .get("step_duration_ms")), nullableLong(caseResult
+                                                                                .get("wall_clock_duration_ms")), nullableText(caseResult
+                                                                                    .get("error_code")), abbreviate(value(caseResult
+                                                                                        .get("error")), MAX_ERROR_LENGTH), summaryJson, caseExecutionId);
     }
 
     private void persistSteps(Long caseExecutionId,

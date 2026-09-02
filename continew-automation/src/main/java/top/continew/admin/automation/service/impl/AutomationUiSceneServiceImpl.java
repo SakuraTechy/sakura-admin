@@ -94,6 +94,7 @@ import top.continew.admin.automation.model.resp.AutomationUiSceneResp;
 import top.continew.admin.automation.model.resp.AutomationUiSceneRevisionResp;
 import top.continew.admin.automation.service.AutomationUiSceneService;
 import top.continew.admin.automation.service.AutomationUiExecutionRecordService;
+import top.continew.admin.automation.service.AutomationUiCaseReviewGateService;
 import top.continew.admin.automation.service.AutomationJenkinsExecutionConfigResolver;
 import top.continew.admin.automation.service.AutomationJenkinsExecutionConfigResolver.ResolvedScene;
 import top.continew.admin.automation.support.AutomationStoragePressureGuard;
@@ -121,6 +122,7 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
     private final JdbcTemplate jdbcTemplate;
     private final List<AutomationPlanReportProgressService> planReportProgressServices;
     private final AutomationUiExecutionRecordService executionRecordService;
+    private final AutomationUiCaseReviewGateService caseReviewGateService;
     private final AutomationJenkinsExecutionConfigResolver jenkinsExecutionConfigResolver;
     /** 所有场景树结构写入统一委托，兼容接口不再保留独立排序算法。 */
     private final top.continew.admin.automation.service.AutomationUiCaseTreeService caseTreeService;
@@ -544,6 +546,10 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
                 .getVersionId()));
         CheckUtils.throwIf(!sameProjectVersion, "执行失败：场景必须属于同一项目和版本");
 
+        caseReviewGateService.assertExecutionAllowed(sceneList, Map.of(), StringUtils.isNotBlank(req.getTestPlanId())
+            ? "TEST_PLAN_JENKINS"
+            : "MANUAL_JENKINS", req.getReviewGateBypassReason(), req.isReviewGateBypassAuthorized());
+
         ProjectEnvironmentConfigDO projectEnvironment = projectEnvironmentConfigMapper.selectById(req
             .getProjectEnvironmentId());
         CheckUtils.throwIfNull(projectEnvironment, "执行失败：项目环境不存在");
@@ -732,6 +738,7 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
         execReq.setExecuteEmail(req.getExecuteEmail());
         execReq.setTestPlanId(req.getTestPlanId());
         execReq.setTestReportId(req.getTestReportId());
+        execReq.setReviewGateBypassReason(req.getReviewGateBypassReason());
         return exec(execReq);
     }
 

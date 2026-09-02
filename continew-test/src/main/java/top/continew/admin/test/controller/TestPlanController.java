@@ -17,6 +17,7 @@
 package top.continew.admin.test.controller;
 
 import cn.dev33.satoken.annotation.SaCheckPermission;
+import cn.dev33.satoken.stp.StpUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
@@ -46,6 +47,7 @@ import top.continew.starter.web.model.R;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import org.apache.commons.lang3.StringUtils;
 
 @Tag(name = "测试计划管理 API")
 @RestController
@@ -123,6 +125,10 @@ public class TestPlanController extends BaseController<TestPlanService, TestPlan
     public R<TestPlanExecuteResp> execute(@PathVariable Long id, @Validated @RequestBody TestPlanExecuteReq req) {
         // 对外执行接口始终属于手动触发，避免客户端伪造定时任务来源。
         req.setTriggerMode("MANUAL");
+        if (StringUtils.isNotBlank(req.getReviewGateBypassReason())) {
+            StpUtil.checkPermission("automation:automationUiScene:review:admin");
+            req.setReviewGateBypassAuthorized(true);
+        }
         return R.ok(baseService.execute(id, req));
     }
 

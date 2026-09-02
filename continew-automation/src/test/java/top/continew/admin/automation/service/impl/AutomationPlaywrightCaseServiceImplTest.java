@@ -57,6 +57,7 @@ import top.continew.admin.automation.service.AutomationEnvironmentResourceServic
 import top.continew.admin.automation.service.AutomationCertificateWorkspaceService;
 import top.continew.admin.automation.service.AutomationCaseExecutionClassifier;
 import top.continew.admin.automation.service.AutomationUiExecutionRecordService;
+import top.continew.admin.automation.service.AutomationUiCaseReviewGateService;
 import top.continew.admin.automation.service.AutomationUiExecutionRecordService.FrozenExecutionCase;
 import top.continew.admin.automation.service.EffectiveExecutionConfigResolver;
 import top.continew.admin.automation.support.AutomationCdpPlaybackPolicy;
@@ -90,6 +91,9 @@ class AutomationPlaywrightCaseServiceImplTest {
     private AutomationUiExecutionRecordService executionRecordService;
 
     @Mock
+    private AutomationUiCaseReviewGateService caseReviewGateService;
+
+    @Mock
     private AutomationEnvironmentResourceService environmentResourceService;
 
     @Mock
@@ -103,7 +107,7 @@ class AutomationPlaywrightCaseServiceImplTest {
     @BeforeEach
     void setUp() {
         service = new AutomationPlaywrightCaseServiceImpl(sceneMapper, stepExtractor, environmentMapper, projectConfigMapper, new AutomationPlaybackUrlRewriter(), List
-            .of(), sessionStateService, executionRecordService, new EffectiveExecutionConfigResolver(), new AutomationCaseExecutionClassifier(stepExtractor), new AutomationCdpPlaybackPolicy(true, "*"), environmentResourceService, certificateWorkspaceService, fileAssetMapper);
+            .of(), sessionStateService, executionRecordService, caseReviewGateService, new EffectiveExecutionConfigResolver(), new AutomationCaseExecutionClassifier(stepExtractor), new AutomationCdpPlaybackPolicy(true, "*"), environmentResourceService, certificateWorkspaceService, fileAssetMapper);
         lenient().when(stepExtractor.extract(any(StepDO.class), anyInt()))
             .thenReturn(Map.of("action_type", "navigate", "start_url", "https://172.19.5.45/login"));
         // 这些旧单测通过内存 mock 模拟规范化执行表，生产代码不会再写 scene JSON。
@@ -297,7 +301,7 @@ class AutomationPlaywrightCaseServiceImplTest {
     @Test
     void shouldRejectManagedCdpSessionWhenCurrentUserIsNotInGrayWhitelist() {
         service = new AutomationPlaywrightCaseServiceImpl(sceneMapper, stepExtractor, environmentMapper, projectConfigMapper, new AutomationPlaybackUrlRewriter(), List
-            .of(), sessionStateService, executionRecordService, new EffectiveExecutionConfigResolver(), new AutomationCaseExecutionClassifier(stepExtractor), new AutomationCdpPlaybackPolicy(false, "test-user"), environmentResourceService, certificateWorkspaceService, fileAssetMapper);
+            .of(), sessionStateService, executionRecordService, caseReviewGateService, new EffectiveExecutionConfigResolver(), new AutomationCaseExecutionClassifier(stepExtractor), new AutomationCdpPlaybackPolicy(false, "test-user"), environmentResourceService, certificateWorkspaceService, fileAssetMapper);
         when(sceneMapper.selectById(100L)).thenReturn(scene(1L));
         when(environmentMapper.selectById(47L)).thenReturn(environment(1L));
         AutomationPlaywrightBatchCreateReq request = batchRequest();

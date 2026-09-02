@@ -24,21 +24,26 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import top.continew.admin.automation.mapper.AutomationUiSceneMapper;
 import top.continew.admin.automation.model.entity.AutomationUiSceneDO;
+import top.continew.admin.automation.model.entity.ui.CaseDO;
+import top.continew.admin.automation.model.entity.ui.StepDO;
 import top.continew.admin.automation.model.resp.playwright.AutomationPlaywrightBatchResp;
 import top.continew.admin.automation.model.resp.playwright.AutomationPlaywrightCaseCancellationResp;
 import top.continew.admin.automation.model.resp.playwright.AutomationPlaywrightRunnerJobResp;
 import top.continew.admin.automation.service.AutomationPlanReportProgressService;
 import top.continew.admin.automation.service.AutomationPlaywrightCaseService;
 import top.continew.admin.automation.service.AutomationPlaywrightRunnerJobService;
+import top.continew.admin.automation.service.AutomationUiCaseReviewGateService;
 import top.continew.admin.automation.service.AutomationUiExecutionRecordService;
 import top.continew.admin.test.mapper.TestPlanMapper;
 import top.continew.admin.test.model.entity.TestPlanDO;
+import top.continew.admin.test.model.enums.TestExecutionEngineEnum;
 import top.continew.admin.test.model.req.TestPlanExecuteReq;
 import top.continew.admin.test.model.resp.TestPlanExecuteResp;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.timeout;
@@ -49,16 +54,39 @@ class TestPlanExecutionDispatchServiceTest {
 
     private final AutomationUiSceneMapper sceneMapper = mock(AutomationUiSceneMapper.class);
     private final AutomationUiExecutionRecordService executionRecordService = mock(AutomationUiExecutionRecordService.class);
+    private final AutomationUiCaseReviewGateService caseReviewGateService = mock(AutomationUiCaseReviewGateService.class);
     private final AutomationPlaywrightCaseService caseService = mock(AutomationPlaywrightCaseService.class);
     private final AutomationPlaywrightRunnerJobService runnerJobService = mock(AutomationPlaywrightRunnerJobService.class);
     private final AutomationPlanReportProgressService reportProgressService = mock(AutomationPlanReportProgressService.class);
     private final TestPlanMapper testPlanMapper = mock(TestPlanMapper.class);
     private final TestPlanRunnerTokenService runnerTokenService = mock(TestPlanRunnerTokenService.class);
-    private final TestPlanExecutionDispatchService service = new TestPlanExecutionDispatchService(sceneMapper, executionRecordService, caseService, runnerJobService, reportProgressService, testPlanMapper, runnerTokenService);
+    private final TestPlanExecutionDispatchService service = new TestPlanExecutionDispatchService(sceneMapper, executionRecordService, caseReviewGateService, caseService, runnerJobService, reportProgressService, testPlanMapper, runnerTokenService);
 
     @AfterEach
     void tearDown() {
         service.shutdown();
+    }
+
+    @Test
+    void shouldCheckReviewGateBeforeCreatingPlaceholders() {
+        TestPlanDO plan = new TestPlanDO();
+        plan.setId(1L);
+        AutomationUiSceneDO scene = new AutomationUiSceneDO();
+        scene.setId(100L);
+        CaseDO caseItem = new CaseDO();
+        caseItem.setId("CASE_001");
+        caseItem.setStepList(List.of(new StepDO()));
+        scene.setCaseList(List.of(caseItem));
+        when(sceneMapper.selectBatchIds(List.of(100L))).thenReturn(List.of(scene));
+        TestPlanExecuteReq req = new TestPlanExecuteReq();
+        req.setReviewGateBypassReason("approved emergency");
+        req.setReviewGateBypassAuthorized(true);
+
+        service.initialize(plan, List.of(100L), "101", TestExecutionEngineEnum.PLAYWRIGHT_RUNNER, req);
+
+        verify(caseReviewGateService).assertExecutionAllowed(eq(List.of(scene)), argThat(selected -> List.of("CASE_001")
+            .equals(selected.get(100L))), eq("TEST_PLAN_PLAYWRIGHT_RUNNER"), eq("approved emergency"), eq(true));
+        verify(executionRecordService).saveRecord(eq(scene), any(), eq(null));
     }
 
     @Test

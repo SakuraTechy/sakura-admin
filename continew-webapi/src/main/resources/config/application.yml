@@ -69,7 +69,7 @@ automation:
   # C:\ProgramData\Sakura\execution-agent\conf\agent-token.operator.clixml 读取后临时填入，严禁提交该值。
   execution-agent:
     base-url: http://127.0.0.1:19091
-    token: 'XUl/G49hcAzJlovKHZJUah/2YnQ8WH2XMW55JrWTODSyHvR2kJ8hZcU8msL8REvX'
+    token: 'fOqEQkiRa5J6yXNd8PSVwxrnOFzAukFosqMJfU0rte5bM3F3RsSfp8QepPOOmXO5'
   # 执行迁移任务配置
   execution-migration:
     batch-size: ${SAKURA_AUTOMATION_EXECUTION_MIGRATION_BATCH_SIZE:20}

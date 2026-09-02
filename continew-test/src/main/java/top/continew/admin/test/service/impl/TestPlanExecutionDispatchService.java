@@ -36,6 +36,7 @@ import top.continew.admin.automation.service.AutomationPlanReportProgressService
 import top.continew.admin.automation.service.AutomationPlaywrightCaseService;
 import top.continew.admin.automation.service.AutomationPlaywrightRunnerJobService;
 import top.continew.admin.automation.service.AutomationUiExecutionRecordService;
+import top.continew.admin.automation.service.AutomationUiCaseReviewGateService;
 import top.continew.admin.common.enums.StatusTypeEnum;
 import top.continew.admin.test.model.entity.TestPlanDO;
 import top.continew.admin.test.model.enums.TestExecutionEngineEnum;
@@ -69,6 +70,7 @@ public class TestPlanExecutionDispatchService {
 
     private final AutomationUiSceneMapper automationUiSceneMapper;
     private final AutomationUiExecutionRecordService executionRecordService;
+    private final AutomationUiCaseReviewGateService caseReviewGateService;
     private final AutomationPlaywrightCaseService playwrightCaseService;
     private final AutomationPlaywrightRunnerJobService runnerJobService;
     private final AutomationPlanReportProgressService reportProgressService;
@@ -88,13 +90,17 @@ public class TestPlanExecutionDispatchService {
         List<AutomationUiSceneDO> scenes = automationUiSceneMapper.selectBatchIds(executionSceneIds);
         Map<Long, AutomationUiSceneDO> sceneMap = new LinkedHashMap<>();
         scenes.forEach(scene -> sceneMap.put(scene.getId(), scene));
+        Map<Long, List<String>> selectedCases = new LinkedHashMap<>();
+        scenes.forEach(scene -> selectedCases.put(scene.getId(), executableCaseIds(scene)));
+        caseReviewGateService.assertExecutionAllowed(scenes, selectedCases, "TEST_PLAN_" + engine.name(), req
+            .getReviewGateBypassReason(), req.isReviewGateBypassAuthorized());
         List<TestPlanExecuteResp.SceneExecution> manifest = new ArrayList<>();
         for (Long sceneId : executionSceneIds) {
             AutomationUiSceneDO scene = sceneMap.get(sceneId);
             if (scene == null) {
                 continue;
             }
-            List<String> caseIds = executableCaseIds(scene);
+            List<String> caseIds = selectedCases.getOrDefault(scene.getId(), List.of());
             TestPlanExecuteResp.SceneExecution item = new TestPlanExecuteResp.SceneExecution();
             item.setSceneKey(String.valueOf(scene.getId()));
             item.setSceneId(scene.getSceneId());
@@ -211,6 +217,8 @@ public class TestPlanExecutionDispatchService {
         batchReq.setExecuteEmail(req.getExecuteEmail());
         batchReq.setTestPlanId(control.testPlanId);
         batchReq.setTestReportId(control.reportId);
+        batchReq.setReviewGateBypassReason(req.getReviewGateBypassReason());
+        batchReq.setReviewGateBypassAuthorized(req.isReviewGateBypassAuthorized());
         AutomationPlaywrightRunnerOptionsReq options = req.getRunnerOptions() == null
             ? new AutomationPlaywrightRunnerOptionsReq()
             : req.getRunnerOptions();
@@ -465,8 +473,9 @@ public class TestPlanExecutionDispatchService {
                 .filter(step -> step.getStatus() == null || StatusTypeEnum.ENABLE.equals(step.getStatus()))
                 .count();
         }
-        return item.getStep() != null && (item.getStep().getStatus() == null || StatusTypeEnum.ENABLE
-            .equals(item.getStep().getStatus())) ? 1 : 0;
+        return item.getStep() != null && (item.getStep().getStatus() == null || StatusTypeEnum.ENABLE.equals(item
+            .getStep()
+            .getStatus())) ? 1 : 0;
     }
 
     private void cancelSceneRecords(String testPlanId, String reportId) {

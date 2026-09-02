@@ -16,9 +16,11 @@
 
 package top.continew.admin.automation.model.req;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.Data;
 import top.continew.admin.automation.model.enums.AutomationUiExecutionEngineEnum;
 
@@ -62,4 +64,12 @@ public class AutomationUiSceneExecReq implements Serializable {
 
     @Schema(description = "Test report ID")
     private String testReportId;
+
+    @Size(max = 1000)
+    @Schema(description = "评审管理员放行原因；仅项目开启强制门禁且当前版本未批准时使用")
+    private String reviewGateBypassReason;
+
+    /** 仅服务间调用可设置，HTTP 请求无法绑定该内部授权。 */
+    @JsonIgnore
+    private boolean reviewGateBypassAuthorized;
 }

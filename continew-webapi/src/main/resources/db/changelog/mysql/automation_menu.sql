@@ -62,3 +62,13 @@ VALUES
 (1924389315099066374, '导出', 1924389315099066368, 3, 'automation:automationJenkinsConfig:export', 6, 1, 1, NOW());
 
 -- rollback DELETE FROM `sys_menu` WHERE `parent_id` = 714856722048483340 OR `id` IN (714856722048483340, 1933371197522239508);
+
+-- changeset codex:interfaces-certificate-menu-20260904
+-- comment 新增接口管理目录及证书制作菜单。
+INSERT IGNORE INTO `continew_admin`.`sys_menu`
+(`id`, `title`, `parent_id`, `type`, `path`, `name`, `component`, `redirect`, `icon`, `is_external`, `is_cache`, `is_hidden`, `permission`, `sort`, `status`, `create_user`, `create_time`, `update_user`, `update_time`)
+VALUES
+(886073387531878404, '接口管理', 0, 1, '/interfaces', 'Interfaces', 'Layout', NULL, 'align-center', b'0', b'0', b'0', NULL, 999, 1, 1, '2026-09-04 02:19:18', NULL, NULL),
+(886073596630515719, '证书制作', 886073387531878404, 2, '/interfaces/certificate', 'InterfacesCertificate', 'interfaces/certificate/index', NULL, 'arco', b'0', b'0', b'0', 'interfaces:certificate:list', 999, 1, 1, '2026-09-04 02:20:08', NULL, NULL);
+
+-- rollback DELETE FROM `sys_menu` WHERE `id` IN (886073387531878404, 886073596630515719);

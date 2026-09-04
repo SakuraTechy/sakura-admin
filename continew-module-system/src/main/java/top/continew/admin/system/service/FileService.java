@@ -20,7 +20,9 @@ import org.dromara.x.file.storage.core.FileInfo;
 import org.springframework.web.multipart.MultipartFile;
 import top.continew.admin.system.model.entity.FileDO;
 import top.continew.admin.system.model.query.FileQuery;
+import top.continew.admin.system.model.req.FileDownloadReq;
 import top.continew.admin.system.model.req.FileReq;
+import top.continew.admin.system.model.req.WebhookMessageReq;
 import top.continew.admin.system.model.resp.file.FileResp;
 import top.continew.admin.system.model.resp.file.FileStatisticsResp;
 import top.continew.starter.core.constant.StringConstants;
@@ -105,4 +107,19 @@ public interface FileService extends BaseService<FileResp, FileResp, FileQuery, 
         return today.getYear() + StringConstants.SLASH + today.getMonthValue() + StringConstants.SLASH + today
             .getDayOfMonth() + StringConstants.SLASH;
     }
+
+    /**
+     * 下载远程文件到服务器
+     *
+     * @param req 下载请求参数
+     * @return 服务器上的文件完整路径
+     */
+    String downloadFile(FileDownloadReq req);
+
+    /**
+     * 发送企业微信消息
+     *
+     * @param req 消息请求参数
+     */
+    void sendWebhookMessage(WebhookMessageReq req);
 }

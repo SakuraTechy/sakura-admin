@@ -246,12 +246,17 @@ cosid:
   namespace: ${spring.application.name}
   machine:
     enabled: true
+    # 稳定的实例标识，避免容器 IP 变化导致机器号租约丢失
+    stable: true
+    instance-id: ${COSID_INSTANCE_ID:sakura-admin-${HOSTNAME:default}}
     # 机器号分配器
     distributor:
       type: REDIS
     guarder:
       # 开启机器号守护
       enabled: true
+      # 心跳间隔（默认 60 秒），适当缩短以应对网络抖动
+      duration: 45
   snowflake:
     enabled: true
     zone-id: Asia/Shanghai

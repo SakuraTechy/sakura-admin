@@ -130,6 +130,9 @@ services:
     env_file: *execution-agent-env-file
     environment:
       TZ: Asia/Shanghai
+      # CosId 稳定实例标识，避免容器 IP 变化导致机器号租约丢失
+      HOSTNAME: sakura-admin-server
+      COSID_INSTANCE_ID: sakura-admin-docker
       DB_HOST: mysql
       DB_PORT: 3306
       DB_USER: root

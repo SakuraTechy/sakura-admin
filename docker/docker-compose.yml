@@ -1,3 +1,9 @@
+# Sakura Admin 容器编排文件
+# docker compose up -d
+# docker compose down
+# docker compose build --no-cache continew-admin-server
+# docker compose up -d --force-recreate continew-admin-server nginx
+
 networks:
   sakura-admin-network:
     name: ${NETWORK_NAME:-sakura-admin-network}

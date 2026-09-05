@@ -69,6 +69,29 @@ INSERT IGNORE INTO `continew_admin`.`sys_menu`
 (`id`, `title`, `parent_id`, `type`, `path`, `name`, `component`, `redirect`, `icon`, `is_external`, `is_cache`, `is_hidden`, `permission`, `sort`, `status`, `create_user`, `create_time`, `update_user`, `update_time`)
 VALUES
 (886073387531878404, '接口管理', 0, 1, '/interfaces', 'Interfaces', 'Layout', NULL, 'align-center', b'0', b'0', b'0', NULL, 999, 1, 1, '2026-09-04 02:19:18', NULL, NULL),
-(886073596630515719, '证书制作', 886073387531878404, 2, '/interfaces/certificate', 'InterfacesCertificate', 'interfaces/certificate/index', NULL, 'arco', b'0', b'0', b'0', 'interfaces:certificate:list', 999, 1, 1, '2026-09-04 02:20:08', NULL, NULL);
+(886073596630515719, '证书制作', 886073387531878404, 2, '/interfaces/certificate', 'InterfacesCertificate', 'interfaces/certificate/index', NULL, 'arco', b'0', b'0', b'0', '', 999, 1, 1, '2026-09-04 02:20:08', NULL, NULL);
 
 -- rollback DELETE FROM `sys_menu` WHERE `id` IN (886073387531878404, 886073596630515719);
+
+-- changeset codex:interfaces-certificate-permission-menu-20260904
+-- comment 补齐证书制作菜单按钮权限；同时兼容配置指南和当前前端使用的权限码。
+INSERT IGNORE INTO `continew_admin`.`sys_menu`
+(`id`, `title`, `parent_id`, `type`, `permission`, `sort`, `status`, `create_user`, `create_time`)
+VALUES
+(886073596630515720, '列表', 886073596630515719, 3, 'interfaces:certificate:list', 1, 1, 1, NOW()),
+(886073596630515721, '查询', 886073596630515719, 3, 'interfaces:certificate:query', 2, 1, 1, NOW()),
+(886073596630515722, '新增', 886073596630515719, 3, 'interfaces:certificate:add', 3, 1, 1, NOW()),
+(886073596630515723, '修改', 886073596630515719, 3, 'interfaces:certificate:update', 4, 1, 1, NOW()),
+(886073596630515724, '删除', 886073596630515719, 3, 'interfaces:certificate:delete', 5, 1, 1, NOW()),
+(886073596630515725, '导出', 886073596630515719, 3, 'interfaces:certificate:export', 6, 1, 1, NOW()),
+(886073596630515726, '详情', 886073596630515719, 3, 'interfaces:certificate:detail', 7, 1, 1, NOW()),
+(886073596630515727, '申请证书', 886073596630515719, 3, 'interfaces:certificate:create', 8, 1, 1, NOW()),
+(886073596630515728, '提交审核', 886073596630515719, 3, 'interfaces:certificate:submit', 9, 1, 1, NOW()),
+(886073596630515729, '审批通过', 886073596630515719, 3, 'interfaces:certificate:approve', 10, 1, 1, NOW()),
+(886073596630515730, '下载证书', 886073596630515719, 3, 'interfaces:certificate:download', 11, 1, 1, NOW()),
+(886073596630515731, '批量制作', 886073596630515719, 3, 'interfaces:certificate:batchMake', 12, 1, 1, NOW()),
+(886073596630515732, '一键制作', 886073596630515719, 3, 'interfaces:certificate:quickMake', 13, 1, 1, NOW()),
+(886073596630515733, '保存证书文件', 886073596630515719, 3, 'system:file:download', 14, 1, 1, NOW()),
+(886073596630515734, '发送企业微信通知', 886073596630515719, 3, 'system:file:webhook', 15, 1, 1, NOW());
+-- rollback DELETE FROM `sys_menu` WHERE `parent_id` = 886073596630515719
+-- AND `id` BETWEEN 886073596630515720 AND 886073596630515734;

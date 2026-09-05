@@ -16,8 +16,10 @@
 
 package top.continew.admin.system.model.req;
 
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
+import top.continew.admin.system.util.FlexibleLongListDeserializer;
 
 import java.io.Serial;
 import java.io.Serializable;
@@ -47,6 +49,7 @@ public class RoleUpdatePermissionReq implements Serializable {
      * 功能权限：菜单 ID 列表
      */
     @Schema(description = "功能权限：菜单 ID 列表", example = "1000,1010,1011,1012,1013,1014")
+    @JsonDeserialize(using = FlexibleLongListDeserializer.class)
     private List<Long> menuIds = new ArrayList<>();
 
     /**

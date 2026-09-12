@@ -56,6 +56,10 @@ public class AutomationOperationStepReverseAdapter {
         }
         Map<String, String> configs = configMap(step.getConfigList());
         String methodCode = text(configs.get("method_code"));
+        if (AutomationServerShellResultConfig.hasLegacyExtraction(step, objectMapper)) {
+            // 提取和替换不是同一语义；只读保留不能被新面板重建配置时静默丢失。
+            return new ReverseResult(false, "server.shell", 1, Map.of(), List.of("历史 Shell 含正则提取配置，当前表单不能无损编辑，请保留旧步骤"));
+        }
         if (!methodCode.isBlank() && configs.containsKey("method_config")) {
             Map<String, Object> existing = parseMap(configs.get("method_config"));
             AutomationOperationCatalog.OperationMethod method = catalogService.findMethod(methodCode).orElse(null);
@@ -127,6 +131,13 @@ public class AutomationOperationStepReverseAdapter {
         copyRawCompatibilityValue(method, values, config, "key", "key", "value", "keys");
         copyRawCompatibilityValue(method, values, config, "expect", "expect", "value");
         copyRawCompatibilityValue(method, values, config, "url", "url", "value");
+        if ("server.shell".equals(method.getMethodCode())) {
+            for (String name : List.of("timeout_ms", "value_masked")) {
+                if (values.containsKey(name)) {
+                    config.put(name, values.get(name));
+                }
+            }
+        }
         return config;
     }
 
@@ -238,6 +249,21 @@ public class AutomationOperationStepReverseAdapter {
                 if (!variable.isBlank() && hasField(method, "variable_name")) {
                     result.put("variable_name", variable);
                 }
+            }
+        }
+        if ("server.shell".equals(method.getMethodCode())) {
+            // 旧 shell 是命令，不能当作新表单的脚本类型；替换空白必须原样回填。
+            result.put("shell", first(legacy, "shell_type").isBlank() ? "bash" : legacy.get("shell_type"));
+            String regex = legacy.get("key");
+            if (regex != null && !regex.isEmpty()) {
+                result.put("replace_regex", regex);
+                result.put("replace_value", legacy.get("value") == null ? "" : legacy.get("value"));
+                if (!legacy.containsKey("value")) {
+                    warnings.add("历史替换内容缺失，已按空替换回填，请确认后保存");
+                }
+            }
+            if (!text(legacy.get("regex")).isEmpty()) {
+                warnings.add("历史 Shell 含正则提取配置，当前表单不能无损编辑，请保留旧步骤");
             }
         }
         return result;

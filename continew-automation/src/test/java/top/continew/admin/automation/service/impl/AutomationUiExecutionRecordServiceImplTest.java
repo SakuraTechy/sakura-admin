@@ -385,7 +385,9 @@ class AutomationUiExecutionRecordServiceImplTest {
         operation.put("profile", "generic");
         operation.put("executor", "playwright");
         operation.put("method", Map.of("action_type", "pw-custom"));
-        operation.put("inputs", List.of());
+        String dataUrl = "data:image/jpg;base64," + "a".repeat(2_048);
+        operation.put("inputs", List.of(Map.of("key", "expect", "actual", Map
+            .of("value_state", "visible", "preview", dataUrl))));
         operation.put("outcome", Map.of("kind", "generic", "summary", "未知动作", "facts", List.of()));
 
         var sanitizer = AutomationUiExecutionRecordServiceImpl.class.getDeclaredMethod("sanitizeOperation", Map.class);
@@ -393,6 +395,12 @@ class AutomationUiExecutionRecordServiceImplTest {
         @SuppressWarnings("unchecked") Map<String, Object> sanitized = (Map<String, Object>)sanitizer
             .invoke(service, operation);
         assertThat(castMap(sanitized.get("method"))).containsEntry("action_type", "pw-custom");
+        Map<String, Object> input = castMap(((List<?>)sanitized.get("inputs")).get(0));
+        String actualPreview = String.valueOf(castMap(input.get("actual")).get("preview"));
+        assertThat(actualPreview).startsWith(dataUrl.substring(0, 480))
+            .contains("[已省略 ")
+            .endsWith(dataUrl.substring(dataUrl.length() - 480))
+            .isNotEqualTo(dataUrl);
     }
 
     @Test
@@ -427,6 +435,29 @@ class AutomationUiExecutionRecordServiceImplTest {
             .invoke(service, "password", Map.of("value_state", "visible", "preview", "must-not-be-retained"));
 
         assertThat(sanitized).containsEntry("value_state", "masked").doesNotContainKey("preview");
+    }
+
+    @Test
+    void shouldAbbreviateLongAssertionDiagnosticValues() throws Exception {
+        AutomationUiExecutionRecordServiceImpl service = new AutomationUiExecutionRecordServiceImpl(mock(JdbcTemplate.class), mock(IdentifierGenerator.class), new ObjectMapper(), null);
+        var sanitizer = AutomationUiExecutionRecordServiceImpl.class
+            .getDeclaredMethod("sanitizeOperationDisplay", String.class, Object.class);
+        sanitizer.setAccessible(true);
+        String dataUrl = "data:image/jpg;base64," + "a".repeat(20_000);
+
+        @SuppressWarnings("unchecked") Map<String, Object> sanitized = (Map<String, Object>)sanitizer
+            .invoke(service, "actual", Map.of("value_state", "visible", "preview", dataUrl));
+
+        String actualPreview = String.valueOf(sanitized.get("preview"));
+        assertThat(actualPreview).startsWith(dataUrl.substring(0, 480))
+            .contains("[已省略 ")
+            .endsWith(dataUrl.substring(dataUrl.length() - 480))
+            .isNotEqualTo(dataUrl);
+
+        @SuppressWarnings("unchecked") Map<String, Object> expected = (Map<String, Object>)sanitizer
+            .invoke(service, "expected", Map.of("value_state", "visible", "preview", dataUrl));
+        String expectedPreview = String.valueOf(expected.get("preview"));
+        assertThat(expectedPreview).isEqualTo(actualPreview);
     }
 
     @Test

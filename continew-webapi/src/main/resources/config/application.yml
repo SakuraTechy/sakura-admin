@@ -73,10 +73,32 @@ automation:
   # conf\agent.env 读取后注入，严禁提交该值。
   execution-agent:
     base-url: ${AUTOMATION_EXECUTION_AGENT_BASE_URL:http://127.0.0.1:19091}
-    token: ${AUTOMATION_EXECUTION_AGENT_TOKEN:9Ufl0BiSq3xcK70Tv1Fj2FLzpcD7cy9aqReLXG2vV7FBqJmaEjX0jxw7LRAm6Eu5}
+    token: ${AUTOMATION_EXECUTION_AGENT_TOKEN:oKOCASxJiNcoHgJwobgsRarBAgrf7XN09KsDcYO+XN0FxFp2j8om3KZJjKf47NQd}
   # 执行迁移任务配置
   execution-migration:
     batch-size: ${SAKURA_AUTOMATION_EXECUTION_MIGRATION_BATCH_SIZE:20}
+  # AI 智能能力配置（变量提取规则生成、测试用例优化建议等）
+  ai:
+    # AI 能力总开关（默认关闭，需显式启用并配置有效的 API 凭证）
+    enabled: ${SAKURA_AI_ENABLED:false}
+    # AI 服务提供商类型：openai | azure-openai | anthropic | custom
+    provider: ${SAKURA_AI_PROVIDER:openai}
+    # API 端点（OpenAI 兼容接口完整 URL）
+    endpoint: ${SAKURA_AI_ENDPOINT:https://api.openai.com/v1/chat/completions}
+    # 模型名称
+    model: ${SAKURA_AI_MODEL:gpt-4o-mini}
+    # API 密钥（敏感信息，必须通过环境变量注入）
+    api-key: ${SAKURA_AI_API_KEY:}
+    # 结构化输出模式：json_schema（严格约束）| json_object（宽松）
+    structured-output: ${SAKURA_AI_STRUCTURED_OUTPUT:json_schema}
+    # 连接超时（毫秒）
+    connect-timeout: ${SAKURA_AI_CONNECT_TIMEOUT:10000}
+    # 单次请求超时（毫秒）
+    request-timeout: ${SAKURA_AI_REQUEST_TIMEOUT:60000}
+    # 总超时（毫秒，包含重试）
+    total-timeout: ${SAKURA_AI_TOTAL_TIMEOUT:120000}
+    # 最大输出 token 数
+    max-output-tokens: ${SAKURA_AI_MAX_OUTPUT_TOKENS:4096}
 
 --- ### 日志配置
 ## API 请求/响应日志配置

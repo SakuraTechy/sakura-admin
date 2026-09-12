@@ -1,0 +1,107 @@
+[
+  {
+    "name": "基本密码提取_全角冒号",
+    "raw_value": "密码：admin123",
+    "instruction": "冒号后的密码",
+    "expected_pattern": "[：:]\\s*(.+)",
+    "expected_group": 1,
+    "expected_result": "admin123"
+  },
+  {
+    "name": "基本密码提取_半角冒号",
+    "raw_value": "密码: admin456",
+    "instruction": "冒号后的密码",
+    "expected_pattern": "[：:]\\s*(.+)",
+    "expected_group": 1,
+    "expected_result": "admin456"
+  },
+  {
+    "name": "多空白字符_制表符",
+    "raw_value": "验证码:\t\t789012",
+    "instruction": "冒号后的验证码",
+    "expected_pattern": "[：:]\\s*(.+)",
+    "expected_group": 1,
+    "expected_result": "789012"
+  },
+  {
+    "name": "多空白字符_混合空格制表符",
+    "raw_value": "token: \t Bearer xyz789",
+    "instruction": "冒号后的 token",
+    "expected_pattern": "[：:]\\s*(.+)",
+    "expected_group": 1,
+    "expected_result": "Bearer xyz789"
+  },
+  {
+    "name": "无冒号_直接数字",
+    "raw_value": "123456",
+    "instruction": "提取数字",
+    "expected_pattern": "\\d+",
+    "expected_group": 0,
+    "expected_result": "123456"
+  },
+  {
+    "name": "括号提取_圆括号",
+    "raw_value": "订单号(20230912001)",
+    "raw_value": "订单号(20230912001)",
+    "instruction": "括号内的订单号",
+    "expected_pattern": "\\(([^)]+)\\)",
+    "expected_group": 1,
+    "expected_result": "20230912001"
+  },
+  {
+    "name": "多个分组_提取中间",
+    "raw_value": "用户:张三,ID:10086",
+    "instruction": "ID 后的数字",
+    "expected_pattern": "ID[：:]\\s*(\\d+)",
+    "expected_group": 1,
+    "expected_result": "10086"
+  },
+  {
+    "name": "无匹配_冒号不存在",
+    "raw_value": "纯文本没有冒号",
+    "instruction": "冒号后的内容",
+    "expected_pattern": "[：:]\\s*(.+)",
+    "expected_group": 1,
+    "expected_result": null
+  },
+  {
+    "name": "危险正则_空模式",
+    "raw_value": "任意内容",
+    "instruction": "空正则",
+    "expected_pattern": "",
+    "expected_group": 0,
+    "expected_result": null
+  },
+  {
+    "name": "危险正则_灾难性回溯",
+    "raw_value": "aaaaaaaaaaaaaaaaaaaaX",
+    "instruction": "灾难性回溯测试",
+    "expected_pattern": "(a+)+b",
+    "expected_group": 0,
+    "expected_result": null
+  },
+  {
+    "name": "分组越界_请求第2组但只有1组",
+    "raw_value": "密码：secret789",
+    "instruction": "请求不存在的分组",
+    "expected_pattern": "[：:]\\s*(.+)",
+    "expected_group": 2,
+    "expected_result": null
+  },
+  {
+    "name": "邮箱提取_at符号",
+    "raw_value": "联系方式: admin@example.com",
+    "instruction": "提取邮箱",
+    "expected_pattern": "([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,})",
+    "expected_group": 1,
+    "expected_result": "admin@example.com"
+  },
+  {
+    "name": "JSON值提取_引号内",
+    "raw_value": "{\"token\":\"abc123xyz\"}",
+    "instruction": "token 值",
+    "expected_pattern": "\"token\"\\s*:\\s*\"([^\"]+)\"",
+    "expected_group": 1,
+    "expected_result": "abc123xyz"
+  }
+]

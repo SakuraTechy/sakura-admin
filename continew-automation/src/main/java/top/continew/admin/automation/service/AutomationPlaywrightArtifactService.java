@@ -16,6 +16,8 @@
 
 package top.continew.admin.automation.service;
 
+import java.util.List;
+
 import org.springframework.web.multipart.MultipartFile;
 
 /**
@@ -33,6 +35,13 @@ public interface AutomationPlaywrightArtifactService {
      * 按 Runner 产物目录中的安全相对路径保存文件。
      */
     Artifact store(String runId, String artifactType, String relativePath, MultipartFile file);
+
+    /** 仅由已完成场景、批次和用例鉴权的结果服务调用，不向上传 Controller 开放自定义目录。 */
+    Artifact storeExecutionLog(ExecutionLogContext context, List<?> logs);
+
+    record ExecutionLogContext(String runId, String projectShortName, String versionName, String sceneId,
+                               String caseId) {
+    }
 
     /**
      * 读取新链路中由系统文件管理持久化的 Playwright artifact。

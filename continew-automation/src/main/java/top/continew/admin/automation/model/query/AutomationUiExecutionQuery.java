@@ -35,6 +35,10 @@ public class AutomationUiExecutionQuery {
     @Size(max = 16, message = "recordSource 长度不能超过 16")
     private String recordSource;
 
+    /** 选择执行时按引擎查询最近记录，不能先取最新一条再由前端过滤。 */
+    @Size(max = 64, message = "执行引擎长度不能超过 64")
+    private String executionEngine;
+
     @Positive(message = "测试计划 ID 必须为正整数")
     private Long testPlanId;
 

@@ -80,8 +80,18 @@ public class AutomationOperationStepAssembler {
 
         LinkedHashMap<String, Object> methodConfig = parseMethodConfig(existing.get("method_config"));
         configValidator.validate(method, methodConfig);
+        if ("server.shell".equals(methodCode)) {
+            if (AutomationServerShellResultConfig.hasLegacyExtraction(step, objectMapper)) {
+                throw new BusinessException("METHOD_CONFIG_INVALID：旧 Shell 正则提取配置不能静默转换，请保留旧步骤或明确移除提取配置");
+            }
+            AutomationServerShellResultConfig.from(methodConfig).normalize(methodConfig);
+        }
 
         LinkedHashMap<String, Object> canonicalStep = buildCanonicalStep(step, method, methodConfig);
+        if ("server.shell".equals(methodCode) && !canonicalStep.containsKey("value_masked") && existing
+            .containsKey("value_masked")) {
+            canonicalStep.put("value_masked", existing.get("value_masked"));
+        }
         String rawStep = writeJson(canonicalStep);
         String digest = sha256(rawStep);
         Map<String, String> legacyConfigs = buildLegacyConfigs(method, methodConfig, canonicalStep);
@@ -92,6 +102,12 @@ public class AutomationOperationStepAssembler {
                 continue;
             }
             String name = config.getParamsName();
+            // Shell 投影由当前 method_config 独占；清空配置时不能把旧 key/value/details 重新带回。
+            if ("server.shell".equals(methodCode) && java.util.Set
+                .of("device", "shell", "key", "value", "details", "replace_regex", "replace_value", "variable_name")
+                .contains(name)) {
+                continue;
+            }
             if (!GENERATED_CONFIGS.contains(name) && !"method_code".equals(name) && !legacyConfigs.containsKey(name)) {
                 configs.add(copyConfig(config));
             }
@@ -253,6 +269,10 @@ public class AutomationOperationStepAssembler {
             case "web-assert-element-match" -> {
                 putLocator(legacy, locator);
                 putValue(legacy, "read_mode", methodConfig.get("read_mode"));
+                // 沿用旧属性检查的 value 参数传属性名，不改变 Jenkins XML 结构。
+                if ("attribute".equals(methodConfig.get("read_mode"))) {
+                    putValue(legacy, "value", methodConfig.get("attribute"));
+                }
                 putValue(legacy, "match_mode", methodConfig.get("match_mode"));
                 putValue(legacy, "expect", methodConfig.get("expect"));
             }
@@ -351,6 +371,12 @@ public class AutomationOperationStepAssembler {
             case "exe-shell" -> {
                 putValue(legacy, "device", targetBindingKey(methodConfig.get("target_ref")));
                 putValue(legacy, "shell", firstValue(methodConfig, "command", "shell"));
+                AutomationServerShellResultConfig result = AutomationServerShellResultConfig.from(methodConfig);
+                if (!result.replaceRegex().isEmpty()) {
+                    legacy.put("key", result.replaceRegex());
+                    legacy.put("value", result.replaceValue());
+                }
+                putDetails(legacy, "key", result.variableName());
             }
             case "free-sftp", "free-sftps" -> {
                 putValue(legacy, "device", targetBindingKey(methodConfig.get("target_ref")));

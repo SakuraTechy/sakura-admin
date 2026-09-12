@@ -29,6 +29,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import top.continew.admin.automation.converter.AutomationOperationStepAssembler;
 import top.continew.admin.automation.converter.AutomationOperationStepReverseAdapter;
+import top.continew.admin.automation.converter.AutomationServerShellResultConfig;
 import top.continew.admin.automation.mapper.AutomationPlaywrightJobMapper;
 import top.continew.admin.automation.mapper.AutomationUiSceneMapper;
 import top.continew.admin.automation.mapper.AutomationUiSceneQueryMapper;
@@ -163,6 +164,11 @@ public class AutomationUiCaseTreeServiceImpl implements AutomationUiCaseTreeServ
 
     private void applyStepEdit(StepDO target, StepDO request) {
         StepDO editRequest = reverseLegacyStepForExplicitEdit(request);
+        if ("server.shell".equals(configValue(editRequest, "method_code")) && AutomationServerShellResultConfig
+            .hasLegacyExtraction(target, objectMapper)) {
+            // 请求可省略历史配置，必须检查数据库中的原步骤，不能借新版 DTO 清除提取语义。
+            throw new BusinessException("METHOD_CONFIG_INVALID：旧 Shell 正则提取配置不能静默转换，请保留旧步骤");
+        }
         StepDO assembledRequest = operationStepAssembler.assembleManualStep(editRequest);
         boolean maskedValue = isMasked(target.getConfigList());
         preserveOriginalRecordingConfigs(target);

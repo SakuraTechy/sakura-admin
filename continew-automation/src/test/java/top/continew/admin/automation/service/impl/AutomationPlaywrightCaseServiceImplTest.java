@@ -37,6 +37,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.mockito.ArgumentCaptor;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.mockito.junit.jupiter.MockitoExtension;
 import top.continew.admin.automation.converter.AutomationPlaybackUrlRewriter;
 import top.continew.admin.automation.converter.AutomationPlaywrightStepExtractor;
@@ -53,6 +56,9 @@ import top.continew.admin.automation.model.req.playwright.AutomationPlaywrightRe
 import top.continew.admin.automation.model.resp.playwright.AutomationPlaywrightBatchResp;
 import top.continew.admin.automation.model.resp.playwright.AutomationPlaywrightCaseResp;
 import top.continew.admin.automation.service.AutomationPlaywrightSessionStateService;
+import top.continew.admin.automation.service.AutomationPlaywrightArtifactService;
+import top.continew.admin.automation.service.AutomationPlaywrightArtifactService.Artifact;
+import top.continew.admin.automation.service.AutomationPlaywrightArtifactService.ExecutionLogContext;
 import top.continew.admin.automation.service.AutomationEnvironmentResourceService;
 import top.continew.admin.automation.service.AutomationCertificateWorkspaceService;
 import top.continew.admin.automation.service.AutomationCaseExecutionClassifier;
@@ -85,6 +91,12 @@ class AutomationPlaywrightCaseServiceImplTest {
 
     @Mock
     private AutomationPlaywrightSessionStateService sessionStateService;
+
+    @Mock
+    private AutomationPlaywrightArtifactService artifactService;
+
+    @Mock
+    private ObjectProvider<AutomationPlaywrightArtifactService> artifactServiceProvider;
 
     @Mock
     private AutomationUiExecutionRecordService executionRecordService;
@@ -545,6 +557,45 @@ class AutomationPlaywrightCaseServiceImplTest {
         assertThat(storedCase.get("artifact_urls")).isEqualTo(Map
             .of("execution_log", "/automation/playwright/artifacts/files/124"));
         verify(sceneMapper).updateById(storedScene);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void shouldAbbreviateDataUrlInOperationDiagnosticsAndRemoveScreenshotBody() throws Exception {
+        String dataUrl = "data:image/jpg;base64," + "a".repeat(2_048);
+        String abbreviatedDataUrl = dataUrl.substring(0, 480) + "...[已省略 " + (dataUrl
+            .length() - 960) + " 字符]..." + dataUrl.substring(dataUrl.length() - 480);
+        Map<String, Object> assertionValue = Map.of("value_state", "visible", "preview", dataUrl);
+        Map<String, Object> raw = Map.of("steps", List.of(Map.of("details", Map.of("operation", Map.of("inputs", List
+            .of(Map.of("key", "expect", "configured", assertionValue, "effective", assertionValue)), "outcome", Map
+                .of("assertion", Map
+                    .of("expected", assertionValue, "actual", assertionValue)))), "operation_assertion", Map
+                        .of("expected", assertionValue, "actual", assertionValue), "screenshot_base64", "data:image/png;base64,discard-me")));
+        var sanitizer = AutomationPlaywrightCaseServiceImpl.class
+            .getDeclaredMethod("sanitizeExecutionResult", Map.class);
+        sanitizer.setAccessible(true);
+
+        Map<String, Object> sanitized = (Map<String, Object>)sanitizer.invoke(service, raw);
+        Map<String, Object> step = (Map<String, Object>)((List<?>)sanitized.get("steps")).get(0);
+        Map<String, Object> operation = (Map<String, Object>)((Map<String, Object>)step.get("details"))
+            .get("operation");
+        Map<String, Object> input = (Map<String, Object>)((List<?>)operation.get("inputs")).get(0);
+        Map<String, Object> outcome = (Map<String, Object>)operation.get("outcome");
+        Map<String, Object> assertion = (Map<String, Object>)outcome.get("assertion");
+        Map<String, Object> compatibilityAssertion = (Map<String, Object>)step.get("operation_assertion");
+
+        assertThat(((Map<String, Object>)input.get("configured")).get("preview")).isEqualTo(abbreviatedDataUrl);
+        assertThat(((Map<String, Object>)input.get("effective")).get("preview")).isEqualTo(abbreviatedDataUrl);
+        assertThat(((Map<String, Object>)assertion.get("expected")).get("preview")).isEqualTo(abbreviatedDataUrl);
+        assertThat(((Map<String, Object>)assertion.get("actual")).get("preview")).isEqualTo(abbreviatedDataUrl);
+        assertThat(((Map<String, Object>)compatibilityAssertion.get("expected")).get("preview"))
+            .isEqualTo(abbreviatedDataUrl);
+        assertThat(((Map<String, Object>)compatibilityAssertion.get("actual")).get("preview"))
+            .isEqualTo(abbreviatedDataUrl);
+        assertThat(abbreviatedDataUrl).startsWith(dataUrl.substring(0, 480))
+            .contains("[已省略 ")
+            .endsWith(dataUrl.substring(dataUrl.length() - 480));
+        assertThat(step).doesNotContainKey("screenshot_base64");
     }
 
     @Test
@@ -1135,6 +1186,100 @@ class AutomationPlaywrightCaseServiceImplTest {
         assertThat(caseResults.get(0).get("status")).isEqualTo("cancelled");
         assertThat(batch.get("executeStatus")).isEqualTo("cancelled");
         verify(sceneMapper).updateById(storedScene);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void shouldPersistCdpStartupFailureLogsWithOriginalTimestampsAndCaseArtifactIndex() {
+        AutomationUiSceneDO storedScene = prepareCdpLogBatch();
+        when(artifactService.storeExecutionLog(any(), any()))
+            .thenReturn(new Artifact(101L, "RUN_CASE_1", "execution-log", "logs/execution-log.json", "execution-log.json", "/automation/playwright/artifacts/files/101", "application/json", 128L, "md5", "local"));
+        AutomationPlaywrightResultReq request = cdpFailureWithLogs();
+
+        service.saveResult("100:CASE_001", request);
+
+        Map<String, Object> result = firstStoredCase(storedScene);
+        assertThat(result.get("error")).isEqualTo(request.getError());
+        assertThat(result.get("status")).isEqualTo("failed");
+        assertThat(result.get("duration_ms")).isEqualTo(82L);
+        assertThat(result.get("artifact_file_ids")).isEqualTo(Map.of("execution_log", "101"));
+        assertThat(result.get("artifact_urls")).isEqualTo(Map
+            .of("execution_log", "/automation/playwright/artifacts/files/101"));
+        ArgumentCaptor<ExecutionLogContext> context = ArgumentCaptor.forClass(ExecutionLogContext.class);
+        ArgumentCaptor<List<?>> logs = ArgumentCaptor.forClass(List.class);
+        verify(artifactService).storeExecutionLog(context.capture(), logs.capture());
+        assertThat(context.getValue().runId()).isEqualTo("RUN_CASE_1");
+        assertThat(context.getValue().caseId()).isEqualTo("CASE_001");
+        assertThat(context.getValue().sceneId()).isEqualTo(storedScene.getSceneId());
+        Map<String, Object> errorLog = (Map<String, Object>)logs.getValue().get(0);
+        assertThat(errorLog).containsEntry("timestamp", "2026-09-08T06:45:19.827Z");
+        assertThat(errorLog).containsEntry("message", request.getError());
+        assertThat(errorLog).doesNotContainKey("execution_capability");
+    }
+
+    @Test
+    void shouldKeepOriginalExecutionErrorWhenCdpLogStorageFails() {
+        AutomationUiSceneDO storedScene = prepareCdpLogBatch();
+        when(artifactService.storeExecutionLog(any(), any()))
+            .thenThrow(new IllegalStateException("file storage offline"));
+        AutomationPlaywrightResultReq request = cdpFailureWithLogs();
+
+        service.saveResult("100:CASE_001", request);
+
+        Map<String, Object> result = firstStoredCase(storedScene);
+        assertThat(result.get("status")).isEqualTo("failed");
+        assertThat(result.get("error")).isEqualTo(request.getError());
+        assertThat(result.get("artifact_upload_errors")).isEqualTo(List.of(Map
+            .of("artifact_type", "execution_log", "error", "file storage offline")));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void shouldValidateBatchMembershipBeforeWritingCdpLogFile() {
+        AutomationUiSceneDO storedScene = prepareCdpLogBatch();
+        Map<String, Object> batch = (Map<String, Object>)storedScene.getDebugRecord().get(0);
+        batch.put("caseResults", List.of(Map.of("case_id", "OTHER_CASE", "status", "running")));
+
+        assertThatThrownBy(() -> service.saveResult("100:CASE_001", cdpFailureWithLogs()))
+            .hasMessageContaining("批次目标用例不存在");
+        verify(artifactService, never()).storeExecutionLog(any(), any());
+    }
+
+    private AutomationUiSceneDO prepareCdpLogBatch() {
+        AutomationUiSceneDO storedScene = scene(1L);
+        when(sceneMapper.selectById(100L)).thenReturn(storedScene);
+        Map<String, Object> pendingCase = new LinkedHashMap<>();
+        pendingCase.put("case_id", "CASE_001");
+        pendingCase.put("execution_id", "RUN_CASE_1");
+        pendingCase.put("status", "running");
+        Map<String, Object> batch = new LinkedHashMap<>();
+        batch.put("batchId", "CDP_BATCH");
+        batch.put("executionType", "extension-cdp");
+        batch.put("startedAt", "2026-09-08 14:45:19");
+        batch.put("caseResults", new ArrayList<>(List.of(pendingCase)));
+        storedScene.setDebugRecord(new ArrayList<>(List.of(batch)));
+        ReflectionTestUtils.setField(service, "artifactServiceProvider", artifactServiceProvider);
+        lenient().when(artifactServiceProvider.getObject()).thenReturn(artifactService);
+        return storedScene;
+    }
+
+    private AutomationPlaywrightResultReq cdpFailureWithLogs() {
+        AutomationPlaywrightResultReq request = new AutomationPlaywrightResultReq();
+        request.setStatus("failed");
+        request.setSuccess(false);
+        request.setDurationMs(82L);
+        request.setError("变量预检失败：第 6 步引用了未定义变量 {{passwd}}");
+        request.setRaw(Map
+            .of("executor", "extension-cdp", "batch_id", "CDP_BATCH", "run_id", "UNTRUSTED_RUN", "startup_failure", true, "started_at", "2026-09-08T06:45:19.745Z", "finished_at", "2026-09-08T06:45:19.827Z", "execution_logs", List
+                .of(Map.of("sequence", 1, "timestamp", "2026-09-08T06:45:19.827Z", "level", "error", "message", request
+                    .getError(), "execution_capability", "not-for-storage"))));
+        return request;
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> firstStoredCase(AutomationUiSceneDO scene) {
+        Map<String, Object> batch = (Map<String, Object>)scene.getDebugRecord().get(0);
+        return (Map<String, Object>)((List<?>)batch.get("caseResults")).get(0);
     }
 
     private AutomationUiSceneDO scene(Long projectId) {

@@ -21,6 +21,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.Map;
+
+import org.apache.ibatis.mapping.BoundSql;
+import top.continew.admin.automation.model.query.AutomationUiExecutionQuery;
+import top.continew.admin.automation.model.query.AutomationUiExecutionCaseHistoryQuery;
+import top.continew.admin.automation.model.req.AutomationUiExecutionScopeReq;
 
 import org.apache.ibatis.builder.xml.XMLMapperBuilder;
 import org.apache.ibatis.session.Configuration;
@@ -109,6 +116,63 @@ class AutomationUiExecutionQueryMapperXmlTest {
         assertThat(cursor)
             .contains("e.create_time &gt; #{cursorTime}", "e.id &gt; #{cursorId}", "e.create_time &lt; #{cursorTime}", "e.id &lt; #{cursorId}", "LIMIT #{limit}")
             .doesNotContain("OFFSET", "COUNT(");
+    }
+
+    @Test
+    void latestSelectionShouldFilterEngineBeforePagingAndKeepScopeAndAuthorization() throws IOException {
+        Configuration configuration = new Configuration();
+        try (InputStream input = getClass().getClassLoader()
+            .getResourceAsStream("mapper/AutomationUiExecutionQueryMapper.xml")) {
+            new XMLMapperBuilder(input, configuration, "mapper/AutomationUiExecutionQueryMapper.xml", configuration
+                .getSqlFragments()).parse();
+        }
+        AutomationUiExecutionScopeReq scope = new AutomationUiExecutionScopeReq();
+        scope.setRecordSource("test");
+        scope.setTestPlanId(7L);
+        scope.setTestReportId(6L);
+        Map<String, Object> parameters = new HashMap<>();
+        parameters.put("scope", scope);
+        parameters.put("admin", false);
+        parameters.put("userId", 9L);
+        parameters.put("offset", 0L);
+        parameters.put("limit", 1);
+        parameters.put("ascending", false);
+        parameters.put("cursorTime", null);
+        parameters.put("cursorId", null);
+        for (String statement : new String[] {"selectCaseHistoryPageCount", "selectCaseHistoryPage",
+            "selectExecutionPageCount", "selectExecutionPage", "selectExecutionCursor"}) {
+            for (String engine : new String[] {"playwright-runner", "extension-cdp", "jenkins", null}) {
+                if (statement.startsWith("selectCaseHistory")) {
+                    AutomationUiExecutionCaseHistoryQuery query = new AutomationUiExecutionCaseHistoryQuery();
+                    query.setSceneDbId(8L);
+                    query.setCaseId("case-001");
+                    query.setExecutionEngine(engine);
+                    parameters.put("query", query);
+                } else {
+                    AutomationUiExecutionQuery query = new AutomationUiExecutionQuery();
+                    query.setSceneDbId(8L);
+                    query.setExecutionEngine(engine);
+                    parameters.put("query", query);
+                }
+                BoundSql bound = configuration
+                    .getMappedStatement("top.continew.admin.automation.mapper.AutomationUiExecutionQueryMapper." + statement)
+                    .getBoundSql(parameters);
+                assertThat(bound.getSql()).as(statement)
+                    .contains("e.test_plan_id = ?", "e.test_report_id = ?", "JSON_CONTAINS");
+                if (engine == null) {
+                    // 不传引擎时保持现有 Jenkins 和跨引擎历史列表的查询行为。
+                    assertThat(bound.getSql()).doesNotContain("LOWER(e.execution_engine)");
+                } else {
+                    assertThat(bound.getSql())
+                        .contains("LOWER(e.execution_engine) LIKE '%playwright%'", "LOWER(e.execution_engine) LIKE '%cdp%'", "LOWER(e.execution_engine) LIKE '%extension%'", "ELSE 'jenkins'");
+                    assertThat(bound.getParameterMappings()).extracting("property").contains("query.executionEngine");
+                    if (!statement.endsWith("Count")) {
+                        assertThat(bound.getSql().indexOf("LOWER(e.execution_engine)")).isLessThan(bound.getSql()
+                            .indexOf("ORDER BY"));
+                    }
+                }
+            }
+        }
     }
 
     private String mapperXml() throws IOException {

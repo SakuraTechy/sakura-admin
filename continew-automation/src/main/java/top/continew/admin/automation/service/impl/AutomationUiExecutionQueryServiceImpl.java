@@ -187,6 +187,10 @@ public class AutomationUiExecutionQueryServiceImpl implements AutomationUiExecut
         AccessScope accessScope = accessScopeResolver.currentScope();
         AutomationUiExecutionAccessRow access = queryMapper.selectCaseHistoryPageCount(query, scope, accessScope
             .userId(), accessScope.admin());
+        // 该作用域或引擎没有执行记录不代表场景无权限，仍需校验场景后返回空历史。
+        if (access == null) {
+            access = queryMapper.selectSceneAccess(query.getSceneDbId(), accessScope.userId(), accessScope.admin());
+        }
         requireAccess(access);
         long total = total(access);
         List<AutomationUiExecutionCaseHistoryResp> list = total == 0
@@ -304,9 +308,8 @@ public class AutomationUiExecutionQueryServiceImpl implements AutomationUiExecut
                                       boolean ascending) {
         return cursorCodec.digest(List.of(String.valueOf(query.getSceneDbId()), scope.getRecordSource(), String
             .valueOf(scope.getTestPlanId()), String.valueOf(scope.getTestReportId()), String.valueOf(scope
-                .getBuildNumber()), String.valueOf(query.getStatus()), String.valueOf(query.getResult()), ascending
-                    ? "asc"
-                    : "desc"));
+                .getBuildNumber()), String.valueOf(query.getStatus()), String.valueOf(query.getResult()), String
+                    .valueOf(query.getExecutionEngine()), ascending ? "asc" : "desc"));
     }
 
     private String cursorPermissionScopeDigest(Long sceneDbId, AccessScope scope) {

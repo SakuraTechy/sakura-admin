@@ -38,6 +38,7 @@ import jakarta.annotation.Resource;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import top.continew.admin.automation.converter.AutomationPlaybackUrlRewriter;
@@ -57,6 +58,8 @@ import top.continew.admin.automation.model.resp.playwright.AutomationPlaywrightB
 import top.continew.admin.automation.model.resp.playwright.AutomationPlaywrightCaseCancellationResp;
 import top.continew.admin.automation.model.resp.playwright.AutomationPlaywrightCaseResp;
 import top.continew.admin.automation.service.AutomationPlaywrightCaseService;
+import top.continew.admin.automation.service.AutomationPlaywrightArtifactService;
+import top.continew.admin.automation.service.AutomationPlaywrightArtifactService.ExecutionLogContext;
 import top.continew.admin.automation.service.AutomationEnvironmentResourceService;
 import top.continew.admin.automation.service.AutomationCertificateWorkspaceService;
 import top.continew.admin.automation.mapper.AutomationFileAssetMapper;
@@ -90,6 +93,9 @@ import top.continew.starter.core.exception.BusinessException;
 @RequiredArgsConstructor
 public class AutomationPlaywrightCaseServiceImpl implements AutomationPlaywrightCaseService {
 
+    private static final int OPERATION_DATA_URL_DISPLAY_HEAD_LENGTH = 480;
+    private static final int OPERATION_DATA_URL_DISPLAY_TAIL_LENGTH = 480;
+
     private static final ZoneId PLATFORM_ZONE_ID = ZoneId.of("Asia/Shanghai");
     private static final DateTimeFormatter PLATFORM_DATE_TIME_FORMATTER = DateTimeFormatter
         .ofPattern("yyyy-MM-dd HH:mm:ss");
@@ -118,6 +124,10 @@ public class AutomationPlaywrightCaseServiceImpl implements AutomationPlaywright
 
     @Resource
     private AutomationPlaywrightJobMapper automationPlaywrightJobMapper;
+
+    // 产物服务的旧上传路径依赖 caseService；延迟获取避免构造循环依赖。
+    @Resource
+    private ObjectProvider<AutomationPlaywrightArtifactService> artifactServiceProvider;
 
     @Override
     public AutomationPlaywrightCaseResp getCase(String caseKey) {
@@ -774,6 +784,14 @@ public class AutomationPlaywrightCaseServiceImpl implements AutomationPlaywright
         caseResult.put("started_at", startedAt);
         caseResult.put("finished_at", finishedAt);
         caseResult.put("error", StringUtils.firstNonBlank(req.getError(), stringValue(caseResult.get("error")), ""));
+        if ("extension-cdp".equals(executionType)) {
+            // 必须先确认目标属于批次，避免非法结果在被拒绝前写入日志文件。
+            String logRunId = batchRecord == null
+                ? executionId
+                : StringUtils.firstNonBlank(stringValue(requireBatchCase(batchRecord, caseId)
+                    .get("execution_id")), executionId);
+            persistCdpExecutionLog(scene, caseId, logRunId, rawResult, asObjectMap(req.getRaw()));
+        }
         // 结果摘要已经单独保存 artifact 映射；嵌套原始结果不再重复保存同一组路径。
         Map<String, Object> persistedPlaywrightResult = persistedPlaywrightResult(rawResult);
         caseResult.put("playwright_result", persistedPlaywrightResult);
@@ -842,6 +860,39 @@ public class AutomationPlaywrightCaseServiceImpl implements AutomationPlaywright
         scene.setStepFail(stepFail);
         scene.setStepSkip(stepSkip);
         executionRecordService.saveRecord(scene, record, null);
+    }
+
+    private void persistCdpExecutionLog(AutomationUiSceneDO scene,
+                                        String caseId,
+                                        String executionId,
+                                        Map<String, Object> rawResult,
+                                        Map<String, Object> originalResult) {
+        Object suppliedLogs = originalResult.getOrDefault("execution_logs", originalResult.get("executionLogs"));
+        // 原始事件保留毫秒时间；通用结果时间归一化只用于摘要，不能改写日志事实。
+        List<Object> logs = listValue(sanitizeExecutionResultValue("execution_logs", suppliedLogs, List.of()));
+        if (logs.isEmpty())
+            return;
+        try {
+            AutomationPlaywrightCaseResp metadata = new AutomationPlaywrightCaseResp();
+            fillArtifactPathMetadata(metadata, scene);
+            ExecutionLogContext context = new ExecutionLogContext(executionId, StringUtils.firstNonBlank(metadata
+                .getProjectShortName(), "project"), StringUtils.firstNonBlank(metadata
+                    .getVersionName(), "version"), scene.getSceneId(), caseId);
+            AutomationPlaywrightArtifactService.Artifact artifact = artifactServiceProvider.getObject()
+                .storeExecutionLog(context, logs);
+            Map<String, Object> urls = asObjectMap(rawResult.get("artifacts"));
+            urls.put("execution_log", artifact.url());
+            rawResult.put("artifacts", urls);
+            Map<String, Object> fileIds = asObjectMap(rawResult.get("artifact_file_ids"));
+            fileIds.put("execution_log", String.valueOf(artifact.fileId()));
+            rawResult.put("artifact_file_ids", fileIds);
+        } catch (Exception e) {
+            // 日志存储故障不能覆盖执行异常，仍回传原始用例结果并记录独立产物错误。
+            List<Object> errors = new ArrayList<>(listValue(rawResult.get("artifact_upload_errors")));
+            errors.add(Map.of("artifact_type", "execution_log", "error", StringUtils.defaultIfBlank(e
+                .getMessage(), "执行日志保存失败")));
+            rawResult.put("artifact_upload_errors", errors);
+        }
     }
 
     private Map<String, Object> persistedPlaywrightResult(Map<String, Object> rawResult) {
@@ -1089,7 +1140,7 @@ public class AutomationPlaywrightCaseServiceImpl implements AutomationPlaywright
     private Map<String, Object> sanitizeExecutionResult(Map<String, Object> rawResult) {
         Map<String, Object> sanitized = new LinkedHashMap<>();
         rawResult.forEach((key, value) -> {
-            Object safeValue = sanitizeExecutionResultValue(key, value);
+            Object safeValue = sanitizeExecutionResultValue(key, value, List.of());
             if (safeValue != null) {
                 sanitized.put(key, safeValue);
             }
@@ -1097,8 +1148,10 @@ public class AutomationPlaywrightCaseServiceImpl implements AutomationPlaywright
         return sanitized;
     }
 
-    private Object sanitizeExecutionResultValue(String key, Object value) {
+    private Object sanitizeExecutionResultValue(String key, Object value, List<String> parentPath) {
         String normalizedKey = StringUtils.defaultString(key).toLowerCase().replace('-', '_');
+        List<String> path = new ArrayList<>(parentPath);
+        path.add(normalizedKey);
         if (normalizedKey.contains("execution_capability") || normalizedKey
             .equals("executioncapability") || normalizedKey.equals("x_execution_capability")) {
             // capability 只通过请求头参与鉴权，禁止把短期明文令牌写入执行结果或历史 JSON。
@@ -1108,7 +1161,7 @@ public class AutomationPlaywrightCaseServiceImpl implements AutomationPlaywright
             Map<String, Object> sanitized = new LinkedHashMap<>();
             map.forEach((childKey, childValue) -> {
                 String childName = String.valueOf(childKey);
-                Object safeValue = sanitizeExecutionResultValue(childName, childValue);
+                Object safeValue = sanitizeExecutionResultValue(childName, childValue, path);
                 if (safeValue != null) {
                     sanitized.put(childName, safeValue);
                 }
@@ -1118,7 +1171,7 @@ public class AutomationPlaywrightCaseServiceImpl implements AutomationPlaywright
         if (value instanceof List<?> list) {
             List<Object> sanitized = new ArrayList<>();
             for (Object item : list) {
-                Object safeValue = sanitizeExecutionResultValue(key, item);
+                Object safeValue = sanitizeExecutionResultValue(key, item, parentPath);
                 if (safeValue != null) {
                     sanitized.add(safeValue);
                 }
@@ -1128,15 +1181,39 @@ public class AutomationPlaywrightCaseServiceImpl implements AutomationPlaywright
         if (!(value instanceof String text)) {
             return value;
         }
-        if (normalizedKey.contains("base64") || text.regionMatches(true, 0, "data:image/", 0, 11)) {
+        if (normalizedKey.contains("base64")) {
             // 截图二进制必须先文件化并只保存 URL，禁止撑大场景 testRecord JSON。
             return null;
+        }
+        if (text.regionMatches(true, 0, "data:image/", 0, 11)) {
+            if (!isOperationDiagnosticValue(path)) {
+                // 非诊断 data URL 仍按截图正文处理，避免二进制进入执行记录。
+                return null;
+            }
+            // 断言已在执行器中完成，报告只需保留前后片段供人工核对，不能落库完整 base64。
+            return abbreviateOperationDataUrl(text);
         }
         if (looksLikeRunnerLocalPath(text)) {
             // Runner 本地路径对报告查看端不可访问，上传失败时仅保留错误，不持久化该路径。
             return null;
         }
         return text;
+    }
+
+    private boolean isOperationDiagnosticValue(List<String> path) {
+        return path.contains("operation_assertion") || (path.contains("operation") && (path.contains("inputs") || path
+            .contains("assertion")));
+    }
+
+    private String abbreviateOperationDataUrl(String value) {
+        int retainedLength = OPERATION_DATA_URL_DISPLAY_HEAD_LENGTH + OPERATION_DATA_URL_DISPLAY_TAIL_LENGTH;
+        if (value.length() <= retainedLength) {
+            return value;
+        }
+        int omittedLength = value.length() - retainedLength;
+        return value
+            .substring(0, OPERATION_DATA_URL_DISPLAY_HEAD_LENGTH) + "...[已省略 " + omittedLength + " 字符]..." + value
+                .substring(value.length() - OPERATION_DATA_URL_DISPLAY_TAIL_LENGTH);
     }
 
     private boolean looksLikeRunnerLocalPath(String value) {

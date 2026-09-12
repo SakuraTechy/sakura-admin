@@ -42,9 +42,9 @@ import org.springframework.stereotype.Service;
 import top.continew.starter.core.exception.BusinessException;
 
 /**
- * 管理 Playwright 批次认证状态的受控临时文件。
+ * 管理 Playwright 批次认证状态和场景变量的受控临时文件。
  *
- * <p>认证状态可能包含可冒用账号的 Cookie 和 sessionStorage，不能进入 artifact、场景 JSON 或前端请求。</p>
+ * <p>认证状态和变量可能包含账号凭据，不能进入 artifact、场景 JSON 或前端请求。</p>
  */
 @Slf4j
 @Service
@@ -96,21 +96,65 @@ public class AutomationPlaywrightSessionStateService {
         return files != null && Files.isRegularFile(files.currentPath());
     }
 
+    public SessionFiles prepareVariables(String batchId, String sceneKey, Long projectEnvironmentId, String jobId) {
+        // 变量共享与浏览器登录态独立，并额外按场景隔离；沿用批次终态及过期清理机制。
+        Path directory = resolveInsideRoot(resolveBatchDirectory(batchId).resolve(safeSegment(String
+            .valueOf(projectEnvironmentId))).resolve("variables").resolve(safeSegment(sceneKey)));
+        Path candidates = resolveInsideRoot(directory.resolve("candidates"));
+        try {
+            Files.createDirectories(candidates);
+        } catch (IOException e) {
+            throw new BusinessException("创建 Playwright 场景变量目录失败");
+        }
+        return new SessionFiles(directory.resolve("current.json"), candidates.resolve(safeSegment(jobId) + ".json"));
+    }
+
+    public void promoteVariables(SessionFiles files) {
+        if (files == null) {
+            return;
+        }
+        try {
+            JsonNode state = objectMapper.readTree(files.candidatePath().toFile());
+            if (state == null || state.path("version").asInt() != 1 || !state.path("variables").isArray() || !state
+                .path("scope")
+                .path("batch_id")
+                .isTextual() || !state.path("scope").path("scene_key").isTextual() || !state.path("scope")
+                    .path("project_environment_id")
+                    .isTextual()) {
+                throw new BusinessException("Playwright 场景变量候选格式无效");
+            }
+            for (JsonNode entry : state.path("variables")) {
+                if (!entry.path("name").isTextual() || !entry.has("value") || !entry.path("masked")
+                    .isBoolean() || !entry.path("source").isTextual()) {
+                    throw new BusinessException("Playwright 场景变量候选条目格式无效");
+                }
+            }
+            moveCandidate(files);
+        } catch (IOException e) {
+            // 解析错误可能包含密码原文，不把底层异常或临时文件路径写入结果。
+            throw new BusinessException("读取或提交 Playwright 场景变量候选失败");
+        }
+    }
+
     public void promote(SessionFiles files) {
         if (files == null) {
             return;
         }
         validateStateFile(files.candidatePath());
         try {
-            Files.createDirectories(files.currentPath().getParent());
-            try {
-                Files.move(files.candidatePath(), files
-                    .currentPath(), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
-            } catch (AtomicMoveNotSupportedException e) {
-                Files.move(files.candidatePath(), files.currentPath(), StandardCopyOption.REPLACE_EXISTING);
-            }
+            moveCandidate(files);
         } catch (IOException e) {
             throw new BusinessException("提交 Playwright 批次登录态失败：" + e.getMessage());
+        }
+    }
+
+    private void moveCandidate(SessionFiles files) throws IOException {
+        Files.createDirectories(files.currentPath().getParent());
+        try {
+            Files.move(files.candidatePath(), files
+                .currentPath(), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+        } catch (AtomicMoveNotSupportedException e) {
+            Files.move(files.candidatePath(), files.currentPath(), StandardCopyOption.REPLACE_EXISTING);
         }
     }
 

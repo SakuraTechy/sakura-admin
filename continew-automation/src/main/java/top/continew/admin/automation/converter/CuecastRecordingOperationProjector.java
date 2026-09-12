@@ -43,7 +43,7 @@ public class CuecastRecordingOperationProjector {
     private static final TypeReference<LinkedHashMap<String, Object>> MAP_TYPE = new TypeReference<>() {
     };
     private static final Set<String> MATCH_MODES = Set.of("contains", "equals", "not_contains", "regex", "visible");
-    private static final Set<String> READ_MODES = Set.of("auto", "text", "value");
+    private static final Set<String> READ_MODES = Set.of("auto", "text", "attribute", "value");
 
     private final ObjectMapper objectMapper;
     private final AutomationOperationCatalogService catalogService;
@@ -54,7 +54,7 @@ public class CuecastRecordingOperationProjector {
             return RecordedOperationProjection.notApplicable();
         }
         return project(step.getActionType(), step.getValue(), step.getTargetSelector(), step.getTargetXpath(), step
-            .getLocatorMeta());
+            .getLocatorMeta(), step.getExtra().get("attribute"));
     }
 
     public RecordedOperationProjection project(Map<String, Object> rawStep) {
@@ -62,14 +62,16 @@ public class CuecastRecordingOperationProjector {
             return RecordedOperationProjection.notApplicable();
         }
         return project(text(rawStep.get("action_type")), rawStep.get("value"), text(rawStep
-            .get("target_selector")), text(rawStep.get("target_xpath")), rawStep.get("locator_meta"));
+            .get("target_selector")), text(rawStep.get("target_xpath")), rawStep.get("locator_meta"), rawStep
+                .get("attribute"));
     }
 
     private RecordedOperationProjection project(String rawActionType,
                                                 Object value,
                                                 String targetSelector,
                                                 String targetXpath,
-                                                Object rawLocatorMeta) {
+                                                Object rawLocatorMeta,
+                                                Object rawAttribute) {
         String actionType = text(rawActionType).toLowerCase(java.util.Locale.ROOT);
         if (!"set_variable".equals(actionType) && !"assert_text".equals(actionType)) {
             return RecordedOperationProjection.notApplicable();
@@ -86,7 +88,7 @@ public class CuecastRecordingOperationProjector {
         }
         return "set_variable".equals(actionType)
             ? projectVariable(value, targetSelector, targetXpath, locatorMeta)
-            : projectAssertion(value, targetSelector, targetXpath, locatorMeta);
+            : projectAssertion(value, targetSelector, targetXpath, locatorMeta, rawAttribute);
     }
 
     private RecordedOperationProjection projectVariable(Object value,
@@ -140,7 +142,8 @@ public class CuecastRecordingOperationProjector {
     private RecordedOperationProjection projectAssertion(Object value,
                                                          String targetSelector,
                                                          String targetXpath,
-                                                         Map<String, Object> locatorMeta) {
+                                                         Map<String, Object> locatorMeta,
+                                                         Object rawAttribute) {
         Map<String, Object> assertion = mapValue(locatorMeta.get("assertion"));
         Map<String, Object> contextAssertion = nestedMap(locatorMeta, "context", "assertion");
         if (assertion == null) {
@@ -164,7 +167,10 @@ public class CuecastRecordingOperationProjector {
         if (!READ_MODES.contains(readMode)) {
             return RecordedOperationProjection.failed("RECORDED_ASSERTION_SOURCE_UNSUPPORTED");
         }
-        String expected = "visible".equals(matchMode) ? "" : text(value);
+        // 属性值必须保留原始空白，不能使用文本展示的 trim 规则。
+        String expected = "visible".equals(matchMode)
+            ? ""
+            : "attribute".equals(readMode) && value != null ? String.valueOf(value) : text(value);
         if (!"visible".equals(matchMode) && expected.isBlank()) {
             return RecordedOperationProjection.failed("RECORDED_ASSERTION_EXPECT_MISSING");
         }
@@ -175,6 +181,11 @@ public class CuecastRecordingOperationProjector {
         config.put("match_mode", matchMode);
         if (!"visible".equals(matchMode)) {
             config.put("expect", expected);
+            if ("attribute".equals(readMode)) {
+                config.put("attribute", firstNonBlank(rawAttribute, contextAssertion == null
+                    ? null
+                    : contextAssertion.get("attribute"), assertion.get("attribute")));
+            }
         }
         return validate("assertion.element.match", config);
     }
@@ -263,6 +274,15 @@ public class CuecastRecordingOperationProjector {
             }
         }
         return "";
+    }
+
+    private Object firstNonBlank(Object... values) {
+        for (Object value : values) {
+            if (value != null && !text(value).isBlank()) {
+                return value;
+            }
+        }
+        return null;
     }
 
     private String defaultText(Object value, String fallback) {

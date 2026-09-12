@@ -214,10 +214,11 @@ public class AutomationPlaywrightRunnerJobServiceImpl implements AutomationPlayw
         String sessionMode = normalizedRequest.getOptions().getSessionMode();
         boolean reuseAuth = "reuse-auth".equals(sessionMode);
         boolean reusableSession = reuseAuth || "reuse-browser".equals(sessionMode);
+        boolean batchExecution = StringUtils.isNotBlank(normalizedRequest.getBatchId());
         CheckUtils.throwIf(reusableSession && StringUtils.isBlank(normalizedRequest
             .getBatchId()), "Playwright Runner " + sessionMode + " 模式必须提供 batchId");
         ensureBatchCaseNotCancelled(normalizedRequest, caseKey);
-        if (reusableSession) {
+        if (batchExecution) {
             caseService.validateReusableBatchCase(sceneKey(caseKey), normalizedRequest
                 .getBatchId(), caseId(caseKey), normalizedRequest.getProjectEnvironmentId());
         }
@@ -244,13 +245,18 @@ public class AutomationPlaywrightRunnerJobServiceImpl implements AutomationPlayw
         JobRuntime runtime;
         try {
             synchronized (jobs) {
-                CheckUtils.throwIf(reusableSession && hasActiveBatchJob(normalizedRequest
-                    .getBatchId()), "Playwright Runner " + sessionMode + " 批次仅允许串行执行");
+                // 独立登录也共享同场景变量，必须等待前一进程提交候选后才能启动下一用例。
+                CheckUtils.throwIf(batchExecution && hasActiveBatchJob(normalizedRequest
+                    .getBatchId()), "Playwright Runner 批次仅允许串行执行");
                 SessionFiles sessionFiles = reuseAuth
                     ? sessionStateService.prepare(normalizedRequest.getBatchId(), normalizedRequest
                         .getProjectEnvironmentId(), jobId)
                     : null;
-                runtime = new JobRuntime(jobId, caseKey, normalizedRequest, sessionFiles, resolveDefinitionVersion(caseKey));
+                SessionFiles variableFiles = batchExecution
+                    ? sessionStateService.prepareVariables(normalizedRequest
+                        .getBatchId(), sceneKey(caseKey), normalizedRequest.getProjectEnvironmentId(), jobId)
+                    : null;
+                runtime = new JobRuntime(jobId, caseKey, normalizedRequest, sessionFiles, variableFiles, resolveDefinitionVersion(caseKey));
                 jobs.put(jobId, runtime);
                 // 任务注册后再次检查，封住“取消扫描完成、任务随后入队”的竞态窗口。
                 ensureBatchCaseNotCancelled(normalizedRequest, caseKey);
@@ -258,6 +264,7 @@ public class AutomationPlaywrightRunnerJobServiceImpl implements AutomationPlayw
         } catch (RuntimeException e) {
             JobRuntime removed = jobs.remove(jobId);
             sessionStateService.discardCandidate(removed == null ? null : removed.sessionFiles);
+            sessionStateService.discardCandidate(removed == null ? null : removed.variableFiles);
             activeJobs.decrementAndGet();
             throw e;
         }
@@ -265,6 +272,7 @@ public class AutomationPlaywrightRunnerJobServiceImpl implements AutomationPlayw
             insertJobRecord(runtime);
         } catch (RuntimeException e) {
             jobs.remove(jobId, runtime);
+            sessionStateService.discardCandidate(runtime.variableFiles);
             activeJobs.decrementAndGet();
             throw e;
         }
@@ -439,6 +447,7 @@ public class AutomationPlaywrightRunnerJobServiceImpl implements AutomationPlayw
             ProcessBuilder processBuilder = new ProcessBuilder(command).directory(root.toFile())
                 .redirectErrorStream(true);
             Map<String, String> environment = processBuilder.environment();
+            configureVariableEnvironment(environment, runtime.variableFiles);
             String effectiveExecutorInstanceId = ensureExecutorRegistration();
             // Admin 托管模式把受控实例身份注入子进程，避免 Runner 回退到不稳定的主机名。
             environment.put("SAKURA_PLAYWRIGHT_EXECUTOR_INSTANCE_ID", effectiveExecutorInstanceId);
@@ -486,6 +495,7 @@ public class AutomationPlaywrightRunnerJobServiceImpl implements AutomationPlayw
                         sessionStateService.promote(runtime.sessionFiles);
                         recordSessionEvent(runtime, "success", "Runner 成功且未取消，登录态候选已原子提升");
                     }
+                    promoteVariableState(runtime, exitCode, reportFailed);
                     runtime.status = exitCode == 0 && !reportFailed ? "passed" : "failed";
                     if (exitCode != 0 && StringUtils.isBlank(runtime.error)) {
                         runtime.error = "Playwright Runner 进程退出码：" + exitCode;
@@ -532,6 +542,7 @@ public class AutomationPlaywrightRunnerJobServiceImpl implements AutomationPlayw
             if (runtime.process != null && runtime.process.isAlive()) {
                 terminateProcessTree(runtime.process);
             }
+            sessionStateService.discardCandidate(runtime.variableFiles);
             if (StringUtils.isBlank(runtime.finishedAt)) {
                 runtime.finishedAt = now();
             }
@@ -541,6 +552,25 @@ public class AutomationPlaywrightRunnerJobServiceImpl implements AutomationPlayw
             scheduleLiveFrameCleanup(runtime);
             scheduleRuntimeCleanup(runtime);
             activeJobs.decrementAndGet();
+        }
+    }
+
+    private void promoteVariableState(JobRuntime runtime, int exitCode, boolean reportFailed) {
+        if (!runtime.cancelRequested && exitCode == 0 && !reportFailed && runtime.variableFiles != null) {
+            sessionStateService.promoteVariables(runtime.variableFiles);
+            appendLog(runtime, nowWithMillis(), "success", "variable", "场景批次变量已提交，可供后续用例使用", true);
+        }
+    }
+
+    private void configureVariableEnvironment(Map<String, String> environment, SessionFiles files) {
+        // 不继承宿主的变量文件路径；仅通过子进程环境传递当前受鉴权批次的临时状态。
+        environment.remove("SAKURA_PLAYWRIGHT_VARIABLE_STATE_IN");
+        environment.remove("SAKURA_PLAYWRIGHT_VARIABLE_STATE_OUT");
+        if (files != null) {
+            if (sessionStateService.hasCurrent(files)) {
+                environment.put("SAKURA_PLAYWRIGHT_VARIABLE_STATE_IN", files.currentPath().toString());
+            }
+            environment.put("SAKURA_PLAYWRIGHT_VARIABLE_STATE_OUT", files.candidatePath().toString());
         }
     }
 
@@ -1053,6 +1083,7 @@ public class AutomationPlaywrightRunnerJobServiceImpl implements AutomationPlayw
         private final String caseKey;
         private final AutomationPlaywrightRunnerJobReq request;
         private final SessionFiles sessionFiles;
+        private final SessionFiles variableFiles;
         private final Long definitionVersion;
         private final Deque<String> outputTail = new ArrayDeque<>();
         private final Deque<AutomationPlaywrightRunnerLogResp> logs = new ArrayDeque<>();
@@ -1079,11 +1110,13 @@ public class AutomationPlaywrightRunnerJobServiceImpl implements AutomationPlayw
                            String caseKey,
                            AutomationPlaywrightRunnerJobReq request,
                            SessionFiles sessionFiles,
+                           SessionFiles variableFiles,
                            Long definitionVersion) {
             this.jobId = jobId;
             this.caseKey = caseKey;
             this.request = request;
             this.sessionFiles = sessionFiles;
+            this.variableFiles = variableFiles;
             this.definitionVersion = definitionVersion;
         }
     }

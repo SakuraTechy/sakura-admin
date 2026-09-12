@@ -266,7 +266,12 @@ public final class AutomationUiSceneXmlUtils {
                     .remove("action")));
                 putIfNotBlank(orderedAttributes, "setting", chooseValue(stepDO.getSetting(), dynamicAttributes
                     .remove("setting")));
-                putIfNotBlank(orderedAttributes, "value", dynamicAttributes.remove("value"));
+                String legacyValue = dynamicAttributes.remove("value");
+                if (preserveShellReplacementAttribute(stepDO, "value", legacyValue)) {
+                    orderedAttributes.put("value", legacyValue);
+                } else {
+                    putIfNotBlank(orderedAttributes, "value", legacyValue);
+                }
                 dynamicAttributes.forEach(orderedAttributes::putIfAbsent);
                 builder.append("\n    <step");
                 appendXmlAttributesInOrder(builder, orderedAttributes, stepContext);
@@ -675,7 +680,8 @@ public final class AutomationUiSceneXmlUtils {
                 continue;
             }
             String value = resolveConfigValue(stepDO, config, domain, serverEth);
-            if (StringUtils.isBlank(value)) {
+            if (StringUtils.isBlank(value) && !preserveShellReplacementAttribute(stepDO, config
+                .getParamsName(), value)) {
                 continue;
             }
             dynamicAttributes.putIfAbsent(config.getParamsName(), value);
@@ -690,8 +696,29 @@ public final class AutomationUiSceneXmlUtils {
             return;
         }
         for (Map.Entry<String, String> entry : attributes.entrySet()) {
+            if ("exe-shell".equals(attributes.get("action")) && attributes.containsKey("key") && ("key".equals(entry
+                .getKey()) || "value".equals(entry.getKey()))) {
+                // 空值是删除匹配内容；字符引用避免 XML 将真实换行、制表符规范化为空格。
+                validateXmlAttributeValue(entry.getKey(), entry.getValue(), context);
+                builder.append(' ')
+                    .append(entry.getKey())
+                    .append("=\"")
+                    .append(escapeXmlAttribute(entry.getValue()).replace("\r", "&#xD;")
+                        .replace("\n", "&#xA;")
+                        .replace("\t", "&#x9;"))
+                    .append('"');
+                continue;
+            }
             appendXmlAttributeIfNotBlank(builder, entry.getKey(), entry.getValue(), context);
         }
+    }
+
+    private static boolean preserveShellReplacementAttribute(StepDO step, String name, String value) {
+        return value != null && "exe-shell".equals(resolveAction(step)) && ("key".equals(name) || "value"
+            .equals(name)) && step.getConfigList()
+                .stream()
+                .anyMatch(config -> config != null && "key".equals(config.getParamsName()) && config
+                    .getParamsValue() != null && !config.getParamsValue().isEmpty());
     }
 
     public record BundleContext(Path workspaceRoot, Path bundleRoot, Path testCaseDir, Path testngXmlPath,

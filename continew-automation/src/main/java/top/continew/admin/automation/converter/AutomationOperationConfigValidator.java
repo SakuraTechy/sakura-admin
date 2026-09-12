@@ -44,7 +44,7 @@ public class AutomationOperationConfigValidator {
     private static final Pattern VARIABLE_NAME = Pattern.compile("^[A-Za-z_][A-Za-z0-9_.-]{0,127}$");
     private static final Pattern VARIABLE_REFERENCE = Pattern
         .compile("^[A-Za-z_][A-Za-z0-9_.-]*(?:(?:\\.[A-Za-z_][A-Za-z0-9_-]*)|(?:\\[(?:\\d+|\"[^\"]+\"|'[^']+')]))*$");
-    private static final Pattern TEMPLATE_REFERENCE = Pattern.compile("\\$\\{([^{}]+)}");
+    private static final Pattern TEMPLATE_REFERENCE = Pattern.compile("(?:\\$\\{[^{}]+}|\\{\\{[^{}]+}})");
     private static final Pattern FORMULA_REMAINDER = Pattern.compile("^[0-9+\\-*/%().\\s]+$");
     private static final Set<String> SENSITIVE_NAMES = Set
         .of("password", "passwd", "secret", "token", "privatekey", "credential", "certificate");
@@ -52,8 +52,9 @@ public class AutomationOperationConfigValidator {
     private static final Set<String> SERVER_TARGET_ACTIONS = Set.of("server_command", "server_file_upload");
     private static final Set<String> DATABASE_TARGET_ACTIONS = Set.of("database_sql", "database_native");
     private static final Map<String, Set<String>> INFRASTRUCTURE_COMPATIBILITY_FIELDS = Map.of("server_command", Set
-        .of("shell", "timeout_ms"), "database_sql", Set.of("sql_mode", "timeout_ms"), "database_native", Set
-            .of("mongo_operation", "collection", "filter", "document", "timeout_ms"));
+        .of("shell", "timeout_ms", "value_masked"), "database_sql", Set
+            .of("sql_mode", "timeout_ms"), "database_native", Set
+                .of("mongo_operation", "collection", "filter", "document", "timeout_ms"));
 
     public void validate(AutomationOperationCatalog.OperationMethod method, Map<String, Object> config) {
         rejectPlaintextSecrets(config);
@@ -62,6 +63,9 @@ public class AutomationOperationConfigValidator {
         validateRequiredFields(method, config);
         validateFieldValues(method, config);
         validateInfrastructureTargetRef(method, config);
+        if ("server.shell".equals(method.getMethodCode())) {
+            AutomationServerShellResultConfig.from(config);
+        }
         validateRegex(config);
         validateVariableName(method.getActionType(), config);
         validateDateFormat(method.getActionType(), config);
@@ -71,6 +75,20 @@ public class AutomationOperationConfigValidator {
 
     private void normalizeCompatibilityFields(AutomationOperationCatalog.OperationMethod method,
                                               Map<String, Object> config) {
+        if ("assertion.element.match".equals(method.getMethodCode())) {
+            if ("visible".equals(config.get("match_mode"))) {
+                // 旧可见性步骤携带读取方式；隐藏参数不能阻断旧步骤再次保存。
+                config.remove("read_mode");
+                config.remove("attribute");
+            } else if ("attribute".equals(config.get("read_mode")) && config.containsKey("attribute")) {
+                Object rawAttribute = config.get("attribute");
+                if (!(rawAttribute instanceof String attribute) || attribute.trim().isEmpty() || attribute.trim()
+                    .matches(".*[\\x00-\\x20\\\"'<>/=].*")) {
+                    throw new BusinessException("METHOD_CONFIG_INVALID：属性名必须是非空 DOM 属性名，不能包含空白、引号或等号");
+                }
+                config.put("attribute", attribute.trim());
+            }
+        }
         if (!"server_command".equals(method.getActionType())) {
             return;
         }
@@ -143,6 +161,9 @@ public class AutomationOperationConfigValidator {
     private void validateInfrastructureCompatibilityField(AutomationOperationCatalog.OperationMethod method,
                                                           String name,
                                                           Object value) {
+        if ("value_masked".equals(name) && !Set.of("true", "false", "1", "0").contains(String.valueOf(value))) {
+            throw new BusinessException("METHOD_CONFIG_INVALID：敏感标记必须是布尔值或 0/1");
+        }
         if ("timeout_ms".equals(name)) {
             double timeout;
             try {

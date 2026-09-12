@@ -35,7 +35,7 @@ import top.continew.starter.core.exception.BusinessException;
  * 在提交执行 Agent 前，将冻结步骤中实际声明的运行时变量替换为本次值。
  *
  * <p>绑定值只存在于该次请求和发给 Agent 的内存载荷中，绝不能写入任务表、任务日志或异常日志。
- * 仅允许替换原始步骤文本中出现的 {@code {{name}}} 或兼容旧数据的 {@code ${name}}，
+ * 仅允许替换原始步骤执行参数中出现的 {@code {{name}}} 或兼容旧数据的 {@code ${name}}，
  * 避免调用方借运行时参数向未声明字段注入数据。</p>
  */
 @Component
@@ -46,6 +46,9 @@ public class AutomationInfrastructureRuntimeBindingResolver {
     };
     private static final Pattern VARIABLE_PATTERN = Pattern
         .compile("\\$\\{([A-Za-z_][A-Za-z0-9_.-]{0,127})}|\\{\\{([A-Za-z_][A-Za-z0-9_.-]{0,127})}}");
+    // 与 Runner VariableContext 的顶层元数据规则保持一致；目录帮助中的示例不是执行输入。
+    private static final Set<String> STEP_METADATA_KEYS = Set
+        .of("id", "original_step_id", "step_index", "action_type", "description", "source", "schema_version", "catalog_version", "canonical_digest", "original_action_type", "recording_source", "diagnostic_fields");
 
     private final ObjectMapper objectMapper;
 
@@ -68,13 +71,21 @@ public class AutomationInfrastructureRuntimeBindingResolver {
                 throw new BusinessException("当前基础设施步骤缺少运行时变量：" + reference);
             }
         }
-        return asMap(resolveValue(copy, bindings));
+        // 只在顶层排除元数据；执行参数内的同名字段仍需解析，且不能把变量值写入诊断文案。
+        copy.replaceAll((key, value) -> STEP_METADATA_KEYS.contains(key) ? value : resolveValue(value, bindings));
+        return copy;
     }
 
-    /** 返回步骤文本中真正出现的变量名，不扫描 Map key，避免改变字段结构。 */
+    /** 返回执行参数中真正出现的变量名，不扫描顶层元数据或 Map key，避免改变字段结构。 */
     public Set<String> references(Map<String, Object> step) {
         Set<String> result = new LinkedHashSet<>();
-        collectReferences(step, result);
+        if (step != null) {
+            step.forEach((key, value) -> {
+                if (!STEP_METADATA_KEYS.contains(key)) {
+                    collectReferences(value, result);
+                }
+            });
+        }
         return result;
     }
 
@@ -160,13 +171,5 @@ public class AutomationInfrastructureRuntimeBindingResolver {
         Set<String> references = new LinkedHashSet<>();
         collectReferences(source, references);
         return !references.isEmpty();
-    }
-
-    @SuppressWarnings("unchecked")
-    private Map<String, Object> asMap(Object value) {
-        if (!(value instanceof Map<?, ?> map)) {
-            throw new BusinessException("基础设施步骤必须是对象");
-        }
-        return (Map<String, Object>)map;
     }
 }

@@ -71,6 +71,24 @@ class AutomationOperationCatalogServiceImplTest {
     }
 
     @Test
+    void shouldDeclareSqlModeWithMethodSpecificDefaults() {
+        Map<String, String> defaults = Map
+            .of("database.insert", "update", "database.delete", "update", "database.update", "update", "database.query", "query", "database.query.bind", "query", "database.procedure", "call");
+
+        defaults.forEach((methodCode, mode) -> {
+            AutomationOperationCatalog.OperationMethod method = service.findMethod(methodCode).orElseThrow();
+            assertThat(method.getFormSchema()).as(methodCode)
+                .filteredOn(field -> "sql_mode".equals(field.get("name")))
+                .singleElement()
+                .satisfies(field -> {
+                    assertThat(field).containsEntry("component", "select").containsEntry("default", mode);
+                    // 旧步骤可能没有 SQL 模式，不能因补充目录字段而拒绝原有保存请求。
+                    assertThat(field.get("required")).isNotEqualTo(true);
+                });
+        });
+    }
+
+    @Test
     void shouldIsolateDynamicResponseFromCachedStaticCatalog() {
         AutomationOperationCatalog first = catalog();
         first.getTypes().clear();
@@ -92,9 +110,9 @@ class AutomationOperationCatalogServiceImplTest {
         List<AutomationOperationCatalog.OperationMethod> methods = methods();
         List<Map<String, Object>> fields = methods.stream().flatMap(method -> method.getFormSchema().stream()).toList();
 
-        assertThat(fields).hasSize(127);
-        assertThat(catalog().getDiagnosticFieldDefaults()).hasSize(53);
-        assertThat(fields.stream().filter(field -> field.containsKey("default"))).hasSize(18);
+        assertThat(fields).hasSize(136);
+        assertThat(catalog().getDiagnosticFieldDefaults()).hasSize(56);
+        assertThat(fields.stream().filter(field -> field.containsKey("default"))).hasSize(24);
         for (AutomationOperationCatalog.OperationMethod method : methods) {
             Set<String> fieldNames = new HashSet<>();
             for (Map<String, Object> field : method.getFormSchema()) {
@@ -320,8 +338,14 @@ class AutomationOperationCatalogServiceImplTest {
                 .getOrDefault("help", ""))).as(method.getMethodCode() + "." + name).isNotBlank();
         }
         if (field.containsKey("default")) {
-            assertThat(name).as(method.getMethodCode())
-                .doesNotMatch("(?i).*(url|sql|command|path|file_ref|target_ref|certificate|variable_name|value|expect|script).*");
+            if ("sql_mode".equals(name)) {
+                // SQL 模式是受控执行选项，不是 SQL 内容；语句本身仍禁止预填默认值。
+                assertThat(component).isEqualTo("select");
+                assertThat(field.get("default")).isIn("query", "update", "call");
+            } else {
+                assertThat(name).as(method.getMethodCode())
+                    .doesNotMatch("(?i).*(url|sql|command|path|file_ref|target_ref|certificate|variable_name|value|expect|script).*");
+            }
         }
     }
 

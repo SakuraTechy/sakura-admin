@@ -30,6 +30,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import top.continew.admin.automation.model.catalog.AutomationOperationCatalog;
 import top.continew.admin.automation.model.entity.ui.StepDO;
 import top.continew.admin.automation.service.impl.AutomationOperationCatalogServiceImpl;
@@ -275,6 +277,49 @@ class AutomationOperationStepAssemblerTest {
             .contains("method_config", "playwright_step", "canonical_digest");
     }
 
+    @ParameterizedTest
+    @CsvSource({"database.insert, update", "database.delete, update", "database.update, update",
+        "database.query, query", "database.query.bind, query", "database.procedure, call", "database.query, update",
+        "database.query, call", "database.update, query"})
+    void shouldPreserveSqlModeWhenSavingReopeningAndSavingAgain(String methodCode, String sqlMode) throws Exception {
+        Map<String, Object> methodConfig = new LinkedHashMap<>();
+        methodConfig.put("target_ref", Map.of("scope", "project_environment", "kind", "database", "slot_id", "12"));
+        methodConfig.put("sql_mode", sqlMode);
+        methodConfig.put("sql", "SELECT 1");
+        if ("database.query.bind".equals(methodCode)) {
+            methodConfig.put("variable_name", "rows");
+        }
+        StepDO step = step("数据库步骤", List
+            .of(config("method_code", methodCode), config("method_version", "1"), config("method_config", objectMapper
+                .writeValueAsString(methodConfig))));
+        CuecastRecordingOperationProjector projector = new CuecastRecordingOperationProjector(objectMapper, catalogService, configValidator);
+        AutomationOperationStepReverseAdapter reverseAdapter = new AutomationOperationStepReverseAdapter(objectMapper, catalogService, projector);
+
+        StepDO saved = assembler.assembleManualStep(step);
+        AutomationOperationStepReverseAdapter.ReverseResult reopened = reverseAdapter.adapt(saved);
+
+        assertThat(reopened.methodConfig()).containsEntry("sql_mode", sqlMode).containsEntry("sql", "SELECT 1");
+        assertThat(reopened.methodConfig().get("target_ref")).isEqualTo(methodConfig.get("target_ref"));
+        // 详情 DTO 的 methodConfig 是编辑表单回填源，第二次保存也必须保留用户选中的模式。
+        StepDO resubmitted = step("数据库步骤", List.of(config("method_code", reopened
+            .methodCode()), config("method_version", String.valueOf(reopened
+                .methodVersion())), config("method_config", objectMapper.writeValueAsString(reopened.methodConfig()))));
+        StepDO resaved = assembler.assembleManualStep(resubmitted);
+        Map<String, String> configs = resaved.getConfigList()
+            .stream()
+            .collect(Collectors.toMap(StepDO.Config::getParamsName, StepDO.Config::getParamsValue));
+
+        assertThat(objectMapper.readTree(configs.get("method_config")).path("sql_mode").asText()).isEqualTo(sqlMode);
+        assertThat(objectMapper.readTree(configs.get("playwright_step")).path("sql_mode").asText()).isEqualTo(sqlMode);
+        assertThat(resaved.getOperationValue()).isEqualTo(catalogService.findMethod(methodCode)
+            .orElseThrow()
+            .getLegacyAction());
+        assertThat(configs).containsEntry("sql", "SELECT 1");
+        if ("database.query.bind".equals(methodCode)) {
+            assertThat(configs).containsEntry("details", "key:rows");
+        }
+    }
+
     @Test
     void shouldProjectDatabaseResultVariableToLegacySubject() {
         StepDO step = step("检查查询结果", List
@@ -300,6 +345,9 @@ class AutomationOperationStepAssemblerTest {
         assertThatThrownBy(() -> configValidator.validate(formulaMethod, Map
             .of("variable_name", "result", "expression", "process.exit(1)")))
             .hasMessageContaining("VARIABLE_EXPRESSION_INVALID");
+        assertThatCode(() -> configValidator.validate(formulaMethod, Map
+            .of("variable_name", "result", "expression", "({{sys_disk_total}}+{{sys_disk_total}})/1024/1024")))
+            .doesNotThrowAnyException();
     }
 
     @Test

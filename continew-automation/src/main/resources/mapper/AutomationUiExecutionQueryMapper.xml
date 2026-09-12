@@ -112,6 +112,17 @@
         <if test="scope.buildNumber != null">AND e.build_number = #{scope.buildNumber}</if>
     </sql>
 
+    <!-- 与前端历史引擎归类保持一致，兼容旧的 playwright/cdp 引擎名称。 -->
+    <sql id="executionEnginePredicate">
+        <if test="query.executionEngine != null and query.executionEngine != ''">
+            AND CASE
+                WHEN LOWER(e.execution_engine) LIKE '%playwright%' THEN 'playwright-runner'
+                WHEN LOWER(e.execution_engine) LIKE '%cdp%' OR LOWER(e.execution_engine) LIKE '%extension%' THEN 'extension-cdp'
+                ELSE 'jenkins'
+            END = #{query.executionEngine}
+        </if>
+    </sql>
+
     <sql id="recordSourceColumn">
         COALESCE(e.record_source, CASE
             WHEN LOWER(TRIM(e.record_type)) IN ('internal-interactive-context', 'interactive-execution-context') THEN 'internal'
@@ -274,6 +285,7 @@
         LEFT JOIN automation_ui_scene_execution_state es ON es.scene_id = s.id
         LEFT JOIN automation_ui_execution e ON e.scene_id = s.id
         <include refid="executionScopePredicate"/>
+        <include refid="executionEnginePredicate"/>
         <if test="query.status != null and query.status != ''">AND e.status = #{query.status}</if>
         <if test="query.result != null and query.result != ''">AND e.result = #{query.result}</if>
         WHERE s.id = #{query.sceneDbId}
@@ -288,6 +300,7 @@
         <include refid="authorizedExecutionJoins"/>
         WHERE e.scene_id = #{query.sceneDbId}
         <include refid="executionScopePredicate"/>
+        <include refid="executionEnginePredicate"/>
         <if test="query.status != null and query.status != ''">AND e.status = #{query.status}</if>
         <if test="query.result != null and query.result != ''">AND e.result = #{query.result}</if>
         <include refid="executionAccessPredicate"/>
@@ -304,6 +317,7 @@
         <include refid="authorizedExecutionJoins"/>
         WHERE e.scene_id = #{query.sceneDbId}
         <include refid="executionScopePredicate"/>
+        <include refid="executionEnginePredicate"/>
         <if test="query.status != null and query.status != ''">AND e.status = #{query.status}</if>
         <if test="query.result != null and query.result != ''">AND e.result = #{query.result}</if>
         <if test="cursorTime != null">
@@ -409,6 +423,7 @@
          AND (c.case_id = #{query.caseId} OR c.case_key = #{query.caseId})
         WHERE e.scene_id = #{query.sceneDbId}
         <include refid="executionScopePredicate"/>
+        <include refid="executionEnginePredicate"/>
         <include refid="executionAccessPredicate"/>
         GROUP BY s.id, es.execution_revision
     </select>
@@ -434,6 +449,7 @@
         WHERE e.scene_id = #{query.sceneDbId}
           AND (c.case_id = #{query.caseId} OR c.case_key = #{query.caseId})
         <include refid="executionScopePredicate"/>
+        <include refid="executionEnginePredicate"/>
         <include refid="executionAccessPredicate"/>
         ORDER BY COALESCE(c.started_at, c.create_time) DESC, c.id DESC
         LIMIT #{limit} OFFSET #{offset}

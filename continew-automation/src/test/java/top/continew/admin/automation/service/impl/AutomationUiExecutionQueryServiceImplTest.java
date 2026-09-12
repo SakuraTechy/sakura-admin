@@ -42,6 +42,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import top.continew.admin.automation.mapper.AutomationUiExecutionQueryMapper;
 import top.continew.admin.automation.model.query.AutomationUiExecutionAccessRow;
 import top.continew.admin.automation.model.query.AutomationUiExecutionQuery;
+import top.continew.admin.automation.model.query.AutomationUiExecutionCaseHistoryQuery;
+import top.continew.admin.automation.model.resp.AutomationUiExecutionCaseHistoryResp;
 import top.continew.admin.automation.model.req.AutomationUiExecutionScopeReq;
 import top.continew.admin.automation.model.req.AutomationUiPageReq;
 import top.continew.admin.automation.model.resp.AutomationUiExecutionArtifactResp;
@@ -174,6 +176,93 @@ class AutomationUiExecutionQueryServiceImplTest {
         assertThat(cursorResponse.getNextCursor()).isNotBlank();
         assertThat(cursorResponse.getGlobalExecutionRevision()).isEqualTo(15L);
         verify(queryMapper, never()).selectExecutionPageCount(any(), any(), anyLong(), anyBoolean());
+    }
+
+    @Test
+    void caseHistoryShouldReturnEmptyWhenSceneIsAccessibleButEngineHasNoExecutions() {
+        stubScope();
+        AutomationUiExecutionCaseHistoryQuery query = caseHistoryQuery();
+        when(queryMapper.selectCaseHistoryPageCount(eq(query), any(), eq(9L), eq(false))).thenReturn(null);
+        when(queryMapper.selectSceneAccess(8L, 9L, false)).thenReturn(access(12L));
+
+        var response = service.caseHistory(query, page(1, 1));
+
+        assertThat(response.getTotal()).isZero();
+        assertThat(response.getList()).isEmpty();
+        verify(queryMapper, never()).selectCaseHistoryPage(any(), any(), anyLong(), anyBoolean(), anyLong(), anyInt());
+    }
+
+    @Test
+    void caseHistoryShouldStillRejectInaccessibleSceneWithoutExecutions() {
+        stubScope();
+        AutomationUiExecutionCaseHistoryQuery query = caseHistoryQuery();
+        when(queryMapper.selectCaseHistoryPageCount(eq(query), any(), eq(9L), eq(false))).thenReturn(null);
+        when(queryMapper.selectSceneAccess(8L, 9L, false)).thenReturn(null);
+
+        assertThatThrownBy(() -> service.caseHistory(query, page(1, 1))).isInstanceOf(BusinessException.class)
+            .hasMessageContaining("NOT_FOUND_OR_ACCESS_DENIED");
+        verify(queryMapper, never()).selectCaseHistoryPage(any(), any(), anyLong(), anyBoolean(), anyLong(), anyInt());
+    }
+
+    @Test
+    void caseHistoryShouldKeepEnginePlanAndReportScopeWhenReadingLatestCase() {
+        stubScope();
+        AutomationUiExecutionCaseHistoryQuery query = caseHistoryQuery();
+        query.setRecordSource("test");
+        query.setTestPlanId(7L);
+        query.setTestReportId(6L);
+        query.setBuildNumber(5);
+        when(queryMapper.selectCaseHistoryPageCount(eq(query), any(), eq(9L), eq(false))).thenReturn(access(12L, 2L));
+        AutomationUiExecutionCaseHistoryResp latest = new AutomationUiExecutionCaseHistoryResp();
+        latest.setCaseExecutionKey("runner-case-001");
+        when(queryMapper.selectCaseHistoryPage(eq(query), any(), eq(9L), eq(false), eq(0L), eq(1))).thenReturn(List
+            .of(latest));
+
+        var response = service.caseHistory(query, page(1, 1));
+
+        ArgumentCaptor<AutomationUiExecutionScopeReq> scope = ArgumentCaptor
+            .forClass(AutomationUiExecutionScopeReq.class);
+        verify(queryMapper).selectCaseHistoryPage(eq(query), scope.capture(), eq(9L), eq(false), eq(0L), eq(1));
+        assertThat(scope.getValue().getRecordSource()).isEqualTo("test");
+        assertThat(scope.getValue().getTestPlanId()).isEqualTo(7L);
+        assertThat(scope.getValue().getTestReportId()).isEqualTo(6L);
+        assertThat(scope.getValue().getBuildNumber()).isEqualTo(5);
+        assertThat(query.getExecutionEngine()).isEqualTo("playwright-runner");
+        assertThat(response.getList()).containsExactly(latest);
+        verify(queryMapper, never()).selectSceneAccess(anyLong(), anyLong(), anyBoolean());
+    }
+
+    @Test
+    void cursorShouldRejectSwitchingExecutionEngine() {
+        stubScope();
+        when(queryMapper.selectSceneAccess(8L, 9L, false)).thenReturn(access(15L));
+        List<AutomationUiExecutionSummaryResp> candidates = LongStream.rangeClosed(1, 2).mapToObj(id -> {
+            AutomationUiExecutionSummaryResp item = new AutomationUiExecutionSummaryResp();
+            item.setExecutionDbId(id);
+            item.setCreateTime(LocalDateTime.of(2026, 8, 18, 10, 0).minusSeconds(id));
+            return item;
+        }).toList();
+        when(queryMapper.selectExecutionCursor(any(), any(), eq(9L), eq(false), isNull(), isNull(), eq(2), eq(false)))
+            .thenReturn(candidates);
+        AutomationUiExecutionQuery query = query(8L, "debug");
+        query.setExecutionEngine("playwright-runner");
+        query.setCursor("start");
+        AutomationUiExecutionPageResp.Cursor first = (AutomationUiExecutionPageResp.Cursor)service
+            .page(query, page(1, 1));
+        query.setCursor(first.getNextCursor());
+        query.setExecutionEngine("extension-cdp");
+
+        assertThatThrownBy(() -> service.page(query, page(1, 1))).isInstanceOf(BadRequestException.class)
+            .hasMessageContaining("INVALID_CURSOR_SCOPE");
+    }
+
+    private AutomationUiExecutionCaseHistoryQuery caseHistoryQuery() {
+        AutomationUiExecutionCaseHistoryQuery query = new AutomationUiExecutionCaseHistoryQuery();
+        query.setSceneDbId(8L);
+        query.setCaseId("case-001");
+        query.setRecordSource("debug");
+        query.setExecutionEngine("playwright-runner");
+        return query;
     }
 
     private AutomationUiExecutionQuery query(Long sceneDbId, String recordSource) {

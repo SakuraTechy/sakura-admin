@@ -20,27 +20,42 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.baomidou.mybatisplus.extension.conditions.update.LambdaUpdateChainWrapper;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.dromara.x.file.storage.core.FileStorageService;
+import org.dromara.x.file.storage.core.FileInfo;
+import org.mockito.ArgumentCaptor;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.util.ReflectionTestUtils;
 import top.continew.admin.automation.mapper.AutomationPlaywrightJobMapper;
 import top.continew.admin.automation.mapper.AutomationUiSceneQueryMapper;
 import top.continew.admin.automation.model.entity.AutomationPlaywrightJobDO;
 import top.continew.admin.automation.service.AutomationPlaywrightArtifactService.Artifact;
+import top.continew.admin.automation.service.AutomationPlaywrightArtifactService.ExecutionLogContext;
 import top.continew.admin.automation.service.AutomationPlaywrightCaseService;
 import top.continew.admin.automation.model.resp.playwright.AutomationPlaywrightCaseResp;
 import top.continew.admin.automation.support.AutomationUiSceneAccessScopeResolver;
 import top.continew.admin.system.service.FileService;
+import top.continew.admin.system.model.entity.FileDO;
 import top.continew.admin.system.service.StorageService;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.when;
 
 /**
@@ -50,7 +65,8 @@ class AutomationPlaywrightArtifactServiceImplTest {
 
     private final AutomationPlaywrightJobMapper jobMapper = mock(AutomationPlaywrightJobMapper.class);
     private final AutomationPlaywrightCaseService caseService = mock(AutomationPlaywrightCaseService.class);
-    private final AutomationPlaywrightArtifactServiceImpl service = new AutomationPlaywrightArtifactServiceImpl(mock(FileService.class), mock(StorageService.class), mock(FileStorageService.class), jobMapper, caseService);
+    private final FileService fileService = mock(FileService.class, RETURNS_DEEP_STUBS);
+    private final AutomationPlaywrightArtifactServiceImpl service = new AutomationPlaywrightArtifactServiceImpl(fileService, mock(StorageService.class), mock(FileStorageService.class), jobMapper, caseService, new ObjectMapper());
     private final String runId = "artifact-test-" + UUID.randomUUID();
 
     @AfterEach
@@ -68,6 +84,47 @@ class AutomationPlaywrightArtifactServiceImplTest {
                 }
             });
         }
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void shouldStoreCdpExecutionLogWithoutCreatingRunnerJobAndPreserveOriginalEvents() throws IOException {
+        ReflectionTestUtils.setField(service, "unifiedStorageEnabled", true);
+        LambdaUpdateChainWrapper<FileDO> update = mock(LambdaUpdateChainWrapper.class);
+        when(fileService.lambdaUpdate()).thenReturn(update);
+        when(update.eq(any(), any())).thenReturn(update);
+        when(update.set(any(), any())).thenReturn(update);
+        FileInfo info = mock(FileInfo.class, RETURNS_DEEP_STUBS);
+        when(info.getId()).thenReturn("101");
+        when(info.getContentType()).thenReturn("application/json");
+        when(info.getSize()).thenReturn(128L);
+        when(info.getHashInfo().getMd5()).thenReturn("fixture-md5");
+        when(fileService.upload(any(), anyString(), nullable(String.class), anyString())).thenReturn(info);
+        List<Map<String, Object>> logs = List.of(Map
+            .of("sequence", 1, "timestamp", "2026-09-08T06:45:19.827Z", "level", "error", "message", "变量预检失败：未定义变量 {{passwd}}", "detail", false));
+
+        Artifact artifact = service
+            .storeExecutionLog(new ExecutionLogContext("20260908144520", "AAS_DBSG", "V6.1", "SCENE_001", "CASE_004"), logs);
+
+        assertThat(artifact.fileId()).isEqualTo(101L);
+        assertThat(artifact.url()).isEqualTo("/automation/playwright/artifacts/files/101");
+        assertThat(artifact.relativePath()).isEqualTo("logs/execution-log.json");
+        ArgumentCaptor<MultipartFile> file = ArgumentCaptor.forClass(MultipartFile.class);
+        verify(fileService).upload(file.capture(), org.mockito.ArgumentMatchers
+            .eq("automation/playwright/AAS_DBSG/V6.1/SCENE_001/CASE_004/20260908/20260908144520/logs/"), nullable(String.class), org.mockito.ArgumentMatchers
+                .eq("execution-log.json"));
+        assertThat(new ObjectMapper().readTree(file.getValue().getBytes())).isEqualTo(new ObjectMapper()
+            .valueToTree(logs));
+        verify(jobMapper, never()).selectOne(any());
+    }
+
+    @Test
+    void shouldRejectInvalidCdpLogPathBeforeUploading() {
+        ReflectionTestUtils.setField(service, "unifiedStorageEnabled", true);
+        assertThatThrownBy(() -> service
+            .storeExecutionLog(new ExecutionLogContext("RUN_1", "AAS", "V1", "../other", "CASE_1"), List.of()))
+            .hasMessageContaining("场景标识");
+        verify(fileService, never()).upload(any(), anyString(), nullable(String.class), anyString());
     }
 
     @Test

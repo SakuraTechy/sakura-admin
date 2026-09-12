@@ -68,13 +68,17 @@ import top.continew.starter.core.exception.BusinessException;
 @Slf4j
 public class AutomationUiExecutionRecordServiceImpl implements AutomationUiExecutionRecordService {
 
+    private static final int OPERATION_DATA_URL_DISPLAY_HEAD_LENGTH = 480;
+    private static final int OPERATION_DATA_URL_DISPLAY_TAIL_LENGTH = 480;
+
     private static final ZoneId PLATFORM_ZONE_ID = ZoneId.of("Asia/Shanghai");
     private static final DateTimeFormatter PLATFORM_DATE_TIME_FORMATTER = DateTimeFormatter
         .ofPattern("yyyy-MM-dd HH:mm:ss");
     private static final int MAX_HISTORY_RECORDS = 100;
     private static final int MAX_EXECUTION_SUMMARY_BYTES = 64 * 1024;
     private static final int MAX_CASE_SUMMARY_BYTES = 256 * 1024;
-    private static final int MAX_STEP_DIAGNOSTICS_BYTES = 64 * 1024;
+    // 一次元素断言可能同时包含 target_ref、期望值和实际 data URL，64KB 会让整条诊断被降级丢失。
+    private static final int MAX_STEP_DIAGNOSTICS_BYTES = 512 * 1024;
     private static final int MAX_ERROR_LENGTH = 2000;
     private static final int MAX_TEXT_LENGTH = 8192;
     private static final List<String> TERMINAL_EXECUTION_STATUSES = List
@@ -1049,6 +1053,10 @@ public class AutomationUiExecutionRecordServiceImpl implements AutomationUiExecu
             }
             safeInput.put("configured", sanitizeOperationDisplay(key, input.get("configured")));
             safeInput.put("effective", sanitizeOperationDisplay(key, input.get("effective")));
+            if (input.containsKey("actual")) {
+                // 断言实际值是执行器读取到的事实，必须与配置值、执行值一起保留到报告。
+                safeInput.put("actual", sanitizeOperationDisplay(key, input.get("actual")));
+            }
             if (input.containsKey("source")) {
                 safeInput.put("source", sanitizeOperationSource(input.get("source")));
             }
@@ -1215,10 +1223,31 @@ public class AutomationUiExecutionRecordServiceImpl implements AutomationUiExecu
         if ("visible".equals(state) || "truncated".equals(state)) {
             Object preview = display.get("preview");
             if (preview != null) {
-                safe.put("preview", abbreviate(String.valueOf(preview), MAX_TEXT_LENGTH));
+                safe.put("preview", fullDiagnosticText(key, preview));
             }
         }
         return safe;
+    }
+
+    private String fullDiagnosticText(String key, Object value) {
+        String text = String.valueOf(value);
+        // 断言及目标配置需要可复核的 data URL 摘要；敏感字段在此方法之前已被置为 masked。
+        if ("expect".equalsIgnoreCase(key) || "expected".equalsIgnoreCase(key) || "actual"
+            .equalsIgnoreCase(key) || "target_ref".equalsIgnoreCase(key)) {
+            return text.regionMatches(true, 0, "data:image/", 0, 11) ? abbreviateOperationDataUrl(text) : text;
+        }
+        return abbreviate(text, MAX_TEXT_LENGTH);
+    }
+
+    private String abbreviateOperationDataUrl(String value) {
+        int retainedLength = OPERATION_DATA_URL_DISPLAY_HEAD_LENGTH + OPERATION_DATA_URL_DISPLAY_TAIL_LENGTH;
+        if (value.length() <= retainedLength) {
+            return value;
+        }
+        int omittedLength = value.length() - retainedLength;
+        return value
+            .substring(0, OPERATION_DATA_URL_DISPLAY_HEAD_LENGTH) + "...[已省略 " + omittedLength + " 字符]..." + value
+                .substring(value.length() - OPERATION_DATA_URL_DISPLAY_TAIL_LENGTH);
     }
 
     private boolean isSensitiveDiagnosticKey(String key) {

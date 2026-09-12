@@ -24,12 +24,14 @@ import java.nio.file.StandardCopyOption;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import cn.hutool.json.JSONUtil;
 import cn.hutool.json.JSONObject;
 import lombok.RequiredArgsConstructor;
@@ -84,6 +86,7 @@ public class AutomationPlaywrightArtifactServiceImpl implements AutomationPlaywr
     private final FileStorageService fileStorageService;
     private final AutomationPlaywrightJobMapper jobMapper;
     private final AutomationPlaywrightCaseService caseService;
+    private final ObjectMapper objectMapper;
 
     @Autowired(required = false)
     private AutomationUiSceneQueryMapper sceneQueryMapper;
@@ -113,9 +116,36 @@ public class AutomationPlaywrightArtifactServiceImpl implements AutomationPlaywr
             return storeLegacy(safeRunId, safeArtifactType, safeRelativePath, file);
         }
 
-        String fileName = relativeFileName(safeRelativePath);
         // 目录元数据从已持久化的 Runner Job 反查，避免上传端自行拼接或伪造业务路径。
         ArtifactPathMetadata pathMetadata = resolvePathMetadata(safeRunId);
+        return storeUnified(safeRunId, safeArtifactType, safeRelativePath, file, pathMetadata);
+    }
+
+    @Override
+    public Artifact storeExecutionLog(ExecutionLogContext context, List<?> logs) {
+        if (!unifiedStorageEnabled) {
+            throw new BusinessException("CDP 原始执行日志需要启用统一产物存储");
+        }
+        String runId = requireSafeSegment(context.runId(), "执行 ID");
+        ArtifactPathMetadata metadata = new ArtifactPathMetadata(requireSafeSegment(context
+            .projectShortName(), "项目标识"), requireSafeSegment(context.versionName(), "版本标识"), requireSafeSegment(context
+                .sceneId(), "场景标识"), requireSafeSegment(context.caseId(), "用例标识"));
+        try {
+            // CDP 没有 Runner Job；目录只接受结果服务校验后的上下文，原始事件完整文件化。
+            MultipartFile file = new ExecutionLogFile(objectMapper.writeValueAsBytes(logs));
+            requireValidFile(file, "execution-log");
+            return storeUnified(runId, "execution-log", "logs/execution-log.json", file, metadata);
+        } catch (IOException e) {
+            throw new BusinessException("执行日志序列化失败");
+        }
+    }
+
+    private Artifact storeUnified(String safeRunId,
+                                  String safeArtifactType,
+                                  String safeRelativePath,
+                                  MultipartFile file,
+                                  ArtifactPathMetadata pathMetadata) {
+        String fileName = relativeFileName(safeRelativePath);
         String storagePath = buildStoragePath(safeRunId, pathMetadata) + relativeDirectory(safeRelativePath);
         FileInfo fileInfo = fileService.upload(file, storagePath, storageCode, fileName);
         Long fileId = parseFileId(fileInfo.getId());
@@ -434,5 +464,47 @@ public class AutomationPlaywrightArtifactServiceImpl implements AutomationPlaywr
     }
 
     private record ArtifactPathMetadata(String projectShortName, String versionName, String sceneId, String caseId) {
+    }
+
+    private record ExecutionLogFile(byte[] bytes) implements MultipartFile {
+        @Override
+        public String getName() {
+            return "file";
+        }
+
+        @Override
+        public String getOriginalFilename() {
+            return "execution-log.json";
+        }
+
+        @Override
+        public String getContentType() {
+            return "application/json";
+        }
+
+        @Override
+        public boolean isEmpty() {
+            return bytes.length == 0;
+        }
+
+        @Override
+        public long getSize() {
+            return bytes.length;
+        }
+
+        @Override
+        public byte[] getBytes() {
+            return bytes;
+        }
+
+        @Override
+        public InputStream getInputStream() {
+            return new java.io.ByteArrayInputStream(bytes);
+        }
+
+        @Override
+        public void transferTo(java.io.File dest) throws IOException {
+            Files.write(dest.toPath(), bytes);
+        }
     }
 }

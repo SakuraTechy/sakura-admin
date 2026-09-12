@@ -42,6 +42,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import top.continew.admin.automation.converter.AutomationPlaywrightStepExtractor;
+import top.continew.admin.automation.converter.AutomationServerShellResultConfig;
 import top.continew.admin.automation.converter.AutomationInfrastructureRuntimeBindingResolver;
 import top.continew.admin.automation.converter.AutomationUiDefinitionSnapshotMapper;
 import top.continew.admin.automation.mapper.AutomationInfrastructureTaskLogMapper;
@@ -160,6 +161,10 @@ public class AutomationInfrastructureTaskServiceImpl implements AutomationInfras
             }
             stage = "解析基础设施步骤";
             ResolvedStep resolved = resolveInfrastructureStep(executionContext, req.getStepId());
+            if ("server_command".equals(resolved.actionType())) {
+                // 先校验冻结定义，禁止替换字段被 runtimeBindings 提前展开后绕过约束。
+                AutomationServerShellResultConfig.from(resolved.rawStep());
+            }
             // runtimeBindings 只在本次内存执行载荷中展开；任务表和日志均不会接触具体值。
             Map<String, Object> resolvedRawStep = runtimeBindingResolver.resolve(resolved.rawStep(), req
                 .getRuntimeBindings());
@@ -187,7 +192,7 @@ public class AutomationInfrastructureTaskServiceImpl implements AutomationInfras
                 requireTaskAccess(existing, req.getExecutionCapability());
                 requireMatchingPayload(existing, payloadDigest);
                 Map<String, Object> agentResponse = refreshFromAgent(existing);
-                return toResp(existing, null, safeAgentResult(existing.getActionType(), agentResponse));
+                return toResp(existing, null, safeAgentResult(existing, agentResponse));
             }
 
             AutomationInfrastructureTaskDO task = new AutomationInfrastructureTaskDO();
@@ -237,8 +242,7 @@ public class AutomationInfrastructureTaskServiceImpl implements AutomationInfras
             stage = "提交执行 Agent";
             Map<String, Object> agentResponse = dispatchToAgent(task, resolved.rawStep(), target.config(), req
                 .getRuntimeInput());
-            return toResp(task, logsAfter(task.getTaskId(), null), safeAgentResult(task
-                .getActionType(), agentResponse));
+            return toResp(task, logsAfter(task.getTaskId(), null), safeAgentResult(task, agentResponse));
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
@@ -259,7 +263,7 @@ public class AutomationInfrastructureTaskServiceImpl implements AutomationInfras
         AutomationInfrastructureTaskDO task = requireTask(taskId);
         requireTaskAccess(task, executionCapability);
         Map<String, Object> agentResponse = task.getDisposition() == null ? refreshFromAgent(task) : Map.of();
-        return toResp(task, logsAfter(taskId, afterSequence), safeAgentResult(task.getActionType(), agentResponse));
+        return toResp(task, logsAfter(taskId, afterSequence), safeAgentResult(task, agentResponse));
     }
 
     @Override
@@ -324,7 +328,7 @@ public class AutomationInfrastructureTaskServiceImpl implements AutomationInfras
             try {
                 Map<String, Object> agentResponse = executionAgentClient.cancel(taskId);
                 applyAgentResponse(task, agentResponse);
-                return toResp(task, logsAfter(taskId, null), safeAgentResult(task.getActionType(), agentResponse));
+                return toResp(task, logsAfter(taskId, null), safeAgentResult(task, agentResponse));
             } catch (BusinessException e) {
                 markUnknownOutcome(task, "执行 Agent 取消响应未确认，任务是否停止未知");
             }
@@ -370,6 +374,10 @@ public class AutomationInfrastructureTaskServiceImpl implements AutomationInfras
     public ArtifactDownload downloadArtifact(String taskId, String executionCapability) {
         AutomationInfrastructureTaskDO task = requireTask(taskId);
         requireTaskAccess(task, executionCapability);
+        if ("server_command".equals(task.getActionType()) && booleanValue(frozenTaskStep(task)
+            .get("value_masked"), false)) {
+            throw new BusinessException("SENSITIVE_RESULT_RESTRICTED：敏感 Shell 步骤不提供原始输出附件");
+        }
         AutomationExecutionAgentClient.ArtifactDownload artifact = executionAgentClient.downloadArtifact(taskId);
         return new ArtifactDownload(artifact.fileName(), artifact.contentType(), artifact.bytes(), artifact.sha256());
     }
@@ -817,6 +825,17 @@ public class AutomationInfrastructureTaskServiceImpl implements AutomationInfras
         payload.put("command", rawStep.get("command"));
         payload.put("shell", rawStep.getOrDefault("shell", "bash"));
         payload.put("sshTarget", sshTarget(target));
+        AutomationServerShellResultConfig result = AutomationServerShellResultConfig.from(rawStep);
+        if (result.savesVariable()) {
+            payload.put("variableName", result.variableName());
+            if (!result.replaceRegex().isEmpty()) {
+                payload.put("replaceRegex", result.replaceRegex());
+                payload.put("replaceValue", result.replaceValue());
+            }
+        }
+        if (booleanValue(rawStep.get("value_masked"), false)) {
+            payload.put("valueMasked", true);
+        }
     }
 
     private void addSftpPayload(Map<String, Object> payload, Map<String, Object> rawStep, Map<String, Object> target) {
@@ -917,6 +936,10 @@ public class AutomationInfrastructureTaskServiceImpl implements AutomationInfras
     }
 
     private void applyAgentResponse(AutomationInfrastructureTaskDO task, Map<String, Object> response) {
+        if ("failed".equals(task.getStatus()) && task.getErrorCode() != null && task.getErrorCode()
+            .startsWith("SERVER_RESULT_")) {
+            return;
+        }
         String status = stringValue(response.get("status"));
         if (status == null || status.isBlank()) {
             return;
@@ -928,7 +951,7 @@ public class AutomationInfrastructureTaskServiceImpl implements AutomationInfras
         task.setErrorCode(limit(stringValue(response.get("errorCode"))));
         task.setErrorMessage(sanitize(stringValue(response.get("error"))));
         task.setResultSummary(sanitize(agentSummary(response)));
-        Map<String, Object> safeResult = safeAgentResult(task.getActionType(), response);
+        Map<String, Object> safeResult = safeAgentResult(task, response);
         if (safeResult.get("infrastructure") instanceof Map<?, ?> infrastructure) {
             task.setResultJson(infrastructureResultSanitizer.serializePreview(readMap(infrastructure)));
         }
@@ -975,6 +998,75 @@ public class AutomationInfrastructureTaskServiceImpl implements AutomationInfras
         };
         safeResult.putAll(variables);
         return safeResult;
+    }
+
+    private Map<String, Object> safeAgentResult(AutomationInfrastructureTaskDO task, Map<String, Object> response) {
+        Map<String, Object> result = new LinkedHashMap<>(safeAgentResult(task.getActionType(), response));
+        if (!"server_command".equals(task.getActionType())) {
+            return result;
+        }
+        if (!isTerminal(task.getStatus()) && result.isEmpty()) {
+            return result;
+        }
+        Map<String, Object> definition = frozenTaskStep(task);
+        AutomationServerShellResultConfig config = AutomationServerShellResultConfig.from(definition);
+        if (booleanValue(definition.get("value_masked"), false)) {
+            Map<String, Object> masked = result.get("infrastructure") instanceof Map<?, ?> preview
+                ? new LinkedHashMap<>(readMap(preview))
+                : new LinkedHashMap<>(Map.of("schemaVersion", 2, "kind", "SERVER_COMMAND"));
+            masked.put("stdout", "[已脱敏]");
+            masked.put("stderr", "[已脱敏]");
+            masked.put("results", List.of());
+            masked.put("warnings", List.of());
+            masked.put("artifact", Map.of("available", false));
+            result.put("infrastructure", masked);
+        }
+        if ("passed".equals(task.getStatus()) && task.getCancelRequestedAt() != null && config.savesVariable()) {
+            task.setStatus("cancelled");
+            task.setErrorCode("TASK_CANCELLED");
+            task.setErrorMessage("结果发布前已请求取消，未写入变量");
+            taskMapper.updateById(task);
+        }
+        if (!"passed".equals(task.getStatus()) || !config.savesVariable()) {
+            return result;
+        }
+        Object variables = response.get("result") instanceof Map<?, ?> raw ? raw.get("variables") : null;
+        Object value = variables instanceof Map<?, ?> map ? map.get(config.variableName()) : null;
+        String errorCode = null;
+        if (!Objects.equals(task.getExitCode(), 0) || !(value instanceof String)) {
+            errorCode = "SERVER_RESULT_VARIABLE_MISSING";
+        } else if (((String)value).length() > AutomationServerShellResultConfig.MAX_VALUE_LENGTH) {
+            errorCode = "SERVER_RESULT_TOO_LARGE";
+        }
+        if (errorCode != null) {
+            // 旧 Agent 或丢失的短时结果必须明确失败，不能重跑已经执行的命令，也不落库原值。
+            task.setStatus("failed");
+            task.setErrorCode(errorCode);
+            task.setErrorMessage("SERVER_RESULT_TOO_LARGE".equals(errorCode)
+                ? "Shell 结果超过 4096 字符"
+                : "Shell 未返回声明的变量，请核对 Agent 版本或结果是否仍可用；禁止自动重试命令");
+            taskMapper.updateById(task);
+            return result;
+        }
+        result.put("variables", Map.of(config.variableName(), value));
+        return result;
+    }
+
+    private Map<String, Object> frozenTaskStep(AutomationInfrastructureTaskDO task) {
+        List<String> definitions = jdbcTemplate
+            .query("SELECT definition_json FROM automation_ui_scene_definition_revision WHERE id = ? LIMIT 1", (rs,
+                                                                                                                rowNum) -> rs
+                                                                                                                    .getString("definition_json"), task
+                                                                                                                        .getDefinitionRevisionId());
+        if (definitions.isEmpty()) {
+            throw new BusinessException("DEFINITION_REVISION_NOT_FOUND：未找到任务绑定的定义 revision");
+        }
+        Map<String, Object> step = extractFrozenRawStep(definitions.get(0), splitCaseKey(task.getCaseKey())[1], task
+            .getStepId());
+        if (!task.getActionType().equals(stringValue(step.get("action_type")))) {
+            throw new BusinessException("DEFINITION_REVISION_INVALID：任务步骤类型与 definition revision 不一致");
+        }
+        return step;
     }
 
     private Map<String, Object> safeVariables(Object source) {
@@ -1333,6 +1425,11 @@ public class AutomationInfrastructureTaskServiceImpl implements AutomationInfras
     private AutomationInfrastructureTaskResp toResp(AutomationInfrastructureTaskDO task,
                                                     List<AutomationInfrastructureTaskResp.Log> logs,
                                                     Map<String, Object> result) {
+        if ("server_command".equals(task.getActionType()) && "passed".equals(task
+            .getStatus()) && (result == null || !result.containsKey("variables"))) {
+            // 幂等竞争、Agent 重启或人工处置也不能把缺少变量的成功命令当作绑定成功。
+            result = safeAgentResult(task, Map.of("result", result == null ? Map.of() : result));
+        }
         AutomationInfrastructureTaskResp resp = new AutomationInfrastructureTaskResp();
         resp.setTaskId(task.getTaskId());
         resp.setNextSequence(logs == null || logs.isEmpty() ? 0L : logs.get(logs.size() - 1).getSequence());

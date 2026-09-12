@@ -198,6 +198,24 @@ class AutomationUiCaseTreeServiceImplTest {
     }
 
     @Test
+    void shouldRejectShellConversionEvenWhenRequestOmitsStoredExtraction() {
+        StepDO target = step("STEP_001", "CASE_001", 1);
+        target.setOperationValue("exe-shell");
+        target.setConfigList(new ArrayList<>(List
+            .of(config("playwright_step", "{\"action_type\":\"server_command\",\"regex\":\"\\\\d+\"}"))));
+        StepDO request = step("STEP_001", "CASE_001", 1);
+        request.setConfigList(new ArrayList<>(List
+            .of(config("method_code", "server.shell"), config("method_config", "{\"command\":\"printf 12\"}"))));
+        AutomationUiCaseTreeServiceImpl realMapperService = new AutomationUiCaseTreeServiceImpl(sceneMapper, playwrightJobMapper, operationStepAssembler, operationStepReverseAdapter, new ObjectMapper());
+
+        assertThatThrownBy(() -> ReflectionTestUtils.invokeMethod(realMapperService, "applyStepEdit", target, request))
+            .isInstanceOf(BusinessException.class)
+            .hasMessageContaining("正则提取");
+        assertThat(configValue(target, "playwright_step")).contains("\"regex\"");
+        verify(operationStepAssembler, never()).assembleManualStep(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
     void shouldPersistDisabledStatusWhenEditingStep() {
         CaseDO parent = caseDO("CASE_001", 1);
         StepDO existing = step("STEP_001", parent.getId(), 1);

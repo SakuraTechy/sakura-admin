@@ -287,7 +287,9 @@ public class FileServiceImpl extends BaseServiceImpl<FileMapper, FileDO, FileRes
             content.append(">制作状态：<font color=\"warning\">").append(markdown.getCertificateState()).append("</font>\n");
         }
         content.append(">制作时间：<font color=\"comment\">").append(markdown.getMakeTime()).append("</font>\n");
-        content.append(">授权期限：<font color=\"comment\">").append(markdown.getAuthorizationDeadlineTime()).append("</font>\n");
+        content.append(">授权期限：<font color=\"comment\">")
+            .append(markdown.getAuthorizationDeadlineTime())
+            .append("</font>\n");
         content.append(">维保期限：<font color=\"comment\">").append(markdown.getMaintenanceWarnDate()).append("</font>\n");
         if ("成功".equals(markdown.getCertificateState())) {
             content.append(">产品证书：[点击下载](").append(markdown.getFileName()).append(")\n");

@@ -16,25 +16,39 @@
 
 package top.continew.admin.automation.service.impl;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.nio.file.Path;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import top.continew.admin.automation.model.req.playwright.AutomationPlaywrightRunnerJobReq;
 import top.continew.admin.automation.model.req.playwright.AutomationPlaywrightRunnerOptionsReq;
 import top.continew.admin.automation.model.resp.playwright.AutomationPlaywrightCaseCancellationResp;
 import top.continew.admin.automation.service.AutomationPlaywrightCaseService;
 import top.continew.admin.automation.service.AutomationPlaywrightSessionStateService;
+import top.continew.admin.automation.service.AutomationPlaywrightSessionStateService.SessionFiles;
 import top.continew.starter.core.exception.BusinessException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.clearInvocations;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class AutomationPlaywrightRunnerJobServiceImplTest {
+
+    @TempDir
+    private Path temporaryDirectory;
 
     private final AutomationPlaywrightSessionStateService sessionStateService = mock(AutomationPlaywrightSessionStateService.class);
     private final AutomationPlaywrightCaseService caseService = mock(AutomationPlaywrightCaseService.class);
@@ -128,6 +142,110 @@ class AutomationPlaywrightRunnerJobServiceImplTest {
 
         assertThat(optionValue(command, "--session-mode")).isEqualTo("reuse-browser");
         assertThat(optionValue(command, "--video")).isEqualTo("retain-on-failure");
+    }
+
+    @Test
+    void shouldInjectPrivateVariableFilesWithoutChangingBrowserSessionArguments() throws Exception {
+        SessionFiles files = new SessionFiles(Path.of("private/current.json"), Path.of("private/candidate.json"));
+        when(sessionStateService.hasCurrent(files)).thenReturn(true);
+        for (String sessionMode : List.of("isolated", "reuse-auth", "reuse-browser")) {
+            AutomationPlaywrightRunnerOptionsReq options = new AutomationPlaywrightRunnerOptionsReq();
+            options.setSessionMode(sessionMode);
+            AutomationPlaywrightRunnerJobReq request = new AutomationPlaywrightRunnerJobReq();
+            request.setProjectEnvironmentId(47L);
+            request.setBatchId("BATCH_001");
+            request.setOptions(options);
+            Map<String, String> environment = new HashMap<>();
+
+            invokeVariableEnvironment(environment, files);
+            List<String> command = invokeBuildCommand(request);
+
+            assertThat(environment).containsEntry("SAKURA_PLAYWRIGHT_VARIABLE_STATE_IN", files.currentPath().toString())
+                .containsEntry("SAKURA_PLAYWRIGHT_VARIABLE_STATE_OUT", files.candidatePath().toString());
+            assertThat(command).doesNotContain(files.currentPath().toString(), files.candidatePath().toString());
+            assertThat(optionValue(command, "--session-mode")).isEqualTo(sessionMode);
+        }
+    }
+
+    @Test
+    void shouldNotInheritVariableFilesFromHostOrLoadUncommittedCandidate() throws Exception {
+        Map<String, String> environment = new HashMap<>(Map
+            .of("SAKURA_PLAYWRIGHT_VARIABLE_STATE_IN", "another-batch.json", "SAKURA_PLAYWRIGHT_VARIABLE_STATE_OUT", "another-candidate.json"));
+        invokeVariableEnvironment(environment, null);
+        assertThat(environment).isEmpty();
+
+        SessionFiles files = new SessionFiles(Path.of("private/current.json"), Path.of("private/candidate.json"));
+        invokeVariableEnvironment(environment, files);
+        assertThat(environment).containsOnlyKeys("SAKURA_PLAYWRIGHT_VARIABLE_STATE_OUT");
+    }
+
+    @Test
+    void shouldCommitVariablesOnlyAfterSuccessfulUncancelledProcessAndResultDelivery() throws Exception {
+        for (String outcome : List.of("success", "failed", "report-failed", "cancelled")) {
+            clearInvocations(sessionStateService);
+            AutomationPlaywrightRunnerJobReq request = new AutomationPlaywrightRunnerJobReq();
+            request.setBatchId("BATCH_001");
+            request.setProjectEnvironmentId(47L);
+            request.setOptions(new AutomationPlaywrightRunnerOptionsReq());
+            SessionFiles files = new SessionFiles(temporaryDirectory.resolve("current.json"), temporaryDirectory
+                .resolve(outcome + ".json"));
+            Object runtime = newRuntime(request, files);
+            setField(runtime, "cancelRequested", "cancelled".equals(outcome));
+            Method method = AutomationPlaywrightRunnerJobServiceImpl.class
+                .getDeclaredMethod("promoteVariableState", runtime.getClass(), int.class, boolean.class);
+            method.setAccessible(true);
+            method.invoke(service, runtime, "failed".equals(outcome) ? 1 : 0, "report-failed".equals(outcome));
+
+            if ("success".equals(outcome)) {
+                verify(sessionStateService).promoteVariables(files);
+            } else {
+                verify(sessionStateService, never()).promoteVariables(any());
+            }
+        }
+    }
+
+    @Test
+    void shouldBlockAnotherCaseUntilTheCurrentBatchJobIsTerminal() throws Exception {
+        AutomationPlaywrightRunnerJobReq request = new AutomationPlaywrightRunnerJobReq();
+        request.setBatchId("BATCH_001");
+        Object runtime = newRuntime(request, null);
+        @SuppressWarnings("unchecked") Map<String, Object> jobs = (Map<String, Object>)fieldValue(service, "jobs");
+        jobs.put("JOB_001", runtime);
+        Method method = AutomationPlaywrightRunnerJobServiceImpl.class
+            .getDeclaredMethod("hasActiveBatchJob", String.class);
+        method.setAccessible(true);
+
+        assertThat(method.invoke(service, "BATCH_001")).isEqualTo(true);
+        assertThat(method.invoke(service, "BATCH_002")).isEqualTo(false);
+        setField(runtime, "status", "passed");
+        assertThat(method.invoke(service, "BATCH_001")).isEqualTo(false);
+    }
+
+    private Object newRuntime(AutomationPlaywrightRunnerJobReq request, SessionFiles variables) throws Exception {
+        Class<?> runtimeClass = Class.forName(AutomationPlaywrightRunnerJobServiceImpl.class.getName() + "$JobRuntime");
+        Constructor<?> constructor = runtimeClass
+            .getDeclaredConstructor(String.class, String.class, AutomationPlaywrightRunnerJobReq.class, SessionFiles.class, SessionFiles.class, Long.class);
+        constructor.setAccessible(true);
+        return constructor.newInstance("JOB_001", "1:CASE_001", request, null, variables, 0L);
+    }
+
+    private void setField(Object target, String name, Object value) throws Exception {
+        Field field = target.getClass().getDeclaredField(name);
+        field.setAccessible(true);
+        field.set(target, value);
+    }
+
+    private Object fieldValue(Object target, String name) throws Exception {
+        Field field = target.getClass().getDeclaredField(name);
+        field.setAccessible(true);
+        return field.get(target);
+    }
+
+    private void invokeVariableEnvironment(Map<String, String> environment, SessionFiles files) throws Exception {
+        Method method = AutomationPlaywrightRunnerJobServiceImpl.class
+            .getDeclaredMethod("configureVariableEnvironment", Map.class, SessionFiles.class);
+        method.setAccessible(true);
+        method.invoke(service, environment, files);
     }
 
     @SuppressWarnings("unchecked")

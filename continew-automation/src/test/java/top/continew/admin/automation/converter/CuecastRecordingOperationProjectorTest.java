@@ -77,12 +77,11 @@ class CuecastRecordingOperationProjectorTest {
 
             assertThat(result.recognized()).as(matchMode).isTrue();
             assertThat(result.methodCode()).isEqualTo("assertion.element.match");
-            assertThat(result.methodConfig()).containsEntry("match_mode", matchMode)
-                .containsEntry("read_mode", "value");
+            assertThat(result.methodConfig()).containsEntry("match_mode", matchMode);
             if ("visible".equals(matchMode)) {
-                assertThat(result.methodConfig()).doesNotContainKey("expect");
+                assertThat(result.methodConfig()).doesNotContainKeys("expect", "read_mode", "attribute");
             } else {
-                assertThat(result.methodConfig()).containsEntry("expect", "系统管理平台");
+                assertThat(result.methodConfig()).containsEntry("expect", "系统管理平台").containsEntry("read_mode", "value");
             }
         }
     }
@@ -96,6 +95,17 @@ class CuecastRecordingOperationProjectorTest {
         assertThat(result.attempted()).isTrue();
         assertThat(result.recognized()).isFalse();
         assertThat(result.warnings()).containsExactly("RECORDED_ASSERTION_MATCH_UNSUPPORTED");
+    }
+
+    @Test
+    void shouldReadAttributeNameFromTopLevelRecordedField() {
+        PlaywrightRecordedStepReq step = assertionStep("equals");
+        step.setLocatorMeta(Map.of("assertion", Map.of("target", "element", "match", "equals"), "context", Map
+            .of("assertion", Map.of("target", "element", "match", "equals", "source", "attribute"))));
+        step.addExtra("attribute", "class");
+
+        assertThat(projector.project(step).methodConfig()).containsEntry("read_mode", "attribute")
+            .containsEntry("attribute", "class");
     }
 
     private PlaywrightRecordedStepReq assertionStep(String matchMode) {

@@ -115,6 +115,77 @@ class AutomationPlaywrightSessionStateServiceTest {
         assertThat(batchDirectory).doesNotExist();
     }
 
+    @Test
+    void shouldShareVariablesOnlyWithinTheSameSceneBatchAndEnvironment() throws IOException {
+        SessionFiles first = service.prepareVariables("BATCH_A", "SCENE_1", 47L, "JOB_1");
+        SessionFiles next = service.prepareVariables("BATCH_A", "SCENE_1", 47L, "JOB_2");
+        SessionFiles otherScene = service.prepareVariables("BATCH_A", "SCENE_2", 47L, "JOB_3");
+        SessionFiles otherEnvironment = service.prepareVariables("BATCH_A", "SCENE_1", 48L, "JOB_4");
+        SessionFiles otherBatch = service.prepareVariables("BATCH_B", "SCENE_1", 47L, "JOB_5");
+        SessionFiles auth = service.prepare("BATCH_A", 47L, "JOB_1");
+        Files.writeString(first.candidatePath(), variableState());
+
+        service.promoteVariables(first);
+
+        assertThat(service.hasCurrent(next)).isTrue();
+        assertThat(next.currentPath()).isEqualTo(first.currentPath());
+        assertThat(next.candidatePath()).isNotEqualTo(first.candidatePath());
+        assertThat(first.candidatePath()).doesNotExist();
+        assertThat(Files.readString(next.currentPath())).contains("private-fixture", "\"masked\":true", "locator");
+        assertThat(service.hasCurrent(otherScene)).isFalse();
+        assertThat(service.hasCurrent(otherEnvironment)).isFalse();
+        assertThat(service.hasCurrent(otherBatch)).isFalse();
+        assertThat(service.hasCurrent(auth)).isFalse();
+        service.cleanupBatch("BATCH_A");
+        assertThat(temporaryDirectory.resolve("BATCH_A")).doesNotExist();
+        assertThat(otherBatch.candidatePath().getParent()).isDirectory();
+    }
+
+    @Test
+    void shouldDiscardFailedVariableCandidateWithoutChangingLastSuccessfulState() throws IOException {
+        SessionFiles first = service.prepareVariables("BATCH_A", "SCENE_1", 47L, "JOB_1");
+        Files.writeString(first.candidatePath(), variableState());
+        service.promoteVariables(first);
+        String current = Files.readString(first.currentPath());
+        SessionFiles failed = service.prepareVariables("BATCH_A", "SCENE_1", 47L, "JOB_2");
+        Files.writeString(failed.candidatePath(), variableState().replace("private-fixture", "failed-candidate"));
+
+        service.discardCandidate(failed);
+
+        assertThat(failed.candidatePath()).doesNotExist();
+        assertThat(Files.readString(first.currentPath())).isEqualTo(current);
+    }
+
+    @Test
+    void shouldRejectInvalidVariableMetadataWithoutLeakingValues() throws IOException {
+        SessionFiles files = service.prepareVariables("BATCH_A", "SCENE_1", 47L, "JOB_1");
+        Files.writeString(files.candidatePath(), variableState().replace("\"masked\":true", "\"masked\":\"true\""));
+        assertThatThrownBy(() -> service.promoteVariables(files)).hasMessageContaining("变量候选条目格式无效");
+        assertThat(files.currentPath()).doesNotExist();
+        Files.writeString(files.candidatePath(), "{\"passwd\":\"private-fixture\"");
+        assertThatThrownBy(() -> service.promoteVariables(files)).hasMessage("读取或提交 Playwright 场景变量候选失败")
+            .hasMessageNotContaining("private-fixture");
+    }
+
+    @Test
+    void shouldCleanExpiredVariableFilesEvenWithoutBrowserSession() throws Exception {
+        SessionFiles files = service.prepareVariables("BATCH_EXPIRED", "SCENE_1", 47L, "JOB_1");
+        Files.writeString(files.candidatePath(), variableState());
+        Path batchDirectory = temporaryDirectory.resolve("BATCH_EXPIRED");
+        Files.setLastModifiedTime(batchDirectory, FileTime.from(Instant.now().minusSeconds(25 * 3600)));
+
+        service.cleanupExpired();
+
+        assertThat(batchDirectory).doesNotExist();
+    }
+
+    private String variableState() {
+        return """
+            {"version":1,"scope":{"batch_id":"BATCH_A","scene_key":"SCENE_1","project_environment_id":"47"},
+             "variables":[{"name":"passwd","value":"private-fixture","masked":true,"source":"locator"}]}
+            """;
+    }
+
     private void setField(String name, Object value) throws Exception {
         Field field = AutomationPlaywrightSessionStateService.class.getDeclaredField(name);
         field.setAccessible(true);

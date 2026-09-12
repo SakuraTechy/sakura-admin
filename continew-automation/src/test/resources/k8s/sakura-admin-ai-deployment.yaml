@@ -1,0 +1,146 @@
+---
+# Kubernetes ConfigMap - Sakura Admin AI 配置
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sakura-admin-ai-config
+  namespace: sakura
+  labels:
+    app: sakura-admin
+    component: ai-config
+data:
+  # AI 能力总开关
+  SAKURA_AI_ENABLED: "true"
+
+  # AI 服务提供商（openai | azure-openai | anthropic | custom）
+  SAKURA_AI_PROVIDER: "openai"
+
+  # OpenAI API 配置
+  SAKURA_AI_API_BASE_URL: "https://api.openai.com/v1"
+
+  # 模型配置
+  SAKURA_AI_MODEL_NAME: "gpt-4o-mini"
+  SAKURA_AI_MODEL_TEMPERATURE: "0.3"
+  SAKURA_AI_MODEL_MAX_TOKENS: "4096"
+
+  # 超时配置（毫秒）
+  SAKURA_AI_TIMEOUT_CONNECT_MS: "10000"
+  SAKURA_AI_TIMEOUT_READ_MS: "60000"
+  SAKURA_AI_TIMEOUT_TOTAL_MS: "120000"
+
+  # 重试配置
+  SAKURA_AI_RETRY_ENABLED: "true"
+  SAKURA_AI_RETRY_MAX_ATTEMPTS: "2"
+  SAKURA_AI_RETRY_INITIAL_DELAY_MS: "1000"
+  SAKURA_AI_RETRY_MAX_DELAY_MS: "10000"
+  SAKURA_AI_RETRY_MULTIPLIER: "2.0"
+
+  # 限流配置
+  SAKURA_AI_RATE_LIMIT_ENABLED: "true"
+  SAKURA_AI_RATE_LIMIT_PER_USER_PER_MINUTE: "10"
+  SAKURA_AI_RATE_LIMIT_GLOBAL_CONCURRENT: "4"
+
+  # 变量提取功能开关
+  SAKURA_AI_VARIABLE_EXTRACT_ENABLED: "true"
+
+  # 安全配置
+  SAKURA_AI_SECURITY_MASK_SENSITIVE: "true"
+  SAKURA_AI_SECURITY_LOG_REQUESTS: "false"
+  SAKURA_AI_SECURITY_VALIDATE_SSL: "true"
+
+---
+# Kubernetes Secret - Sakura Admin AI 敏感配置
+apiVersion: v1
+kind: Secret
+metadata:
+  name: sakura-admin-ai-secret
+  namespace: sakura
+  labels:
+    app: sakura-admin
+    component: ai-secret
+type: Opaque
+stringData:
+  # OpenAI API Key（需要替换为实际值）
+  SAKURA_AI_API_KEY: "sk-proj-your-production-key-here"
+
+  # Azure OpenAI 配置（可选）
+  # SAKURA_AI_AZURE_ENDPOINT: "https://your-resource.openai.azure.com"
+  # SAKURA_AI_AZURE_API_KEY: "your-azure-api-key"
+  # SAKURA_AI_AZURE_DEPLOYMENT: "gpt-4"
+
+  # Anthropic Claude 配置（可选）
+  # SAKURA_AI_ANTHROPIC_API_KEY: "sk-ant-your-key"
+
+---
+# Kubernetes Deployment 引用示例
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sakura-admin
+  namespace: sakura
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: sakura-admin
+  template:
+    metadata:
+      labels:
+        app: sakura-admin
+    spec:
+      containers:
+      - name: sakura-admin
+        image: sakura-admin:latest
+        ports:
+        - containerPort: 8000
+          name: http
+
+        # 引用 ConfigMap 和 Secret
+        envFrom:
+        - configMapRef:
+            name: sakura-admin-ai-config
+        - secretRef:
+            name: sakura-admin-ai-secret
+
+        # 资源限制
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
+
+        # 健康检查
+        livenessProbe:
+          httpGet:
+            path: /actuator/health
+            port: 8000
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 5
+
+        readinessProbe:
+          httpGet:
+            path: /actuator/health
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 3
+
+---
+# Service 定义
+apiVersion: v1
+kind: Service
+metadata:
+  name: sakura-admin
+  namespace: sakura
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8000
+    targetPort: 8000
+    protocol: TCP
+    name: http
+  selector:
+    app: sakura-admin

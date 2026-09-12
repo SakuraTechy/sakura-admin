@@ -1,0 +1,163 @@
+# Prometheus 告警规则 - Sakura Admin AI 变量提取功能
+# 用途：监控 AI 调用失败率、响应时延、限流触发等指标
+#
+# 部署位置：Prometheus 配置目录，通过 rule_files 引入
+# 作者: Claude Opus 5
+# 日期: 2026-09-13
+
+groups:
+  - name: sakura_ai_alerts
+    interval: 30s
+    rules:
+      # 1. AI 调用失败率超过 5%
+      - alert: AiVariableExtractHighErrorRate
+        expr: |
+          (
+            sum(rate(http_server_requests_seconds_count{uri="/automation/ai/variable-extract-rule",status=~"4..|5.."}[5m]))
+            /
+            sum(rate(http_server_requests_seconds_count{uri="/automation/ai/variable-extract-rule"}[5m]))
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          component: ai-variable-extract
+          team: automation
+        annotations:
+          summary: "AI 变量提取失败率过高"
+          description: "最近 5 分钟失败率 {{ $value | humanizePercentage }}，超过 5% 阈值"
+          runbook_url: "https://wiki.example.com/runbooks/ai-variable-extract-high-error-rate"
+
+      # 2. AI 调用 P95 响应时延超过 10 秒
+      - alert: AiVariableExtractSlowResponse
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(http_server_requests_seconds_bucket{uri="/automation/ai/variable-extract-rule"}[5m])) by (le)
+          ) > 10
+        for: 5m
+        labels:
+          severity: warning
+          component: ai-variable-extract
+          team: automation
+        annotations:
+          summary: "AI 变量提取响应时间过长"
+          description: "P95 时延 {{ $value | humanizeDuration }}，超过 10 秒阈值"
+          runbook_url: "https://wiki.example.com/runbooks/ai-variable-extract-slow-response"
+
+      # 3. AI 调用 P99 响应时延超过 30 秒
+      - alert: AiVariableExtractVerySlowResponse
+        expr: |
+          histogram_quantile(0.99,
+            sum(rate(http_server_requests_seconds_bucket{uri="/automation/ai/variable-extract-rule"}[5m])) by (le)
+          ) > 30
+        for: 3m
+        labels:
+          severity: critical
+          component: ai-variable-extract
+          team: automation
+        annotations:
+          summary: "AI 变量提取响应时间严重过长"
+          description: "P99 时延 {{ $value | humanizeDuration }}，超过 30 秒阈值"
+          runbook_url: "https://wiki.example.com/runbooks/ai-variable-extract-slow-response"
+
+      # 4. AI 限流触发（HTTP 429 响应）
+      - alert: AiVariableExtractRateLimited
+        expr: |
+          increase(http_server_requests_seconds_count{uri="/automation/ai/variable-extract-rule",status="429"}[5m]) > 10
+        labels:
+          severity: critical
+          component: ai-variable-extract
+          team: automation
+        annotations:
+          summary: "AI 变量提取触发限流"
+          description: "最近 5 分钟限流 {{ $value }} 次，超过 10 次阈值"
+          runbook_url: "https://wiki.example.com/runbooks/ai-variable-extract-rate-limited"
+
+      # 5. AI 服务不可用（HTTP 503 响应）
+      - alert: AiVariableExtractServiceUnavailable
+        expr: |
+          increase(http_server_requests_seconds_count{uri="/automation/ai/variable-extract-rule",status="503"}[5m]) > 5
+        labels:
+          severity: critical
+          component: ai-variable-extract
+          team: automation
+        annotations:
+          summary: "AI 变量提取服务不可用"
+          description: "最近 5 分钟服务不可用响应 {{ $value }} 次，超过 5 次阈值"
+          runbook_url: "https://wiki.example.com/runbooks/ai-variable-extract-service-unavailable"
+
+      # 6. AI 上游超时（HTTP 504 响应）
+      - alert: AiVariableExtractProviderTimeout
+        expr: |
+          increase(http_server_requests_seconds_count{uri="/automation/ai/variable-extract-rule",status="504"}[5m]) > 5
+        labels:
+          severity: warning
+          component: ai-variable-extract
+          team: automation
+        annotations:
+          summary: "AI 提供方响应超时"
+          description: "最近 5 分钟超时响应 {{ $value }} 次，超过 5 次阈值"
+          runbook_url: "https://wiki.example.com/runbooks/ai-variable-extract-provider-timeout"
+
+      # 7. AI 调用量激增（相比 1 小时前增长 3 倍）
+      - alert: AiVariableExtractTrafficSpike
+        expr: |
+          (
+            sum(rate(http_server_requests_seconds_count{uri="/automation/ai/variable-extract-rule"}[5m]))
+            /
+            sum(rate(http_server_requests_seconds_count{uri="/automation/ai/variable-extract-rule"}[5m] offset 1h))
+          ) > 3
+        for: 10m
+        labels:
+          severity: info
+          component: ai-variable-extract
+          team: automation
+        annotations:
+          summary: "AI 变量提取调用量激增"
+          description: "当前调用量是 1 小时前的 {{ $value | humanize }} 倍"
+          runbook_url: "https://wiki.example.com/runbooks/ai-variable-extract-traffic-spike"
+
+      # 8. AI 调用成功率低于 95%（持续 15 分钟）
+      - alert: AiVariableExtractLowSuccessRate
+        expr: |
+          (
+            sum(rate(http_server_requests_seconds_count{uri="/automation/ai/variable-extract-rule",status="200"}[5m]))
+            /
+            sum(rate(http_server_requests_seconds_count{uri="/automation/ai/variable-extract-rule"}[5m]))
+          ) < 0.95
+        for: 15m
+        labels:
+          severity: critical
+          component: ai-variable-extract
+          team: automation
+        annotations:
+          summary: "AI 变量提取成功率过低"
+          description: "最近 5 分钟成功率 {{ $value | humanizePercentage }}，低于 95% 阈值"
+          runbook_url: "https://wiki.example.com/runbooks/ai-variable-extract-low-success-rate"
+
+      # 9. AI 调用无请求（持续 30 分钟）
+      - alert: AiVariableExtractNoTraffic
+        expr: |
+          sum(rate(http_server_requests_seconds_count{uri="/automation/ai/variable-extract-rule"}[5m])) == 0
+        for: 30m
+        labels:
+          severity: info
+          component: ai-variable-extract
+          team: automation
+        annotations:
+          summary: "AI 变量提取无调用流量"
+          description: "最近 30 分钟无任何 AI 调用请求"
+          runbook_url: "https://wiki.example.com/runbooks/ai-variable-extract-no-traffic"
+
+      # 10. 单实例并发调用数过高（假设配置了自定义指标）
+      - alert: AiVariableExtractHighConcurrency
+        expr: |
+          ai_variable_extract_concurrent_requests > 8
+        for: 3m
+        labels:
+          severity: warning
+          component: ai-variable-extract
+          team: automation
+        annotations:
+          summary: "AI 变量提取并发调用数过高"
+          description: "当前并发调用数 {{ $value }}，超过推荐值 8"
+          runbook_url: "https://wiki.example.com/runbooks/ai-variable-extract-high-concurrency"

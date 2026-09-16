@@ -18,6 +18,9 @@ package top.continew.admin.automation.support.ai;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
+import java.util.List;
+import java.util.Map;
+
 /**
  * AI 文本生成客户端接口。
  *
@@ -38,4 +41,15 @@ public interface AiTextClient {
     JsonNode generateStructuredOutput(String systemPrompt,
                                       String userContent,
                                       JsonNode schema) throws AiProviderException;
+
+    /**
+     * 生成结构化输出（支持多模态输入，如图片）。
+     *
+     * @param messages 多模态消息列表，每个消息包含 role 和 content（可以是文本或图片）
+     * @param schema   输出结构的 JSON Schema，供应商将强制 AI 按此结构返回
+     * @return 结构化输出的 JSON 节点
+     * @throws AiProviderException 当调用失败时抛出，包含供应商信息、错误码和是否可重试
+     */
+    JsonNode generateStructuredOutputWithVision(List<Map<String, Object>> messages,
+                                                JsonNode schema) throws AiProviderException;
 }

@@ -48,7 +48,7 @@ class AutomationOperationCatalogServiceImplTest {
     }
 
     @Test
-    void shouldLoadThirteenTypesAndSixtyFourMethods() {
+    void shouldLoadThirteenTypesAndSixtyFiveMethods() {
         AutomationOperationCatalog catalog = catalog();
         List<AutomationOperationCatalog.OperationMethod> methods = catalog.getTypes()
             .stream()
@@ -56,7 +56,7 @@ class AutomationOperationCatalogServiceImplTest {
             .toList();
 
         assertThat(catalog.getTypes()).hasSize(13);
-        assertThat(methods).hasSize(64);
+        assertThat(methods).hasSize(66);
         assertThat(methods).allSatisfy(method -> {
             assertThat(method.getMethodCode()).isNotBlank();
             assertThat(method.getLegacyAction()).isNotBlank();
@@ -101,8 +101,8 @@ class AutomationOperationCatalogServiceImplTest {
         AutomationOperationCatalog catalog = catalog();
         assertThat(catalog.getDiagnosticProfiles())
             .containsKeys("navigation", "element_interaction", "dialog", "assertion", "wait", "variable", "script", "infrastructure");
-        assertThat(catalog.getDiagnosticProfiles().values().stream().mapToInt(List::size).sum()).isEqualTo(64);
-        assertThat(catalog.getDiagnosticProfiles().values().stream().flatMap(List::stream).distinct()).hasSize(64);
+        assertThat(catalog.getDiagnosticProfiles().values().stream().mapToInt(List::size).sum()).isEqualTo(65);
+        assertThat(catalog.getDiagnosticProfiles().values().stream().flatMap(List::stream).distinct()).hasSize(66);
     }
 
     @Test
@@ -110,9 +110,13 @@ class AutomationOperationCatalogServiceImplTest {
         List<AutomationOperationCatalog.OperationMethod> methods = methods();
         List<Map<String, Object>> fields = methods.stream().flatMap(method -> method.getFormSchema().stream()).toList();
 
-        assertThat(fields).hasSize(136);
+        assertThat(fields).hasSize(140);
         assertThat(catalog().getDiagnosticFieldDefaults()).hasSize(56);
         assertThat(fields.stream().filter(field -> field.containsKey("default"))).hasSize(24);
+        assertThat(findMethod(catalog(), "input.file.storage").getFormSchema()).filteredOn(field -> "file_ref"
+            .equals(field.get("name")))
+            .singleElement()
+            .satisfies(field -> assertThat(field.get("component")).isEqualTo("file_ref"));
         for (AutomationOperationCatalog.OperationMethod method : methods) {
             Set<String> fieldNames = new HashSet<>();
             for (Map<String, Object> field : method.getFormSchema()) {

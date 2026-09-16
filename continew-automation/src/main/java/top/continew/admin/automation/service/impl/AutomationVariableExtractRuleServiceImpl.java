@@ -137,6 +137,7 @@ public class AutomationVariableExtractRuleServiceImpl implements AutomationVaria
     private JsonNode buildOutputSchema() {
         ObjectNode schema = objectMapper.createObjectNode();
         schema.put("type", "object");
+        schema.put("additionalProperties", false);
 
         ObjectNode properties = objectMapper.createObjectNode();
 

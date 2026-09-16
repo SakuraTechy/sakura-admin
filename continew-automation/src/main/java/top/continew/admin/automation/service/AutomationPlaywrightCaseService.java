@@ -16,8 +16,7 @@
 
 package top.continew.admin.automation.service;
 
-import java.nio.file.Path;
-
+import org.springframework.core.io.Resource;
 import top.continew.admin.automation.model.req.playwright.AutomationPlaywrightResultReq;
 import top.continew.admin.automation.model.req.playwright.AutomationPlaywrightBatchCaseStatusReq;
 import top.continew.admin.automation.model.req.playwright.AutomationPlaywrightBatchCreateReq;
@@ -44,7 +43,7 @@ public interface AutomationPlaywrightCaseService {
                                          String batchId,
                                          String executionCapability);
 
-    /** 解析执行批次中指定步骤的环境证书，不接受调用方直接指定资产 ID。 */
+    /** 解析执行批次中指定步骤的受控文件，不接受调用方直接指定物理路径。 */
     ExecutionFile getExecutionFile(String caseKey,
                                    String stepId,
                                    Long projectEnvironmentId,
@@ -81,6 +80,6 @@ public interface AutomationPlaywrightCaseService {
      */
     void saveResult(String caseKey, AutomationPlaywrightResultReq req, String executionCapability);
 
-    record ExecutionFile(Path path, String fileName, long size, String sha256) {
+    record ExecutionFile(Resource resource, String fileName, long size, String sha256) {
     }
 }

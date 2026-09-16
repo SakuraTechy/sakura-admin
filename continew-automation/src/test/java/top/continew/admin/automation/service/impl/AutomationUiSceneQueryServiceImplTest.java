@@ -23,6 +23,7 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -40,6 +41,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Sort;
 import org.springframework.test.util.ReflectionTestUtils;
 import top.continew.admin.automation.mapper.AutomationUiSceneQueryMapper;
 import top.continew.admin.automation.mapper.AutomationUiExecutionQueryMapper;
@@ -47,6 +49,7 @@ import top.continew.admin.automation.model.entity.ui.CaseDO;
 import top.continew.admin.automation.model.query.AutomationUiSceneDefinitionRow;
 import top.continew.admin.automation.model.query.AutomationUiSceneInlineDefinitionRow;
 import top.continew.admin.automation.model.query.AutomationUiSceneQuery;
+import top.continew.admin.automation.model.query.AutomationUiSceneSummarySort;
 import top.continew.admin.automation.model.query.AutomationUiDefinitionProjectionStateRow;
 import top.continew.admin.automation.model.query.AutomationUiDefinitionCaseReadRow;
 import top.continew.admin.automation.model.req.AutomationUiExecutionScopeReq;
@@ -269,9 +272,10 @@ class AutomationUiSceneQueryServiceImplTest {
         AutomationUiSceneQuery query = new AutomationUiSceneQuery();
         query.setExecuteStatus("RUNNING");
         query.setExecuteResult("FAILED");
-        PageQuery pageQuery = new PageQuery();
-        pageQuery.setPage(1);
-        pageQuery.setSize(20);
+        PageQuery pageQuery = mock(PageQuery.class);
+        when(pageQuery.getPage()).thenReturn(1);
+        when(pageQuery.getSize()).thenReturn(20);
+        when(pageQuery.getSort()).thenReturn(Sort.by(Sort.Order.asc("createTime"), Sort.Order.asc("sceneId")));
         AutomationUiExecutionScopeReq executionScope = new AutomationUiExecutionScopeReq();
         executionScope.setRecordSource("DEBUG");
         AutomationUiSceneSummaryResp summary = new AutomationUiSceneSummaryResp();
@@ -280,8 +284,8 @@ class AutomationUiSceneQueryServiceImplTest {
         latest.setSceneDbId(8L);
         latest.setExecutionDbId(81L);
         when(queryMapper.countScopedSummaries(any(), any(), eq(9L), eq(false))).thenReturn(1L);
-        when(queryMapper
-            .selectScopedSummaryPage(any(), any(), eq(9L), eq(false), eq(0L), eq(20), eq("createTime"), eq(false)))
+        when(queryMapper.selectScopedSummaryPage(any(), any(), eq(9L), eq(false), eq(0L), eq(20), eq(List
+            .of(new AutomationUiSceneSummarySort("createTime", true), new AutomationUiSceneSummarySort("sceneId", true)))))
             .thenReturn(List.of(summary));
         when(executionQueryMapper.selectScopedLatestBatch(any(), any(), eq(9L), eq(false))).thenReturn(List.of(latest));
 

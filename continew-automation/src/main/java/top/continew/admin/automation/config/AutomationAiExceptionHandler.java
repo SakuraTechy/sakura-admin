@@ -21,7 +21,8 @@ import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -45,16 +46,17 @@ import java.util.stream.Collectors;
  * @author Codex
  * @since 2026/09/12
  */
-@Slf4j
 @Order(1)
 @RestControllerAdvice(basePackages = "top.continew.admin.automation.controller")
 public class AutomationAiExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(AutomationAiExceptionHandler.class);
 
     /**
      * JSON 解析异常
      */
     @ExceptionHandler(JsonParseException.class)
-    public R handleJsonParseException(JsonParseException e, HttpServletRequest request) {
+    public R<Void> handleJsonParseException(JsonParseException e, HttpServletRequest request) {
         log.error("[{}] {} - JSON 解析失败", request.getMethod(), request.getRequestURI(), e);
         return R.fail(String.valueOf(HttpStatus.BAD_REQUEST.value()), "JSON 格式不正确");
     }
@@ -63,7 +65,7 @@ public class AutomationAiExceptionHandler {
      * JSON 映射异常（字段类型不匹配等）
      */
     @ExceptionHandler(JsonMappingException.class)
-    public R handleJsonMappingException(JsonMappingException e, HttpServletRequest request) {
+    public R<Void> handleJsonMappingException(JsonMappingException e, HttpServletRequest request) {
         log.error("[{}] {} - JSON 映射失败", request.getMethod(), request.getRequestURI(), e);
 
         // 提取字段路径，不包含具体值
@@ -83,7 +85,8 @@ public class AutomationAiExceptionHandler {
      * @RequestBody 参数校验异常
      */
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public R handleMethodArgumentNotValidException(MethodArgumentNotValidException e, HttpServletRequest request) {
+    public R<Void> handleMethodArgumentNotValidException(MethodArgumentNotValidException e,
+                                                         HttpServletRequest request) {
         log.error("[{}] {} - 参数校验失败", request.getMethod(), request.getRequestURI(), e);
 
         // 收集所有校验错误消息，不包含具体值
@@ -104,7 +107,7 @@ public class AutomationAiExceptionHandler {
      * 参数绑定异常
      */
     @ExceptionHandler(BindException.class)
-    public R handleBindException(BindException e, HttpServletRequest request) {
+    public R<Void> handleBindException(BindException e, HttpServletRequest request) {
         log.error("[{}] {} - 参数绑定失败", request.getMethod(), request.getRequestURI(), e);
 
         FieldError fieldError = e.getFieldError();
@@ -120,7 +123,7 @@ public class AutomationAiExceptionHandler {
      * 约束违规异常（@Validated 校验失败）
      */
     @ExceptionHandler(ConstraintViolationException.class)
-    public R handleConstraintViolationException(ConstraintViolationException e, HttpServletRequest request) {
+    public R<Void> handleConstraintViolationException(ConstraintViolationException e, HttpServletRequest request) {
         log.error("[{}] {} - 约束校验失败", request.getMethod(), request.getRequestURI(), e);
 
         String errorMessage = e.getConstraintViolations().stream().map(violation -> {
@@ -140,7 +143,7 @@ public class AutomationAiExceptionHandler {
      * 正则编译异常
      */
     @ExceptionHandler(PatternSyntaxException.class)
-    public R handlePatternSyntaxException(PatternSyntaxException e, HttpServletRequest request) {
+    public R<Void> handlePatternSyntaxException(PatternSyntaxException e, HttpServletRequest request) {
         log.error("[{}] {} - 正则编译失败", request.getMethod(), request.getRequestURI(), e);
 
         // 不暴露具体 pattern 内容，只提示语法错误
@@ -151,7 +154,7 @@ public class AutomationAiExceptionHandler {
      * AI 供应商调用异常
      */
     @ExceptionHandler(AiProviderException.class)
-    public R handleAiProviderException(AiProviderException e, HttpServletRequest request) {
+    public R<Void> handleAiProviderException(AiProviderException e, HttpServletRequest request) {
         log.error("[{}] {} - AI 供应商调用失败: provider={}, errorCode={}, retryable={}", request.getMethod(), request
             .getRequestURI(), e.getProvider(), e.getErrorCode(), e.isRetryable(), e);
 
@@ -165,7 +168,8 @@ public class AutomationAiExceptionHandler {
      * HTTP 消息不可读异常（JSON 解析失败的顶层异常）
      */
     @ExceptionHandler(HttpMessageNotReadableException.class)
-    public R handleHttpMessageNotReadableException(HttpMessageNotReadableException e, HttpServletRequest request) {
+    public R<Void> handleHttpMessageNotReadableException(HttpMessageNotReadableException e,
+                                                         HttpServletRequest request) {
         log.error("[{}] {} - HTTP 消息不可读", request.getMethod(), request.getRequestURI(), e);
 
         // 如果是字段类型不匹配，提取字段路径
@@ -187,7 +191,7 @@ public class AutomationAiExceptionHandler {
      * 未知异常兜底
      */
     @ExceptionHandler(Exception.class)
-    public R handleException(Exception e, HttpServletRequest request) {
+    public R<Void> handleException(Exception e, HttpServletRequest request) {
         log.error("[{}] {} - 未知异常", request.getMethod(), request.getRequestURI(), e);
         return R.fail(String.valueOf(HttpStatus.INTERNAL_SERVER_ERROR.value()), "系统处理异常，请稍后重试");
     }

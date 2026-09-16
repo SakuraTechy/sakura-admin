@@ -38,7 +38,11 @@ import jakarta.annotation.Resource;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
+import org.dromara.x.file.storage.core.FileInfo;
+import org.dromara.x.file.storage.core.FileStorageService;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.FileSystemResource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import top.continew.admin.automation.converter.AutomationPlaybackUrlRewriter;
@@ -82,6 +86,10 @@ import top.continew.admin.project.mapper.ProjectEnvironmentConfigMapper;
 import top.continew.admin.project.model.entity.ProjectConfigDO;
 import top.continew.admin.project.model.entity.ProjectEnvironmentConfigDO;
 import top.continew.admin.project.model.entity.ProjectServerConfigDO;
+import top.continew.admin.system.model.entity.FileDO;
+import top.continew.admin.system.model.entity.StorageDO;
+import top.continew.admin.system.service.FileService;
+import top.continew.admin.system.service.StorageService;
 import top.continew.starter.core.exception.BusinessException;
 
 /**
@@ -118,6 +126,9 @@ public class AutomationPlaywrightCaseServiceImpl implements AutomationPlaywright
     private final AutomationEnvironmentResourceService environmentResourceService;
     private final AutomationCertificateWorkspaceService certificateWorkspaceService;
     private final AutomationFileAssetMapper fileAssetMapper;
+    private final FileService fileService;
+    private final StorageService storageService;
+    private final FileStorageService fileStorageService;
 
     @Resource
     private AutomationStoragePressureGuard storagePressureGuard;
@@ -201,12 +212,14 @@ public class AutomationPlaywrightCaseServiceImpl implements AutomationPlaywright
         }
         resp.setSteps(steps);
         fillCaseRuntimeFields(resp, caseDO, steps);
-        Long effectiveEnvironmentId = frozenExecution == null
+        // 旧执行快照可能没有写入环境 ID；Runner 请求已携带的环境 ID 仍可安全用于解析受控资源。
+        Long effectiveEnvironmentId = frozenExecution == null || frozenExecution.projectEnvironmentId() == null
             ? projectEnvironmentId
             : frozenExecution.projectEnvironmentId();
         if (effectiveEnvironmentId != null) {
             applyProjectEnvironment(resp, resolved.scene(), effectiveEnvironmentId);
             applyEnvironmentResources(steps, resolved.scene(), caseDO, effectiveEnvironmentId, batchId, batchRecord);
+            applyStorageFileReferences(steps, resolved.scene(), caseDO, effectiveEnvironmentId, batchId, batchRecord);
         }
         if (frozenExecution != null) {
             applyEffectiveExecutionConfig(resp, frozenExecution.effectiveExecutionConfig());
@@ -221,26 +234,32 @@ public class AutomationPlaywrightCaseServiceImpl implements AutomationPlaywright
                                           String batchId,
                                           String executionCapability) {
         if (StringUtils.isBlank(batchId)) {
-            throw new BusinessException("环境证书下载必须绑定执行批次");
+            throw new BusinessException("执行文件下载必须绑定执行批次");
         }
         AutomationPlaywrightCaseResp testCase = getCase(caseKey, projectEnvironmentId, batchId, executionCapability);
         Map<String, Object> step = testCase.getSteps()
             .stream()
             .filter(item -> Objects.equals(stepId, stringValue(item.get("id"))))
             .findFirst()
-            .orElseThrow(() -> new BusinessException("执行批次中不存在证书步骤，stepId=" + stepId));
+            .orElseThrow(() -> new BusinessException("执行批次中不存在文件步骤，stepId=" + stepId));
         Map<String, Object> certificateRef = mapValue(step.get("certificate_ref"));
         Long assetId = nullableLong(certificateRef.get("asset_id"));
-        if (assetId == null) {
-            throw new BusinessException("当前步骤没有可下载的环境证书资产");
+        if (assetId != null) {
+            ResolvedCase resolved = resolveCaseIdentity(caseKey);
+            AutomationFileAssetDO asset = fileAssetMapper.selectById(assetId);
+            if (asset == null || !Objects.equals(resolved.scene().getProjectId(), asset.getProjectId())) {
+                throw new BusinessException("证书资产不存在或不属于当前场景项目");
+            }
+            java.nio.file.Path path = certificateWorkspaceService.assetPath(assetId, resolved.scene().getProjectId());
+            return new ExecutionFile(new FileSystemResource(path), asset.getOriginalName(), asset.getSize(), asset
+                .getSha256());
         }
-        ResolvedCase resolved = resolveCaseIdentity(caseKey);
-        AutomationFileAssetDO asset = fileAssetMapper.selectById(assetId);
-        if (asset == null || !Objects.equals(resolved.scene().getProjectId(), asset.getProjectId())) {
-            throw new BusinessException("证书资产不存在或不属于当前场景项目");
+        Map<String, Object> fileRef = mapValue(step.get("file_ref"));
+        Long fileId = nullableLong(fileRef.get("file_id"));
+        if (fileId == null || !"admin_execution_file".equals(stringValue(fileRef.get("type")))) {
+            throw new BusinessException("当前步骤没有可下载的存储文件资产");
         }
-        java.nio.file.Path path = certificateWorkspaceService.assetPath(assetId, resolved.scene().getProjectId());
-        return new ExecutionFile(path, asset.getOriginalName(), asset.getSize(), asset.getSha256());
+        return loadStorageFile(fileId);
     }
 
     @Override
@@ -1870,6 +1889,115 @@ public class AutomationPlaywrightCaseServiceImpl implements AutomationPlaywright
                 step.put("certificate_ref", executionReference);
             }
         }
+    }
+
+    private void applyStorageFileReferences(List<Map<String, Object>> steps,
+                                            AutomationUiSceneDO scene,
+                                            CaseDO caseDO,
+                                            Long projectEnvironmentId,
+                                            String batchId,
+                                            Map<String, Object> batchRecord) {
+        String executionType = batchRecord == null ? "" : stringValue(batchRecord.get("executionType"));
+        if (StringUtils.isBlank(executionType) && batchRecord != null) {
+            executionType = stringValue(batchRecord.get("executor"));
+        }
+        if (!"playwright-runner".equalsIgnoreCase(executionType) || StringUtils.isBlank(batchId)) {
+            return;
+        }
+        for (Map<String, Object> step : steps) {
+            Map<String, Object> fileRef = mapValue(step.get("file_ref"));
+            if (!isStorageFileUploadStep(step, fileRef)) {
+                continue;
+            }
+            FileDO file = resolveStorageFile(fileRef, step.get("file_ref"), caseDO.getId());
+            Long fileId = file.getId();
+            String stepId = stringValue(step.get("id"));
+            if (StringUtils.isBlank(stepId)) {
+                throw new BusinessException("上传文件步骤缺少稳定步骤 ID，caseId=" + caseDO.getId());
+            }
+            // Runner 只能取得 capability 绑定的临时下载地址，不能取得 Admin 存储物理路径或公开 URL。
+            Map<String, Object> executionReference = new LinkedHashMap<>();
+            executionReference.put("type", "admin_execution_file");
+            executionReference.put("file_id", fileId);
+            executionReference.put("file_name", storageFileName(file));
+            executionReference.put("size", file.getSize());
+            executionReference.put("download_path", "/automation/playwright/testcases/" + encodePath(String
+                .valueOf(scene.getId())) + "/" + encodePath(caseDO
+                    .getId()) + "/execution-files/" + encodePath(stepId) + "?projectEnvironmentId=" + projectEnvironmentId + "&batchId=" + encodeQuery(batchId));
+            step.put("file_ref", executionReference);
+        }
+    }
+
+    private boolean isStorageFileUploadStep(Map<String, Object> step, Map<String, Object> fileRef) {
+        // 历史手工步骤的原始 action_type 可能仍为 input；以目录方法码作为存储上传的事实来源。
+        if ("input.file.storage".equalsIgnoreCase(stringValue(step.get("method_code")))) {
+            return true;
+        }
+        // 已保存的旧链路步骤没有 method_code，Runner 会将该唯一旧动作码规范化为 file_upload。
+        if ("web-inputfile-storage".equalsIgnoreCase(stringValue(step.get("action_type"))) || "web-inputfile-storage"
+            .equalsIgnoreCase(stringValue(step.get("legacy_action"))) || "web-inputfile-storage"
+                .equalsIgnoreCase(stringValue(step.get("operation_value")))) {
+            return true;
+        }
+        return "file_upload".equalsIgnoreCase(stringValue(step.get("action_type"))) && "storage_management"
+            .equals(stringValue(fileRef.get("scope")));
+    }
+
+    private FileDO resolveStorageFile(Map<String, Object> fileRef, Object rawFileRef, String caseId) {
+        Long fileId = nullableLong(fileRef.get("file_id"));
+        String rawReference = StringUtils.trimToEmpty(stringValue(fileRef.get("file_id")));
+        if (rawReference.isBlank()) {
+            rawReference = StringUtils.trimToEmpty(stringValue(rawFileRef));
+        }
+        if (fileId == null) {
+            fileId = nullableLong(rawReference);
+        }
+        if (fileId != null) {
+            FileDO file = fileService.getById(fileId);
+            if (file != null) {
+                return file;
+            }
+            throw new BusinessException("存储管理文件不存在，fileId=" + fileId);
+        }
+        if (rawReference.isBlank()) {
+            throw new BusinessException("存储管理文件引用缺少文件 ID 或文件名，caseId=" + caseId);
+        }
+        List<FileDO> matches = fileService.list(Wrappers.<FileDO>lambdaQuery().eq(FileDO::getName, rawReference));
+        if (matches.size() == 1) {
+            return matches.get(0);
+        }
+        if (matches.isEmpty()) {
+            throw new BusinessException("存储管理文件不存在：" + rawReference + "。请填写文件 ID 或精确文件名");
+        }
+        throw new BusinessException("存储管理存在同名文件：" + rawReference + "。请改填文件 ID，caseId=" + caseId);
+    }
+
+    private ExecutionFile loadStorageFile(Long fileId) {
+        FileDO file = fileService.getById(fileId);
+        if (file == null) {
+            throw new BusinessException("存储管理文件不存在，fileId=" + fileId);
+        }
+        StorageDO storage = storageService.getById(file.getStorageId());
+        if (storage == null) {
+            throw new BusinessException("存储管理文件所属存储不存在，fileId=" + fileId);
+        }
+        FileInfo fileInfo = file.toFileInfo(storage);
+        // 本地存储以上传时记录的路径为准；对象存储由 FileStorageService 按存储配置读取。
+        if (StringUtils.isNotBlank(file.getAbsPath())) {
+            fileInfo.setPath(file.getAbsPath());
+        }
+        byte[] content = fileStorageService.download(fileInfo).bytes();
+        return new ExecutionFile(new ByteArrayResource(content), storageFileName(file), content.length, "");
+    }
+
+    private String storageFileName(FileDO file) {
+        String name = StringUtils.defaultString(file.getName());
+        String extension = StringUtils.trimToEmpty(file.getExtension());
+        if (extension.isBlank() || StringUtils.endsWithIgnoreCase(name, "." + extension)) {
+            return name;
+        }
+        // sys_file 将基础名称和扩展名分字段保存，Runner 本地上传文件必须保留完整文件名。
+        return name + "." + extension;
     }
 
     @SuppressWarnings("unchecked")

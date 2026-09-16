@@ -33,6 +33,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -41,6 +42,7 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.dromara.x.file.storage.core.FileStorageService;
 import top.continew.admin.automation.converter.AutomationPlaybackUrlRewriter;
 import top.continew.admin.automation.converter.AutomationPlaywrightStepExtractor;
 import top.continew.admin.automation.model.entity.AutomationFileAssetDO;
@@ -73,6 +75,9 @@ import top.continew.admin.project.mapper.ProjectEnvironmentConfigMapper;
 import top.continew.admin.project.model.entity.ProjectConfigDO;
 import top.continew.admin.project.model.entity.ProjectEnvironmentConfigDO;
 import top.continew.admin.automation.mapper.AutomationFileAssetMapper;
+import top.continew.admin.system.service.FileService;
+import top.continew.admin.system.service.StorageService;
+import top.continew.admin.system.model.entity.FileDO;
 
 @ExtendWith(MockitoExtension.class)
 class AutomationPlaywrightCaseServiceImplTest {
@@ -110,12 +115,21 @@ class AutomationPlaywrightCaseServiceImplTest {
     @Mock
     private AutomationFileAssetMapper fileAssetMapper;
 
+    @Mock
+    private FileService fileService;
+
+    @Mock
+    private StorageService storageService;
+
+    @Mock
+    private FileStorageService fileStorageService;
+
     private AutomationPlaywrightCaseServiceImpl service;
 
     @BeforeEach
     void setUp() {
         service = new AutomationPlaywrightCaseServiceImpl(sceneMapper, stepExtractor, environmentMapper, projectConfigMapper, new AutomationPlaybackUrlRewriter(), List
-            .of(), sessionStateService, executionRecordService, new EffectiveExecutionConfigResolver(), new AutomationCaseExecutionClassifier(stepExtractor), new AutomationCdpPlaybackPolicy(true, "*"), environmentResourceService, certificateWorkspaceService, fileAssetMapper);
+            .of(), sessionStateService, executionRecordService, new EffectiveExecutionConfigResolver(), new AutomationCaseExecutionClassifier(stepExtractor), new AutomationCdpPlaybackPolicy(true, "*"), environmentResourceService, certificateWorkspaceService, fileAssetMapper, fileService, storageService, fileStorageService);
         lenient().when(stepExtractor.extract(any(StepDO.class), anyInt()))
             .thenReturn(Map.of("action_type", "navigate", "start_url", "https://172.19.5.45/login"));
         // 这些旧单测通过内存 mock 模拟规范化执行表，生产代码不会再写 scene JSON。
@@ -163,6 +177,62 @@ class AutomationPlaywrightCaseServiceImplTest {
             }
             return null;
         });
+    }
+
+    @Test
+    void shouldResolveStorageFileByExactNameForLegacyStorageStep() {
+        String fileName = "manualBackup_2026-09-11_18-12-48_774344_signed";
+        FileDO expectedFile = new FileDO();
+        expectedFile.setId(101L);
+        expectedFile.setName(fileName);
+        when(fileService.list(any(Wrapper.class))).thenReturn(List.of(expectedFile));
+
+        FileDO actualFile = ReflectionTestUtils.invokeMethod(service, "resolveStorageFile", Map
+            .of(), fileName, "CASE_001");
+
+        assertThat(actualFile).isSameAs(expectedFile);
+    }
+
+    @Test
+    void shouldRecognizeStorageUploadWithHistoricalInputAction() {
+        Boolean storageUpload = ReflectionTestUtils.invokeMethod(service, "isStorageFileUploadStep", Map
+            .of("action_type", "input", "method_code", "input.file.storage"), Map.of());
+
+        assertThat(storageUpload).isTrue();
+    }
+
+    @Test
+    void shouldRecognizeStorageUploadWithLegacyAction() {
+        Boolean storageUpload = ReflectionTestUtils.invokeMethod(service, "isStorageFileUploadStep", Map
+            .of("action_type", "web-inputfile-storage"), Map.of());
+
+        assertThat(storageUpload).isTrue();
+    }
+
+    @Test
+    void shouldMaterializeStorageFileForLegacyUploadAction() {
+        String fileName = "manualBackup_2026-09-11_18-12-48_774344_signed";
+        FileDO storedFile = new FileDO();
+        storedFile.setId(101L);
+        storedFile.setName(fileName);
+        storedFile.setExtension("zip");
+        when(fileService.list(any(Wrapper.class))).thenReturn(List.of(storedFile));
+        Map<String, Object> step = new LinkedHashMap<>();
+        step.put("id", "CASE_STEP_010");
+        step.put("action_type", "web-inputfile-storage");
+        step.put("file_ref", fileName);
+        List<Map<String, Object>> steps = new ArrayList<>(List.of(step));
+        AutomationUiSceneDO scene = scene(1L);
+
+        ReflectionTestUtils.invokeMethod(service, "applyStorageFileReferences", steps, scene, scene.getCaseList()
+            .get(0), 47L, "BATCH_001", Map.of("executionType", "playwright-runner"));
+
+        assertThat(step.get("file_ref")).isInstanceOf(Map.class);
+        Map<String, Object> executionReference = (Map<String, Object>)step.get("file_ref");
+        assertThat(executionReference).containsEntry("type", "admin_execution_file")
+            .containsEntry("file_id", 101L)
+            .containsEntry("file_name", fileName + ".zip")
+            .containsKey("download_path");
     }
 
     @Test
@@ -356,7 +426,7 @@ class AutomationPlaywrightCaseServiceImplTest {
     @Test
     void shouldRejectManagedCdpSessionWhenCurrentUserIsNotInGrayWhitelist() {
         service = new AutomationPlaywrightCaseServiceImpl(sceneMapper, stepExtractor, environmentMapper, projectConfigMapper, new AutomationPlaybackUrlRewriter(), List
-            .of(), sessionStateService, executionRecordService, new EffectiveExecutionConfigResolver(), new AutomationCaseExecutionClassifier(stepExtractor), new AutomationCdpPlaybackPolicy(false, "test-user"), environmentResourceService, certificateWorkspaceService, fileAssetMapper);
+            .of(), sessionStateService, executionRecordService, new EffectiveExecutionConfigResolver(), new AutomationCaseExecutionClassifier(stepExtractor), new AutomationCdpPlaybackPolicy(false, "test-user"), environmentResourceService, certificateWorkspaceService, fileAssetMapper, fileService, storageService, fileStorageService);
         when(sceneMapper.selectById(100L)).thenReturn(scene(1L));
         when(environmentMapper.selectById(47L)).thenReturn(environment(1L));
         AutomationPlaywrightBatchCreateReq request = batchRequest();
@@ -398,6 +468,44 @@ class AutomationPlaywrightCaseServiceImplTest {
         assertThat(response.getViewportHeight()).isEqualTo(900);
         assertThat(response.getPageErrorCheckEnabled()).isEqualTo(1);
         assertThat(response.getEffectiveExecutionConfig()).isEqualTo(effectiveConfig);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void shouldUseRequestedEnvironmentForStorageFileWhenFrozenEnvironmentIsMissing() {
+        AutomationUiSceneDO currentScene = scene(1L);
+        when(sceneMapper.selectById(100L)).thenReturn(currentScene);
+        when(environmentMapper.selectById(47L)).thenReturn(environment(1L));
+        when(executionRecordService.findBatch(100L, "BATCH_STORAGE")).thenReturn(Map
+            .of("batchId", "BATCH_STORAGE", "executionType", "playwright-runner", "caseResults", List.of(Map
+                .of("case_id", "CASE_001"))));
+        when(executionRecordService.matchesExecutionCapability(100L, "BATCH_STORAGE", "capability")).thenReturn(true);
+
+        CaseDO frozenCase = scene(1L).getCaseList().get(0);
+        CaseExecutionConfigDO frozenConfig = new CaseExecutionConfigDO();
+        frozenConfig.setStartUrl("https://revision.example/original");
+        frozenCase.setExecutionConfig(frozenConfig);
+        when(executionRecordService.findFrozenCase(100L, "BATCH_STORAGE", "CASE_001"))
+            .thenReturn(new FrozenExecutionCase(frozenCase, 7003L, null, Map.of()));
+        Map<String, Object> storageStep = new LinkedHashMap<>();
+        storageStep.put("id", "CASE_STEP_010");
+        storageStep.put("action_type", "file_upload");
+        storageStep.put("method_code", "input.file.storage");
+        storageStep.put("file_ref", Map.of("scope", "storage_management", "file_id", "101"));
+        when(stepExtractor.extract(any(StepDO.class), anyInt())).thenReturn(storageStep);
+        FileDO storedFile = new FileDO();
+        storedFile.setId(101L);
+        storedFile.setName("backup");
+        storedFile.setExtension("zip");
+        when(fileService.getById(101L)).thenReturn(storedFile);
+
+        AutomationPlaywrightCaseResp response = service.getCase("100:CASE_001", 47L, "BATCH_STORAGE", "capability");
+
+        Map<String, Object> executionReference = (Map<String, Object>)response.getSteps().get(0).get("file_ref");
+        assertThat(executionReference).containsEntry("type", "admin_execution_file")
+            .containsEntry("file_id", 101L)
+            .containsEntry("file_name", "backup.zip")
+            .containsKey("download_path");
     }
 
     @Test

@@ -43,6 +43,7 @@ import top.continew.admin.automation.mapper.AutomationUiExecutionQueryMapper;
 import top.continew.admin.automation.model.query.AutomationUiSceneDefinitionRow;
 import top.continew.admin.automation.model.query.AutomationUiSceneInlineDefinitionRow;
 import top.continew.admin.automation.model.query.AutomationUiSceneQuery;
+import top.continew.admin.automation.model.query.AutomationUiSceneSummarySort;
 import top.continew.admin.automation.model.query.AutomationUiDefinitionProjectionStateRow;
 import top.continew.admin.automation.model.query.AutomationUiDefinitionCaseReadRow;
 import top.continew.admin.automation.model.query.AutomationUiDefinitionStepReadRow;
@@ -79,7 +80,7 @@ public class AutomationUiSceneQueryServiceImpl implements AutomationUiSceneQuery
     private static final long MAX_OFFSET = 10_000;
     private static final int MAX_SUMMARY_IDS = 100;
     private static final Map<String, String> SUMMARY_SORT_FIELDS = Map
-        .of("sceneDbId", "sceneDbId", "name", "name", "createTime", "createTime", "updateTime", "updateTime");
+        .of("sceneDbId", "sceneDbId", "sceneId", "sceneId", "name", "name", "createTime", "createTime", "updateTime", "updateTime");
 
     private final AutomationUiSceneQueryMapper queryMapper;
     private final AutomationUiExecutionQueryMapper executionQueryMapper;
@@ -138,7 +139,7 @@ public class AutomationUiSceneQueryServiceImpl implements AutomationUiSceneQuery
         if (offset >= MAX_OFFSET) {
             throw new BadRequestException("OFFSET_LIMIT_EXCEEDED：offset 必须小于 " + MAX_OFFSET);
         }
-        SummarySort sort = resolveSort(safePage.getSort());
+        List<AutomationUiSceneSummarySort> sorts = resolveSort(safePage.getSort());
         AccessScope scope = accessScopeResolver.currentScope();
         long total = executionScope == null
             ? queryMapper.countSummaries(safeQuery, scope.userId(), scope.admin())
@@ -147,10 +148,9 @@ public class AutomationUiSceneQueryServiceImpl implements AutomationUiSceneQuery
             return new PageResp<>(List.of(), 0);
         }
         List<AutomationUiSceneSummaryResp> list = executionScope == null
-            ? queryMapper.selectSummaryPage(safeQuery, scope.userId(), scope.admin(), offset, size, sort.field(), sort
-                .ascending())
+            ? queryMapper.selectSummaryPage(safeQuery, scope.userId(), scope.admin(), offset, size, sorts)
             : queryMapper.selectScopedSummaryPage(safeQuery, executionScope, scope.userId(), scope
-                .admin(), offset, size, sort.field(), sort.ascending());
+                .admin(), offset, size, sorts);
         if (executionScope != null && !list.isEmpty()) {
             attachScopedLatest(list, executionScope, scope);
         }
@@ -636,20 +636,17 @@ public class AutomationUiSceneQueryServiceImpl implements AutomationUiSceneQuery
         summaries.forEach(item -> item.setLatestExecution(latestByScene.get(item.getSceneDbId())));
     }
 
-    private SummarySort resolveSort(Sort sort) {
+    private List<AutomationUiSceneSummarySort> resolveSort(Sort sort) {
         if (sort == null || sort.isUnsorted()) {
-            return new SummarySort("createTime", false);
+            return List.of(new AutomationUiSceneSummarySort("createTime", false));
         }
-        List<Sort.Order> orders = sort.stream().toList();
-        if (orders.size() != 1) {
-            throw new BadRequestException("INVALID_SORT_FIELD：场景摘要只允许一个排序字段");
-        }
-        Sort.Order order = orders.get(0);
-        String field = SUMMARY_SORT_FIELDS.get(order.getProperty());
-        if (field == null) {
-            throw new BadRequestException("INVALID_SORT_FIELD：不支持的场景摘要排序字段");
-        }
-        return new SummarySort(field, order.isAscending());
+        return sort.stream().map(order -> {
+            String field = SUMMARY_SORT_FIELDS.get(order.getProperty());
+            if (field == null) {
+                throw new BadRequestException("INVALID_SORT_FIELD：不支持的场景摘要排序字段");
+            }
+            return new AutomationUiSceneSummarySort(field, order.isAscending());
+        }).toList();
     }
 
     private void copyMetadata(AutomationUiSceneDefinitionRow source, AutomationUiSceneDefinitionResp target) {
@@ -680,9 +677,6 @@ public class AutomationUiSceneQueryServiceImpl implements AutomationUiSceneQuery
         } catch (NoSuchAlgorithmException e) {
             throw new IllegalStateException("JVM 不支持 SHA-256", e);
         }
-    }
-
-    private record SummarySort(String field, boolean ascending) {
     }
 
     private record PageBounds(int page, int size, long offset) {

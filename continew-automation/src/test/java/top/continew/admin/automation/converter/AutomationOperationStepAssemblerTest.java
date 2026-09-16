@@ -233,6 +233,27 @@ class AutomationOperationStepAssemblerTest {
     }
 
     @Test
+    void shouldGeneratePlaywrightExistingDownloadAssertionWithoutLocator() throws Exception {
+        StepDO step = step("校验已下载报表", List
+            .of(config("method_code", "assertion.download.check"), config("method_version", "1"), config("method_config", "{\"filename\":\"report.xlsx\",\"contains\":\"导出成功\"}")));
+
+        StepDO assembled = assembler.assembleManualStep(step);
+        Map<String, String> configs = assembled.getConfigList()
+            .stream()
+            .collect(Collectors.toMap(StepDO.Config::getParamsName, StepDO.Config::getParamsValue));
+        JsonNode playwrightStep = objectMapper.readTree(configs.get("playwright_step"));
+        JsonNode expected = objectMapper.readTree(playwrightStep.path("value").asText());
+
+        assertThat(assembled.getOperationValue()).isEqualTo("pw-assert-download-existing");
+        assertThat(assembled.getOperationName()).isEqualTo("校验浏览器下载文件");
+        assertThat(configs).containsEntry("action_type", "assert_download_existing").doesNotContainKey("locator");
+        assertThat(playwrightStep.path("action_type").asText()).isEqualTo("assert_download_existing");
+        assertThat(playwrightStep.has("target_selector")).isFalse();
+        assertThat(expected.path("filename").asText()).isEqualTo("report.xlsx");
+        assertThat(expected.path("contains").asText()).isEqualTo("导出成功");
+    }
+
+    @Test
     void shouldLeaveRecordedStepWithoutMethodCodeUntouched() {
         StepDO step = step("录制点击", new ArrayList<>(List
             .of(config("source", "sakura-playwright"), config("action_type", "click"), config("playwright_step", "{\"action_type\":\"click\",\"target_selector\":\"#ok\"}"))));

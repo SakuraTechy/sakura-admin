@@ -51,6 +51,7 @@ public final class PlaywrightActionMapping {
         put("network_replay", "网络操作", "网络回放", "pw-network-replay");
         put("file_upload", "文件操作", "文件上传", "pw-file-upload");
         put("assert_download", "文件操作", "下载断言", "pw-assert-download");
+        put("assert_download_existing", "文件操作", "校验已下载文件", "pw-assert-download-existing");
         put("click_open_page", "浏览器操作", "点击并打开新窗口", "pw-click-open-page");
         put("switch_page", "浏览器操作", "切换窗口", "pw-switch-page");
         put("close_page", "浏览器操作", "关闭窗口", "pw-close-page");

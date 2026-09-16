@@ -71,8 +71,7 @@ class AutomationVariableExtractRuleServiceImplTest {
         req.setInstruction("提取订单号");
 
         // When & Then: 应该抛出 AI_DISABLED 异常
-        assertThatThrownBy(() -> service.generateRule(req))
-            .isInstanceOf(BusinessException.class)
+        assertThatThrownBy(() -> service.generateRule(req)).isInstanceOf(BusinessException.class)
             .hasMessageContaining("AI 能力未启用");
     }
 
@@ -168,8 +167,7 @@ class AutomationVariableExtractRuleServiceImplTest {
         req.setInstruction("提取重复的订单号");
 
         // When & Then: 应该抛出规则无效异常
-        assertThatThrownBy(() -> service.generateRule(req))
-            .isInstanceOf(BusinessException.class)
+        assertThatThrownBy(() -> service.generateRule(req)).isInstanceOf(BusinessException.class)
             .hasMessageContaining("不安全");
     }
 }

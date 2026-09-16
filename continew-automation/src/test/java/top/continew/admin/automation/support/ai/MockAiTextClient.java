@@ -109,6 +109,16 @@ public class MockAiTextClient implements AiTextClient {
         return response;
     }
 
+    @Override
+    public JsonNode generateStructuredOutputWithVision(java.util.List<java.util.Map<String, Object>> messages,
+                                                       JsonNode schema) throws AiProviderException {
+        // 模拟视觉识别响应
+        ObjectNode response = OBJECT_MAPPER.createObjectNode();
+        response.put("text", "A3b9K");
+        response.put("confidence", 0.95);
+        return response;
+    }
+
     /**
      * 根据用户输入内容查找匹配的预定义规则。
      * 通过关键词匹配来决定返回哪个规则。

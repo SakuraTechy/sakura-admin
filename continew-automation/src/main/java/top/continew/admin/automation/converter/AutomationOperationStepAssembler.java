@@ -168,7 +168,7 @@ public class AutomationOperationStepAssembler {
             canonical.put("value", stringValue(url));
         } else if ("assert_text".equals(action)) {
             canonical.put("value", stringValue(firstValue(canonical, "expect", "value")));
-        } else if ("assert_download".equals(action)) {
+        } else if ("assert_download".equals(action) || "assert_download_existing".equals(action)) {
             // Runner 把 value 作为下载断言契约读取，表单字段需要集中封装，不能降级为普通点击。
             LinkedHashMap<String, Object> expected = new LinkedHashMap<>();
             for (String field : List.of("filename", "mime", "contains", "min_bytes", "max_bytes", "sha256")) {
@@ -239,7 +239,7 @@ public class AutomationOperationStepAssembler {
                 putValue(legacy, "keys", firstValue(methodConfig, "offset_expression", "keys"));
                 putElementOptions(legacy, methodConfig);
             }
-            case "web-inputfile", "web-inputfiles" -> {
+            case "web-inputfile", "web-inputfiles", "web-inputfile-storage" -> {
                 putLocator(legacy, locator);
                 putValue(legacy, "catalogue", methodConfig.get("catalogue"));
                 putValue(legacy, "localpath", firstValue(methodConfig, "localpath", "file_path", "file_ref"));
@@ -261,7 +261,7 @@ public class AutomationOperationStepAssembler {
                 putLocator(legacy, locator);
                 putAssertionOptions(legacy, methodConfig, true);
             }
-            case "pw-assert-download" -> {
+            case "pw-assert-download", "pw-assert-download-existing" -> {
                 // 旧 Selenium 链路不支持该动作，仅保留可诊断参数，避免静默降级为普通点击。
                 putLocator(legacy, locator);
                 putValue(legacy, "value", canonical.get("value"));

@@ -25,7 +25,7 @@ import java.lang.reflect.Method;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * AutomationAiVariableExtractRuleController 集成测试
+ * AutomationAiController 集成测试
  *
  * @author Codex
  * @since 2026/09/13
@@ -35,7 +35,7 @@ class AutomationAiVariableExtractRuleControllerTest {
     @Test
     void endpointMustDeclareCreateOrUpdatePermission() throws NoSuchMethodException {
         // 验证端点声明了创建或更新场景的权限
-        Method method = AutomationAiVariableExtractRuleController.class
+        Method method = AutomationAiController.class
             .getDeclaredMethod("generateVariableExtractRule", top.continew.admin.automation.model.req.ai.AutomationVariableExtractRuleReq.class);
         SaCheckPermission permission = method.getAnnotation(SaCheckPermission.class);
 

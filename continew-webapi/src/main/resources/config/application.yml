@@ -86,11 +86,11 @@ automation:
     # API 端点（OpenAI 兼容接口完整 URL）
     endpoint: ${SAKURA_AI_ENDPOINT:https://api.openai.com/v1/chat/completions}
     # 模型名称
-    model: ${SAKURA_AI_MODEL:gpt-4o-mini}
+    model: ${SAKURA_AI_MODEL:gpt-5.6-luna}
     # API 密钥（敏感信息，必须通过环境变量注入）
-    api-key: ${SAKURA_AI_API_KEY:}
-    # 结构化输出模式：json_schema（严格约束）| json_object（宽松）
-    structured-output: ${SAKURA_AI_STRUCTURED_OUTPUT:json_schema}
+    api-key: ${SAKURA_AI_API_KEY:sk-7ad92fe8e3d75f88028xxxxxxxxd79a6ac09051f}
+    # 结构化输出开关：true（启用）| false（禁用）
+    structured-output: ${SAKURA_AI_STRUCTURED_OUTPUT:true}
     # 连接超时（毫秒）
     connect-timeout: ${SAKURA_AI_CONNECT_TIMEOUT:10000}
     # 单次请求超时（毫秒）

@@ -29,7 +29,6 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
@@ -77,7 +76,7 @@ public class AutomationPlaywrightCaseController {
             .getCase(sceneKey + ":" + caseId, projectEnvironmentId, batchId, executionCapability));
     }
 
-    @Operation(summary = "下载执行步骤绑定的环境证书")
+    @Operation(summary = "下载执行步骤绑定的受控文件")
     @SaCheckPermission("automation:automationUiScene:get")
     @GetMapping("/{sceneKey}/{caseId}/execution-files/{stepId}")
     public ResponseEntity<Resource> getExecutionFile(@PathVariable String sceneKey,
@@ -96,7 +95,7 @@ public class AutomationPlaywrightCaseController {
             .contentLength(file.size())
             .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
             .header("X-Content-SHA256", file.sha256())
-            .body(new FileSystemResource(file.path()));
+            .body(file.resource());
     }
 
     @Operation(summary = "回传 Playwright 执行结果", description = "写入规范化执行事实表，并合并用例统计和步骤明细")

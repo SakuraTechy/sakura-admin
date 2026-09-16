@@ -24,6 +24,7 @@ import org.apache.ibatis.annotations.Param;
 import top.continew.admin.automation.model.query.AutomationUiSceneDefinitionRow;
 import top.continew.admin.automation.model.query.AutomationUiSceneInlineDefinitionRow;
 import top.continew.admin.automation.model.query.AutomationUiSceneQuery;
+import top.continew.admin.automation.model.query.AutomationUiSceneSummarySort;
 import top.continew.admin.automation.model.query.AutomationUiDefinitionProjectionStateRow;
 import top.continew.admin.automation.model.query.AutomationUiDefinitionCaseReadRow;
 import top.continew.admin.automation.model.query.AutomationUiDefinitionStepReadRow;
@@ -52,8 +53,7 @@ public interface AutomationUiSceneQueryMapper {
                                                          @Param("admin") boolean admin,
                                                          @Param("offset") long offset,
                                                          @Param("limit") int limit,
-                                                         @Param("sortField") String sortField,
-                                                         @Param("ascending") boolean ascending);
+                                                         @Param("sorts") List<AutomationUiSceneSummarySort> sorts);
 
     long countScopedSummaries(@Param("query") AutomationUiSceneQuery query,
                               @Param("executionScope") AutomationUiExecutionScopeReq executionScope,
@@ -66,8 +66,7 @@ public interface AutomationUiSceneQueryMapper {
                                                                @Param("admin") boolean admin,
                                                                @Param("offset") long offset,
                                                                @Param("limit") int limit,
-                                                               @Param("sortField") String sortField,
-                                                               @Param("ascending") boolean ascending);
+                                                               @Param("sorts") List<AutomationUiSceneSummarySort> sorts);
 
     List<AutomationUiSceneSummaryResp> selectSummaries(@Param("sceneDbIds") Collection<Long> sceneDbIds,
                                                        @Param("userId") Long userId,

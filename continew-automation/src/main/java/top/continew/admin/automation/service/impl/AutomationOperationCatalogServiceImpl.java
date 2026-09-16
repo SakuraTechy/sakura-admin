@@ -66,7 +66,7 @@ public class AutomationOperationCatalogServiceImpl implements AutomationOperatio
     private static final Set<String> DEFAULT_FORBIDDEN_FIELDS = Set
         .of("url", "target_ref", "sql", "command", "path", "file_ref", "certificate_ref", "variable_name", "value", "expect", "script");
     private static final int EXPECTED_TYPE_COUNT = 13;
-    private static final int EXPECTED_METHOD_COUNT = 64;
+    private static final int EXPECTED_METHOD_COUNT = 66;
     // 能力上报是短租约：Runner 或扩展升级、退出后不能继续以历史能力开放手工步骤。
     private static final Duration CAPABILITY_SNAPSHOT_TTL = Duration.ofMinutes(5);
 

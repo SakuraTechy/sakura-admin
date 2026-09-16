@@ -147,7 +147,7 @@ logging:
     top.continew.admin: DEBUG
     top.continew.starter: DEBUG
   file:
-    path: ./sakura-admin/logs
+    path: ../sakura-admin/logs
 
 --- ### 跨域配置
 continew-starter.web.cors:
@@ -281,6 +281,18 @@ avatar:
   # 支持的后缀
   support-suffix: jpg,jpeg,png,gif
 
+--- ### AI 配置（仅用于本地开发测试，不要提交到 Git）
+automation:
+  ai:
+    # AI 能力总开关
+    enabled: true
+    # 其他配置项使用默认值（从 application.yml 继承）
+    provider: openai
+    endpoint: http://172.19.5.223:8080/v1/chat/completions
+    model: gpt-5.6-luna
+    # OpenAI API Key（请替换为你的真实 API Key）
+    api-key: sk-7ad92fe8e3d75f88028xxxxxxxxd79a6ac09051f
+    
 --- ### Snail Job 配置
 snail-job:
   enabled: false

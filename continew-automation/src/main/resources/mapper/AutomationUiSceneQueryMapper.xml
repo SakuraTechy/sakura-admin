@@ -255,20 +255,19 @@
         <include refid="sceneAccessPredicate"/>
         <include refid="summaryQueryPredicate"/>
         ORDER BY
-        <choose>
-            <when test="sortField == 'sceneDbId'">s.id</when>
-            <when test="sortField == 'name'">s.name</when>
-            <when test="sortField == 'updateTime'">s.update_time</when>
-            <otherwise>s.create_time</otherwise>
-        </choose>
-        <choose>
-            <when test="ascending">ASC</when>
-            <otherwise>DESC</otherwise>
-        </choose>, s.id
-        <choose>
-            <when test="ascending">ASC</when>
-            <otherwise>DESC</otherwise>
-        </choose>
+        <foreach collection="sorts" item="sort" separator=", ">
+            <choose>
+                <when test="sort.field == 'sceneDbId'">s.id</when>
+                <when test="sort.field == 'sceneId'">s.scene_id</when>
+                <when test="sort.field == 'name'">s.name</when>
+                <when test="sort.field == 'updateTime'">s.update_time</when>
+                <otherwise>s.create_time</otherwise>
+            </choose>
+            <choose>
+                <when test="sort.ascending">ASC</when>
+                <otherwise>DESC</otherwise>
+            </choose>
+        </foreach>, s.id ASC
         LIMIT #{limit} OFFSET #{offset}
     </select>
 
@@ -296,20 +295,19 @@
         <include refid="summaryQueryPredicate"/>
         <include refid="scopedLatestExecutionFilter"/>
         ORDER BY
-        <choose>
-            <when test="sortField == 'sceneDbId'">s.id</when>
-            <when test="sortField == 'name'">s.name</when>
-            <when test="sortField == 'updateTime'">s.update_time</when>
-            <otherwise>s.create_time</otherwise>
-        </choose>
-        <choose>
-            <when test="ascending">ASC</when>
-            <otherwise>DESC</otherwise>
-        </choose>, s.id
-        <choose>
-            <when test="ascending">ASC</when>
-            <otherwise>DESC</otherwise>
-        </choose>
+        <foreach collection="sorts" item="sort" separator=", ">
+            <choose>
+                <when test="sort.field == 'sceneDbId'">s.id</when>
+                <when test="sort.field == 'sceneId'">s.scene_id</when>
+                <when test="sort.field == 'name'">s.name</when>
+                <when test="sort.field == 'updateTime'">s.update_time</when>
+                <otherwise>s.create_time</otherwise>
+            </choose>
+            <choose>
+                <when test="sort.ascending">ASC</when>
+                <otherwise>DESC</otherwise>
+            </choose>
+        </foreach>, s.id ASC
         LIMIT #{limit} OFFSET #{offset}
     </select>
 

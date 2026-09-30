@@ -177,7 +177,7 @@ VALUES
 INSERT IGNORE INTO `sys_user`
 (`id`, `username`, `nickname`, `password`, `gender`, `email`, `phone`, `avatar`, `description`, `status`, `is_system`, `pwd_reset_time`, `dept_id`, `create_user`, `create_time`)
 VALUES
-(1, 'admin', '系统管理员', '{bcrypt}$2a$10$4jGwK2BMJ7FgVR.mgwGodey8.xR8FLoU1XSXpxJ9nZQt.pufhasSa', 1, '42190c6c5639d2ca4edb4150a35e058559ccf8270361a23745a2fd285a273c28', '5bda89a4609a65546422ea56bfe5eab4', NULL, '系统初始用户', 1, b'1', NOW(), 1, 1, NOW()),
+(1, 'admin', '系统管理员', '{bcrypt}$2a$10$4jGwK2BMJ7FgVR.mgwGodey8.xR8FLoU1XSXpxJ9nZQt.pufhasSa', 1, '123456789@qq.com', '13811111111', NULL, '系统初始用户', 1, b'1', NOW(), 1, 1, NOW()),
 (2, 'test', '测试员', '{bcrypt}$2a$10$xAsoeMJ.jc/kSxhviLAg7.j2iFrhi6yYAdniNdjLiIUWU/BRZl2Ti', 2, NULL, NULL, NULL, NULL, 1, b'0', NOW(), 547887852587843593, 1, NOW());
 -- 初始化默认参数
 INSERT IGNORE INTO `sys_option`
@@ -306,8 +306,8 @@ INSERT IGNORE INTO `sys_role_dept` (`role_id`, `dept_id`) VALUES (3, 54788785258
 INSERT IGNORE INTO `sys_storage`
 (`id`, `name`, `code`, `type`, `access_key`, `secret_key`, `endpoint`, `bucket_name`, `domain`, `description`, `is_default`, `sort`, `status`, `create_user`, `create_time`)
 VALUES
-(1, '开发环境', 'local_dev', 1, NULL, NULL, NULL, 'C:/continew-admin/data/file/', 'http://localhost:8000/file', '本地存储', b'1', 1, 1, 1, NOW()),
-(2, '生产环境', 'local_prod', 1, NULL, NULL, NULL, '../data/file/', '/file', '本地存储', b'0', 2, 2, 1, NOW());
+(1, '开发环境', 'local_dev', 1, NULL, NULL, NULL, 'D:/King/sakura/sakura-admin/docker/continew-admin/data/file/', 'http://localhost:5173/file', '本地存储', b'1', 1, 1, 1, NOW()),
+(2, '生产环境', 'local_prod', 1, NULL, NULL, NULL, '/app/data/file/', 'http://172.19.5.228:5183/file', '本地存储', b'0', 2, 2, 1, NOW());
 
 -- 初始化终端数据
 INSERT IGNORE INTO `sys_client`

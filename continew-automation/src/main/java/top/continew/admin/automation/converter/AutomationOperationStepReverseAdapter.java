@@ -275,6 +275,8 @@ public class AutomationOperationStepReverseAdapter {
             return canonicalDateMode(field, direct);
         }
         return switch (field) {
+            // 旧 web-setdate 用 script 保存日期偏移算式，回显时不能丢失该执行语义。
+            case "script" -> first(legacy, "script", "value");
             case "url" -> first(legacy, "url", "value");
             case "value" -> first(legacy, "value", "expect");
             case "expect" -> first(legacy, "expect", "value");
@@ -286,7 +288,6 @@ public class AutomationOperationStepReverseAdapter {
             case "property_key" -> first(legacy, "property_key", "value");
             case "sql" -> first(legacy, "sql", "value");
             case "index" -> first(legacy, "index", "value");
-            case "script" -> first(legacy, "script", "value");
             case "key" -> first(legacy, "key", "keys", "value");
             default -> "";
         };

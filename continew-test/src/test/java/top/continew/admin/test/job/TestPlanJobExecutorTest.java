@@ -22,6 +22,9 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.Map;
+
+import com.aizuda.snailjob.client.job.core.dto.JobArgs;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -66,13 +69,14 @@ class TestPlanJobExecutorTest {
         when(timedTaskRunService.start(1L, "SCHEDULE")).thenReturn(new TestTimedTaskRunService.StartResult(run, false));
         when(testPlanService.execute(any(), any())).thenReturn(executeResp);
 
-        executor.executeTestPlan(payload("SCHEDULE"));
+        executor.executeTestPlan(jobArgs(payload("SCHEDULE")));
 
         ArgumentCaptor<TestPlanExecuteReq> reqCaptor = ArgumentCaptor.forClass(TestPlanExecuteReq.class);
         verify(testPlanService).execute(org.mockito.ArgumentMatchers.eq(10L), reqCaptor.capture());
         assertThat(reqCaptor.getValue().getTriggerMode()).isEqualTo("SCHEDULE");
         assertThat(reqCaptor.getValue().getProjectEnvironmentId()).isEqualTo(20L);
         assertThat(reqCaptor.getValue().getAutomationEnvironmentId()).isEqualTo(30L);
+        assertThat(reqCaptor.getValue().getExecuteUserId()).isEqualTo(1L);
         verify(timedTaskRunService).attachExecution(99L, executeResp);
     }
 
@@ -85,11 +89,12 @@ class TestPlanJobExecutorTest {
         when(timedTaskRunService.start(1L, "MANUAL")).thenReturn(new TestTimedTaskRunService.StartResult(run, false));
         when(testPlanService.execute(any(), any())).thenReturn(new TestPlanExecuteResp());
 
-        executor.executeTestPlan(payload("MANUAL"));
+        executor.executeTestPlanJson(payload("MANUAL", 77L));
 
         ArgumentCaptor<TestPlanExecuteReq> reqCaptor = ArgumentCaptor.forClass(TestPlanExecuteReq.class);
         verify(testPlanService).execute(org.mockito.ArgumentMatchers.eq(10L), reqCaptor.capture());
         assertThat(reqCaptor.getValue().getTriggerMode()).isEqualTo("MANUAL");
+        assertThat(reqCaptor.getValue().getExecuteUserId()).isEqualTo(77L);
     }
 
     @Test
@@ -99,9 +104,33 @@ class TestPlanJobExecutorTest {
         when(timedTaskRunService.start(1L, "SCHEDULE"))
             .thenReturn(new TestTimedTaskRunService.StartResult(new TestTimedTaskRunDO(), true));
 
-        executor.executeTestPlan(payload("SCHEDULE"));
+        executor.executeTestPlanJson(payload("SCHEDULE"));
 
         verify(testPlanService, never()).execute(any(), any());
+    }
+
+    @Test
+    void shouldDispatchPlaywrightRunnerWithoutJenkinsEnvironment() throws Exception {
+        TestTimedTaskDO task = task();
+        task.setAutomationEnvironmentId(null);
+        task.setExecutionEngine("PLAYWRIGHT_RUNNER");
+        task.setExecutionConfig(Map
+            .of("browser", "chromium", "sessionMode", "isolated", "stepTimeoutMs", 8000, "caseTimeoutMs", 900000));
+        TestTimedTaskRunDO run = new TestTimedTaskRunDO();
+        run.setId(99L);
+        when(timedTaskMapper.selectById(1L)).thenReturn(task);
+        when(timedTaskRunService.start(1L, "SCHEDULE")).thenReturn(new TestTimedTaskRunService.StartResult(run, false));
+        when(testPlanService.execute(any(), any())).thenReturn(new TestPlanExecuteResp());
+
+        executor.executeTestPlanJson(payload("SCHEDULE"));
+
+        ArgumentCaptor<TestPlanExecuteReq> reqCaptor = ArgumentCaptor.forClass(TestPlanExecuteReq.class);
+        verify(testPlanService).execute(org.mockito.ArgumentMatchers.eq(10L), reqCaptor.capture());
+        assertThat(reqCaptor.getValue().getExecutionEngine().name()).isEqualTo("PLAYWRIGHT_RUNNER");
+        assertThat(reqCaptor.getValue().getAutomationEnvironmentId()).isNull();
+        assertThat(reqCaptor.getValue().getRunnerOptions().getBrowser()).isEqualTo("chromium");
+        assertThat(reqCaptor.getValue().getRunnerOptions().getStepTimeoutMs()).isEqualTo(8000);
+        assertThat(reqCaptor.getValue().getRunnerOptions().getCaseTimeoutMs()).isEqualTo(900000);
     }
 
     private TestTimedTaskDO task() {
@@ -110,6 +139,7 @@ class TestPlanJobExecutorTest {
         task.setTestPlanId(10L);
         task.setProjectEnvironmentId(20L);
         task.setAutomationEnvironmentId(30L);
+        task.setCreateUser(88L);
         task.setExecutionEngine("SELENIUM");
         task.setExecuteName("定时任务");
         task.setExecuteEmail("owner@example.com");
@@ -117,9 +147,20 @@ class TestPlanJobExecutorTest {
     }
 
     private String payload(String triggerMode) throws Exception {
+        return payload(triggerMode, null);
+    }
+
+    private String payload(String triggerMode, Long executeUserId) throws Exception {
         TestTimedTaskExecutePayload payload = new TestTimedTaskExecutePayload();
         payload.setTaskId(1L);
         payload.setTriggerMode(triggerMode);
+        payload.setExecuteUserId(executeUserId);
         return JsonUtil.marshal(payload);
+    }
+
+    private JobArgs jobArgs(String payload) {
+        JobArgs jobArgs = new JobArgs();
+        jobArgs.setJobParams(payload);
+        return jobArgs;
     }
 }

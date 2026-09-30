@@ -312,7 +312,23 @@ cd D:\King\sakura\sakura-admin
 mvn -pl continew-webapi -am package -DskipTests '-Dspotless.apply.skip=true'
 mvn -f .\continew-webapi\pom.xml exec:exec '-Dexec.executable=java' '-Dexec.args=-jar target\app\bin\continew-admin.jar'
 
-# 4.4 注意：Windows PowerShell 中带点号的 -D 参数必须加英文引号，避免 Maven 将参数拆错。
+# 4.4 启动定时任务调度服务
+cd D:\King\sakura\sakura-admin
+mvn -pl continew-extension/continew-extension-schedule-server -am clean package -DskipTests '-Dspotless.apply.skip=true'
+java -jar .\continew-extension\continew-extension-schedule-server\target\continew-extension-schedule-server.jar --spring.profiles.active=dev
+
+# 4.4.1 调度服务开发态启动（默认自动打包）
+.\schedule-dev-start.ps1
+
+# 日志文件：D:\King\sakura\sakura-admin\logs\schedule-server\continew-admin-schedule-server.log
+
+# 已经执行过 schedule-dev-start.ps1 且未改依赖时，可跳过打包直接启动：
+.\schedule-dev-start.ps1 -SkipPackage
+
+# 如系统拦截 PowerShell 脚本执行，可使用：
+powershell.exe -ExecutionPolicy Bypass -File .\schedule-dev-start.ps1
+
+# 4.4.2 注意：Windows PowerShell 中带点号的 -D 参数必须加英文引号，避免 Maven 将参数拆错。
 # 4.5 注意：本地启动时建议加 '-Dspotless.apply.skip=true'，避免 compile 阶段执行 spotless 修改代码或找不到 .style 配置。
 # 4.6 注意：dev-start.ps1 使用 -Ddevtools=true 生成本地开发依赖；普通打包建议使用 clean package 清理开发态产物。
 # 4.7 注意：当前不推荐在 continew-webapi 子模块直接执行 mvn spring-boot:run，

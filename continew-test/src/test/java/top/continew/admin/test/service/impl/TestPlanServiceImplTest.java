@@ -32,9 +32,11 @@ import top.continew.admin.automation.mapper.AutomationUiSceneMapper;
 import top.continew.admin.automation.model.entity.AutomationUiSceneDO;
 import top.continew.admin.automation.service.AutomationUiSceneService;
 import top.continew.admin.automation.service.AutomationUiExecutionRecordService;
+import top.continew.admin.automation.support.AutomationPlaywrightServiceTokenProvider;
 import top.continew.admin.test.mapper.TestReportMapper;
 import top.continew.admin.test.mapper.TestTimedTaskMapper;
 import top.continew.admin.test.model.entity.TestPlanDO;
+import top.continew.admin.test.model.enums.TestExecutionEngineEnum;
 
 @ExtendWith(MockitoExtension.class)
 class TestPlanServiceImplTest {
@@ -57,21 +59,26 @@ class TestPlanServiceImplTest {
     @Mock
     private TestPlanExecutionDispatchService dispatchService;
 
+    @Mock
+    private AutomationPlaywrightServiceTokenProvider serviceTokenProvider;
+
     private TestPlanServiceImpl service;
 
     @BeforeEach
     void setUp() {
-        service = new TestPlanServiceImpl(sceneMapper, executionRecordService, sceneService, reportMapper, timedTaskMapper, dispatchService);
+        service = new TestPlanServiceImpl(sceneMapper, executionRecordService, sceneService, reportMapper, timedTaskMapper, dispatchService, serviceTokenProvider);
     }
 
     @Test
-    void shouldResolveSelectedScenesInPlanOrder() {
+    void shouldResolveScenesInSceneIdOrder() {
         TestPlanDO plan = plan();
-        when(sceneMapper.selectBatchIds(List.of(11L, 12L))).thenReturn(List.of(scene(12L), scene(11L)));
+        when(sceneMapper.selectBatchIds(List.of(11L, 12L))).thenReturn(List
+            .of(scene(12L, "AAS_DBSG_SMOKE_002"), scene(11L, "AAS_DBSG_SMOKE_001")));
 
         List<Long> result = resolveExecutionSceneIds(plan, List.of(12L, 11L));
 
         assertThat(result).containsExactly(11L, 12L);
+        assertThat(resolveExecutionSceneIds(plan, null)).containsExactly(11L, 12L);
     }
 
     @Test
@@ -110,6 +117,14 @@ class TestPlanServiceImplTest {
         assertThat(plan.getActualEndTime()).isNull();
     }
 
+    @Test
+    void shouldBuildReportNameFromExecutionEngineAndReportId() {
+        String name = ReflectionTestUtils
+            .invokeMethod(service, "buildReportName", TestExecutionEngineEnum.PLAYWRIGHT_RUNNER, 895275055796191496L);
+
+        assertThat(name).isEqualTo("PlaywrightRunner_自动化测试报告_895275055796191496");
+    }
+
     @SuppressWarnings("unchecked")
     private List<Long> resolveExecutionSceneIds(TestPlanDO plan, List<Long> requestedSceneIds) {
         return ReflectionTestUtils.invokeMethod(service, "resolveExecutionSceneIds", plan, requestedSceneIds);
@@ -122,9 +137,10 @@ class TestPlanServiceImplTest {
         return plan;
     }
 
-    private AutomationUiSceneDO scene(Long id) {
+    private AutomationUiSceneDO scene(Long id, String sceneId) {
         AutomationUiSceneDO scene = new AutomationUiSceneDO();
         scene.setId(id);
+        scene.setSceneId(sceneId);
         return scene;
     }
 }

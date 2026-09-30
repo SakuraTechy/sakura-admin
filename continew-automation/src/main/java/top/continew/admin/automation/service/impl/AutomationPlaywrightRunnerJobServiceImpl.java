@@ -71,6 +71,7 @@ import top.continew.admin.automation.service.AutomationPlaywrightSessionStateSer
 import top.continew.admin.automation.service.AutomationPlaywrightSessionStateService.SessionFiles;
 import top.continew.admin.automation.service.AutomationExecutorRegistrationService;
 import top.continew.admin.automation.support.AutomationStoragePressureGuard;
+import top.continew.admin.automation.support.AutomationPlaywrightServiceTokenProvider;
 import top.continew.starter.core.exception.BusinessException;
 import top.continew.starter.core.validation.CheckUtils;
 
@@ -126,6 +127,9 @@ public class AutomationPlaywrightRunnerJobServiceImpl implements AutomationPlayw
 
     @Resource
     private AutomationExecutorRegistrationService executorRegistrationService;
+
+    @Resource
+    private AutomationPlaywrightServiceTokenProvider serviceTokenProvider;
 
     @Value("${automation.playwright-runner.enabled:true}")
     private boolean enabled;
@@ -230,9 +234,13 @@ public class AutomationPlaywrightRunnerJobServiceImpl implements AutomationPlayw
         CheckUtils.throwIf(!Files.isRegularFile(root.resolve("src/index.js")), "Playwright Runner 入口不存在：" + root
             .resolve("src/index.js"));
         // 手工执行使用当前已鉴权请求令牌；无人值守调度只能使用服务端配置的专用令牌。
-        String effectiveToken = StringUtils.firstNonBlank(token, serviceToken, "");
+        String effectiveToken = StringUtils.firstNonBlank(token, serviceToken);
+        if (StringUtils.isBlank(effectiveToken) && serviceTokenProvider != null) {
+            effectiveToken = serviceTokenProvider.getToken();
+        }
         CheckUtils.throwIf(StringUtils
-            .isBlank(effectiveToken), "Playwright Runner 缺少服务端鉴权令牌，请配置 automation.playwright-runner.service-token");
+            .isBlank(effectiveToken), "Playwright Runner 缺少服务端鉴权令牌，请配置固定 service-token 或 service-account-user-id");
+        final String executionToken = effectiveToken;
 
         int limit = Math.max(1, maxConcurrent);
         int current = activeJobs.incrementAndGet();
@@ -277,7 +285,7 @@ public class AutomationPlaywrightRunnerJobServiceImpl implements AutomationPlayw
             throw e;
         }
         appendLog(runtime, nowWithMillis(), "info", "admin", "Runner 任务已加入执行队列", false);
-        executor.submit(() -> run(runtime, effectiveToken));
+        executor.submit(() -> run(runtime, executionToken));
         return toResponse(runtime);
     }
 

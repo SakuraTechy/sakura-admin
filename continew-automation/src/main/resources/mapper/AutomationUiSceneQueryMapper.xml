@@ -183,10 +183,45 @@
             AND scoped_latest.id IS NOT NULL
         </if>
         <if test="query.executeStatus != null and query.executeStatus != ''">
-            AND scoped_latest.status = #{query.executeStatus}
+            <!-- 执行表兼容历史英文状态；查询条件统一使用 status_type 字典值。 -->
+            AND CASE LOWER(TRIM(scoped_latest.status))
+                WHEN '10' THEN '10'
+                WHEN 'not_started' THEN '10'
+                WHEN 'waiting' THEN '10'
+                WHEN 'queued' THEN '10'
+                WHEN '11' THEN '11'
+                WHEN 'starting' THEN '11'
+                WHEN 'running' THEN '11'
+                WHEN 'cancelling' THEN '11'
+                WHEN '12' THEN '12'
+                WHEN 'completed' THEN '12'
+                WHEN '17' THEN '17'
+                WHEN 'cancelled' THEN '17'
+                WHEN 'canceled' THEN '17'
+                ELSE LOWER(TRIM(scoped_latest.status))
+            END = #{query.executeStatus}
         </if>
         <if test="query.executeResult != null and query.executeResult != ''">
-            AND scoped_latest.result = #{query.executeResult}
+            <!-- 执行表兼容 pending/passed 等历史结果；查询条件统一使用 status_type 字典值。 -->
+            AND CASE LOWER(TRIM(scoped_latest.result))
+                WHEN '13' THEN '13'
+                WHEN 'not_executed' THEN '13'
+                WHEN 'pending' THEN '13'
+                WHEN 'waiting' THEN '13'
+                WHEN 'queued' THEN '13'
+                WHEN 'starting' THEN '13'
+                WHEN 'running' THEN '13'
+                WHEN '14' THEN '14'
+                WHEN 'passed' THEN '14'
+                WHEN '15' THEN '15'
+                WHEN 'failed' THEN '15'
+                WHEN '16' THEN '16'
+                WHEN 'skipped' THEN '16'
+                WHEN '17' THEN '17'
+                WHEN 'cancelled' THEN '17'
+                WHEN 'canceled' THEN '17'
+                ELSE LOWER(TRIM(scoped_latest.result))
+            END = #{query.executeResult}
         </if>
     </sql>
 

@@ -75,7 +75,8 @@ class AutomationUiSceneQueryMapperXmlTest {
             .contains("candidate.scene_id = s.id", "candidate.record_source", "ORDER BY candidate.create_time DESC, candidate.id DESC", "LIMIT 1")
             .contains("candidate.record_type IS NULL", "LOWER(TRIM(candidate.record_type))", "candidate.test_plan_id IS NULL", "candidate.test_report_id IS NULL", "candidate.trigger_type IS NULL", "LOWER(TRIM(candidate.trigger_type))")
             .doesNotContain("case_list", "debug_record", "test_record", "summary_json");
-        assertThat(scopedFilter).contains("query.executionMatchedOnly == true", "scoped_latest.id IS NOT NULL");
+        assertThat(scopedFilter).contains("query.executionMatchedOnly == true", "scoped_latest.id IS NOT NULL")
+            .contains("WHEN 'completed' THEN '12'", "WHEN 'passed' THEN '14'", "WHEN 'failed' THEN '15'");
         assertThat(scopedPage).contains("scopedLatestExecutionJoin", "scopedLatestExecutionFilter")
             .doesNotContain("SELECT *", "case_list", "debug_record", "test_record", "summary_json");
         assertThat(summaryPage).contains("sort.field == 'sceneId'", "s.scene_id");

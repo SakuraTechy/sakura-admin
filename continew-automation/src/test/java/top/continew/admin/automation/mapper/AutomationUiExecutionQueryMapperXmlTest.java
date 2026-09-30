@@ -65,6 +65,22 @@ class AutomationUiExecutionQueryMapperXmlTest {
     }
 
     @Test
+    void layeredResultMapsShouldExplicitlyBindDisplayedFields() throws IOException {
+        String xml = mapperXml();
+
+        assertThat(between(xml, "<resultMap id=\"executionSummaryResultMap\"", "</resultMap>"))
+            .contains("property=\"batchId\"", "property=\"testReportId\"", "property=\"status\"", "property=\"result\"", "property=\"caseTotal\"", "property=\"durationMs\"");
+        assertThat(between(xml, "<resultMap id=\"executionDetailResultMap\"", "</resultMap>"))
+            .contains("property=\"consoleUrl\"", "property=\"testReportUrl\"", "property=\"executorNode\"");
+        assertThat(between(xml, "<resultMap id=\"executionCaseResultMap\"", "</resultMap>"))
+            .contains("property=\"caseName\"", "property=\"executeStatus\"", "property=\"stepTotal\"");
+        assertThat(between(xml, "<resultMap id=\"executionStepResultMap\"", "</resultMap>"))
+            .contains("property=\"stepName\"", "property=\"actionType\"", "property=\"status\"");
+        assertThat(between(xml, "<resultMap id=\"executionArtifactResultMap\"", "</resultMap>"))
+            .contains("property=\"artifactType\"", "property=\"storageStatus\"", "property=\"sizeBytes\"");
+    }
+
+    @Test
     void scopedLatestShouldPreferStoredSourceAndKeepNullRowCompatibility() throws IOException {
         String xml = mapperXml();
         String scope = between(xml, "<sql id=\"executionScopePredicate\">", "</sql>");

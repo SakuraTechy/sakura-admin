@@ -127,12 +127,15 @@ public class TestPlanReportProgressServiceImpl implements AutomationPlanReportPr
             if (terminal) {
                 result.sceneCompleted++;
             }
+            boolean blocked = isBlocked(status) || isBlocked(executeResult);
             if (isPassed(executeResult)) {
                 result.scenePass++;
             } else if (isCancelled(executeResult)) {
                 result.sceneCancelled++;
             } else if (isSkipped(executeResult)) {
                 result.sceneSkip++;
+            } else if (blocked) {
+                result.sceneBlocked++;
             } else if (isFailed(executeResult) || terminal && !List.of("not_executed", "pending")
                 .contains(executeResult)) {
                 result.sceneFail++;
@@ -166,8 +169,10 @@ public class TestPlanReportProgressServiceImpl implements AutomationPlanReportPr
         ui.put("testReportId", String.valueOf(report.getId()));
         ui.put("reportType", report.getReportType());
         ui.put("sceneTotal", aggregate.sceneTotal);
+        ui.put("sceneCompleted", aggregate.sceneCompleted);
         ui.put("scenePass", aggregate.scenePass);
         ui.put("sceneFail", aggregate.sceneFail);
+        ui.put("sceneBlocked", aggregate.sceneBlocked);
         ui.put("sceneSkip", aggregate.sceneSkip);
         ui.put("sceneCancelled", aggregate.sceneCancelled);
         ui.put("scenePassRate", rate(aggregate.scenePass, aggregate.sceneTotal));
@@ -315,6 +320,10 @@ public class TestPlanReportProgressServiceImpl implements AutomationPlanReportPr
         return List.of("failed", "blocked", AutomationUiSceneStatusCodes.RESULT_FAILED).contains(value);
     }
 
+    private boolean isBlocked(String value) {
+        return "blocked".equals(value);
+    }
+
     private int number(Object value) {
         if (value instanceof Number number) {
             return Math.max(0, number.intValue());
@@ -421,6 +430,7 @@ public class TestPlanReportProgressServiceImpl implements AutomationPlanReportPr
         private int sceneCompleted;
         private int scenePass;
         private int sceneFail;
+        private int sceneBlocked;
         private int sceneSkip;
         private int sceneCancelled;
         private int caseTotal;

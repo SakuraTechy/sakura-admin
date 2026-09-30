@@ -31,6 +31,7 @@ import org.springframework.validation.BindingResult;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import top.continew.admin.automation.support.ai.AiProviderException;
+import top.continew.starter.core.exception.BusinessException;
 import top.continew.starter.web.model.R;
 
 import java.util.List;
@@ -291,6 +292,20 @@ class AutomationAiExceptionHandlerTest {
         // 确保不包含内部错误细节
         assertThat(response.getMsg()).doesNotContain("database");
         assertThat(response.getMsg()).doesNotContain("line 42");
+    }
+
+    /**
+     * 测试业务异常保留可操作的原始原因
+     */
+    @Test
+    void shouldMapBusinessExceptionToOriginalMessage() {
+        String message = "存储管理文件不存在：system_patch_6.1.9.1.1.zip。请填写文件 ID 或精确文件名";
+        BusinessException exception = new BusinessException(message);
+
+        R response = handler.handleBusinessException(exception, request);
+
+        assertThat(response.getCode()).isEqualTo(String.valueOf(HttpStatus.INTERNAL_SERVER_ERROR.value()));
+        assertThat(response.getMsg()).isEqualTo(message);
     }
 
     /**

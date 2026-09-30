@@ -69,6 +69,7 @@ public class AutomationOperationConfigValidator {
         validateRegex(config);
         validateVariableName(method.getActionType(), config);
         validateDateFormat(method.getActionType(), config);
+        validateDateScript(method.getActionType(), config);
         validateFormula(method.getActionType(), config);
         validateIpRange(method.getActionType(), config);
     }
@@ -177,8 +178,12 @@ public class AutomationOperationConfigValidator {
             }
         } else if ("shell".equals(name) && normalizeShellValue(value) == null) {
             throw new BusinessException("METHOD_CONFIG_INVALID：" + method.getLabel() + " 参数“Shell 类型”不是有效选项");
-        } else if ("sql_mode".equals(name) && !Set.of("query", "update", "call").contains(stringValue(value))) {
-            throw new BusinessException("METHOD_CONFIG_INVALID：" + method.getLabel() + " 参数“SQL 类型”不是有效选项");
+        } else if ("sql_mode".equals(name)) {
+            String sqlMode = stringValue(value);
+            if (!Set.of("query", "update", "call", "script").contains(sqlMode) || ("script"
+                .equals(sqlMode) && !"database.update".equals(method.getMethodCode()))) {
+                throw new BusinessException("METHOD_CONFIG_INVALID：" + method.getLabel() + " 参数“SQL 类型”不是有效选项");
+            }
         } else if ("mongo_operation".equals(name) && !Set.of("find", "insert", "update", "delete")
             .contains(stringValue(value))) {
             throw new BusinessException("METHOD_CONFIG_INVALID：" + method.getLabel() + " 参数“MongoDB 操作”不是有效选项");
@@ -403,6 +408,20 @@ public class AutomationOperationConfigValidator {
         String unsupported = format.replaceAll("yyyy|SSS|MM|dd|HH|mm|ss|M|d|H|m|s", "");
         if (unsupported.matches(".*[A-Za-z].*")) {
             throw new BusinessException("METHOD_CONFIG_INVALID：日期格式仅支持 yyyy、MM、dd、HH、mm、ss、SSS");
+        }
+    }
+
+    private void validateDateScript(String actionType, Map<String, Object> config) {
+        if (!"global_variable_date".equals(actionType)) {
+            return;
+        }
+        String script = stringValue(config.get("script"));
+        if (script.isBlank()) {
+            return;
+        }
+        String remainder = TEMPLATE_REFERENCE.matcher(script).replaceAll("");
+        if (script.length() > 256 || !remainder.matches("[0-9+\\-*/%().\\s]+")) {
+            throw new BusinessException("METHOD_CONFIG_INVALID：日期计算脚本仅支持数字、变量引用、括号和 + - * / % 运算");
         }
     }
 

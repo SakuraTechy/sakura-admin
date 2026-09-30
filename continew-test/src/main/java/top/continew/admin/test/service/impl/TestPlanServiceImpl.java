@@ -17,7 +17,6 @@
 package top.continew.admin.test.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
-import cn.dev33.satoken.stp.StpUtil;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
@@ -27,6 +26,7 @@ import top.continew.admin.automation.model.req.AutomationUiSceneExecReq;
 import top.continew.admin.automation.model.resp.AutomationUiSceneExecResp;
 import top.continew.admin.automation.service.AutomationUiSceneService;
 import top.continew.admin.automation.service.AutomationUiExecutionRecordService;
+import top.continew.admin.automation.support.AutomationPlaywrightServiceTokenProvider;
 import top.continew.admin.common.enums.StatusTypeEnum;
 import top.continew.admin.test.mapper.TestPlanMapper;
 import top.continew.admin.test.mapper.TestReportMapper;
@@ -49,8 +49,8 @@ import top.continew.starter.extension.crud.service.BaseServiceImpl;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -67,6 +67,7 @@ public class TestPlanServiceImpl extends BaseServiceImpl<TestPlanMapper, TestPla
     private final TestReportMapper testReportMapper;
     private final TestTimedTaskMapper testTimedTaskMapper;
     private final TestPlanExecutionDispatchService executionDispatchService;
+    private final AutomationPlaywrightServiceTokenProvider serviceTokenProvider;
 
     @Override
     public List<TestPlanDetailResp> selectByIds(List<Long> ids) {
@@ -172,13 +173,19 @@ public class TestPlanServiceImpl extends BaseServiceImpl<TestPlanMapper, TestPla
         report.setExecuteMode("PLAN");
         report.setReportType(engine.name());
         report.setStatus("RUNNING");
-        report.setName(StringUtils.abbreviate(plan.getName() + "_" + reportTypeLabel(engine) + "_" + LocalDateTime.now()
-            .format(DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS")), 128));
+        if (req.getExecuteUserId() != null) {
+            // 定时任务后台线程没有当前用户上下文，必须显式保留本次执行人。
+            report.setCreateUser(req.getExecuteUserId());
+        }
+        report.setName(executionModeLabel(engine) + "_自动化测试报告");
         report.setProjectConfig(plan.getProjectConfig());
         report.setAutomationConfig(plan.getAutomationConfig());
         report.setRuntimeEnvironment(buildRuntimeEnvironment(req, engine, executionSceneIds));
         report.setRunTime(0L);
         testReportMapper.insert(report);
+        // 自增 ID 只有插入后才能取得，最终报告名称必须使用该 ID 保证唯一且便于定位。
+        report.setName(buildReportName(engine, report.getId()));
+        testReportMapper.updateById(report);
 
         automationUiSceneMapper.lambdaUpdate()
             .in(AutomationUiSceneDO::getId, executionSceneIds)
@@ -241,9 +248,6 @@ public class TestPlanServiceImpl extends BaseServiceImpl<TestPlanMapper, TestPla
             report.setBuildNumber(buildNumber);
             report.setConsoleUrl(seleniumResp.getConsoleUrl());
             report.setReportUrl(seleniumResp.getTestReportUrl());
-            report.setName(buildNumber != null
-                ? StringUtils.abbreviate(plan.getName() + "_Selenium自动化报告_" + buildNumber, 128)
-                : report.getName());
             testReportMapper.updateById(report);
         }
         TestPlanExecuteResp resp = baseExecuteResp(report, TestExecutionEngineEnum.SELENIUM);
@@ -263,8 +267,8 @@ public class TestPlanServiceImpl extends BaseServiceImpl<TestPlanMapper, TestPla
         List<TestPlanExecuteResp.SceneExecution> manifest = executionDispatchService
             .initialize(plan, executionSceneIds, String.valueOf(report.getId()), engine, req);
         if (TestExecutionEngineEnum.PLAYWRIGHT_RUNNER.equals(engine)) {
-            executionDispatchService.dispatchRunner(plan, String.valueOf(report.getId()), req, manifest, StpUtil
-                .getTokenValue());
+            executionDispatchService.dispatchRunner(plan, String.valueOf(report
+                .getId()), req, manifest, serviceTokenProvider.getToken());
         }
         TestPlanExecuteResp resp = baseExecuteResp(report, engine);
         resp.setSceneExecutions(manifest);
@@ -310,7 +314,7 @@ public class TestPlanServiceImpl extends BaseServiceImpl<TestPlanMapper, TestPla
     }
 
     /**
-     * 请求子集只决定本次执行范围，顺序始终以计划关联顺序为准。
+     * 请求子集只决定本次执行范围，执行顺序统一按场景 ID 升序。
      */
     private List<Long> resolveExecutionSceneIds(TestPlanDO plan, List<Long> requestedSceneIds) {
         List<Long> planSceneIds = plan.getUiTestScene() == null ? List.of() : plan.getUiTestScene();
@@ -326,9 +330,13 @@ public class TestPlanServiceImpl extends BaseServiceImpl<TestPlanMapper, TestPla
             executionSceneIds = planSceneIds.stream().filter(requestedSet::contains).toList();
         }
         ensureCondition(executionSceneIds.isEmpty(), "测试计划没有可执行的关联场景");
-        List<AutomationUiSceneDO> existingScenes = automationUiSceneMapper.selectBatchIds(executionSceneIds);
+        List<AutomationUiSceneDO> existingScenes = new ArrayList<>(automationUiSceneMapper
+            .selectBatchIds(executionSceneIds));
         ensureCondition(existingScenes.size() != executionSceneIds.size(), "测试计划关联场景不存在，请刷新后重试");
-        return executionSceneIds;
+        existingScenes.sort(Comparator.comparing(AutomationUiSceneDO::getSceneId, Comparator.nullsLast(Comparator
+            .naturalOrder()))
+            .thenComparing(AutomationUiSceneDO::getId, Comparator.nullsLast(Comparator.naturalOrder())));
+        return existingScenes.stream().map(AutomationUiSceneDO::getId).toList();
     }
 
     private void ensureCondition(boolean condition, String message) {
@@ -337,11 +345,15 @@ public class TestPlanServiceImpl extends BaseServiceImpl<TestPlanMapper, TestPla
         }
     }
 
-    private String reportTypeLabel(TestExecutionEngineEnum engine) {
+    private String buildReportName(TestExecutionEngineEnum engine, Long reportId) {
+        return executionModeLabel(engine) + "_自动化测试报告_" + reportId;
+    }
+
+    private String executionModeLabel(TestExecutionEngineEnum engine) {
         return switch (engine) {
-            case SELENIUM -> "Selenium自动化报告";
-            case PLAYWRIGHT_RUNNER -> "PlaywrightRunner自动化报告";
-            case CHROME_DEVTOOLS_PROTOCOL -> "ChromeDevToolsProtocol自动化报告";
+            case SELENIUM -> "Selenium";
+            case PLAYWRIGHT_RUNNER -> "PlaywrightRunner";
+            case CHROME_DEVTOOLS_PROTOCOL -> "ChromeDevToolsProtocol";
         };
     }
 

@@ -19,11 +19,14 @@ package top.continew.admin.controller.system;
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.mail.MessagingException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import top.continew.admin.system.model.query.OptionQuery;
+import top.continew.admin.system.config.mail.MailConfigurerImpl;
+import top.continew.admin.system.model.req.MailTestReq;
 import top.continew.admin.system.model.req.OptionReq;
 import top.continew.admin.system.model.req.OptionResetValueReq;
 import top.continew.admin.system.model.resp.OptionResp;
@@ -45,6 +48,7 @@ import java.util.List;
 public class OptionController {
 
     private final OptionService baseService;
+    private final MailConfigurerImpl mailConfigurer;
 
     @Operation(summary = "查询参数列表", description = "查询参数列表")
     @SaCheckPermission("system:config:list")
@@ -58,6 +62,13 @@ public class OptionController {
     @PutMapping
     public void update(@Valid @RequestBody List<OptionReq> options) {
         baseService.update(options);
+    }
+
+    @Operation(summary = "测试邮件配置", description = "使用当前邮件配置向指定收件人发送测试邮件")
+    @SaCheckPermission("system:config:update")
+    @PostMapping("/mail/test")
+    public void testMail(@Valid @RequestBody MailTestReq req) throws MessagingException {
+        mailConfigurer.sendTestMail(req);
     }
 
     @Operation(summary = "重置参数", description = "重置参数")

@@ -1,0 +1,4 @@
+{
+  "defaultRunConfiguration": "spring-boot.maven:continew-extension-schedule-server",
+  "version": 1
+}

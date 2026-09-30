@@ -17,6 +17,7 @@
 package top.continew.admin.test.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.core.text.CharSequenceUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -42,6 +43,7 @@ import top.continew.starter.extension.crud.model.resp.PageResp;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -207,7 +209,10 @@ public class TestTimedTaskRunServiceImpl implements TestTimedTaskRunService {
         run.setTestPlanName(task.getTestPlanName());
         run.setTriggerMode("MANUAL".equalsIgnoreCase(triggerMode) ? "MANUAL" : "SCHEDULE");
         run.setStatus("RUNNING");
-        run.setNotificationEmails(task.getNotificationEmails());
+        // 兼容通知邮箱数组上线前创建的任务：旧字段 execute_email 仍保存首个收件人，不能因数组为空而丢失通知。
+        run.setNotificationEmails(task.getNotificationEmails() == null || task.getNotificationEmails().isEmpty()
+            ? CharSequenceUtil.isBlank(task.getExecuteEmail()) ? null : List.of(task.getExecuteEmail())
+            : new ArrayList<>(task.getNotificationEmails()));
         run.setStartTime(now);
         run.setRunTime(0L);
         run.setNotificationStatus("PENDING");

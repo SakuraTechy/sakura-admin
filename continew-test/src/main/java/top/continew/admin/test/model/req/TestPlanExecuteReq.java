@@ -16,6 +16,7 @@
 
 package top.continew.admin.test.model.req;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.validation.Valid;
 import lombok.Data;
 import top.continew.admin.automation.model.req.playwright.AutomationPlaywrightRunnerOptionsReq;
@@ -49,6 +50,12 @@ public class TestPlanExecuteReq implements Serializable {
 
     private String executeName;
     private String executeEmail;
+
+    /**
+     * 本次执行用户 ID，仅由后台调度链路设置，禁止客户端通过 JSON 注入。
+     */
+    @JsonIgnore
+    private Long executeUserId;
 
     /**
      * 执行范围。缺省表示计划全部关联场景；传值时必须是计划关联场景的非空子集。

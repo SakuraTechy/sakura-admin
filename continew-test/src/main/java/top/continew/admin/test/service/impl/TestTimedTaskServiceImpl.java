@@ -22,6 +22,7 @@ import cn.hutool.cron.pattern.CronPattern;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import jakarta.annotation.Resource;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -47,6 +48,8 @@ import top.continew.admin.schedule.model.resp.JobLogResp;
 import top.continew.admin.schedule.model.resp.JobResp;
 import top.continew.admin.schedule.service.JobLogService;
 import top.continew.admin.schedule.service.JobService;
+import top.continew.admin.system.model.entity.user.UserDO;
+import top.continew.admin.system.service.UserService;
 import top.continew.admin.test.job.TestPlanJobExecutor;
 import top.continew.admin.test.mapper.TestPlanMapper;
 import top.continew.admin.test.mapper.TestTimedTaskMapper;
@@ -65,11 +68,13 @@ import top.continew.admin.test.model.resp.TestTimedTaskRunSummaryResp;
 import top.continew.admin.test.service.TestTimedTaskRunService;
 import top.continew.admin.test.service.TestTimedTaskService;
 import top.continew.starter.core.validation.CheckUtils;
+import top.continew.starter.core.exception.BusinessException;
 import top.continew.starter.extension.crud.model.query.PageQuery;
 import top.continew.starter.extension.crud.model.resp.PageResp;
 import top.continew.starter.extension.crud.service.BaseServiceImpl;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -91,6 +96,9 @@ public class TestTimedTaskServiceImpl extends BaseServiceImpl<TestTimedTaskMappe
     private final JobService jobService;
     private final JobLogService jobLogService;
     private final TestTimedTaskRunService runService;
+
+    @Resource
+    private UserService userService;
 
     @Override
     public PageResp<TestTimedTaskResp> page(TestTimedTaskQuery query, PageQuery pageQuery) {
@@ -163,7 +171,7 @@ public class TestTimedTaskServiceImpl extends BaseServiceImpl<TestTimedTaskMappe
         req.setMisfirePolicy(MISFIRE_POLICY);
         req.setStatus("DISABLED");
         if (CharSequenceUtil.isBlank(req.getExecuteName())) {
-            req.setExecuteName(UserContextHolder.getNickname());
+            req.setExecuteName(defaultExecutorName());
         }
         req.setExecuteEmail(req.getNotificationEmails().get(0));
         Long id = super.create(req);
@@ -182,7 +190,7 @@ public class TestTimedTaskServiceImpl extends BaseServiceImpl<TestTimedTaskMappe
         req.setType(TASK_TYPE);
         req.setMisfirePolicy(MISFIRE_POLICY);
         req.setStatus(existing.getStatus());
-        req.setExecuteName(CharSequenceUtil.blankToDefault(existing.getExecuteName(), UserContextHolder.getNickname()));
+        req.setExecuteName(defaultExecutorName());
         req.setExecuteEmail(req.getNotificationEmails().get(0));
         super.update(req, id);
         ensureScheduleJob(baseMapper.selectById(id));
@@ -258,6 +266,14 @@ public class TestTimedTaskServiceImpl extends BaseServiceImpl<TestTimedTaskMappe
         validateCron(req.getCronExpression());
         req.setAllowConcurrent(Integer.valueOf(1).equals(req.getAllowConcurrent()) ? 1 : 0);
         LinkedHashSet<String> emails = new LinkedHashSet<>();
+        Long currentUserId = UserContextHolder.getUserId();
+        if (currentUserId != null) {
+            UserDO currentUser = userService.getById(currentUserId);
+            if (currentUser != null && CharSequenceUtil.isNotBlank(currentUser.getEmail())) {
+                // 用户信息接口会脱敏邮箱，任务保存时必须在后端读取真实地址，不能把脱敏值写入收件人列表。
+                emails.add(currentUser.getEmail().trim().toLowerCase());
+            }
+        }
         if (req.getNotificationEmails() != null) {
             req.getNotificationEmails()
                 .stream()
@@ -282,7 +298,8 @@ public class TestTimedTaskServiceImpl extends BaseServiceImpl<TestTimedTaskMappe
         TestPlanDO plan = checkPlan(task.getTestPlanId());
         CheckUtils.throwIf(plan.getUiTestScene() == null || plan.getUiTestScene().isEmpty(), "测试计划未关联 UI 场景，无法启用或执行");
         validateCron(task.getCronExpression());
-        CheckUtils.throwIf(task.getNotificationEmails() == null || task.getNotificationEmails().isEmpty(), "请先配置通知邮箱");
+        CheckUtils.throwIf((task.getNotificationEmails() == null || task.getNotificationEmails()
+            .isEmpty()) && CharSequenceUtil.isBlank(task.getExecuteEmail()), "请先配置通知邮箱");
         TestExecutionEngineEnum engine = parseEngine(task.getExecutionEngine());
         CheckUtils.throwIf(TestExecutionEngineEnum.CHROME_DEVTOOLS_PROTOCOL.equals(engine), "CDP 依赖浏览器会话，不支持无人值守定时执行");
         validateEnvironment(plan, task.getProjectEnvironmentId(), task.getAutomationEnvironmentId(), engine);
@@ -311,11 +328,22 @@ public class TestTimedTaskServiceImpl extends BaseServiceImpl<TestTimedTaskMappe
         if (task == null) {
             return;
         }
-        JobReq req = buildJobReq(task);
-        Long jobId = resolveScheduleJobId(task);
-        boolean success = jobId == null ? jobService.create(req) : jobService.update(req, jobId);
-        CheckUtils.throwIf(!success, "同步调度任务失败");
-        syncScheduleMetadata(task);
+        // 新建任务默认禁用；先保存业务配置，启用时再创建远程调度任务。
+        // 这样开发环境未启动 Snail Job 时，不会阻断定时任务配置保存。
+        if ("DISABLED".equalsIgnoreCase(task.getStatus()) && task.getScheduleJobId() == null) {
+            return;
+        }
+        try {
+            JobReq req = buildJobReq(task);
+            Long jobId = resolveScheduleJobId(task);
+            boolean success = jobId == null ? jobService.create(req) : jobService.update(req, jobId);
+            CheckUtils.throwIf(!success, "同步调度任务失败");
+            syncScheduleMetadata(task);
+        } catch (BusinessException e) {
+            throw e;
+        } catch (RuntimeException e) {
+            throw new BusinessException("任务调度中心不可用，请启动 Snail Job 服务后重试");
+        }
     }
 
     private void syncScheduleMetadata(TestTimedTaskDO task) {
@@ -395,6 +423,9 @@ public class TestTimedTaskServiceImpl extends BaseServiceImpl<TestTimedTaskMappe
         TestTimedTaskExecutePayload payload = new TestTimedTaskExecutePayload();
         payload.setTaskId(task.getId());
         payload.setTriggerMode(triggerMode);
+        payload.setExecuteUserId("MANUAL".equals(triggerMode)
+            ? UserContextHolder.getUserId()
+            : TestTimedTaskExecutePayload.DEFAULT_EXECUTOR_USER_ID);
         if ("MANUAL".equals(triggerMode)) {
             payload.setExecuteName(CharSequenceUtil.blankToDefault(UserContextHolder.getNickname(), task
                 .getExecuteName()));
@@ -405,6 +436,11 @@ public class TestTimedTaskServiceImpl extends BaseServiceImpl<TestTimedTaskMappe
         } catch (Exception e) {
             throw new IllegalStateException("序列化定时任务参数失败", e);
         }
+    }
+
+    private String defaultExecutorName() {
+        UserDO executor = userService.getById(TestTimedTaskExecutePayload.DEFAULT_EXECUTOR_USER_ID);
+        return executor == null || CharSequenceUtil.isBlank(executor.getNickname()) ? "系统管理员" : executor.getNickname();
     }
 
     private String internalJobName(TestTimedTaskDO task) {
@@ -443,25 +479,36 @@ public class TestTimedTaskServiceImpl extends BaseServiceImpl<TestTimedTaskMappe
         if (tasks == null || tasks.isEmpty()) {
             return;
         }
-        Map<Long, TestPlanDO> planMap = testPlanMapper.selectBatchIds(tasks.stream()
+        List<Long> planIds = tasks.stream()
             .map(TestTimedTaskResp::getTestPlanId)
             .filter(Objects::nonNull)
             .distinct()
-            .toList()).stream().collect(Collectors.toMap(TestPlanDO::getId, Function.identity()));
-        Map<Long, ProjectEnvironmentConfigDO> projectEnvironmentMap = projectEnvironmentMapper.selectBatchIds(tasks
-            .stream()
+            .toList();
+        Map<Long, TestPlanDO> planMap = planIds.isEmpty()
+            ? Collections.emptyMap()
+            : testPlanMapper.selectBatchIds(planIds)
+                .stream()
+                .collect(Collectors.toMap(TestPlanDO::getId, Function.identity()));
+        List<Long> projectEnvironmentIds = tasks.stream()
             .map(TestTimedTaskResp::getProjectEnvironmentId)
             .filter(Objects::nonNull)
             .distinct()
-            .toList()).stream().collect(Collectors.toMap(ProjectEnvironmentConfigDO::getId, Function.identity()));
-        Map<Long, AutomationEnvironmentConfigDO> automationEnvironmentMap = automationEnvironmentMapper
-            .selectBatchIds(tasks.stream()
-                .map(TestTimedTaskResp::getAutomationEnvironmentId)
-                .filter(Objects::nonNull)
-                .distinct()
-                .toList())
-            .stream()
-            .collect(Collectors.toMap(AutomationEnvironmentConfigDO::getId, Function.identity()));
+            .toList();
+        Map<Long, ProjectEnvironmentConfigDO> projectEnvironmentMap = projectEnvironmentIds.isEmpty()
+            ? Collections.emptyMap()
+            : projectEnvironmentMapper.selectBatchIds(projectEnvironmentIds)
+                .stream()
+                .collect(Collectors.toMap(ProjectEnvironmentConfigDO::getId, Function.identity()));
+        List<Long> automationEnvironmentIds = tasks.stream()
+            .map(TestTimedTaskResp::getAutomationEnvironmentId)
+            .filter(Objects::nonNull)
+            .distinct()
+            .toList();
+        Map<Long, AutomationEnvironmentConfigDO> automationEnvironmentMap = automationEnvironmentIds.isEmpty()
+            ? Collections.emptyMap()
+            : automationEnvironmentMapper.selectBatchIds(automationEnvironmentIds)
+                .stream()
+                .collect(Collectors.toMap(AutomationEnvironmentConfigDO::getId, Function.identity()));
         Map<Long, TestTimedTaskRunSummaryResp> lastRuns = runService.latestByTaskIds(tasks.stream()
             .map(TestTimedTaskResp::getId)
             .toList());

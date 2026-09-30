@@ -23,6 +23,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import top.continew.admin.automation.mapper.AutomationUiSceneMapper;
 import top.continew.admin.automation.model.entity.AutomationUiSceneDO;
 import top.continew.admin.automation.model.entity.ui.CaseDO;
@@ -84,6 +85,33 @@ class TestPlanExecutionDispatchServiceTest {
         verify(caseService, timeout(2_000)).cancelBatch("100", "BATCH_001");
         verify(reportProgressService, timeout(2_000)).onProgressChanged("1", "REPORT_001");
         verify(runnerJobService, never()).create(any(), anyString());
+    }
+
+    @Test
+    void shouldStartPlanRunnerOnlyAfterTransactionCommit() {
+        TestPlanDO plan = new TestPlanDO();
+        plan.setId(1L);
+        TestPlanExecuteResp.SceneExecution scene = new TestPlanExecuteResp.SceneExecution();
+        scene.setSceneKey("100");
+        scene.setCaseIds(List.of("CASE_001"));
+        AutomationPlaywrightBatchResp batch = new AutomationPlaywrightBatchResp();
+        batch.setBatchId("BATCH_001");
+        batch.setCases(List.of());
+        when(caseService.createBatch(any())).thenReturn(batch);
+        when(caseService.getCaseCancellation(anyString(), anyString(), anyString()))
+            .thenReturn(new AutomationPlaywrightCaseCancellationResp());
+
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            service.dispatchRunner(plan, "REPORT_001", new TestPlanExecuteReq(), List.of(scene), "token");
+            verify(caseService, never()).createBatch(any());
+
+            TransactionSynchronizationManager.getSynchronizations()
+                .forEach(synchronization -> synchronization.afterCommit());
+            verify(caseService, timeout(2_000)).createBatch(any());
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
     }
 
     @Test

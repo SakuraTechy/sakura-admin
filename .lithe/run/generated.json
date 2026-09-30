@@ -1,0 +1,1905 @@
+{
+  "configurations": [
+    {
+      "args": [],
+      "confidence": "native",
+      "cwd": ".",
+      "disabled": false,
+      "env": {},
+      "execution": "application",
+      "extensions": {
+        "java": {
+          "source": "continew-webapi/src/main/java/top/continew/admin/ContiNewAdminApplication.java",
+          "sourceSet": "main"
+        },
+        "maven": {
+          "mainClass": "top.continew.admin.ContiNewAdminApplication",
+          "module": "continew-webapi"
+        }
+      },
+      "id": "java-main:top.continew.admin.ContiNewAdminApplication",
+      "name": "ContiNewAdminApplication",
+      "provider": "java.main",
+      "source": "continew-webapi/src/main/java/top/continew/admin/ContiNewAdminApplication.java",
+      "toolchains": {
+        "java": "project-jdk",
+        "maven": "project-maven"
+      }
+    },
+    {
+      "args": [],
+      "confidence": "native",
+      "cwd": ".",
+      "disabled": false,
+      "env": {},
+      "execution": "application",
+      "extensions": {
+        "java": {
+          "source": "continew-common/src/main/java/top/continew/admin/common/date/DateUtils.java",
+          "sourceSet": "main"
+        },
+        "maven": {
+          "mainClass": "top.continew.admin.common.date.DateUtils",
+          "module": "continew-common"
+        }
+      },
+      "id": "java-main:top.continew.admin.common.date.DateUtils",
+      "name": "DateUtils",
+      "provider": "java.main",
+      "source": "continew-common/src/main/java/top/continew/admin/common/date/DateUtils.java",
+      "toolchains": {
+        "java": "project-jdk",
+        "maven": "project-maven"
+      }
+    },
+    {
+      "args": [],
+      "confidence": "native",
+      "cwd": ".",
+      "disabled": false,
+      "env": {},
+      "execution": "application",
+      "extensions": {
+        "java": {
+          "source": "continew-common/src/main/java/top/continew/admin/common/db/ClickHouseUtil.java",
+          "sourceSet": "main"
+        },
+        "maven": {
+          "mainClass": "top.continew.admin.common.db.ClickHouseUtil",
+          "module": "continew-common"
+        }
+      },
+      "id": "java-main:top.continew.admin.common.db.ClickHouseUtil",
+      "name": "ClickHouseUtil",
+      "provider": "java.main",
+      "source": "continew-common/src/main/java/top/continew/admin/common/db/ClickHouseUtil.java",
+      "toolchains": {
+        "java": "project-jdk",
+        "maven": "project-maven"
+      }
+    },
+    {
+      "args": [],
+      "confidence": "native",
+      "cwd": ".",
+      "disabled": false,
+      "env": {},
+      "execution": "application",
+      "extensions": {
+        "java": {
+          "source": "continew-common/src/main/java/top/continew/admin/common/db/DataBaseUtil.java",
+          "sourceSet": "main"
+        },
+        "maven": {
+          "mainClass": "top.continew.admin.common.db.DataBaseUtil",
+          "module": "continew-common"
+        }
+      },
+      "id": "java-main:top.continew.admin.common.db.DataBaseUtil",
+      "name": "DataBaseUtil",
+      "provider": "java.main",
+      "source": "continew-common/src/main/java/top/continew/admin/common/db/DataBaseUtil.java",
+      "toolchains": {
+        "java": "project-jdk",
+        "maven": "project-maven"
+      }
+    },
+    {
+      "args": [],
+      "confidence": "native",
+      "cwd": ".",
+      "disabled": false,
+      "env": {},
+      "execution": "application",
+      "extensions": {
+        "java": {
+          "source": "continew-common/src/main/java/top/continew/admin/common/db/MongoDBUtil.java",
+          "sourceSet": "main"
+        },
+        "maven": {
+          "mainClass": "top.continew.admin.common.db.MongoDBUtil",
+          "module": "continew-common"
+        }
+      },
+      "id": "java-main:top.continew.admin.common.db.MongoDBUtil",
+      "name": "MongoDBUtil",
+      "provider": "java.main",
+      "source": "continew-common/src/main/java/top/continew/admin/common/db/MongoDBUtil.java",
+      "toolchains": {
+        "java": "project-jdk",
+        "maven": "project-maven"
+      }
+    },
+    {
+      "args": [],
+      "confidence": "native",
+      "cwd": ".",
+      "disabled": false,
+      "env": {},
+      "execution": "application",
+      "extensions": {
+        "java": {
+          "source": "continew-common/src/main/java/top/continew/admin/common/jenkins/CustomService.java",
+          "sourceSet": "main"
+        },
+        "maven": {
+          "mainClass": "top.continew.admin.common.jenkins.CustomService",
+          "module": "continew-common"
+        }
+      },
+      "id": "java-main:top.continew.admin.common.jenkins.CustomService",
+      "name": "CustomService",
+      "provider": "java.main",
+      "source": "continew-common/src/main/java/top/continew/admin/common/jenkins/CustomService.java",
+      "toolchains": {
+        "java": "project-jdk",
+        "maven": "project-maven"
+      }
+    },
+    {
+      "args": [],
+      "confidence": "native",
+      "cwd": ".",
+      "disabled": false,
+      "env": {},
+      "execution": "application",
+      "extensions": {
+        "java": {
+          "source": "continew-common/src/main/java/top/continew/admin/common/jenkins/JenkinsApi.java",
+          "sourceSet": "main"
+        },
+        "maven": {
+          "mainClass": "top.continew.admin.common.jenkins.JenkinsApi",
+          "module": "continew-common"
+        }
+      },
+      "id": "java-main:top.continew.admin.common.jenkins.JenkinsApi",
+      "name": "JenkinsApi",
+      "provider": "java.main",
+      "source": "continew-common/src/main/java/top/continew/admin/common/jenkins/JenkinsApi.java",
+      "toolchains": {
+        "java": "project-jdk",
+        "maven": "project-maven"
+      }
+    },
+    {
+      "args": [],
+      "confidence": "native",
+      "cwd": ".",
+      "disabled": false,
+      "env": {},
+      "execution": "application",
+      "extensions": {
+        "java": {
+          "source": "continew-common/src/main/java/top/continew/admin/common/jenkins/JenkinsClient.java",
+          "sourceSet": "main"
+        },
+        "maven": {
+          "mainClass": "top.continew.admin.common.jenkins.JenkinsClient",
+          "module": "continew-common"
+        }
+      },
+      "id": "java-main:top.continew.admin.common.jenkins.JenkinsClient",
+      "name": "JenkinsClient",
+      "provider": "java.main",
+      "source": "continew-common/src/main/java/top/continew/admin/common/jenkins/JenkinsClient.java",
+      "toolchains": {
+        "java": "project-jdk",
+        "maven": "project-maven"
+      }
+    },
+    {
+      "args": [],
+      "confidence": "native",
+      "cwd": ".",
+      "disabled": false,
+      "env": {},
+      "execution": "application",
+      "extensions": {
+        "java": {
+          "source": "continew-common/src/main/java/top/continew/admin/common/jenkins/JenkinsService.java",
+          "sourceSet": "main"
+        },
+        "maven": {
+          "mainClass": "top.continew.admin.common.jenkins.JenkinsService",
+          "module": "continew-common"
+        }
+      },
+      "id": "java-main:top.continew.admin.common.jenkins.JenkinsService",
+      "name": "JenkinsService",
+      "provider": "java.main",
+      "source": "continew-common/src/main/java/top/continew/admin/common/jenkins/JenkinsService.java",
+      "toolchains": {
+        "java": "project-jdk",
+        "maven": "project-maven"
+      }
+    },
+    {
+      "args": [],
+      "confidence": "native",
+      "cwd": ".",
+      "disabled": false,
+      "env": {},
+      "execution": "application",
+      "extensions": {
+        "java": {
+          "source": "continew-common/src/main/java/top/continew/admin/common/jenkins/JobApi.java",
+          "sourceSet": "main"
+        },
+        "maven": {
+          "mainClass": "top.continew.admin.common.jenkins.JobApi",
+          "module": "continew-common"
+        }
+      },
+      "id": "java-main:top.continew.admin.common.jenkins.JobApi",
+      "name": "JobApi",
+      "provider": "java.main",
+      "source": "continew-common/src/main/java/top/continew/admin/common/jenkins/JobApi.java",
+      "toolchains": {
+        "java": "project-jdk",
+        "maven": "project-maven"
+      }
+    },
+    {
+      "args": [],
+      "confidence": "native",
+      "cwd": ".",
+      "disabled": false,
+      "env": {},
+      "execution": "application",
+      "extensions": {
+        "java": {
+          "source": "continew-common/src/main/java/top/continew/admin/common/jenkins/JobBuildApi.java",
+          "sourceSet": "main"
+        },
+        "maven": {
+          "mainClass": "top.continew.admin.common.jenkins.JobBuildApi",
+          "module": "continew-common"
+        }
+      },
+      "id": "java-main:top.continew.admin.common.jenkins.JobBuildApi",
+      "name": "JobBuildApi",
+      "provider": "java.main",
+      "source": "continew-common/src/main/java/top/continew/admin/common/jenkins/JobBuildApi.java",
+      "toolchains": {
+        "java": "project-jdk",
+        "maven": "project-maven"
+      }
+    },
+    {
+      "args": [],
+      "confidence": "native",
+      "cwd": ".",
+      "disabled": false,
+      "env": {},
+      "execution": "application",
+      "extensions": {
+        "java": {
+          "source": "continew-common/src/main/java/top/continew/admin/common/jenkins/ViewApi.java",
+          "sourceSet": "main"
+        },
+        "maven": {
+          "mainClass": "top.continew.admin.common.jenkins.ViewApi",
+          "module": "continew-common"
+        }
+      },
+      "id": "java-main:top.continew.admin.common.jenkins.ViewApi",
+      "name": "ViewApi",
+      "provider": "java.main",
+      "source": "continew-common/src/main/java/top/continew/admin/common/jenkins/ViewApi.java",
+      "toolchains": {
+        "java": "project-jdk",
+        "maven": "project-maven"
+      }
+    },
+    {
+      "args": [],
+      "confidence": "native",
+      "cwd": ".",
+      "disabled": false,
+      "env": {},
+      "execution": "application",
+      "extensions": {
+        "java": {
+          "source": "continew-common/src/main/java/top/continew/admin/common/regex/RegexUtil.java",
+          "sourceSet": "main"
+        },
+        "maven": {
+          "mainClass": "top.continew.admin.common.regex.RegexUtil",
+          "module": "continew-common"
+        }
+      },
+      "id": "java-main:top.continew.admin.common.regex.RegexUtil",
+      "name": "RegexUtil",
+      "provider": "java.main",
+      "source": "continew-common/src/main/java/top/continew/admin/common/regex/RegexUtil.java",
+      "toolchains": {
+        "java": "project-jdk",
+        "maven": "project-maven"
+      }
+    },
+    {
+      "args": [],
+      "confidence": "native",
+      "cwd": ".",
+      "disabled": false,
+      "env": {},
+      "execution": "application",
+      "extensions": {
+        "java": {
+          "source": "continew-common/src/main/java/top/continew/admin/common/regex/UserReg.java",
+          "sourceSet": "main"
+        },
+        "maven": {
+          "mainClass": "top.continew.admin.common.regex.UserReg",
+          "module": "continew-common"
+        }
+      },
+      "id": "java-main:top.continew.admin.common.regex.UserReg",
+      "name": "UserReg",
+      "provider": "java.main",
+      "source": "continew-common/src/main/java/top/continew/admin/common/regex/UserReg.java",
+      "toolchains": {
+        "java": "project-jdk",
+        "maven": "project-maven"
+      }
+    },
+    {
+      "args": [],
+      "confidence": "native",
+      "cwd": ".",
+      "disabled": false,
+      "env": {},
+      "execution": "application",
+      "extensions": {
+        "java": {
+          "source": "continew-common/src/main/java/top/continew/admin/common/sort/DragSortUtil.java",
+          "sourceSet": "main"
+        },
+        "maven": {
+          "mainClass": "top.continew.admin.common.sort.DragSortUtil",
+          "module": "continew-common"
+        }
+      },
+      "id": "java-main:top.continew.admin.common.sort.DragSortUtil",
+      "name": "DragSortUtil",
+      "provider": "java.main",
+      "source": "continew-common/src/main/java/top/continew/admin/common/sort/DragSortUtil.java",
+      "toolchains": {
+        "java": "project-jdk",
+        "maven": "project-maven"
+      }
+    },
+    {
+      "args": [],
+      "confidence": "native",
+      "cwd": ".",
+      "disabled": false,
+      "env": {},
+      "execution": "application",
+      "extensions": {
+        "java": {
+          "source": "continew-common/src/main/java/top/continew/admin/common/sort/DragSortUtils.java",
+          "sourceSet": "main"
+        },
+        "maven": {
+          "mainClass": "top.continew.admin.common.sort.DragSortUtils",
+          "module": "continew-common"
+        }
+      },
+      "id": "java-main:top.continew.admin.common.sort.DragSortUtils",
+      "name": "DragSortUtils",
+      "provider": "java.main",
+      "source": "continew-common/src/main/java/top/continew/admin/common/sort/DragSortUtils.java",
+      "toolchains": {
+        "java": "project-jdk",
+        "maven": "project-maven"
+      }
+    },
+    {
+      "args": [],
+      "confidence": "native",
+      "cwd": ".",
+      "disabled": false,
+      "env": {},
+      "execution": "application",
+      "extensions": {
+        "java": {
+          "source": "continew-common/src/main/java/top/continew/admin/common/sort/SortUtil.java",
+          "sourceSet": "main"
+        },
+        "maven": {
+          "mainClass": "top.continew.admin.common.sort.SortUtil",
+          "module": "continew-common"
+        }
+      },
+      "id": "java-main:top.continew.admin.common.sort.SortUtil",
+      "name": "SortUtil",
+      "provider": "java.main",
+      "source": "continew-common/src/main/java/top/continew/admin/common/sort/SortUtil.java",
+      "toolchains": {
+        "java": "project-jdk",
+        "maven": "project-maven"
+      }
+    },
+    {
+      "args": [],
+      "confidence": "native",
+      "cwd": ".",
+      "disabled": false,
+      "env": {},
+      "execution": "application",
+      "extensions": {
+        "java": {
+          "source": "continew-common/src/main/java/top/continew/admin/common/sort/User.java",
+          "sourceSet": "main"
+        },
+        "maven": {
+          "mainClass": "top.continew.admin.common.sort.User",
+          "module": "continew-common"
+        }
+      },
+      "id": "java-main:top.continew.admin.common.sort.User",
+      "name": "User",
+      "provider": "java.main",
+      "source": "continew-common/src/main/java/top/continew/admin/common/sort/User.java",
+      "toolchains": {
+        "java": "project-jdk",
+        "maven": "project-maven"
+      }
+    },
+    {
+      "args": [],
+      "confidence": "native",
+      "cwd": ".",
+      "disabled": false,
+      "env": {},
+      "execution": "application",
+      "extensions": {
+        "java": {
+          "source": "continew-common/src/main/java/top/continew/admin/common/sort/User1.java",
+          "sourceSet": "main"
+        },
+        "maven": {
+          "mainClass": "top.continew.admin.common.sort.User1",
+          "module": "continew-common"
+        }
+      },
+      "id": "java-main:top.continew.admin.common.sort.User1",
+      "name": "User1",
+      "provider": "java.main",
+      "source": "continew-common/src/main/java/top/continew/admin/common/sort/User1.java",
+      "toolchains": {
+        "java": "project-jdk",
+        "maven": "project-maven"
+      }
+    },
+    {
+      "args": [],
+      "confidence": "native",
+      "cwd": ".",
+      "disabled": false,
+      "env": {},
+      "execution": "application",
+      "extensions": {
+        "java": {
+          "source": "continew-common/src/main/java/top/continew/admin/common/ssh/FreeSftpUtil.java",
+          "sourceSet": "main"
+        },
+        "maven": {
+          "mainClass": "top.continew.admin.common.ssh.FreeSftpUtil",
+          "module": "continew-common"
+        }
+      },
+      "id": "java-main:top.continew.admin.common.ssh.FreeSftpUtil",
+      "name": "FreeSftpUtil",
+      "provider": "java.main",
+      "source": "continew-common/src/main/java/top/continew/admin/common/ssh/FreeSftpUtil.java",
+      "toolchains": {
+        "java": "project-jdk",
+        "maven": "project-maven"
+      }
+    },
+    {
+      "args": [],
+      "confidence": "native",
+      "cwd": ".",
+      "disabled": false,
+      "env": {},
+      "execution": "application",
+      "extensions": {
+        "java": {
+          "source": "continew-common/src/main/java/top/continew/admin/common/ssh/FreeSshUtil.java",
+          "sourceSet": "main"
+        },
+        "maven": {
+          "mainClass": "top.continew.admin.common.ssh.FreeSshUtil",
+          "module": "continew-common"
+        }
+      },
+      "id": "java-main:top.continew.admin.common.ssh.FreeSshUtil",
+      "name": "FreeSshUtil",
+      "provider": "java.main",
+      "source": "continew-common/src/main/java/top/continew/admin/common/ssh/FreeSshUtil.java",
+      "toolchains": {
+        "java": "project-jdk",
+        "maven": "project-maven"
+      }
+    },
+    {
+      "args": [],
+      "confidence": "native",
+      "cwd": ".",
+      "disabled": false,
+      "env": {},
+      "execution": "application",
+      "extensions": {
+        "java": {
+          "source": "continew-common/src/main/java/top/continew/admin/common/ssh/SSHUtil.java",
+          "sourceSet": "main"
+        },
+        "maven": {
+          "mainClass": "top.continew.admin.common.ssh.SSHUtil",
+          "module": "continew-common"
+        }
+      },
+      "id": "java-main:top.continew.admin.common.ssh.SSHUtil",
+      "name": "SSHUtil",
+      "provider": "java.main",
+      "source": "continew-common/src/main/java/top/continew/admin/common/ssh/SSHUtil.java",
+      "toolchains": {
+        "java": "project-jdk",
+        "maven": "project-maven"
+      }
+    },
+    {
+      "args": [],
+      "confidence": "native",
+      "cwd": ".",
+      "disabled": false,
+      "env": {},
+      "execution": "application",
+      "extensions": {
+        "java": {
+          "source": "continew-extension/continew-extension-schedule-server/src/main/java/top/continew/admin/extension/scheduling/ScheduleServerApplication.java",
+          "sourceSet": "main"
+        },
+        "maven": {
+          "mainClass": "top.continew.admin.extension.scheduling.ScheduleServerApplication",
+          "module": "continew-extension/continew-extension-schedule-server"
+        }
+      },
+      "id": "java-main:top.continew.admin.extension.scheduling.ScheduleServerApplication",
+      "name": "ScheduleServerApplication",
+      "provider": "java.main",
+      "source": "continew-extension/continew-extension-schedule-server/src/main/java/top/continew/admin/extension/scheduling/ScheduleServerApplication.java",
+      "toolchains": {
+        "java": "project-jdk",
+        "maven": "project-maven"
+      }
+    },
+    {
+      "args": [],
+      "confidence": "native",
+      "cwd": ".",
+      "debug": {
+        "adapter": "jdwp"
+      },
+      "disabled": false,
+      "env": {},
+      "execution": "application",
+      "extensions": {
+        "maven": {
+          "module": "."
+        }
+      },
+      "id": "current-file",
+      "name": "Current File",
+      "provider": "java.current-file",
+      "toolchains": {
+        "java": "project-jdk"
+      }
+    },
+    {
+      "args": [],
+      "confidence": "declared",
+      "cwd": ".",
+      "debug": {
+        "adapter": "jdwp"
+      },
+      "disabled": false,
+      "env": {},
+      "execution": "service",
+      "extensions": {
+        "maven": {
+          "mainClass": "top.continew.admin.extension.scheduling.ScheduleServerApplication",
+          "module": "continew-extension/continew-extension-schedule-server"
+        }
+      },
+      "id": "spring-boot.maven:continew-extension-schedule-server",
+      "name": "continew-extension-schedule-server",
+      "provider": "spring-boot.maven",
+      "source": "continew-extension/continew-extension-schedule-server/pom.xml",
+      "toolchains": {
+        "java": "project-jdk",
+        "maven": "project-maven"
+      }
+    },
+    {
+      "args": [
+        "compose",
+        "-f",
+        "docker-compose.yml",
+        "up"
+      ],
+      "command": "docker",
+      "confidence": "declared",
+      "cwd": "docker",
+      "disabled": false,
+      "env": {},
+      "execution": "service",
+      "extensions": {
+        "compose": {
+          "file": "docker-compose.yml"
+        }
+      },
+      "id": "compose.stack:docker/compose up",
+      "name": "compose up",
+      "provider": "compose.stack",
+      "source": "docker/docker-compose.yml",
+      "toolchains": {}
+    },
+    {
+      "args": [
+        "compose",
+        "-f",
+        "docker-compose.yml",
+        "up",
+        "continew-admin-server"
+      ],
+      "command": "docker",
+      "confidence": "declared",
+      "cwd": "docker",
+      "disabled": false,
+      "env": {},
+      "execution": "service",
+      "extensions": {
+        "compose": {
+          "file": "docker-compose.yml",
+          "service": "continew-admin-server"
+        }
+      },
+      "id": "compose.service:docker/continew-admin-server",
+      "name": "continew-admin-server",
+      "provider": "compose.service",
+      "source": "docker/docker-compose.yml",
+      "toolchains": {}
+    },
+    {
+      "args": [
+        "compose",
+        "-f",
+        "docker-compose.yml",
+        "up",
+        "mysql"
+      ],
+      "command": "docker",
+      "confidence": "declared",
+      "cwd": "docker",
+      "disabled": false,
+      "env": {},
+      "execution": "service",
+      "extensions": {
+        "compose": {
+          "file": "docker-compose.yml",
+          "service": "mysql"
+        }
+      },
+      "id": "compose.service:docker/mysql",
+      "name": "mysql",
+      "provider": "compose.service",
+      "source": "docker/docker-compose.yml",
+      "toolchains": {}
+    },
+    {
+      "args": [
+        "compose",
+        "-f",
+        "docker-compose.yml",
+        "up",
+        "nginx"
+      ],
+      "command": "docker",
+      "confidence": "declared",
+      "cwd": "docker",
+      "disabled": false,
+      "env": {},
+      "execution": "service",
+      "extensions": {
+        "compose": {
+          "file": "docker-compose.yml",
+          "service": "nginx"
+        }
+      },
+      "id": "compose.service:docker/nginx",
+      "name": "nginx",
+      "provider": "compose.service",
+      "source": "docker/docker-compose.yml",
+      "toolchains": {}
+    },
+    {
+      "args": [
+        "compose",
+        "-f",
+        "docker-compose.yml",
+        "up",
+        "redis"
+      ],
+      "command": "docker",
+      "confidence": "declared",
+      "cwd": "docker",
+      "disabled": false,
+      "env": {},
+      "execution": "service",
+      "extensions": {
+        "compose": {
+          "file": "docker-compose.yml",
+          "service": "redis"
+        }
+      },
+      "id": "compose.service:docker/redis",
+      "name": "redis",
+      "provider": "compose.service",
+      "source": "docker/docker-compose.yml",
+      "toolchains": {}
+    },
+    {
+      "args": [
+        "compose",
+        "-f",
+        "docker-compose.yml",
+        "up",
+        "sakura-execution-agent"
+      ],
+      "command": "docker",
+      "confidence": "declared",
+      "cwd": "docker",
+      "disabled": false,
+      "env": {},
+      "execution": "service",
+      "extensions": {
+        "compose": {
+          "file": "docker-compose.yml",
+          "service": "sakura-execution-agent"
+        }
+      },
+      "id": "compose.service:docker/sakura-execution-agent",
+      "name": "sakura-execution-agent",
+      "provider": "compose.service",
+      "source": "docker/docker-compose.yml",
+      "toolchains": {}
+    },
+    {
+      "args": [
+        "compose",
+        "-f",
+        "docker-compose.yml",
+        "up",
+        "schedule-server"
+      ],
+      "command": "docker",
+      "confidence": "declared",
+      "cwd": "docker",
+      "disabled": false,
+      "env": {},
+      "execution": "service",
+      "extensions": {
+        "compose": {
+          "file": "docker-compose.yml",
+          "service": "schedule-server"
+        }
+      },
+      "id": "compose.service:docker/schedule-server",
+      "name": "schedule-server",
+      "provider": "compose.service",
+      "source": "docker/docker-compose.yml",
+      "toolchains": {}
+    },
+    {
+      "args": [
+        "run",
+        "check"
+      ],
+      "command": "pnpm",
+      "confidence": "declared",
+      "cwd": "docker/sakura-playwright",
+      "disabled": false,
+      "env": {},
+      "execution": "task",
+      "extensions": {
+        "npm": {
+          "manager": "pnpm",
+          "script": "check"
+        }
+      },
+      "id": "npm.script:docker/sakura-playwright/check",
+      "name": "check",
+      "provider": "npm.script",
+      "source": "docker/sakura-playwright/package.json",
+      "toolchains": {
+        "runtime": "project-node"
+      }
+    },
+    {
+      "args": [
+        "run",
+        "export:playwright"
+      ],
+      "command": "pnpm",
+      "confidence": "declared",
+      "cwd": "docker/sakura-playwright",
+      "disabled": false,
+      "env": {},
+      "execution": "task",
+      "extensions": {
+        "npm": {
+          "manager": "pnpm",
+          "script": "export:playwright"
+        }
+      },
+      "id": "npm.script:docker/sakura-playwright/export:playwright",
+      "name": "export:playwright",
+      "provider": "npm.script",
+      "source": "docker/sakura-playwright/package.json",
+      "toolchains": {
+        "runtime": "project-node"
+      }
+    },
+    {
+      "args": [
+        "run",
+        "export:pytest"
+      ],
+      "command": "pnpm",
+      "confidence": "declared",
+      "cwd": "docker/sakura-playwright",
+      "disabled": false,
+      "env": {},
+      "execution": "task",
+      "extensions": {
+        "npm": {
+          "manager": "pnpm",
+          "script": "export:pytest"
+        }
+      },
+      "id": "npm.script:docker/sakura-playwright/export:pytest",
+      "name": "export:pytest",
+      "provider": "npm.script",
+      "source": "docker/sakura-playwright/package.json",
+      "toolchains": {
+        "runtime": "project-node"
+      }
+    },
+    {
+      "args": [
+        "run",
+        "run:batch"
+      ],
+      "command": "pnpm",
+      "confidence": "declared",
+      "cwd": "docker/sakura-playwright",
+      "disabled": false,
+      "env": {},
+      "execution": "task",
+      "extensions": {
+        "npm": {
+          "manager": "pnpm",
+          "script": "run:batch"
+        }
+      },
+      "id": "npm.script:docker/sakura-playwright/run:batch",
+      "name": "run:batch",
+      "provider": "npm.script",
+      "source": "docker/sakura-playwright/package.json",
+      "toolchains": {
+        "runtime": "project-node"
+      }
+    },
+    {
+      "args": [
+        "run",
+        "run:case"
+      ],
+      "command": "pnpm",
+      "confidence": "declared",
+      "cwd": "docker/sakura-playwright",
+      "disabled": false,
+      "env": {},
+      "execution": "task",
+      "extensions": {
+        "npm": {
+          "manager": "pnpm",
+          "script": "run:case"
+        }
+      },
+      "id": "npm.script:docker/sakura-playwright/run:case",
+      "name": "run:case",
+      "provider": "npm.script",
+      "source": "docker/sakura-playwright/package.json",
+      "toolchains": {
+        "runtime": "project-node"
+      }
+    },
+    {
+      "args": [
+        "run",
+        "test:export"
+      ],
+      "command": "pnpm",
+      "confidence": "declared",
+      "cwd": "docker/sakura-playwright",
+      "disabled": false,
+      "env": {},
+      "execution": "task",
+      "extensions": {
+        "npm": {
+          "manager": "pnpm",
+          "script": "test:export"
+        }
+      },
+      "id": "npm.script:docker/sakura-playwright/test:export",
+      "name": "test:export",
+      "provider": "npm.script",
+      "source": "docker/sakura-playwright/package.json",
+      "toolchains": {
+        "runtime": "project-node"
+      }
+    },
+    {
+      "args": [
+        "run",
+        "test:locator"
+      ],
+      "command": "pnpm",
+      "confidence": "declared",
+      "cwd": "docker/sakura-playwright",
+      "disabled": false,
+      "env": {},
+      "execution": "task",
+      "extensions": {
+        "npm": {
+          "manager": "pnpm",
+          "script": "test:locator"
+        }
+      },
+      "id": "npm.script:docker/sakura-playwright/test:locator",
+      "name": "test:locator",
+      "provider": "npm.script",
+      "source": "docker/sakura-playwright/package.json",
+      "toolchains": {
+        "runtime": "project-node"
+      }
+    },
+    {
+      "args": [
+        "run",
+        "test:session"
+      ],
+      "command": "pnpm",
+      "confidence": "declared",
+      "cwd": "docker/sakura-playwright",
+      "disabled": false,
+      "env": {},
+      "execution": "task",
+      "extensions": {
+        "npm": {
+          "manager": "pnpm",
+          "script": "test:session"
+        }
+      },
+      "id": "npm.script:docker/sakura-playwright/test:session",
+      "name": "test:session",
+      "provider": "npm.script",
+      "source": "docker/sakura-playwright/package.json",
+      "toolchains": {
+        "runtime": "project-node"
+      }
+    },
+    {
+      "args": [
+        "run",
+        "test:unit"
+      ],
+      "command": "pnpm",
+      "confidence": "declared",
+      "cwd": "docker/sakura-playwright",
+      "disabled": false,
+      "env": {},
+      "execution": "task",
+      "extensions": {
+        "npm": {
+          "manager": "pnpm",
+          "script": "test:unit"
+        }
+      },
+      "id": "npm.script:docker/sakura-playwright/test:unit",
+      "name": "test:unit",
+      "provider": "npm.script",
+      "source": "docker/sakura-playwright/package.json",
+      "toolchains": {
+        "runtime": "project-node"
+      }
+    }
+  ],
+  "generator": {
+    "fingerprint": "sha256:aafa137414ebc340d8c6c9d82538aa57b201da20170c50aac391257c499d2a39",
+    "inputs": {
+      "continew-automation/pom.xml": "sha256:2c91d5724b2816bd5a5d26585558b0328f43942e5f79b54b936a185b916a3125",
+      "continew-automation/src/main/java/top/continew/admin/automation/config/AutomationAiExceptionHandler.java": "sha256:10f155f4904b0beba7aba63abef6faf715d56cd98f8268300bb01b761bc76a64",
+      "continew-automation/src/main/java/top/continew/admin/automation/config/AutomationAiProperties.java": "sha256:7d474228dcb7bac813785439e488b08ea9c75465d42d1792ab54941df7586abc",
+      "continew-automation/src/main/java/top/continew/admin/automation/controller/AutomationAiController.java": "sha256:75a205e8dcec7c987f859fae2397d7a6912c18375be034f91e3cb5343394756e",
+      "continew-automation/src/main/java/top/continew/admin/automation/controller/AutomationBrowserConfigController.java": "sha256:976d9aa5bcabe44e3b60c722016410ebd7d7cbb6acc326bcd4e3b6a76d502937",
+      "continew-automation/src/main/java/top/continew/admin/automation/controller/AutomationEnvironmentConfigController.java": "sha256:8d5613ddc219eb043d379ae22fa62afad9f6ffc548b723edd9ff09d02c7f4319",
+      "continew-automation/src/main/java/top/continew/admin/automation/controller/AutomationEnvironmentResourceController.java": "sha256:30d704653af3ca480029b341c458d83f76e519b1c837bdaf20228b94d0d7b4e0",
+      "continew-automation/src/main/java/top/continew/admin/automation/controller/AutomationInfrastructureTargetController.java": "sha256:3b15a942cbb3ba0302dd25f8166806c30ea7bdcac0a91a6066e57fa71cb6847d",
+      "continew-automation/src/main/java/top/continew/admin/automation/controller/AutomationInfrastructureTaskController.java": "sha256:f2962cc41dbdef0e41eef16237e3997de02d09860174e22ad7515e29ac6bf282",
+      "continew-automation/src/main/java/top/continew/admin/automation/controller/AutomationJenkinsConfigController.java": "sha256:e7fae00f099acb1371e2d6364c8b5abcaa0c73c96cd2f22c67976b8b13aab414",
+      "continew-automation/src/main/java/top/continew/admin/automation/controller/AutomationNodeConfigController.java": "sha256:c283eb5f147d0dd24c51d64fb3f6e220c1057b16f9b5d31c567547f0493fb8c0",
+      "continew-automation/src/main/java/top/continew/admin/automation/controller/AutomationOperationCatalogController.java": "sha256:70506f3d50104f985aed548161345ec6f85f6911f893ae639673d6bcc0aaa775",
+      "continew-automation/src/main/java/top/continew/admin/automation/controller/AutomationPlaywrightArtifactController.java": "sha256:a1756c13af5b81e1764d11b64e3b34a35619e24c1c22de9924b9b8fa2a9fb1ad",
+      "continew-automation/src/main/java/top/continew/admin/automation/controller/AutomationPlaywrightBatchController.java": "sha256:d9466df4b2107280c03166a1b410832d92b4484a794033b87fd082a7f4ca8126",
+      "continew-automation/src/main/java/top/continew/admin/automation/controller/AutomationPlaywrightCaseController.java": "sha256:929c4d6379e251c29bb73c301e26a6463eabf5720eeadcac8015090574d6fab3",
+      "continew-automation/src/main/java/top/continew/admin/automation/controller/AutomationPlaywrightRunnerJobController.java": "sha256:e8a6e8d4e642a6d8053034f436365a569ba99fcc6b7f1e3844802c2f7b685be1",
+      "continew-automation/src/main/java/top/continew/admin/automation/controller/AutomationProjectConfigController.java": "sha256:591394e0593db7fe2059c63da7756932f3efd6e7ba3bdfeb854852cda74c402c",
+      "continew-automation/src/main/java/top/continew/admin/automation/controller/AutomationRecordingController.java": "sha256:5ea2ef0f28bbe6ce55c949efbd9042953bd6fcf7ae31dfb0cf4ad41eefd4dc0d",
+      "continew-automation/src/main/java/top/continew/admin/automation/controller/AutomationUiExecutionCaseQueryController.java": "sha256:b9459d92106b61935ee24e556d2ef596e38c25966ab1e09c5a5cb3f512b58400",
+      "continew-automation/src/main/java/top/continew/admin/automation/controller/AutomationUiExecutionQueryController.java": "sha256:b6fe3bb21c5447436b2658c1b45ce8a36955bd5c5979455325931698202fbaf0",
+      "continew-automation/src/main/java/top/continew/admin/automation/controller/AutomationUiExecutionStepQueryController.java": "sha256:ec359233624137284fd68b3fe78b72864b86d5c6a76a5300c9e1629c2d491601",
+      "continew-automation/src/main/java/top/continew/admin/automation/controller/AutomationUiSceneController.java": "sha256:536bd5b84d1e42dd79167371ec9555fcc3be5126332a97e472fc2ec23f47e4f5",
+      "continew-automation/src/main/java/top/continew/admin/automation/converter/AutomationInfrastructureRuntimeBindingResolver.java": "sha256:688ca5beabe02c9d94a30e760828f0df3ca85bb9a40a558e89fb3f1c516d3d44",
+      "continew-automation/src/main/java/top/continew/admin/automation/converter/AutomationOperationConfigValidator.java": "sha256:4cc0be7436b2c02c39293b3cb424c237869db5f5c6f4b4adec26f5282ae26eb1",
+      "continew-automation/src/main/java/top/continew/admin/automation/converter/AutomationOperationStepAssembler.java": "sha256:987f8904821a9b1b8c42c7b5be29e8864755a1c04ff940182f98b92e7402acfa",
+      "continew-automation/src/main/java/top/continew/admin/automation/converter/AutomationOperationStepReverseAdapter.java": "sha256:6306404685676679e93438cae0098cf44af4402e81e059bc37de03219c912c51",
+      "continew-automation/src/main/java/top/continew/admin/automation/converter/AutomationPlaybackUrlRewriter.java": "sha256:dd332032acbb2b650b4619a20f2b68d0bd1dec5a15f7f6aac168f6e2621d88eb",
+      "continew-automation/src/main/java/top/continew/admin/automation/converter/AutomationPlaywrightStepExtractor.java": "sha256:b08f0c56c51ccb3d1d2cd8476494803b7d14d836548d2b5ef17dafb09b2f52cb",
+      "continew-automation/src/main/java/top/continew/admin/automation/converter/AutomationRecordingActionResolver.java": "sha256:4304354944913549984c56296c5770083df7aca13091a5c79e76a62a892b17df",
+      "continew-automation/src/main/java/top/continew/admin/automation/converter/AutomationServerShellResultConfig.java": "sha256:e3813e62bef37745e0f18ff8e8cb4bf76f72d873d7b5bdfd73e26a38c7ec5638",
+      "continew-automation/src/main/java/top/continew/admin/automation/converter/AutomationUiDefinitionSnapshotMapper.java": "sha256:62463d197a2c711d6dbbc3671e392280e1ce0e79f32da2f1f9fe073ac551bc77",
+      "continew-automation/src/main/java/top/continew/admin/automation/converter/CuecastRecordingOperationProjector.java": "sha256:c14d1abdc80706e22b8ac4234e8f4f1d9ce92b08b0a1239e113abeff05912816",
+      "continew-automation/src/main/java/top/continew/admin/automation/converter/PlaywrightActionMapping.java": "sha256:8e5345a7cd9a53a35c81e62af4e138d57b069fdb0d16d61b8b5d693a163885bb",
+      "continew-automation/src/main/java/top/continew/admin/automation/converter/PlaywrightRecordingAssembler.java": "sha256:f4ce42d7905ceeb051cef063b47374a045a02d938e03d92d28b6d7525b1d149d",
+      "continew-automation/src/main/java/top/continew/admin/automation/enums/AiVariableExtractErrorCode.java": "sha256:58cbc53836a76ef900689dbe7617963b9b37a2926cb761b38b5c7315cf0a0d9a",
+      "continew-automation/src/main/java/top/continew/admin/automation/mapper/AutomationBrowserConfigMapper.java": "sha256:781aa47e7bb7339281a53085f233a5ce27ba3da6d432a082cc3af0d4cb4f83d5",
+      "continew-automation/src/main/java/top/continew/admin/automation/mapper/AutomationEnvironmentConfigMapper.java": "sha256:3ef6bcce880a6cb208d2e2bf2eb9810b45fcaa087936809de17e2229583d2d99",
+      "continew-automation/src/main/java/top/continew/admin/automation/mapper/AutomationExecutorRegistrationMapper.java": "sha256:71a35fcdcbadbb5ff83403f972aba32a151d023e06e8b5adeacadf9783a19a32",
+      "continew-automation/src/main/java/top/continew/admin/automation/mapper/AutomationFileAssetMapper.java": "sha256:bd0751885b26df4ef95570afc9c53d3bd55fb60fe20d240473331f9074cc956b",
+      "continew-automation/src/main/java/top/continew/admin/automation/mapper/AutomationInfrastructureTaskLogMapper.java": "sha256:9bd9dd7e87932034616c98bf3ac27f3c233684839aa4270e1715015b226132a3",
+      "continew-automation/src/main/java/top/continew/admin/automation/mapper/AutomationInfrastructureTaskMapper.java": "sha256:022846b1de5bc4eeea46c93f051cc1b71f3940fc565e595ad95748d66f5e9d87",
+      "continew-automation/src/main/java/top/continew/admin/automation/mapper/AutomationJenkinsConfigMapper.java": "sha256:03b4087cbe43eda7dfe35f7c0e119502f9aa5b895d03e3fdfbb50140f2b2ce54",
+      "continew-automation/src/main/java/top/continew/admin/automation/mapper/AutomationNodeConfigMapper.java": "sha256:55392dcac08788963f190c02af04ba6711cd08eee754ea2af50f3f3c04736961",
+      "continew-automation/src/main/java/top/continew/admin/automation/mapper/AutomationPlaywrightJobMapper.java": "sha256:8eee6212eb925a80548842a223adae0ca801a950253a03e91be4a5a7b39d62b2",
+      "continew-automation/src/main/java/top/continew/admin/automation/mapper/AutomationProjectConfigMapper.java": "sha256:67ded020ecd34fa06ba3553bca0c64c49bf5b7670249b4e57f1c1c89d1598019",
+      "continew-automation/src/main/java/top/continew/admin/automation/mapper/AutomationUiExecutionQueryMapper.java": "sha256:c830dd0880ce3580bab72544d5f97dba053922713187836f5e8c9892ebee1287",
+      "continew-automation/src/main/java/top/continew/admin/automation/mapper/AutomationUiSceneMapper.java": "sha256:841edc8bf6ce8ddf6a5d7339b058e5f1c698f10c84bb1abfabffe1f26a55477b",
+      "continew-automation/src/main/java/top/continew/admin/automation/mapper/AutomationUiSceneQueryMapper.java": "sha256:876bc6aa54b75b66486ec86c6dc9df9f5a08da56c432e6898469eea34c2075f5",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/catalog/AutomationOperationCatalog.java": "sha256:053c25905e0df1ac49f573a49d0c9b23f47c771f6b7081423ac0838dfe13ec8b",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/entity/AutomationBrowserConfigDO.java": "sha256:f1049a681e5c7c9fe6588ba59f09b47d14404c772372ea376db44572eda2099f",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/entity/AutomationEnvironmentConfigDO.java": "sha256:3258ac0f7383845b5efd6fbcf55e9ddfb5f57de750fe8b43209a47983db6584e",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/entity/AutomationExecutorRegistrationDO.java": "sha256:cb353ec2a46b55465cf491b8e500b1ab742baa98998fbe703068963df82b2fcc",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/entity/AutomationFileAssetDO.java": "sha256:c0ce9ef780e4cb8fa9988b7dfbd9fa0b7b23bf412e4f4edbd45398e8e82e99b8",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/entity/AutomationInfrastructureTaskDO.java": "sha256:29c9f4fc26ea9926475802c5982e00fdb89c3215b9843944eb06f6a9a0c52976",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/entity/AutomationInfrastructureTaskLogDO.java": "sha256:0d27e3fa024efbe3de6575280059018e7906681aa3b332f1669f78c71c30007b",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/entity/AutomationJenkinsConfigDO.java": "sha256:907779c8ea4312b80bfac5d16f9dcbce26175967116a53a69568ae150d8cc15b",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/entity/AutomationNodeConfigDO.java": "sha256:0b92a59cbbd8dcb2b8f16b2eb270adb8de66109faa8cf5d578f3399b16e5ae34",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/entity/AutomationPlaywrightJobDO.java": "sha256:47a7ce28c77181b23e4877b9949f8e07971deba8a3aaab6c259c917aef4885b7",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/entity/AutomationProjectConfigDO.java": "sha256:36e2583e4304c9e00d8f92ac6f7ceb8077a0fb5ca15f2a8c49349b871730b1f1",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/entity/AutomationUiSceneDO.java": "sha256:f71ac8054453b1faebd88ee0638249af3c7f757bde0476c4329a6a4db41db15e",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/entity/ui/CaseDO.java": "sha256:c775b758b531e7d9a54254823d13466e20e1fb0da6dd70a11a057ca317d21074",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/entity/ui/CaseExecutionConfigDO.java": "sha256:a8946ef28bd627c3e25ff913e53c14bec634c1a7f85e1b8f9b452fbde347da39",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/entity/ui/CaseOriginDO.java": "sha256:70077b5ce9a35c6a07df516304b26ddc5caebd8c4f2cb75fb9e3e81a9babd9ab",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/entity/ui/StepDO.java": "sha256:3f48dc1e958a5bc41e86349b95f1a44874d32c56909c500e0c9a40700e9288c8",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/enums/AutomationUiExecutionEngineEnum.java": "sha256:281a81b275142a6ba863868882dc7a7a69aa5c8c738f88f9552f578275cdd373",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/enums/AutomationUiTreeMovePosition.java": "sha256:f5e0e19260efa9100ce57d0ac4611649606298b92f5ff046fa5e71671bd9c4f8",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/enums/AutomationUiTreeNodeType.java": "sha256:f3827c2202fb8743ede1148f4fe0b8dbe8b6d1b81d817b956b05031a4858197c",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/query/AutomationBrowserConfigQuery.java": "sha256:e3af4d56e35a57526da898f70da56ffd36f6e9b989503473c58354eb92b4d379",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/query/AutomationEnvironmentConfigQuery.java": "sha256:f9b9a28fa78b9f1a0e3f42cf0e31eaf7c13400f24fb5eb44ad5ba340767cde4b",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/query/AutomationJenkinsConfigQuery.java": "sha256:b8a6213b512219567e8208022978927ba47f5d17120ba7a1a52ccd5e0830bf5f",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/query/AutomationNodeConfigQuery.java": "sha256:03bcab333256d1a1d97298ab4de31284fc74e47ce701853e8ffd21cae04016ae",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/query/AutomationProjectConfigQuery.java": "sha256:c19708b909b5f19299277a1b57a0ed77dee9596ef657e693cc4f62a009f09a94",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/query/AutomationUiDefinitionCaseReadRow.java": "sha256:1b7acc87cadac8189a8306cb0a799599327185ccd69c9ff841ece5faaaab3e1c",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/query/AutomationUiDefinitionProjectionStateRow.java": "sha256:a2e38e54400ab1daf8dfe95e115c457efba72f530fc4f782591463b49edb2998",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/query/AutomationUiDefinitionStepReadRow.java": "sha256:bae73d1f1ef2c647afe60d06f6abc6e024b7a05a928aea0807f204712015dee5",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/query/AutomationUiExecutionAccessRow.java": "sha256:14ade73deb8027b07c53a3e7c3683faf79f3e8112d670f7bdebad616a6eda5d5",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/query/AutomationUiExecutionCaseHistoryQuery.java": "sha256:5cecd08867147a1f56520ce96b79b76f21b01a4c9976d428356c41f80216b934",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/query/AutomationUiExecutionQuery.java": "sha256:9b7f03bf8804e8610a844e8a8c867de4763f29463ec6f780098e1f53d187cba4",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/query/AutomationUiSceneDefinitionRow.java": "sha256:66f0c1c7a372398083887727405b0ccd9ac6b62641564344ebda3f93837d74f0",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/query/AutomationUiSceneInlineDefinitionRow.java": "sha256:6cb52b985fc8d4888df209c3051a79aaf0c65c889a31d9d30188112e8090b47a",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/query/AutomationUiSceneQuery.java": "sha256:866644232f5624f66b2ad24fbadf429725835336a94274fdaf8fd8967a5aaadb",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/query/AutomationUiSceneSummarySort.java": "sha256:0426fedebbe29120ea10db8a75c6f33a361c11e4736de03eaabcdd76b0d7fdab",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/req/AutomationBrowserConfigReq.java": "sha256:d338307748a5d77abb9fd8e2326154318933e113495b212ce767bb2198fa8efd",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/req/AutomationEnvironmentConfigReq.java": "sha256:1d90bb2218c1e63da2aa6c51a6f3bf462d07091fa982628533ea45feacee5470",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/req/AutomationJenkinsConfigReq.java": "sha256:ae5a9f20f845d60c31b2b7a892d2653d5cfebb6de8327948211ac6753da8e049",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/req/AutomationNodeConfigReq.java": "sha256:9e062d852208fe6a7ecd5f02dfd99d6d1477f9c23c1eade004b49b321332f2db",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/req/AutomationProjectConfigReq.java": "sha256:353c5153a4a63c028b6b9d7dce7b5cbdca7ecdc722afc415a9c7f1a292e5ecc3",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/req/AutomationUiExecutionScopeReq.java": "sha256:a4e14c0c31937bbf5f44b75f3d22ccf532da45af15ffd75fc11e74d60e29ccfd",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/req/AutomationUiPageReq.java": "sha256:95efb1ff951d3161741f8b910bee364391732e57fe94b1ea398fc20aaa23822b",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/req/AutomationUiSceneClearReq.java": "sha256:f2059b7202666c6f3d40cc7bf7904d72bfc5895d30a1cf1b756c4d3e50277fe7",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/req/AutomationUiSceneExecAllReq.java": "sha256:b9e6f786f14fdf7600542eb32b7d524e18ee4edf9d922a0b0f6c2490092aac53",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/req/AutomationUiSceneExecReq.java": "sha256:dad13c1cb5cbb258e01b98c405192dbc4eeab1cddf052f2c3b83458282a8d646",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/req/AutomationUiSceneReq.java": "sha256:547f32d3b774f21fd3b1b84ac1e44798ad1d40f7dbe54a0bcee3c7c29b923f4f",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/req/AutomationUiSceneSummariesReq.java": "sha256:c6168be09be7beb0aaab843ff5e1aa31bf5bd1216e4198bd189512968dd773b1",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/req/AutomationUiSceneUploadResultReq.java": "sha256:be5a0c77d40d9cbd55862b758db4d3f673846484519969fded1685918cced3ea",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/req/AutomationUiTreeCopyReq.java": "sha256:3c7930465d278d234aca6500bb367c19f75abc7f14b26ed682ba67de61f9074e",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/req/AutomationUiTreeDeleteReq.java": "sha256:9226e3e35529925a35eb5151f7656e6d75c70dae772ae2eff40530478cbbc4d0",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/req/AutomationUiTreeMoveReq.java": "sha256:72e5de83d347f72590eebbc03cd2671efdf213b72c127f44fdb5e8408b7c2d86",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/req/AutomationUiTreeNodeRefReq.java": "sha256:68706203bd23de89c63dad6a5915f40fe98a848dcd7c728d5cad443fefbba612",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/req/ai/AutomationAiStepPlanReq.java": "sha256:98a184705252428a84fd37727674db87a0a0fed50348f7d6e5f428be052b938b",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/req/ai/AutomationAiVisionRecognizeReq.java": "sha256:8c99092237024f087df7928e5aac3fa143bc6fc6ef53bc94dd26b4ce28cd7030",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/req/ai/AutomationVariableExtractRuleReq.java": "sha256:d48099502f7dbdc7977f5a2fdeb97d0a1b3baef72c3d8e3abe750cec2c6be9ac",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/req/catalog/AutomationExecutorCapabilityReq.java": "sha256:d9cd8798457291c9cc0ccd93013e4a377e7a12434ab807f6a0de23749732e099",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/req/catalog/AutomationExecutorRegistrationReq.java": "sha256:10807f9f36e28ceb9e3956b21696c52235b86811a6d4eacf174ebdec1c80016a",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/req/environment/AutomationEnvironmentResourceBindingReq.java": "sha256:04496953e003110f1a3690a1882d1ecaa733569cce4f417e4ea4c0ec7ba08ea3",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/req/infrastructure/AutomationInfrastructureTaskCreateReq.java": "sha256:212d38dc0eef8cece5489e73e741a445fa42b9a9d979cbf9d752e6c695aa37d0",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/req/infrastructure/AutomationInfrastructureTaskDispositionReq.java": "sha256:4eb6dbf9a02a16cde5e45259b72f21a9e2afea1041640db0811a882422f8e436",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/req/playwright/AutomationCdpPlaybackOptionsReq.java": "sha256:d383a37034c7ff1747153cc5be095fd546b66d06f1f3c5422342e070c5e572a5",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/req/playwright/AutomationPlaywrightBatchCaseStatusReq.java": "sha256:74ddfbd1678f0ecc42d2c84dda9703d9811c269629c2f33edff8fb3a8e9a3ad5",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/req/playwright/AutomationPlaywrightBatchCreateReq.java": "sha256:9b6a76f65dba0780fe489593b169abcdb71de71800b1612f3da1e1b5a4c31ea0",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/req/playwright/AutomationPlaywrightResultReq.java": "sha256:ffb9db8846f41d8f5cf02dec44f3a518baf4c0df4541bda09a36bbcf53392d8a",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/req/playwright/AutomationPlaywrightRunnerJobReq.java": "sha256:c820d3fc9cee9e5843d9c9cf632b00aa2ef3b2247ac724483d3d31a6af5840fd",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/req/playwright/AutomationPlaywrightRunnerOptionsReq.java": "sha256:6541f91b84d216eb3257fd346271916e857806604ac49093b5719368191d7656",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/req/recording/AutomationRecordingImportReq.java": "sha256:28d5f132da3c5d9b1368081d12968f1b302b7403695a85006e19207244ae176e",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/req/recording/PlaywrightRecordedCaseReq.java": "sha256:12cd81d68003fd0f48a4f491cd792580f4f161e0ef3939f5415f1b8a86a9fee5",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/req/recording/PlaywrightRecordedStepReq.java": "sha256:e6808f82c2a0d54caa7bcbeb1f2073137f77303b0ca78d0cb85b3ee2c184d1e6",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/req/recording/RecordingSceneReq.java": "sha256:93fe596c6209aead8d2a133e5a45dac9352aa046191f8e74c5d7d7db1ed1c454",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/req/ui/AutomationUiCaseEditReq.java": "sha256:785b05f9e009814fd6270a526316279e79973b151eddd98f9f74ef2d05301f05",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/req/ui/AutomationUiCaseExecutionConfigReq.java": "sha256:e0d7c231450fd1b3e85fb3f8136a78b8219a195852c9d4be347108d4bb995866",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/req/ui/AutomationUiStepConfigEditReq.java": "sha256:938ee26df0adc953431949a625a1ba3cae340c0487430f1dcad6ccddb44b53cd",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/req/ui/AutomationUiStepCopyReq.java": "sha256:cdc01f2282559855eb9391d90b9acd6d8dbc9021ec0538ad0bc3802a04f67b75",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/req/ui/AutomationUiStepEditReq.java": "sha256:c5c9e3eec766561a93232b9fe7d0bac2051db100fbbbc3e77cb732613ff2f24a",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/resp/AutomationBrowserConfigDetailResp.java": "sha256:27d38043415034bee007c36f3e039b39c42652a339749490a1a620786a117134",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/resp/AutomationBrowserConfigResp.java": "sha256:e3e08d587bc8809d179fcc7657f5e35302659f5a7451f6c2ac62462c570542a1",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/resp/AutomationEnvironmentConfigDetailResp.java": "sha256:b338468a9df30bd2f7a81bc082902f62444a4e1060352c407ce5ae2ca944e799",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/resp/AutomationEnvironmentConfigResp.java": "sha256:1a78a529a764649374cc64da93143922ef23a9ed4b0a5868c8f585b2dd49daa4",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/resp/AutomationEnvironmentRuntimeStatusResp.java": "sha256:e1c73ecea735c7bdbea0a14d3afc8075eb00620aa5a9146f88ca08c4a637a96d",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/resp/AutomationJenkinsConfigDetailResp.java": "sha256:d358eed7190431079dd815690e3bc9ff8057a8f04df6773b9fab216848cc6d2c",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/resp/AutomationJenkinsConfigResp.java": "sha256:b2863c7786ef2f02be70ece073abf19f6b3aadd743dcb41e98a064fc7586c58e",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/resp/AutomationNodeConfigDetailResp.java": "sha256:d75104e143ee5f04c6d5f6bf7617265da8057fa9bf2807b79a3ab942129814eb",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/resp/AutomationNodeConfigResp.java": "sha256:16effcd8ce636615d5051bf5771eb9ced03212bb1365d2660cb332fb0d95d3ea",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/resp/AutomationProjectConfigDetailResp.java": "sha256:eaca8fbb28b9895d86e5598382e5462da9e7daa56351afaab1c9ac8b13b22004",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/resp/AutomationProjectConfigResp.java": "sha256:c5f3c0e31a67ca0c7596bdfd2e6712c9fbc8a862e152553c5bf2c68eb74c52e3",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/resp/AutomationUiDefinitionCaseNodeResp.java": "sha256:b5fca674139bc42bbab2df5730b8edaa1ee784e30a3a84514fba032bffb2774b",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/resp/AutomationUiDefinitionCasePageResp.java": "sha256:cd557e8bbca825440c004ddd99187bbb5c33f592370fd606cf8daf8e48938746",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/resp/AutomationUiDefinitionCaseResp.java": "sha256:307f7063d4559e1b40e5a8444b7a2487bea829c40b6d50781ec5fb7d0a3210f7",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/resp/AutomationUiDefinitionStepPageResp.java": "sha256:3f29e5f934b7fdea29e8a38e414bf05f1eef0ae9a9ed223267064c6993d30148",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/resp/AutomationUiExecutionArtifactResp.java": "sha256:58933b4a90f7db7aebb2961be265810fb2fe3fa4dc2d0c09a983113103e76812",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/resp/AutomationUiExecutionCaseHistoryResp.java": "sha256:6b1059652f0d416bd3578ebdf5405a4eecfd61b62c9e3fd5ed3f76570581ab93",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/resp/AutomationUiExecutionCaseResp.java": "sha256:5aa98c6cb438afde74563c79d5befaaba8192efa101dce936a0bbc46c75b8b0b",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/resp/AutomationUiExecutionDetailResp.java": "sha256:527d84f74662ffb300541fffe181c60f18d74f79d5da91b84b0476509d5657ee",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/resp/AutomationUiExecutionPageResp.java": "sha256:56bf7b10cf9121ff386a7dba61fd3e35ab73dff46cbfe8957106daedab5edce6",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/resp/AutomationUiExecutionStepDetailResp.java": "sha256:482c8cd57aef12258c9faa38e9954806b87a83bda2ea66f34456c90c1ea99bf1",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/resp/AutomationUiExecutionStepResp.java": "sha256:c89b1917fd1fe3a89a6eb71bad4784657960b8be333331878a8d26c31875407d",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/resp/AutomationUiExecutionSummaryResp.java": "sha256:872745ff2deef43db3fc58bd6688658f43b6b7bd185d593cbdf4a0123fabd664",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/resp/AutomationUiSceneDefinitionResp.java": "sha256:b27d31a220d3cbb22a8b78f8543d2e65ca7d2b1f81ba235ac80c910ce47d40e6",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/resp/AutomationUiSceneDefinitionScanResp.java": "sha256:776c86cace80af800b4b12a1a35b9eadc86b74745e591c7106b60561fff25906",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/resp/AutomationUiSceneDetailResp.java": "sha256:04262222c094a5c4f2107cdeb8187717b7756fdcc42c3c845d26a833d42734b3",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/resp/AutomationUiSceneExecResp.java": "sha256:87ea05917b97a582d87526196371aa130f76d53513ff29ab15f6aa9fa0f5bb6f",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/resp/AutomationUiSceneGlobalRevisionResp.java": "sha256:bcc2329cbc2d3f86a171d57b4832d0e28636adb96d1a7cf3df0eacbf843b84fc",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/resp/AutomationUiSceneResp.java": "sha256:2a4e8201384f0e5364b67d7fbcfdecc871909ee6d158d3c708c78a3275a86754",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/resp/AutomationUiSceneRevisionResp.java": "sha256:e1cd5f83854e985a62263a88904ba231b9d46f790b2814eef83d673c01d75d53",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/resp/AutomationUiSceneSummaryResp.java": "sha256:a2bb555719efda6963a2aec9298cd88b5855cd21b327d29173c4d6a0e1ef9f6c",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/resp/AutomationUiTreeMutationResp.java": "sha256:716d9a47d4df5d9a54927285195eff65c4f28c0fbeff58862bb008ef09c0e25b",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/resp/AutomationUiTreeNodeRefResp.java": "sha256:698327fb8080a6e8609e6e76cc62399a1f12e4a416fa30adb97da96a1f7c49a2",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/resp/ai/AutomationAiStepPlanResp.java": "sha256:af20f802d40496a7527e2264569e13527ac1d0f3cfc3219091508fe2b919e275",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/resp/ai/AutomationAiVisionRecognizeResp.java": "sha256:3a73270f978ae7012822e41e3c412ca1aa511b2886ed008822f705510408c8db",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/resp/ai/AutomationVariableExtractRuleResp.java": "sha256:4f8fb269e400bd961b93aee04c47b6121ae5074efa3e341aafe0bc6e713b9142",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/resp/environment/AutomationEnvironmentResourceResp.java": "sha256:dac122b7700e118de4147589af12096004d86a5a62a73f9b2533b39eed2d951e",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/resp/infrastructure/AutomationInfrastructureStatementResp.java": "sha256:6e1aa54814aa3d5a392c043c8fbd7e8a6dd02c2a440466c9435a9414e7e3163c",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/resp/infrastructure/AutomationInfrastructureTargetResp.java": "sha256:8743a7f8b26b12af2a85c915f1b6cc1dbd34623eb3b16c54b97038f5798d3a70",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/resp/infrastructure/AutomationInfrastructureTaskResp.java": "sha256:498d83a0513258f0c102261635e3ea0998d5d8a205e1d0fbe1342ed63632968c",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/resp/playwright/AutomationCdpPlaybackAvailabilityResp.java": "sha256:b8a0b46868ed84b17f39d7413a4666b582c20142f8b1c3148e604789a9b870a5",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/resp/playwright/AutomationPlaywrightArtifactResp.java": "sha256:f3440b9e5a4a2cb923f6bb09faebd8638638c07b49f93bfbaa479e5233fb4420",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/resp/playwright/AutomationPlaywrightBatchResp.java": "sha256:c5fb968753d5d463ffe7efe3bbc9afd822360fe9be05085310555ec4c5117285",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/resp/playwright/AutomationPlaywrightCaseCancellationResp.java": "sha256:f72a4c503c91c4e0377cba3b0fa7657dd27d1cbb68bd6d96f6b0691ee82f1576",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/resp/playwright/AutomationPlaywrightCaseResp.java": "sha256:41c52a13865a611bbcd56df8d1fd6a17dfc50ea850189e5bf5c9d545c3f69fe9",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/resp/playwright/AutomationPlaywrightRunnerJobResp.java": "sha256:47522203a7cb6df88c1dbd55d19436025da8880d6ec4f751f8cd46dd638f14e3",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/resp/playwright/AutomationPlaywrightRunnerLogResp.java": "sha256:5f62091fbce5742ce1454926fb2fe260bf309f953876d66fcf9551c840a682a7",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/resp/recording/AutomationRecordingImportResp.java": "sha256:48fbbc1daecc94de074932551a891c8e5ffd167334a34a5255b531966af54beb",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/resp/ui/AutomationCertificateUploadResp.java": "sha256:74f5ec99fb28dc119eee6675e5dc8103a4d9a8cdda1ed7fa6590f3da3b3ac08f",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/resp/ui/AutomationUiCaseDetailResp.java": "sha256:2e89b8c9800e30845808b8eff0d6bb09852fca76cb56d4848f09003a765f9cb5",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/resp/ui/AutomationUiCaseExecutionConfigResp.java": "sha256:a79f22f13547b473d9f2811f25931825b0d499c7a9dc4d5d0ca59e79f735c04f",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/resp/ui/AutomationUiCaseOriginResp.java": "sha256:06c2bbcf2c821e48ec36a82691c2a329ef32f54195b4c3dc01de1f813669e315",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/resp/ui/AutomationUiStepConfigResp.java": "sha256:dbe83d18e5f0c9f9deb57d1319fa306f6251907262281644c24e2c9b85a81c4b",
+      "continew-automation/src/main/java/top/continew/admin/automation/model/resp/ui/AutomationUiStepDetailResp.java": "sha256:e522841ba45f1a354d9cf87adec922e0c97e62ca259407939c828366fcad9b07",
+      "continew-automation/src/main/java/top/continew/admin/automation/service/AutomationAiStepPlanService.java": "sha256:869ab35a058fe61748e68141f82217758865ca73b72cd7eb7921e0a535470473",
+      "continew-automation/src/main/java/top/continew/admin/automation/service/AutomationAiVisionRecognizeService.java": "sha256:9ceb601718a41b03bb416367658ef6b96b95862dd63de906a6abd18020650409",
+      "continew-automation/src/main/java/top/continew/admin/automation/service/AutomationBrowserConfigService.java": "sha256:6e9a593db915927c96ee21f7b595d7fb6c448627f972af791876eddc29eae15a",
+      "continew-automation/src/main/java/top/continew/admin/automation/service/AutomationCaseExecutionClassifier.java": "sha256:57e599c351c32c81e04666fbc49a36052ea97056170d47f9aa959250150965da",
+      "continew-automation/src/main/java/top/continew/admin/automation/service/AutomationCertificateWorkspaceService.java": "sha256:aadac329ab619efbc42d2958f8740ed8e21b0cf81943f4f02b2ee784b7dd1461",
+      "continew-automation/src/main/java/top/continew/admin/automation/service/AutomationEnvironmentConfigService.java": "sha256:9790a089d2aa6ef4e6011a481a3ce06917bdf4cf03bbb5475b80a0d3e47230e5",
+      "continew-automation/src/main/java/top/continew/admin/automation/service/AutomationEnvironmentResourceService.java": "sha256:5a2a900380e6bf74301f710e1c815aefa482f193c783546e45507bc288d7ebdb",
+      "continew-automation/src/main/java/top/continew/admin/automation/service/AutomationExecutorRegistrationService.java": "sha256:724cab773a04a58e7e4bc07ff6a52ac1ff8e36b1e1f108e92d28ee7392eb8eea",
+      "continew-automation/src/main/java/top/continew/admin/automation/service/AutomationInfrastructureTaskService.java": "sha256:3cf537f626d8ec699984c81ac0862597c65328802787975b1e75271d0225fd00",
+      "continew-automation/src/main/java/top/continew/admin/automation/service/AutomationJenkinsConfigService.java": "sha256:5a2f23f232874661902c3bb7b92024d596bc518bf881a639ee92432a6fbc6a0a",
+      "continew-automation/src/main/java/top/continew/admin/automation/service/AutomationJenkinsExecutionConfigResolver.java": "sha256:613e83009f693c0524139f01f8570f2a8cdb5667fa613693b1fc89f65bfd3c92",
+      "continew-automation/src/main/java/top/continew/admin/automation/service/AutomationNodeConfigService.java": "sha256:0507e0be679567859142c9bd109a54523bcf5cb873a8a2c052c0a109181f39b0",
+      "continew-automation/src/main/java/top/continew/admin/automation/service/AutomationOperationCatalogService.java": "sha256:863818e0f2ca55b98658955602f5a0004eca1370b3fdaad72dc8186f9e0b8efa",
+      "continew-automation/src/main/java/top/continew/admin/automation/service/AutomationPlanReportProgressService.java": "sha256:1258c0273ff1bfd5678511e19ebbb5e5d1a2b78872a28cbc402db3c0a0bb701e",
+      "continew-automation/src/main/java/top/continew/admin/automation/service/AutomationPlaywrightArtifactService.java": "sha256:dc6d2d6c1fe4adbce975e1efbf26238b15714f7a0b5bbeb446c00cba10c5a5cb",
+      "continew-automation/src/main/java/top/continew/admin/automation/service/AutomationPlaywrightBrowserSessionService.java": "sha256:ad1c96e63daeca98a9fcf360bb70e43eb5b431c1923967949a278d580eeb20ce",
+      "continew-automation/src/main/java/top/continew/admin/automation/service/AutomationPlaywrightCaseService.java": "sha256:c595e57fc7851f67fceea5ad616ad16d066bd80f58f8123222efd86c7384b3d3",
+      "continew-automation/src/main/java/top/continew/admin/automation/service/AutomationPlaywrightRunnerJobService.java": "sha256:11df3ad7f51c5a6fe2e1b248a5bf7db2e1fabd63ef01b01b9b452e49694fd64a",
+      "continew-automation/src/main/java/top/continew/admin/automation/service/AutomationPlaywrightSessionStateService.java": "sha256:ae083f9efa0e2a7b854f1797094e141521f061ea15f4044fb14e7bdc0ed8d4d1",
+      "continew-automation/src/main/java/top/continew/admin/automation/service/AutomationProjectConfigService.java": "sha256:f5670ecf7ee145e16cd7c0fc8ad8fdc4b0158401e4c273311e68dc16d0e4353a",
+      "continew-automation/src/main/java/top/continew/admin/automation/service/AutomationRecordingImportService.java": "sha256:6502c2b405f8591d07fd48379106d517a6c91d8dd931acde286aad4c5a4f7050",
+      "continew-automation/src/main/java/top/continew/admin/automation/service/AutomationRecordingScreenshotService.java": "sha256:21766c70f36245d1b1c5bd0d589326fcb320ec27eed4264b0181209f64342288",
+      "continew-automation/src/main/java/top/continew/admin/automation/service/AutomationUiCaseDetailService.java": "sha256:e49bdd5bdbb402e9fc099c5c3a7eb432f7ca3f4d8c243403fff38378f8addb36",
+      "continew-automation/src/main/java/top/continew/admin/automation/service/AutomationUiCaseTreeService.java": "sha256:b6d218cf9a5207b51322290fbd00a98528bd266fc9be3ad162b10ef5009fba4b",
+      "continew-automation/src/main/java/top/continew/admin/automation/service/AutomationUiDefinitionProjectionService.java": "sha256:0cdcf55a0b079ee12e1fec8367a96d3982a79fe6795dc102371f6f72e8269a74",
+      "continew-automation/src/main/java/top/continew/admin/automation/service/AutomationUiExecutionQueryService.java": "sha256:52d6861c7d1a68d363480cb4291e491d70952e63aeb157132d999796f6f51a85",
+      "continew-automation/src/main/java/top/continew/admin/automation/service/AutomationUiExecutionRecordService.java": "sha256:82f68738aa2c971ffa4e0967a584050e5cecb00c572fe367018e406853e6d7db",
+      "continew-automation/src/main/java/top/continew/admin/automation/service/AutomationUiRecordSourceMigrationService.java": "sha256:9c5bcbc7d6c7a9090ff1c6c26c06e992aed78ab940377421c730aa0b19a8bb49",
+      "continew-automation/src/main/java/top/continew/admin/automation/service/AutomationUiSceneDefinitionScanService.java": "sha256:fee70ca09b63b6be725890e4b9e86ba3d9034e175ca008d7c7a6c387deb305a8",
+      "continew-automation/src/main/java/top/continew/admin/automation/service/AutomationUiSceneQueryService.java": "sha256:b96b895eea23cb54dd1c7dfdb795902a2239756b97d0c91832f6f10e9daf8c8e",
+      "continew-automation/src/main/java/top/continew/admin/automation/service/AutomationUiSceneService.java": "sha256:5e1563a93ee3b7d7aec047eea944f38c8c35abe389bcb00ba70db17a5d3b7946",
+      "continew-automation/src/main/java/top/continew/admin/automation/service/AutomationVariableExtractRuleService.java": "sha256:2c571707b83246203a4fea22f48a3d3b626f9585cae17710e1072a980c030ff5",
+      "continew-automation/src/main/java/top/continew/admin/automation/service/EffectiveExecutionConfigResolver.java": "sha256:913e4df7d83be827dd7332b9f50bb1e8ae858d265075549c3a7aca5e15f7945d",
+      "continew-automation/src/main/java/top/continew/admin/automation/service/impl/AutomationAiStepPlanServiceImpl.java": "sha256:5dbd18d7824893b4e17b6022e21996023f1fa7d5b6c9ae4f7c9b9ec3e21c2e29",
+      "continew-automation/src/main/java/top/continew/admin/automation/service/impl/AutomationAiVisionRecognizeServiceImpl.java": "sha256:3b29240e0f09a07d92832279894b84430e03af0b196264f1199b1a571a2093e1",
+      "continew-automation/src/main/java/top/continew/admin/automation/service/impl/AutomationBrowserConfigServiceImpl.java": "sha256:1276c9d8be7208270eb304637a9062528ee68bcd1ba143bdc7765cb3fd352af2",
+      "continew-automation/src/main/java/top/continew/admin/automation/service/impl/AutomationCertificateWorkspaceServiceImpl.java": "sha256:b25fe53518169a8afdcbdf270597f80563b81b4fbdc82a884f9afdc8b78299c8",
+      "continew-automation/src/main/java/top/continew/admin/automation/service/impl/AutomationEnvironmentConfigServiceImpl.java": "sha256:58183b905056c17a4c15f48c2ed87043ca5a2529454ad0c77bf4f490e99dba8a",
+      "continew-automation/src/main/java/top/continew/admin/automation/service/impl/AutomationEnvironmentResourceServiceImpl.java": "sha256:b3d08df0c3c289567585e05b6af938a7b4b2632abf3313ec8723b52e58f02f2e",
+      "continew-automation/src/main/java/top/continew/admin/automation/service/impl/AutomationExecutorRegistrationServiceImpl.java": "sha256:d77c1a90a187c6b4fab5051121f66f764772943c72517db01945555e240ca685",
+      "continew-automation/src/main/java/top/continew/admin/automation/service/impl/AutomationInfrastructureTaskServiceImpl.java": "sha256:f4fecc8b33be3959b78ea0d2dbf5129d80a544091b58356d5ae7b0f3ad9e4dc8",
+      "continew-automation/src/main/java/top/continew/admin/automation/service/impl/AutomationJenkinsConfigServiceImpl.java": "sha256:dd55d4e514833e4b919cf0f1d96c35511606f9c6aef72331675944e5e26ba014",
+      "continew-automation/src/main/java/top/continew/admin/automation/service/impl/AutomationNodeConfigServiceImpl.java": "sha256:872f26d7c44deb0143722ae69ef1c70be94d3d6da383c81ffa7da2e93e29e397",
+      "continew-automation/src/main/java/top/continew/admin/automation/service/impl/AutomationOperationCatalogServiceImpl.java": "sha256:f5aa38647f16884830d3edb341eee266f25cdd3298ceb46ba98ae0d36ab0f6d4",
+      "continew-automation/src/main/java/top/continew/admin/automation/service/impl/AutomationPlaywrightArtifactServiceImpl.java": "sha256:328d6e34e4db4b50306c4c40d3ad166228c4f8352f65efad4b6ff3249877c1ef",
+      "continew-automation/src/main/java/top/continew/admin/automation/service/impl/AutomationPlaywrightCaseServiceImpl.java": "sha256:e11227027aad941dff38b33f0910398b66bdb45c38682825445480fc374b5089",
+      "continew-automation/src/main/java/top/continew/admin/automation/service/impl/AutomationPlaywrightRunnerJobServiceImpl.java": "sha256:0c3d638a6cace70e728089f42c74eabae95e81d4e8812ffd5685ace9c2366e27",
+      "continew-automation/src/main/java/top/continew/admin/automation/service/impl/AutomationProjectConfigServiceImpl.java": "sha256:d190bd3c1021b9f05ddd7ace8f1cf58889112ea810258a92fba48ebeba430c58",
+      "continew-automation/src/main/java/top/continew/admin/automation/service/impl/AutomationRecordingImportServiceImpl.java": "sha256:ca5e659ebdca5d95a2ba7aa59bfae0b6de47692e5ab70f6e4983c959910a4eb0",
+      "continew-automation/src/main/java/top/continew/admin/automation/service/impl/AutomationRecordingScreenshotServiceImpl.java": "sha256:70819f2dcb77651963b71ff85098f6f0cbf95f052bd702d35f2b34238c2beec7",
+      "continew-automation/src/main/java/top/continew/admin/automation/service/impl/AutomationUiCaseDetailServiceImpl.java": "sha256:4527d1fa056831f90b6a2c0e83f6df297f9f7c5f1467d6b92e12e22106218dbe",
+      "continew-automation/src/main/java/top/continew/admin/automation/service/impl/AutomationUiCaseTreeServiceImpl.java": "sha256:c89f9511454b53bfb7a1c5697aad9729a3c33301d984b05437948d83b3444bb4",
+      "continew-automation/src/main/java/top/continew/admin/automation/service/impl/AutomationUiDefinitionProjectionServiceImpl.java": "sha256:110d2e165d593d1cbfb25744eba0cc48e992d67e5e621b7967949b29c4ca0f71",
+      "continew-automation/src/main/java/top/continew/admin/automation/service/impl/AutomationUiExecutionQueryServiceImpl.java": "sha256:fe9fe6eaa3c160f653089fdbb5346896e984fe4b08784e66bbf597e9f1260c1e",
+      "continew-automation/src/main/java/top/continew/admin/automation/service/impl/AutomationUiExecutionRecordServiceImpl.java": "sha256:a69ace800b92196e0c8b744b5de16e22bb8a44770716c515f697173d54b958f9",
+      "continew-automation/src/main/java/top/continew/admin/automation/service/impl/AutomationUiRecordSourceMigrationServiceImpl.java": "sha256:14e7326ac7777f94d2148f4af737264a1275408e8b6be592b4f9c6acf9defdd4",
+      "continew-automation/src/main/java/top/continew/admin/automation/service/impl/AutomationUiSceneDefinitionScanServiceImpl.java": "sha256:746a5b6f8f710b93c2fa120889bdb784493594a57ad392aeaec592afc04d1ba5",
+      "continew-automation/src/main/java/top/continew/admin/automation/service/impl/AutomationUiSceneQueryServiceImpl.java": "sha256:c1a82cd9f0819ae60ae58e21b3b9d39c00ad8c92b016f0e989530d2be4d7e3bb",
+      "continew-automation/src/main/java/top/continew/admin/automation/service/impl/AutomationUiSceneServiceImpl.java": "sha256:2175e77f26640009166ecde0b990448dcdec38bdc9a8ae9cc96f859c2aa6fb27",
+      "continew-automation/src/main/java/top/continew/admin/automation/service/impl/AutomationVariableExtractRuleServiceImpl.java": "sha256:53455db131b7774e49531b92c98e735d7ac9eb0cf047b3394f9c7e8c548c88f1",
+      "continew-automation/src/main/java/top/continew/admin/automation/service/impl/RecordingAppendCasePositionResolver.java": "sha256:245e5a0938cde2ffce7bc769d8fcbbcd1f27814ff3af7276b82f488f039d9289",
+      "continew-automation/src/main/java/top/continew/admin/automation/service/impl/RecordingStepPositionResolver.java": "sha256:298f5e6692a3cb671eeaf067d6513529d27c582977faf2e021f98520aa623fd9",
+      "continew-automation/src/main/java/top/continew/admin/automation/support/AutomationCdpPlaybackPolicy.java": "sha256:5d350be4b364d092b549c0e8f598fe7b2d57e0313eb909ff077713e19575a2f0",
+      "continew-automation/src/main/java/top/continew/admin/automation/support/AutomationExecutionAgentClient.java": "sha256:4631197afdf76f65416187a7b1142f890e773ed933af28fe7a8fff6932470fa9",
+      "continew-automation/src/main/java/top/continew/admin/automation/support/AutomationExecutionCapability.java": "sha256:21294c0dfab9ffb3a26ea908d7ebd1d22053b929f83eba3461eb3fd2d94af7b2",
+      "continew-automation/src/main/java/top/continew/admin/automation/support/AutomationExecutionHistoryPolicy.java": "sha256:c20b2605293aa9e9d1e6088dcfb253f19412a1179097b2680fbe7da779a6f7f8",
+      "continew-automation/src/main/java/top/continew/admin/automation/support/AutomationInfrastructureResultSanitizer.java": "sha256:9299b1f89e4dabcd01115868c41f0400cdd0878d7bf411e363dfd0be1e174c02",
+      "continew-automation/src/main/java/top/continew/admin/automation/support/AutomationInfrastructureRiskPolicy.java": "sha256:3764faa71a93968c5d6253781dda88dbd88ee2b01a652ef70987e33ea06956cf",
+      "continew-automation/src/main/java/top/continew/admin/automation/support/AutomationStoragePressureGuard.java": "sha256:120e44754c02cd599885cb00763797245a21fe2baa0f293b5e1d3402d38a9f20",
+      "continew-automation/src/main/java/top/continew/admin/automation/support/AutomationUiDefinitionDisplayMasker.java": "sha256:0452db2a4928ee48736483e83ce2093e7676b0626a6403106986078ae7621c34",
+      "continew-automation/src/main/java/top/continew/admin/automation/support/AutomationUiDefinitionProjectionUnavailableException.java": "sha256:19aa80808886648f2a9309ef5fb3c71d4187232b9475fd504c399632d658e88b",
+      "continew-automation/src/main/java/top/continew/admin/automation/support/AutomationUiExecutionCursorCodec.java": "sha256:c45abd33aa265fe063ae65daee2508535395f6fc5c177f6890f9c1821ab8c39a",
+      "continew-automation/src/main/java/top/continew/admin/automation/support/AutomationUiExecutionScopeSupport.java": "sha256:e2c68f30a784479992556b5a0caf62db83c392ae614bf58a4a316bb698f2237d",
+      "continew-automation/src/main/java/top/continew/admin/automation/support/AutomationUiQueryBaselineFilter.java": "sha256:d6c7a3744b926c60561a90747fd74a7c29a1d1b0ee6604ec07839ed7f8391ffb",
+      "continew-automation/src/main/java/top/continew/admin/automation/support/AutomationUiQueryBaselineRecorder.java": "sha256:e63220df5b1606a26140c98d13b83296a40a5c071757a44d465bd489764984f2",
+      "continew-automation/src/main/java/top/continew/admin/automation/support/AutomationUiQueryBaselineResponseAdvice.java": "sha256:8d8444103e1af204946aa093a5f753275a645800da3c09320c31e78c378e924d",
+      "continew-automation/src/main/java/top/continew/admin/automation/support/AutomationUiRecordSourceSupport.java": "sha256:c4ec93b384dec635e440f43cb05656a8309ebaef875586f013ba2fd6280603b3",
+      "continew-automation/src/main/java/top/continew/admin/automation/support/AutomationUiSceneAccessScopeResolver.java": "sha256:08b9ba650940351727a4045fe2afa874a351b97864efae6113cd4679c47d49c9",
+      "continew-automation/src/main/java/top/continew/admin/automation/support/ai/AiProviderException.java": "sha256:09d67691f16925d3f0ad2c6389314d73df73e2a8429ab034438c3bc940f2edb3",
+      "continew-automation/src/main/java/top/continew/admin/automation/support/ai/AiTextClient.java": "sha256:732ca23cbec6f442ee4b652c7202f5459ede2f4637568a7f8a8bec9485bde10b",
+      "continew-automation/src/main/java/top/continew/admin/automation/support/ai/ChatCompletionsAiTextClient.java": "sha256:9f2309d902e67ec5b67177b55a3c562400dc74249fc96b3265214d309de60ae2",
+      "continew-automation/src/main/java/top/continew/admin/automation/support/ai/VariableExtractRuleValidator.java": "sha256:8a3620d9573086dcd4b1126f8350d3a06f6d097a317e76429bf16332419af481",
+      "continew-automation/src/main/java/top/continew/admin/automation/util/AutomationUiSceneStatusCodes.java": "sha256:6c79896e52844c8d942bae9ef57aa3d5ae23b29cb98c81126cabffccd2eefa30",
+      "continew-automation/src/main/java/top/continew/admin/automation/util/AutomationUiSceneXmlUtils.java": "sha256:3e03a7f8338fd759c4ac8a1eb87c0e77574635e9304740aa5731ab6b1875162e",
+      "continew-automation/src/test/java/top/continew/admin/automation/config/AutomationAiExceptionHandlerTest.java": "sha256:db2b662ca9b62aac7992adef3910388b015dbbc201cd0c8fbf6f2b7f6781ae82",
+      "continew-automation/src/test/java/top/continew/admin/automation/controller/AutomationAiVariableExtractRuleControllerTest.java": "sha256:fd2f7262f00865abbffa778bd415f08b100480b35d6577318e60796f2fb79e7a",
+      "continew-automation/src/test/java/top/continew/admin/automation/controller/AutomationInfrastructureTaskControllerTest.java": "sha256:4b5b18c706a5caa146bc42b7b8cc6ffb9c5d795a90844c2eb3efce19f6c1866f",
+      "continew-automation/src/test/java/top/continew/admin/automation/controller/AutomationOperationCatalogControllerCacheTest.java": "sha256:9a3088d5f3f0a9c46039ecd90e8d5cf895763f4c01aef9b77d5604bbbc56e5d7",
+      "continew-automation/src/test/java/top/continew/admin/automation/controller/AutomationPlaywrightArtifactControllerTest.java": "sha256:a1c35f19df6576974f629c44229684f8a6472750fd35cea625f5ec3cf857524f",
+      "continew-automation/src/test/java/top/continew/admin/automation/controller/AutomationPlaywrightCaseControllerTest.java": "sha256:19ae8ce224ccadc2acab068d6e623dac60bd6402899bee29b81bc857e5bf4d5a",
+      "continew-automation/src/test/java/top/continew/admin/automation/controller/AutomationPlaywrightRunnerJobControllerTest.java": "sha256:e792aecb1fc00dee9db45c39ff2a4e97ea371c04da2a7e663715d5dd1b6ad8b3",
+      "continew-automation/src/test/java/top/continew/admin/automation/controller/AutomationRecordingControllerTest.java": "sha256:3884277e29767c3c2bd141f3d321c66345b313bd4b72b101488c95051f96a7f7",
+      "continew-automation/src/test/java/top/continew/admin/automation/controller/AutomationUiLayeredReadControllerContractTest.java": "sha256:311bc64708fd8de91e9d671083108d5e0ca81ad972cf0160bb0822cce8831e67",
+      "continew-automation/src/test/java/top/continew/admin/automation/controller/AutomationUiSceneDefinitionProjectionControllerTest.java": "sha256:417479d7688f2307605de6fe650018362de6ad1190dd9fad44e9e70b38c3abea",
+      "continew-automation/src/test/java/top/continew/admin/automation/converter/AutomationAttributeAssertionContractTest.java": "sha256:6018cfc1baa2cb3bb2992d4aed34908f04ef354522a74afa04ec24b46a045228",
+      "continew-automation/src/test/java/top/continew/admin/automation/converter/AutomationInfrastructureRuntimeBindingResolverTest.java": "sha256:69f418ea098603622e70c42b3c18d6c4bb94e0e08dee89352cf6f5cc9367a5cb",
+      "continew-automation/src/test/java/top/continew/admin/automation/converter/AutomationOperationStepAssemblerTest.java": "sha256:3867b3bd61a50022b295debc9c3ee33bb45a9479d039514c0fdfea3dff30db7d",
+      "continew-automation/src/test/java/top/continew/admin/automation/converter/AutomationOperationStepReverseAdapterTest.java": "sha256:dab5251bc3d6b0544a27bfcb26e51a0eacc6ce9b482cd0e03fb4bd4b1ec86446",
+      "continew-automation/src/test/java/top/continew/admin/automation/converter/AutomationPlaybackUrlRewriterTest.java": "sha256:dd2d1456019bf5630854e72d102d7b455105008a5bd57734021387e770712c76",
+      "continew-automation/src/test/java/top/continew/admin/automation/converter/AutomationPlaywrightStepExtractorTest.java": "sha256:9647688d9a522e486f216ade3369cfc536d5d01d5dabf1f3e9cb888e4108d803",
+      "continew-automation/src/test/java/top/continew/admin/automation/converter/AutomationRecordingActionResolverTest.java": "sha256:4d02172bbdc4f36751770fb6721aefd39e28a6773548da9651cd32250f403356",
+      "continew-automation/src/test/java/top/continew/admin/automation/converter/AutomationServerShellResultConfigTest.java": "sha256:16f6e9d06f6dc16c210471ac9515c995030a6c2e6d3672dd63417138fa0c825d",
+      "continew-automation/src/test/java/top/continew/admin/automation/converter/AutomationUiDefinitionSnapshotMapperTest.java": "sha256:0cabdbb8d9979b90f71f67f10eefc3d2f1f778c36c3748ebead712aaf676f269",
+      "continew-automation/src/test/java/top/continew/admin/automation/converter/CuecastRecordingOperationProjectorTest.java": "sha256:70b489e43604072c70756cb4477f22243e38480dd15f6bc280599bd76c3fc83c",
+      "continew-automation/src/test/java/top/continew/admin/automation/converter/PlaywrightActionMappingTest.java": "sha256:f7c7544c02b28c9874cce72231b40d0beb03464297764e3337f2ea8830815286",
+      "continew-automation/src/test/java/top/continew/admin/automation/converter/PlaywrightRecordingAssemblerTest.java": "sha256:a1c17053980a725bd0ef5a5cec08661f38b52b33d9118acb06f11a5991e62b27",
+      "continew-automation/src/test/java/top/continew/admin/automation/mapper/AutomationUiExecutionQueryMapperXmlTest.java": "sha256:460cb78784cc8310e1beebbd179bf24c9bf7c190982cdc29ce07a45886280a7b",
+      "continew-automation/src/test/java/top/continew/admin/automation/mapper/AutomationUiSceneMapperXmlTest.java": "sha256:2b042ff55e753170bfd1775d87324383ac5102721adf444a55501a35c6e681a0",
+      "continew-automation/src/test/java/top/continew/admin/automation/mapper/AutomationUiSceneQueryMapperXmlTest.java": "sha256:7b6c8789e9682b148565ed78acd8ab7853995b8a148b41e5dfd1b9367bb7058b",
+      "continew-automation/src/test/java/top/continew/admin/automation/model/req/infrastructure/AutomationInfrastructureTaskCreateReqTest.java": "sha256:8e9963ea72efa866a399e3687041e18d9b62beda2c13b8fcf3f097d4a5bdc25e",
+      "continew-automation/src/test/java/top/continew/admin/automation/model/resp/AutomationUiExecutionReadContractTest.java": "sha256:f42dce9eace5fa6ac6bf576a12c52f424d0b1a7e8a2e9083d474c99ccb52f83a",
+      "continew-automation/src/test/java/top/continew/admin/automation/model/resp/AutomationUiSceneReadContractTest.java": "sha256:ca0f2030f9c3aa4c3d003838d97e055135d565469cd773016c26cd4aba3e9b6e",
+      "continew-automation/src/test/java/top/continew/admin/automation/service/AutomationCaseExecutionClassifierTest.java": "sha256:3d4921e991accefe5181962c8cfe5017a62b171957c42491ccb11039689b2cb8",
+      "continew-automation/src/test/java/top/continew/admin/automation/service/AutomationJenkinsExecutionConfigResolverTest.java": "sha256:b21193a69b813e98424674722a409e78c578b6bac3c6ee89eae9c8e7a96bd870",
+      "continew-automation/src/test/java/top/continew/admin/automation/service/AutomationPlaywrightSessionStateServiceTest.java": "sha256:afa23379febaa3b610d4832bff0c06a61b77a31cdef6ff6895d303e8a0909cf7",
+      "continew-automation/src/test/java/top/continew/admin/automation/service/EffectiveExecutionConfigResolverTest.java": "sha256:ce89602c1f78dacec8c944998c56aa132d3829319f4ea8581369af691438289e",
+      "continew-automation/src/test/java/top/continew/admin/automation/service/impl/AutomationCertificateWorkspaceServiceImplTest.java": "sha256:11db9bae88f675e4dc5dfbbb436bafd3307a9a83f8fcffa6c6e16f51d9187bc6",
+      "continew-automation/src/test/java/top/continew/admin/automation/service/impl/AutomationEnvironmentResourceServiceImplTest.java": "sha256:4488f2c6fc6b3c55164199493e8e376ce215cf1d0e8e895a55391ed6418c257a",
+      "continew-automation/src/test/java/top/continew/admin/automation/service/impl/AutomationInfrastructureShellResultTest.java": "sha256:26c0e07d1dadd2ebf3148e76be8cd52ec9c79fe40ff1345e7d7518351f487a48",
+      "continew-automation/src/test/java/top/continew/admin/automation/service/impl/AutomationInfrastructureTaskResultPreviewTest.java": "sha256:dcf71e14138ecba5eee7a54ab8287fc74c9888dd71e8ed58c2bbae2ddb025752",
+      "continew-automation/src/test/java/top/continew/admin/automation/service/impl/AutomationInfrastructureTaskUncertainOutcomeTest.java": "sha256:c405e9a746929803c8add3d5c9a3dedd2664f8cf6b8d564f7ed3934ef4e26bae",
+      "continew-automation/src/test/java/top/continew/admin/automation/service/impl/AutomationOperationCatalogServiceImplTest.java": "sha256:ac870b4eafdc671d8a5452e2658658476650c9d487cdc19130d3dcb7e99a4b3d",
+      "continew-automation/src/test/java/top/continew/admin/automation/service/impl/AutomationPlaywrightArtifactServiceImplTest.java": "sha256:946ce1e0d230bbfc9e4f42b87fad31353284590315f865d0e505f946a7c322cc",
+      "continew-automation/src/test/java/top/continew/admin/automation/service/impl/AutomationPlaywrightCaseServiceImplTest.java": "sha256:5001985611e0534f2c2ffc7511380c7525ae95b124d620de030a1dc8d75efcfc",
+      "continew-automation/src/test/java/top/continew/admin/automation/service/impl/AutomationPlaywrightRunnerJobServiceImplTest.java": "sha256:18da4fd32a90bcff7696fac82ffd88a701c1e660acb3283508994f56eaca1ad0",
+      "continew-automation/src/test/java/top/continew/admin/automation/service/impl/AutomationRecordingImportServiceImplTest.java": "sha256:0d8bdb93d3b0c0902f4492ae71abf410e338ce9d9ab15785787ace6810760e66",
+      "continew-automation/src/test/java/top/continew/admin/automation/service/impl/AutomationUiCaseDetailServiceImplTest.java": "sha256:6d95a6e439d63a39d3131d37a48ab8b54e2d21185c9ed764ffcb6aec22adabd9",
+      "continew-automation/src/test/java/top/continew/admin/automation/service/impl/AutomationUiCaseTreeServiceImplTest.java": "sha256:6a9440ce30c180cb967897446ee6c2da65ce1cb69784f4aa60ec5442ca6e5724",
+      "continew-automation/src/test/java/top/continew/admin/automation/service/impl/AutomationUiDefinitionProjectionServiceImplTest.java": "sha256:2375f6fa17ff39ca0c49818cba22b2ea93f5a13b38357ebea12b24f5b2721a71",
+      "continew-automation/src/test/java/top/continew/admin/automation/service/impl/AutomationUiExecutionQueryServiceImplTest.java": "sha256:44380d0fcdf4b68d014913e91b9cba47327fb80af2b913f5db49c6587583dd90",
+      "continew-automation/src/test/java/top/continew/admin/automation/service/impl/AutomationUiExecutionRecordServiceImplTest.java": "sha256:4e9f6e982efeb3e2be8198a756fcacb1b211d407b68ca932997b05eecd3efecf",
+      "continew-automation/src/test/java/top/continew/admin/automation/service/impl/AutomationUiRecordSourceMigrationServiceImplTest.java": "sha256:c76305f8d7218b177a78a8fd71807e657a22865ab977a28e45db31fa863c410b",
+      "continew-automation/src/test/java/top/continew/admin/automation/service/impl/AutomationUiSceneQueryServiceImplTest.java": "sha256:c40e1d40dfcbbf164b8d37ec77740a42ebbe28825a469144ae4943adb1e27305",
+      "continew-automation/src/test/java/top/continew/admin/automation/service/impl/AutomationUiSceneServiceImplTest.java": "sha256:c265d14b59f6cf3415719ff37c1223274a1fcc5cefc615d5817ea311287b4981",
+      "continew-automation/src/test/java/top/continew/admin/automation/service/impl/AutomationVariableExtractRuleServiceImplTest.java": "sha256:a6256360ffa2e13267a4272a111b4473861594ef68a313d10923fda491d8f4fa",
+      "continew-automation/src/test/java/top/continew/admin/automation/service/impl/RecordingAppendCasePositionResolverTest.java": "sha256:6e0af10e8aa0c587930f02b26c10e7f80c0bde53fe328f220da6f9029b41eac8",
+      "continew-automation/src/test/java/top/continew/admin/automation/service/impl/RecordingStepPositionResolverTest.java": "sha256:069df870a5e47785a63d71c72f64ca8cc07f0bc69a2345b19d01accba781905c",
+      "continew-automation/src/test/java/top/continew/admin/automation/support/AutomationCdpPlaybackPolicyTest.java": "sha256:677df111635ab42585430b692823d97024a1d61efe22a806db371a6532e033ea",
+      "continew-automation/src/test/java/top/continew/admin/automation/support/AutomationExecutionAgentClientTest.java": "sha256:010be5ec9a7773b453beca22a37a1afc9d8f397a185594b9c5b3c7deed1f0d65",
+      "continew-automation/src/test/java/top/continew/admin/automation/support/AutomationExecutionCapabilityTest.java": "sha256:2cb2264ccd6c9fcae4938c3298f4898c63576dc9120de1f362b023a3b4ffdb23",
+      "continew-automation/src/test/java/top/continew/admin/automation/support/AutomationInfrastructureRiskPolicyTest.java": "sha256:cec0cfbaff08687824370319b3095d693b9eb000096b31c8c8606ffca476b276",
+      "continew-automation/src/test/java/top/continew/admin/automation/support/AutomationUiDefinitionDisplayMaskerTest.java": "sha256:ca7f6c517a32bc0f22be55fffc5b8968747a97a87e94d0b7302098ea5a718a21",
+      "continew-automation/src/test/java/top/continew/admin/automation/support/AutomationUiExecutionCursorCodecTest.java": "sha256:27ae6b7745240590c89b07c431e340d352d65f0452c6a80ea0c0270981f371a1",
+      "continew-automation/src/test/java/top/continew/admin/automation/support/AutomationUiExecutionScopeSupportTest.java": "sha256:e15de2d4f5853dbf973f8e2d051dde5f0b960ba0106bb2f3f8b730f1269a1312",
+      "continew-automation/src/test/java/top/continew/admin/automation/support/AutomationUiQueryBaselineConditionTest.java": "sha256:50b52c6a69fcb94938fb06431b2f7d9cadc8233d70528348c004a83405dd8b14",
+      "continew-automation/src/test/java/top/continew/admin/automation/support/AutomationUiQueryBaselineFilterTest.java": "sha256:4129d397e37f45e0f13f7b01b45b6e8a6c0edb718498dcbc7a5a7ddadf1b31fe",
+      "continew-automation/src/test/java/top/continew/admin/automation/support/AutomationUiQueryBaselineRecorderTest.java": "sha256:59c1f1a618e3e6837994830b0a9427815daad0b4c0233576f9d3027beb6afeea",
+      "continew-automation/src/test/java/top/continew/admin/automation/support/AutomationUiRecordSourceSupportTest.java": "sha256:1744b7a4c25881fb64abefa71a6ed3d0d9edf3004692365d0512db40c0437c0a",
+      "continew-automation/src/test/java/top/continew/admin/automation/support/JenkinsServiceSecurityTest.java": "sha256:6b408f1e1e4655dc69ee33c962813c8856bee0300850faa9e6a89b60b8fc47dd",
+      "continew-automation/src/test/java/top/continew/admin/automation/support/ai/MockAiTextClient.java": "sha256:aff2518eeea2521f2374ecd7905913f0558cd0b11a3d9210fd295372bfd90b84",
+      "continew-automation/src/test/java/top/continew/admin/automation/support/ai/VariableExtractRuleValidatorTest.java": "sha256:9996bc9677bd7280d64fdbb61ef4194c33faeb51ca21bc7855db371853716475",
+      "continew-automation/src/test/java/top/continew/admin/automation/util/AutomationUiSceneStatusCodesTest.java": "sha256:ce2240579426199431a0d497dae4ee9176899f788156099aae00cc9e8aee7497",
+      "continew-automation/src/test/java/top/continew/admin/automation/util/AutomationUiSceneXmlUtilsContractTest.java": "sha256:aaba1a554bc4ff80f6f93e7e3d47ece5b173b2c36cebe9b36d85871a54216efd",
+      "continew-common/pom.xml": "sha256:1dd455e30d9f3bf42a404dd8b364d6fb762d3042026114fe31464508cddb8c4e",
+      "continew-common/src/main/java/top/continew/admin/common/config/doc/GlobalAuthenticationCustomizer.java": "sha256:07d28d5d54fbcd6f27daca2075796af05fcc43261e35e31070f58ef381c281aa",
+      "continew-common/src/main/java/top/continew/admin/common/config/doc/GlobalDescriptionCustomizer.java": "sha256:0daaeaaf5a93072b466c0c49b470018b12bbb147ec2f47fd0c78fd56249b558f",
+      "continew-common/src/main/java/top/continew/admin/common/config/doc/OperationDescriptionCustomizer.java": "sha256:03f9387378af58aec2c5264823d3367fd9cce24ca8c722ad14d5a244d7d1298a",
+      "continew-common/src/main/java/top/continew/admin/common/config/excel/DictExcelProperty.java": "sha256:6e9a30f5af33d4325c72eec73732db756dcd2e9d54bcc4d1cda54b3ffad2f396",
+      "continew-common/src/main/java/top/continew/admin/common/config/excel/ExcelDictConverter.java": "sha256:f4a6370dbe52a1bb1b05e3d91b4c611e233398e34ee6f9c0837190450e709954",
+      "continew-common/src/main/java/top/continew/admin/common/config/exception/GlobalExceptionHandler.java": "sha256:7765d60c363e4523af26f9c581c1ea6cdd41283fa18ad1acea386438b083cf65",
+      "continew-common/src/main/java/top/continew/admin/common/config/exception/GlobalSaTokenExceptionHandler.java": "sha256:c8c19fce426588bc579c8b4096e12fdcba89a49e18f8ae8ef598086dd98285d7",
+      "continew-common/src/main/java/top/continew/admin/common/config/mybatis/BCryptEncryptor.java": "sha256:5a8e286c86cc1d1a82841f0c142803dc98a2635d2e5bde810dfa5b3057fe584f",
+      "continew-common/src/main/java/top/continew/admin/common/config/mybatis/DataPermissionMapper.java": "sha256:d4d7b6f9b04a1825cb0d781133379de01ccfee5625e306d1977662e884e6f9ac",
+      "continew-common/src/main/java/top/continew/admin/common/config/mybatis/DefaultDataPermissionUserContextProvider.java": "sha256:c9c7fc4747a985cdee51ad2cea8cf229da4ca3b0cc072fdf0c41a06993faa9ea",
+      "continew-common/src/main/java/top/continew/admin/common/config/mybatis/LocalDateTimeAwareJacksonTypeHandler.java": "sha256:a2919c852a082ab8f39cc716c8c28e8cfebada6b6f3052fea3d2c3d0b99ba877",
+      "continew-common/src/main/java/top/continew/admin/common/config/mybatis/MyBatisPlusMetaObjectHandler.java": "sha256:9bbdaa6f663ea25af9c7b2ad21baf096adb2e27bf8efbd6af1c2645b1aca9a2f",
+      "continew-common/src/main/java/top/continew/admin/common/config/mybatis/MybatisPlusConfiguration.java": "sha256:f042fe5839809ee7667eca423ebc0e0a490c83586acdd8f498dddf8c00435542",
+      "continew-common/src/main/java/top/continew/admin/common/config/properties/CaptchaProperties.java": "sha256:9c0965568971024f4260bee7b210e457bbfdb373958c1962f1977502a5be2357",
+      "continew-common/src/main/java/top/continew/admin/common/config/properties/RsaProperties.java": "sha256:bf309d68ccae9a12a834e0a4bc7e075e8378ca61328c062650435b22afbcee58",
+      "continew-common/src/main/java/top/continew/admin/common/config/websocket/WebSocketClientServiceImpl.java": "sha256:6afa70758dde320b015a9ec600981ef7dd6a2cf82708eb6a8a7c4d8a7ec376f3",
+      "continew-common/src/main/java/top/continew/admin/common/constant/CacheConstants.java": "sha256:5fe3a0e6d91ed6a8bd3af734c6d6e669a963fbdfbee87e46a15c984a2972407e",
+      "continew-common/src/main/java/top/continew/admin/common/constant/ContainerConstants.java": "sha256:c8f12752a0b75a093acb7380dd7828eb03da8d9f42b39f8c286e3afdcd0ca3f9",
+      "continew-common/src/main/java/top/continew/admin/common/constant/RegexConstants.java": "sha256:b98ca4dc24e1784556f54b0a0b18bd45c37974482a10841ee0650d3523cb1525",
+      "continew-common/src/main/java/top/continew/admin/common/constant/SysConstants.java": "sha256:0da6705c19fca9cdacc32bfd90f74cebd51e4493fbbbfaa6194c06024dcc8b6d",
+      "continew-common/src/main/java/top/continew/admin/common/constant/UiConstants.java": "sha256:e8fd012b80dbf9e961f6868134a0632ecb7d89b1d9b13cc04abc74e7ca08d480",
+      "continew-common/src/main/java/top/continew/admin/common/context/RoleContext.java": "sha256:43223e988d096bf23bb642858fcfb65c44e522a8830e591854f486e83e64fe0c",
+      "continew-common/src/main/java/top/continew/admin/common/context/UserContext.java": "sha256:8860c8ab8c13e637326098de88a6783d7eb71e6471975ea0c5066a2726a4abe9",
+      "continew-common/src/main/java/top/continew/admin/common/context/UserContextHolder.java": "sha256:dd61619cb2f921665bd29f1f8b33236ac443d8aa52ecd8d3ba2b4933b85f4571",
+      "continew-common/src/main/java/top/continew/admin/common/context/UserExtraContext.java": "sha256:8f92088656278c6bc7ab7114739e5e6e0007d3c3887f810f57f8b0a8595a925c",
+      "continew-common/src/main/java/top/continew/admin/common/controller/BaseController.java": "sha256:152a6528ab2af4a37924466e47eaaba22a78f1b158e5420dbc2b2f807e6c6687",
+      "continew-common/src/main/java/top/continew/admin/common/core/text/CharsetKit.java": "sha256:432ebb3e0030127e7c8cb59d0467d4e68c9c487555aba506899a8d082234c853",
+      "continew-common/src/main/java/top/continew/admin/common/core/text/Convert.java": "sha256:d0d9ddfff88de87d0544ef89d77972234844471f61543f3a96c6cbc36efdb9ca",
+      "continew-common/src/main/java/top/continew/admin/common/core/text/StrFormatter.java": "sha256:ebac5701d4ba81e6103192a1fcfd03e510b26d779e7b21c9b13fd9e5391b73c3",
+      "continew-common/src/main/java/top/continew/admin/common/date/DateUtil.java": "sha256:dc0a36b82fed996424befe09d5f1c7d6666649f1a097b03ac0f83b9d27442d03",
+      "continew-common/src/main/java/top/continew/admin/common/date/DateUtils.java": "sha256:787ac6f13ebe3129766a2c86a1c270fc8ff32f1773c55f4fc6326e56972dfd51",
+      "continew-common/src/main/java/top/continew/admin/common/db/ClickHouseUtil.java": "sha256:34b73e034eb84ee24e7071d6584971362d77e28da279826fa23858ce1138dbfa",
+      "continew-common/src/main/java/top/continew/admin/common/db/DataBaseUtil.java": "sha256:2ba4714f60d81d0a8b0c42bd39e88458f4b4e75938e04818541ce67993acc658",
+      "continew-common/src/main/java/top/continew/admin/common/db/MongoDBUtil.java": "sha256:cc6c76d9e92d395c58b4310406ee73a3847a8c5cdfef2b87bab947068667793b",
+      "continew-common/src/main/java/top/continew/admin/common/enums/DataScopeEnum.java": "sha256:fd97b4cf946cfecc3cc94ca46d42fb1c2ca729717f8442047bb3174e1ec3fb16",
+      "continew-common/src/main/java/top/continew/admin/common/enums/DisEnableStatusEnum.java": "sha256:7bcc1931199036cf251c62b14b348f12f5cb66a5f7a612c89ff8a18161b950a5",
+      "continew-common/src/main/java/top/continew/admin/common/enums/GenderEnum.java": "sha256:790f8efa3e8c88420c491ca8bfc019cf2942b401ce9d677e033a75e7d691564c",
+      "continew-common/src/main/java/top/continew/admin/common/enums/StatusTypeEnum.java": "sha256:9c3d3cc9d1304b0358e01e22bfba4b292985ad8e795ea1f3c2eea53072acf698",
+      "continew-common/src/main/java/top/continew/admin/common/enums/SuccessFailureStatusEnum.java": "sha256:7db51f857528f468c081852c29a10cdd65d6ef84b9e94098bd8d89c54114ba8e",
+      "continew-common/src/main/java/top/continew/admin/common/jenkins/CustomService.java": "sha256:403d8b32a461024aebba68809a3eb5c8f08a715a762de6ba7177f1150d65c689",
+      "continew-common/src/main/java/top/continew/admin/common/jenkins/JenkinsApi.java": "sha256:2c8173fff39194f28903fca78f2619b8a147e1ff02d9a55704dc056801a907a1",
+      "continew-common/src/main/java/top/continew/admin/common/jenkins/JenkinsClient.java": "sha256:12392b50c3949023a519b7ebf951a95b0f094735855bd977def73a7ec6eaeee9",
+      "continew-common/src/main/java/top/continew/admin/common/jenkins/JenkinsConnect.java": "sha256:3d5629c83ed9d176aa53cf90054b6e534b8625d93820330894cd7dd52357c25c",
+      "continew-common/src/main/java/top/continew/admin/common/jenkins/JenkinsService.java": "sha256:31451aa9e190d13f7befdb2a8d2d8688a9316fdc356ad311c1d97d8e63b7ae6f",
+      "continew-common/src/main/java/top/continew/admin/common/jenkins/JobApi.java": "sha256:e63d8970efd44698e39f75bc646b360aec9577dd322cfc0225fd1df4f1c9f0dc",
+      "continew-common/src/main/java/top/continew/admin/common/jenkins/JobBuildApi.java": "sha256:a18659da1b95e0bfd925219a863c37ade970622655e8cf604e3b548a274f2053",
+      "continew-common/src/main/java/top/continew/admin/common/jenkins/ViewApi.java": "sha256:4f9525a482eda9577b199c4fe01e7d60d490b9ec63e134a8e5f62d85fb8ee1a4",
+      "continew-common/src/main/java/top/continew/admin/common/json/JSONObject.java": "sha256:43cc01ce712a73587fae5cfc1d16c09517c37da28fd78fa62cf4d4d3f91dcad3",
+      "continew-common/src/main/java/top/continew/admin/common/json/JsonUtil.java": "sha256:54dca286e006a60ff655363bc4bae15a49a59b4a8115261d469a0743329fee3c",
+      "continew-common/src/main/java/top/continew/admin/common/json/JsonUtils.java": "sha256:e960b4d565e1120fd800c959662fa38eaada7076296027313662dda7f6a13281",
+      "continew-common/src/main/java/top/continew/admin/common/model/entity/BaseCreateDO.java": "sha256:438833161f516b1c67d669554ba12e2b3db9df757652481e243f948c437e1781",
+      "continew-common/src/main/java/top/continew/admin/common/model/entity/BaseDO.java": "sha256:978fb501369b765a9dec916f358eb235cdb2c7b776ade9aeb44c6fb02ba9fed3",
+      "continew-common/src/main/java/top/continew/admin/common/model/entity/BaseUpdateDO.java": "sha256:1f07ef71c3b216944e42f7174eccc7310086dc1fc46b1b95ac360968b5d37237",
+      "continew-common/src/main/java/top/continew/admin/common/model/req/CommonStatusUpdateReq.java": "sha256:9c304317ed361413724614b719d092a68bc7fe18471ae421f514b2b762368a9e",
+      "continew-common/src/main/java/top/continew/admin/common/model/resp/BaseDetailResp.java": "sha256:dfb88dc70835f84de552e65842a96b0eb31be30c9e37158e1837c72cd4dda959",
+      "continew-common/src/main/java/top/continew/admin/common/model/resp/BaseResp.java": "sha256:a8565ddd83a2cfe51dd9fea8d2ddd7ab11bf27d7d4381eeaf78711148d6e04d4",
+      "continew-common/src/main/java/top/continew/admin/common/regex/RegexUtil.java": "sha256:870a09b4e49748f19244c913e33a295fac03365eece20b763a05cd6c34efcde4",
+      "continew-common/src/main/java/top/continew/admin/common/regex/UserReg.java": "sha256:ad50ed938fcc3e674604549384c1373a6f05652457763423e8278223c1c66c3b",
+      "continew-common/src/main/java/top/continew/admin/common/service/CommonDictItemService.java": "sha256:595ef4de574ca8276b269da5fd40f760a475fcde2a18e642469decec9d45edfb",
+      "continew-common/src/main/java/top/continew/admin/common/service/CommonUserService.java": "sha256:40e39e63e2ab398af8e8092c0f71c81283d88cb6e4a5df6ca09aec25764c7779",
+      "continew-common/src/main/java/top/continew/admin/common/sort/DragSortUtil.java": "sha256:6a2513f744224922e53feb85134185f3be54a73982e350c52b860700846bac0f",
+      "continew-common/src/main/java/top/continew/admin/common/sort/DragSortUtils.java": "sha256:7d9644a99ebf52cefbf72d9f7495a3359cb3cb4c5cbdf90ef67bf6b2c01f9b7b",
+      "continew-common/src/main/java/top/continew/admin/common/sort/IdProperty.java": "sha256:5e41d31e2cec4d7532026c862abc15d6217f9b09c813a5643032db285c622508",
+      "continew-common/src/main/java/top/continew/admin/common/sort/OrderProperty.java": "sha256:a9ea1ddfb37cc1367d82219235137fdbc824cfeaf967db412025b42a4ba4cf3b",
+      "continew-common/src/main/java/top/continew/admin/common/sort/SortType.java": "sha256:988931078e8733e564cb83ad3ce4071f181b0adf071ee6023ef9eec062920d9a",
+      "continew-common/src/main/java/top/continew/admin/common/sort/SortUtil.java": "sha256:34cd2162903c462d42aa6646b51b6ee2be45974f0913810a4d1f16a12780cdf5",
+      "continew-common/src/main/java/top/continew/admin/common/sort/User.java": "sha256:c4558c230cb504af5932582bbb44eea8acb13e2a281648ecc13e2548c6114beb",
+      "continew-common/src/main/java/top/continew/admin/common/sort/User1.java": "sha256:00b6e8cd8185d20c75159dbd83ffe688ea02651a757520bddcb12b79ef3a5086",
+      "continew-common/src/main/java/top/continew/admin/common/ssh/FreeSftpUtil.java": "sha256:9f476d118e4455e08b0bad49934cc1a35d3338e3a077b43864d4a4627ce2e261",
+      "continew-common/src/main/java/top/continew/admin/common/ssh/FreeSshUtil.java": "sha256:27393823c57662cf540e5177fce50f9f1f92f49c7aacd33ea9fd7565fe4fb1f9",
+      "continew-common/src/main/java/top/continew/admin/common/ssh/SSHUtil.java": "sha256:9b67b68409f9697e2a67eccff3b1259414a82c30ac4eabd1fd73101f66705c96",
+      "continew-common/src/main/java/top/continew/admin/common/util/SecureUtils.java": "sha256:70c7f667798af75a8788b1e9ecef2b1f85094d53d3d06fd988213f94f25ef4dc",
+      "continew-common/src/main/java/top/continew/admin/common/util/StringUtils.java": "sha256:ed8101a16c960f69538bc695687d8c42dd06a3d7887995c90a2c26b6edce43d3",
+      "continew-common/src/main/java/top/continew/admin/common/uuid/IdUtils.java": "sha256:61f121593b063db32f4aebb1918ab84a45073c311c2f1b83adb903c07ecf3309",
+      "continew-common/src/main/java/top/continew/admin/common/uuid/UUID.java": "sha256:4580afa212bb0fb8dc87cf56b6711d8103689b36885461c9ccb1c2a8aeded603",
+      "continew-extension/continew-extension-schedule-server/pom.xml": "sha256:306a3863ff04e2ef5f7f6f2102eb6f7beee0369369be8cfce07f8510553aa0ac",
+      "continew-extension/continew-extension-schedule-server/src/main/java/top/continew/admin/extension/scheduling/ScheduleServerApplication.java": "sha256:1562d1dca16095e83aad69d48938dd0b3f3334c5e0d9e6ae76830b521068a58d",
+      "continew-extension/pom.xml": "sha256:92fe4a8fe8ba034e1ea90f64d591f961dcfeca7a30a8058564214a9fa23c6b59",
+      "continew-module-system/pom.xml": "sha256:362d1f62d59ae67627a2ccfaeff0d028b26bb8cc240f569ab4d0a53c151917b0",
+      "continew-module-system/src/main/java/top/continew/admin/auth/AbstractLoginHandler.java": "sha256:a1a05eb7f00ea475f3d09eafa330c0080e1f93b4d4bb339d74dc515d4a3f7ca1",
+      "continew-module-system/src/main/java/top/continew/admin/auth/LoginHandler.java": "sha256:c5741ea8bb51d954e71429f5dceed062588d0a4da39b03df2263f1d511cdbb7c",
+      "continew-module-system/src/main/java/top/continew/admin/auth/LoginHandlerFactory.java": "sha256:9359dee67f183278153ea1ea8457d8058ec6c8ad23cf817967d05857011427a9",
+      "continew-module-system/src/main/java/top/continew/admin/auth/enums/AuthTypeEnum.java": "sha256:5fdba99eb6d5f6d2a26f61cf448a6cafa6fd2cae5c0b323875ca2e9d2c4a8d96",
+      "continew-module-system/src/main/java/top/continew/admin/auth/handler/AccountLoginHandler.java": "sha256:8ad5aae6b2de5439ddc8fa8b092a4de52786ce76df0ec4376040ac1fddfc359b",
+      "continew-module-system/src/main/java/top/continew/admin/auth/handler/EmailLoginHandler.java": "sha256:f1616c1c2291b700dd79b88edc4fae2c4725421f36fc0eac61c9dc2aba5c5559",
+      "continew-module-system/src/main/java/top/continew/admin/auth/handler/PhoneLoginHandler.java": "sha256:0945f4fd7bf4b6200f183ff0f3e5b06806f6912d9793ee84fbc952f4ace2225b",
+      "continew-module-system/src/main/java/top/continew/admin/auth/handler/SocialLoginHandler.java": "sha256:0375a5ad281e3bdcc0c86c49d21ffc1fb834433c2b2d57755d3fe9758b2b9081",
+      "continew-module-system/src/main/java/top/continew/admin/auth/model/query/OnlineUserQuery.java": "sha256:fdf0901bbc8e5988c257017bb41db2ba4350b8e9235463248060a467d5cd1008",
+      "continew-module-system/src/main/java/top/continew/admin/auth/model/req/AccountLoginReq.java": "sha256:be432e8a30bae60d27a997473191bb4dca3c43831c448d42335d45e48d23d6a4",
+      "continew-module-system/src/main/java/top/continew/admin/auth/model/req/EmailLoginReq.java": "sha256:e8ec9137b35dc4c17efd95337ee514dc4620841e3ca77c472fa0bd059783d49d",
+      "continew-module-system/src/main/java/top/continew/admin/auth/model/req/LoginReq.java": "sha256:026ba1b5dcea27d2084a65dd03064981d5fc30482e06c1821c8f9f5b91c23506",
+      "continew-module-system/src/main/java/top/continew/admin/auth/model/req/PhoneLoginReq.java": "sha256:f9787703a156e42fae51ba2eadfa6c5d4efa48711b1d4283c1597e097127e630",
+      "continew-module-system/src/main/java/top/continew/admin/auth/model/req/SocialLoginReq.java": "sha256:4b171968711b42faf17b2539063a79b5b178a80e8365e574231fb80c51c36072",
+      "continew-module-system/src/main/java/top/continew/admin/auth/model/resp/CaptchaResp.java": "sha256:ad3576ae66c58ec2bee148767c817061a9c7889a0671c088d41f5a4450117c0b",
+      "continew-module-system/src/main/java/top/continew/admin/auth/model/resp/LoginResp.java": "sha256:6d76f1229926cacfbc57e75b823eb95104f39f9ab45d26204637fbad773871f5",
+      "continew-module-system/src/main/java/top/continew/admin/auth/model/resp/OnlineUserResp.java": "sha256:225400fde4643034207b9048d31e2b9a5f2644531f70a612ad599bccf2bf760e",
+      "continew-module-system/src/main/java/top/continew/admin/auth/model/resp/RouteResp.java": "sha256:5ba401895cf4feaf45671946bed64307535441bd608d6c9f6cfa2053e9154be6",
+      "continew-module-system/src/main/java/top/continew/admin/auth/model/resp/SocialAuthAuthorizeResp.java": "sha256:6edb37aede458fff7218633d49900fca39851e6780c044d737b071ac9d279b7e",
+      "continew-module-system/src/main/java/top/continew/admin/auth/model/resp/UserInfoResp.java": "sha256:160ebc4bfe9a6ceda462c94f5769532b9e2159ce5c8cd9e03db8d35910953a2c",
+      "continew-module-system/src/main/java/top/continew/admin/auth/service/AuthService.java": "sha256:c1b504a6b3e5b69dacc14717f5ef170e63035629b71f7c9d6943eea5fe1422d7",
+      "continew-module-system/src/main/java/top/continew/admin/auth/service/OnlineUserService.java": "sha256:32b9904119c40de71536dc99605c7e1db7594d910594abc4b1aea2e4a73a7c8d",
+      "continew-module-system/src/main/java/top/continew/admin/auth/service/impl/AuthServiceImpl.java": "sha256:035eddbb7d4ca9b5067038c7e43019f1b3c5c890fa78a3a0fd79307efd41d90a",
+      "continew-module-system/src/main/java/top/continew/admin/auth/service/impl/OnlineUserServiceImpl.java": "sha256:7cd970e883c130eaa05dd4393333c274efb2c07a430054edb9b087378110339d",
+      "continew-module-system/src/main/java/top/continew/admin/system/config/file/FileInfoContainer.java": "sha256:5e0ff43ca8e0cfa6bf8fa81162fef57b3a199a5647b7471ae157759cf3d95154",
+      "continew-module-system/src/main/java/top/continew/admin/system/config/file/FileRecorderImpl.java": "sha256:c9f724e7e40ab43f0166d6d616f660b3bfcc0de4ff10ba486bb524a9d3c580f8",
+      "continew-module-system/src/main/java/top/continew/admin/system/config/file/FileStorageConfigLoader.java": "sha256:9d3e2fe47ba487f39c0023ea2770213ce8fd35882f62ce2484c613b89dd2384e",
+      "continew-module-system/src/main/java/top/continew/admin/system/config/mail/MailConfigurerImpl.java": "sha256:ed0248f2c2d4c642592454b24d5a10e3eef48a47dc0cb3f911ae32e9a707dbaa",
+      "continew-module-system/src/main/java/top/continew/admin/system/config/sms/SmsConfigLoader.java": "sha256:1e295498d4f522e3c5298a4f7c1c6cde0c3dde45494a58a6f05d0ec730762ab1",
+      "continew-module-system/src/main/java/top/continew/admin/system/config/sms/SmsLogProcessor.java": "sha256:5eb95d9dc52729b8867a66d6c10b3b60314b767aae9a03f88f6cb128be99331b",
+      "continew-module-system/src/main/java/top/continew/admin/system/config/sms/SmsReadConfigDatabaseImpl.java": "sha256:81821620536622b90a34c3a61f0b0994aa311fdef71b3a63c1ff4971fa38b039",
+      "continew-module-system/src/main/java/top/continew/admin/system/enums/FileTypeEnum.java": "sha256:a659333a08543bb5f98ef1bf65ab49bcb47b1964b1345521ef630e8d5ac6c8b8",
+      "continew-module-system/src/main/java/top/continew/admin/system/enums/ImportPolicyEnum.java": "sha256:65021cb68a1355c8f6c699b5d24d2121c25909537c8f8e61255af3694dfba63f",
+      "continew-module-system/src/main/java/top/continew/admin/system/enums/LogStatusEnum.java": "sha256:b441e1847602699faee04a990b367250ebcafcdbebad531d2b01939f53c606a1",
+      "continew-module-system/src/main/java/top/continew/admin/system/enums/MenuTypeEnum.java": "sha256:8cec7343719407da81ef0adbaf430ef303d52e6c31be0dc8349c282b439628ed",
+      "continew-module-system/src/main/java/top/continew/admin/system/enums/MessageTemplateEnum.java": "sha256:c377f0d9655ee03b1bd8f175e757a08b7ee3286301232ae634fe65db09f4b897",
+      "continew-module-system/src/main/java/top/continew/admin/system/enums/MessageTypeEnum.java": "sha256:0b3d7c6b26c3e29edd0152e2a95651e7460268e8a0e62ba015f395593139c2d5",
+      "continew-module-system/src/main/java/top/continew/admin/system/enums/NoticeScopeEnum.java": "sha256:342b815d10a18bf22c08f06a3dc3760eefe2fb66964950b81459f409510c0c47",
+      "continew-module-system/src/main/java/top/continew/admin/system/enums/NoticeStatusEnum.java": "sha256:ebdca809d3fa16d48910651caec77fb3891965136467c69ec80c0b54bad5a2ed",
+      "continew-module-system/src/main/java/top/continew/admin/system/enums/OptionCategoryEnum.java": "sha256:8e68218819ae985dcaf11ab21f1ca07834b699dd2b9259511fba31b3a380b4ef",
+      "continew-module-system/src/main/java/top/continew/admin/system/enums/PasswordPolicyEnum.java": "sha256:6442a5669d957983f1777c13a5a0d8bcc9435b02137fe35b687f6c9fdd3c35ab",
+      "continew-module-system/src/main/java/top/continew/admin/system/enums/SmsSupplierEnum.java": "sha256:94ac56cc29365964536706ed71a7d4153e28bd55f250dd978519d41aa618b02e",
+      "continew-module-system/src/main/java/top/continew/admin/system/enums/SocialSourceEnum.java": "sha256:ec4f85edf5ae111c9592030b54380aea29eed31b3aa3fc9f868aafbb9b13284f",
+      "continew-module-system/src/main/java/top/continew/admin/system/enums/StorageTypeEnum.java": "sha256:f50f4f7b03dee0c9e5ce1a2935097ab03256f095ed270c0e8c226477a42594e5",
+      "continew-module-system/src/main/java/top/continew/admin/system/mapper/ClientMapper.java": "sha256:23b843a56949b38003b15a9bd4900ed40199a45728ed62f714e82f082e0c34c8",
+      "continew-module-system/src/main/java/top/continew/admin/system/mapper/DeptMapper.java": "sha256:d6f0fc8b43c6efed54caebebce7344692efe3df8196e86874214e85580030d53",
+      "continew-module-system/src/main/java/top/continew/admin/system/mapper/DictItemMapper.java": "sha256:75dfc3ad9f839286b1e138e0d20c10d8ba42d62e125cb5e4349d55d0e8f26975",
+      "continew-module-system/src/main/java/top/continew/admin/system/mapper/DictMapper.java": "sha256:105d3d015dec056130a5cc1c28f09778f52c82e0a141f77c85e621980be2033b",
+      "continew-module-system/src/main/java/top/continew/admin/system/mapper/FileMapper.java": "sha256:c1e978b210e531833c035be829268147362af904c8b2a6d95947d9863d418091",
+      "continew-module-system/src/main/java/top/continew/admin/system/mapper/LogMapper.java": "sha256:88cbb91fb98c4578c260fd8a395662f02849800f5ee336acb5f60af122f83351",
+      "continew-module-system/src/main/java/top/continew/admin/system/mapper/MenuMapper.java": "sha256:5344600e8f25c7b77992b7fc808120d69aee2ae3a6e6287cbc0b0434c6ecf864",
+      "continew-module-system/src/main/java/top/continew/admin/system/mapper/MessageMapper.java": "sha256:d94e4eac78faba4ac1ea4df83ba2850269343518d11b28f337902e2b090f0a20",
+      "continew-module-system/src/main/java/top/continew/admin/system/mapper/MessageUserMapper.java": "sha256:d0eb03324fba03d0b30bf128cfad5213725ce849cbc4fcbc12d1cc14fa156bda",
+      "continew-module-system/src/main/java/top/continew/admin/system/mapper/NoticeMapper.java": "sha256:c1ee5d949dbfaeb9f35d3d4f22804ad03fbf1255adf786b6aa1467c0ade05a26",
+      "continew-module-system/src/main/java/top/continew/admin/system/mapper/OptionMapper.java": "sha256:feb2489f67818251b99169d7eda06613c2ae0f5bb5633fdb7f81c6cf19fd8b8d",
+      "continew-module-system/src/main/java/top/continew/admin/system/mapper/RoleDeptMapper.java": "sha256:61e5b9f381e8c0c7ebedd703124b77b2d6d5156fae995be71813be518ace5dd4",
+      "continew-module-system/src/main/java/top/continew/admin/system/mapper/RoleMapper.java": "sha256:b32bcda55c22449fdf152b5269ffd024c06429b11ca21b622dcadf132a366d8f",
+      "continew-module-system/src/main/java/top/continew/admin/system/mapper/RoleMenuMapper.java": "sha256:92cb967a0eab9ee5b30d21c546631d7ea1d86abd16d867ed42fa1ac6c514b484",
+      "continew-module-system/src/main/java/top/continew/admin/system/mapper/SmsConfigMapper.java": "sha256:c7d5a21898832297924a3ae162d869b293644e3ce7bc8664e691ab7a5906583a",
+      "continew-module-system/src/main/java/top/continew/admin/system/mapper/SmsLogMapper.java": "sha256:05fbe9413d02e6d63485a5479627e832ee53a4f91e6b13c0776b8694485220a8",
+      "continew-module-system/src/main/java/top/continew/admin/system/mapper/StorageMapper.java": "sha256:e21d909a6b8a77f4e65fcfde7913603174a1146e5f54090f09b5bf02ddcb5179",
+      "continew-module-system/src/main/java/top/continew/admin/system/mapper/UserRoleMapper.java": "sha256:3a2e217ddc57968aea302946132beaca2de3ebc108b21e0abc7bb198dd48dd42",
+      "continew-module-system/src/main/java/top/continew/admin/system/mapper/user/UserMapper.java": "sha256:3a261346359a34c64c7238a5b677bd289fd0afd4cf1905ce3d4b9fc36ed25fc7",
+      "continew-module-system/src/main/java/top/continew/admin/system/mapper/user/UserPasswordHistoryMapper.java": "sha256:dd0c80e5e7bbbe688e889d0cbafe882766fd432eb36736af52bf08fa10501e17",
+      "continew-module-system/src/main/java/top/continew/admin/system/mapper/user/UserSocialMapper.java": "sha256:4d64047e113c7562a102729b22a009734c97976b9619ea0ba14bcbeb11553426",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/entity/ClientDO.java": "sha256:bbc965d50c5920c61840e207647cbe3fdff4152ce11de53e42f102481341afcb",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/entity/DeptDO.java": "sha256:c37767f48d1283f62306c2932ae087846847dff3bd0060a3f50592934ebe06b0",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/entity/DictDO.java": "sha256:bba1d6bb9e61126885b87aca1ac54cc2d4a47d8b20f2ab0e22fffbfdf9e9331c",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/entity/DictItemDO.java": "sha256:8ecd40d89c7cf7a2bc3f07d46ed327efdb73a51ffc713bb1b51db8cee5c6e7dd",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/entity/FileDO.java": "sha256:ea2ca51c8f29772feafba6c131dcc3ddce5dd143ae619dc3585ea6f9c5bbba34",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/entity/LogDO.java": "sha256:90184cb35d1c8b9a3b0d52a8756680fbec8ace81af02a8f3238450c39fddfcdd",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/entity/MenuDO.java": "sha256:0da63306f524ad15dd86d4cbc3d556c68600864c00c4494b8e0ab7743a93b638",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/entity/MessageDO.java": "sha256:b7c6c2a38060d887ef66f90a469cf4538032b33006b41c49dd8f2acc5abed56e",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/entity/MessageUserDO.java": "sha256:9aed8512430df8449a89f3e5f0a0d1444b472b554824d8a7336f3f0a918b646c",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/entity/NoticeDO.java": "sha256:dbfe1c79c06dd26b7d8df67c95f038aeafce546a3fa366a7bf74f41efaa12e57",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/entity/OptionDO.java": "sha256:f1acbffa53bd20ea07ff1d5c9b963238178710136be14d5be61238b5865b3519",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/entity/RoleDO.java": "sha256:c31dc1a02861ffee27e744f3e93fbe398e8389ee3998c11042c98cd2e73a6dba",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/entity/RoleDeptDO.java": "sha256:41f3b977cfed3c3fa71a0470c70269543878020b435b4fe42a0a63d8e199991a",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/entity/RoleMenuDO.java": "sha256:75906b0b13aced0bf3e0fc57d476f06fc62459ce898675b0c1fc9dbeb60533ac",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/entity/SmsConfigDO.java": "sha256:04e04c28f06ecb4988c5f523666745cee65d6043ef804fcf99a86539a97297af",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/entity/SmsLogDO.java": "sha256:4031c73c598dead1bc43b397d56805248a53da0899051af8160fabbe10f3ece4",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/entity/StorageDO.java": "sha256:75bd324ee9474224e5099a8409ae6a4d724314b038e6ea55f5500aa1e01f8c37",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/entity/UserRoleDO.java": "sha256:9b7ace9d21f4a74b34ed52d0631c33bb432e535d9c699d396cad13a718f52c08",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/entity/user/UserDO.java": "sha256:50b7b4eda712567e325d59df25f108453b47fbfdb009146a3bac453b7d9727ca",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/entity/user/UserPasswordHistoryDO.java": "sha256:3288b0bef39c03fc31a9d34dc88daae47e9488f4a7a2b6dba1a16e7b8aa88f7b",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/entity/user/UserSocialDO.java": "sha256:d1f57a79616c1a502783a9b33a15b223b42f524344eac60b9e0f7e2af7270294",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/query/ClientQuery.java": "sha256:cf93df8b2adf4619546542e5bd72effee2010a6139d8afe20aa81fe020f52e7d",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/query/DeptQuery.java": "sha256:dabdae2667aa1211e805cae584ca1ac1f8b957c45cf94dc693a5cc8f567329b4",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/query/DictItemQuery.java": "sha256:8889b9c67d5c31dee528e3bd7b05084492180773b2080c6c3a8cee33f175f009",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/query/DictQuery.java": "sha256:9c6cee228dc7e385c8e0236fbf735ecef17a4cefe5f3a9ca3680528367bdcf1e",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/query/FileQuery.java": "sha256:6d9c93c14d92667cf24910ac7588eec1f831f7d09245ef175d6f0857f66dee07",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/query/LogQuery.java": "sha256:b40282d0d622d9ef60217d1635d2b66c982e72123404a75a1e854d11f1c10a2b",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/query/MenuQuery.java": "sha256:3f4ad60b96a664edbd2937e4ebb1d887179efc3b5db8deb3d41a933ff4199c5d",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/query/MessageQuery.java": "sha256:db374041b8c2d1cf9905ee5665956dc7540925e7aaddd3fd571dcdf34b556dd3",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/query/NoticeQuery.java": "sha256:c0154e77266dba5d8421c92214ab22e331946acf1a1e486ccd17988db7d7bbb8",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/query/OptionQuery.java": "sha256:077b9cd0d61c6850bdc3a2a7e65bded8e00a76a2e944ec439ab24cec3554e786",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/query/RoleQuery.java": "sha256:256f1cda02a0cda049d1463968ef3f3134d8c949d1946757edbb5ff27978c668",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/query/RoleUserQuery.java": "sha256:e21ed266c4a2c9e1c9f5a960122d3cb73c6d6891894e139a124c4e6f2b716f73",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/query/SmsConfigQuery.java": "sha256:6d3a1c130f46d234dad7fbb58f2e02e20aca3bd9ef1a0886335f671eb667bf7a",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/query/SmsLogQuery.java": "sha256:dba7933ebbfb142bd4e9f6572dbf6a01e0250874f18bbbb1662e4d98f60fa549",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/query/StorageQuery.java": "sha256:5bff38c2a312bdd46ef6e8f5d5d4ceffcc00c332e9ee28f9bc4b7c591e69b9ee",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/query/UserQuery.java": "sha256:8d2532c6f3f6b7d2f9540fcb3ec9a02ca98e3bc44df7112c3ac90ceb86f2cb1a",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/req/ClientReq.java": "sha256:6c437a423d6c9d545f55c0bb1a33b6d74529c33a6e656da2959df71fadcbe9fb",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/req/DeptReq.java": "sha256:64d9fcf65a7ae56609825a49222d2eb8af48cc50193a79488ff012c476864e77",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/req/DictItemReq.java": "sha256:cf63461279d0ff7304c1821be93656997bb2f968aa8bf4c135c6d5031984b24c",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/req/DictReq.java": "sha256:94d2ea01627aba8453ebd028d84134a446b376f1a4ae98c0b3c48def65ef1ca0",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/req/FileDownloadReq.java": "sha256:2f9da189c98da152ef5df13a836c7327188193f28e7495d9b5daa48694ac96e1",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/req/FileReq.java": "sha256:96e586cf2dd16f38aca1fc502f013ce23ed3ee2687c1daffe2c58193e3074930",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/req/MenuReq.java": "sha256:df612c6a657cfde2843010660af8355dd7b121bc80ba2e78891c5f45a81ea781",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/req/MessageReq.java": "sha256:a3736b4c885631dd75e23990b58c172db4b006155f4648ecc1b742e45657610f",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/req/NoticeReq.java": "sha256:4809f18bc4c0f4057d98da944c7335ceb2ef9befc80beb51519f7bcb8e57469d",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/req/OptionReq.java": "sha256:589f2b93865bd71792bb74b172b05b39bc21859c5097e890621c37d9e71b4ac7",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/req/OptionResetValueReq.java": "sha256:5daf06dad22b91782a5c6e40a613fddee9eefc1f1a071c7570f79a0b37c2159a",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/req/RoleReq.java": "sha256:3e0eec5823dac47da2e2e9ac5083963c9a602dbd2e2f9711db06bbbeda176284",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/req/RoleUpdatePermissionReq.java": "sha256:d46e223c18e909e3ad6c26d6714c0bb5c2a9307b2e68c3f2cc24745b63ea34fd",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/req/SmsConfigReq.java": "sha256:8014877a15dfaf2df0af6ed75e502b9efb784b00a9e4c2016e60969f8641a338",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/req/SmsLogReq.java": "sha256:9d397e850fa63e975c45f6be4b372046a4d478432a95ec6e47958eb79b1b36db",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/req/StorageReq.java": "sha256:efa84c799afddda330638668c3d5ad9978b6ff3f613628d792fbd09c8a7a838a",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/req/WebhookMessageReq.java": "sha256:190dc4e67bc387aae13b25e6aed6555f281a3a25864f175b0b3c35e670771765",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/req/user/UserBasicInfoUpdateReq.java": "sha256:b21a770bc9a2c454ae74e5b27a836e1db03e64bf2fdd64999b8cb06634babb65",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/req/user/UserEmailUpdateRequest.java": "sha256:dd58497e1e2724955b52adae4418ae0dcdccdd6bddfdce79c4e213dc8c7ef430",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/req/user/UserImportReq.java": "sha256:d1b67aaf68e71818b83d6c0683b77a700cc713f2f493772058726d246f3b6211",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/req/user/UserImportRowReq.java": "sha256:cba0e48521bc735592f519c8d14d4ec63d43b1b47187f8266455e4fb5c63cdad",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/req/user/UserPasswordResetReq.java": "sha256:4646b14011f7b026db7ebef1b727fe2264a6f405ea2201dd20be915450198e1a",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/req/user/UserPasswordUpdateReq.java": "sha256:d574b50e90e0b163ba213cb9b4f8737890e74043aa3de05232efff2125e08905",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/req/user/UserPhoneUpdateReq.java": "sha256:1cb28873f7ea10f53e0f37daa2c626b974107a858dd0cfc11de8c5ab34bb11a1",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/req/user/UserReq.java": "sha256:3535da562526c72576a4f7991725fdf7ae56bfa0035df096ba3629cbee510401",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/req/user/UserRoleUpdateReq.java": "sha256:9d29678763ad35ba304c80ca2f11ab864b28f02d099e4fe7627e85ce1f812c52",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/resp/AvatarResp.java": "sha256:36cf884cb548a150aa4e92b1bdb03e2235b48415d748cd327090a2dab31cf4ff",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/resp/ClientResp.java": "sha256:dcb03f35868557b34820e8a28f2fb9dda119e404ddb849c80aec13db300c2eeb",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/resp/DeptResp.java": "sha256:103d96748c9ab111739277866b034c78623a22e10915180974e3415c986465a3",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/resp/DictItemResp.java": "sha256:536243d693f04e22829865d02bf79a0d887449086b05382fedd071cd16e8c12a",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/resp/DictResp.java": "sha256:62185cef28c1945f27a1d5060a35bd6016dcbd61b32229fcb782757303d724e9",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/resp/MenuResp.java": "sha256:8cadde2ad14fc772c020dda516e037275247db4fed3f4a4d405307c396fbe66b",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/resp/NoticeDetailResp.java": "sha256:8f60a5eabf9314719c18eac0a32ac1821208f8cf4152ea3a17d8304433e69c7c",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/resp/NoticeResp.java": "sha256:201fd235ac9b6c7ef7a716211c629a4880b5e1bb7c0d2811e20732346679647d",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/resp/OptionResp.java": "sha256:c9def2958facc1d0911804dfd9fafb0adfae4e44b18302480db0f7d1ea018ce9",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/resp/SmsConfigResp.java": "sha256:ee89eec85ea4fb174957d9e06337eb1c536e9c5e7f2297d936b1202dafcad3e0",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/resp/SmsLogResp.java": "sha256:bf96a0dbbc5a84827d395e8a5a8f362be9f77d461117e7fac2e3f068790acbf2",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/resp/StorageResp.java": "sha256:58b6eb9353db748f114386a74bcc73697867ff07237727e95e30d3a48c8bca2b",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/resp/dashboard/DashboardAccessTrendResp.java": "sha256:4ac746825bd395170193f9ed0e59fc9ee98641984457b152b3643c404623e362",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/resp/dashboard/DashboardChartCommonResp.java": "sha256:9ef272b2ba98b2727cb17a35734d2dd23bf71965b4f39812ce3f24c7bfb2d64c",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/resp/dashboard/DashboardNoticeResp.java": "sha256:205eeba2c490b8b753655c4e40457b9ddacb56f584c1b00547cdc51373b4b11e",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/resp/dashboard/DashboardOverviewCommonResp.java": "sha256:b942293637cd8078fb4491287e9596618900848968df751a3c3b937228582808",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/resp/dashboard/DashboardTotalResp.java": "sha256:fddc01f59805661c9bf35932420eb72dbf6a77ec2e5e500c71b895f7bb6ed036",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/resp/file/FileResp.java": "sha256:60dfe0fa58da4fbb52461d643db13954d85ddb91dd1814edcacd1aa12d4e4b94",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/resp/file/FileStatisticsResp.java": "sha256:09c41c3db9826ed799d02d2d7157b6bc3953ddcb2205b01ab6a9b87d21bca04b",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/resp/file/FileUploadResp.java": "sha256:4ae31ba99eb511f3bc8b45a6f30bbe61d14a0590632b31674d9b03070e5f4b03",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/resp/log/LogDetailResp.java": "sha256:d5ddb275f9a6af8e5dd94db7ae92e603d7389f35c1fb44ef2dc95b8b8f78653d",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/resp/log/LogResp.java": "sha256:6e60de251dab8df88b2e176b7fdab090b22fc2729895f3e8abb1ebc492c1cceb",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/resp/log/LoginLogExportResp.java": "sha256:439abb01706149dca2de662626a89cf5040c5ddacdf870e1e7133b56a77eb657",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/resp/log/OperationLogExportResp.java": "sha256:8956f900b9bc1f83f51a4b6008698d94087f0c736a94718af3fc1eec6ba8711c",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/resp/message/MessageResp.java": "sha256:56a582adc5e7b88ab198bc33dce8633a05ff4c685e7748ab2b05be25164a56bb",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/resp/message/MessageTypeUnreadResp.java": "sha256:255882fdbe224077df325445c709b49c058f463736184096fcf945b34579c57a",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/resp/message/MessageUnreadResp.java": "sha256:ec6627955bd8d12cbeabdf7e7f1c38663b7baf1ad0a4e7501760d9160dc26f6b",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/resp/role/RoleDetailResp.java": "sha256:184f2c30610210c61e92d979b60ca256ae567f72c512e1dd03403de346417aa4",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/resp/role/RoleResp.java": "sha256:9aae3c9065e8ca13002cb15c7967e02b861053da1af9bcbd4acf062bf08639af",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/resp/role/RoleUserResp.java": "sha256:a5d7f3591a9db9e162d4de7c6b64d9ad291b7a50ad46e186899696e3e125ae53",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/resp/user/UserDetailResp.java": "sha256:f4eaf8915c2bf8b2ee60c62e91bb3350f0245c9c4032a2b689b127ebda5c9ff0",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/resp/user/UserImportParseResp.java": "sha256:da19becbb02aecd2cca6b7059f9d474520d07abcbf604236531c7d9268559ff5",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/resp/user/UserImportResp.java": "sha256:9d9224609f8d75c3551c628b3276972b83a81162737112c0257ff91f09a6eedf",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/resp/user/UserResp.java": "sha256:b447b33160bf1090e073ab7a3c236169f07d6955e6caca096774fe2d08faaf06",
+      "continew-module-system/src/main/java/top/continew/admin/system/model/resp/user/UserSocialBindResp.java": "sha256:4d00abfdc27f1f1e1c486ab67efd4bc50b8f15de364ce8fe29580d3dfa0b7d0b",
+      "continew-module-system/src/main/java/top/continew/admin/system/service/ClientService.java": "sha256:94f0656df5e6bc749ba3759389d95fecd225c4b8e017c8217563fcf1885205ab",
+      "continew-module-system/src/main/java/top/continew/admin/system/service/DashboardService.java": "sha256:653486213c7b4e8d7618af32026d50485f6e69d2abc8baa6b107b9b0088700e0",
+      "continew-module-system/src/main/java/top/continew/admin/system/service/DeptService.java": "sha256:d04fb0d75fbea75dd7ea0a57e801aecacf65260b17b7ffe2b1def2390255673b",
+      "continew-module-system/src/main/java/top/continew/admin/system/service/DictItemService.java": "sha256:2397ff70b97e0c0727235f5e953634536636ee820caec5a3eb6fb9a2c9062214",
+      "continew-module-system/src/main/java/top/continew/admin/system/service/DictService.java": "sha256:5bbac0887b91cbcf037a5436b3051099914a34f5426407c0e23a3451e0b4f0e7",
+      "continew-module-system/src/main/java/top/continew/admin/system/service/FileService.java": "sha256:f7a249f95ec8cf7cc99b58ec4d055499a818ff1cb52ff7b83bb983cdf5af0a40",
+      "continew-module-system/src/main/java/top/continew/admin/system/service/LogService.java": "sha256:4fc25032fd76281b2ab4f796eadefc555058697588354b9fc3acbc6f4db6e402",
+      "continew-module-system/src/main/java/top/continew/admin/system/service/MenuService.java": "sha256:11ab358445f1cd674e386054848824c58b142e23008dc91f6ea8c707bb943650",
+      "continew-module-system/src/main/java/top/continew/admin/system/service/MessageService.java": "sha256:b321ab1ec903d9770aa9ffd849865284c8dd6efef7815bd3b9c703daacaa843e",
+      "continew-module-system/src/main/java/top/continew/admin/system/service/MessageUserService.java": "sha256:7ca3da7ca512a5727817cd706f0254b1b22edac8de6b98d62b66c743b83593d1",
+      "continew-module-system/src/main/java/top/continew/admin/system/service/NoticeService.java": "sha256:11fbdd7ee7a3b828fa20c0d65033db9604b14936e976e1fb956acf6e5b6ba0fd",
+      "continew-module-system/src/main/java/top/continew/admin/system/service/OptionService.java": "sha256:5fd9eed204283ff3e4b8a0e7cb8162f1ad25b082c5dbb5919f609f3fc3eb8004",
+      "continew-module-system/src/main/java/top/continew/admin/system/service/RoleDeptService.java": "sha256:8b8abd0bff9652906fe9b247a84ca1c2957826fc2d22997f4fbd1df0df89dab9",
+      "continew-module-system/src/main/java/top/continew/admin/system/service/RoleMenuService.java": "sha256:f87e035287ee859d0d7c7256cce7b5247245a46c75860edbd55b04144ec1fd24",
+      "continew-module-system/src/main/java/top/continew/admin/system/service/RoleService.java": "sha256:cb07d33924045c0187add5745f1b3263e298cdebaf447931a2d3008c0df9347c",
+      "continew-module-system/src/main/java/top/continew/admin/system/service/SmsConfigService.java": "sha256:92a9e1dfbdcf22cb31f24e060403d57215b72da9adbdea628eaa35d1c35df405",
+      "continew-module-system/src/main/java/top/continew/admin/system/service/SmsLogService.java": "sha256:9fbfd769f41b31509366b7c2851e4668fa17d0dbeff484d4b916f02e38162bbd",
+      "continew-module-system/src/main/java/top/continew/admin/system/service/StorageService.java": "sha256:1737736d164acfcaf2c88e4ae0ae831fe3c240ed7cb9c2cfda189b6abb570252",
+      "continew-module-system/src/main/java/top/continew/admin/system/service/UserPasswordHistoryService.java": "sha256:5bd8ab6cdd3e4f732a890f6b8bdcca442b191398d7dac903cfb84836b6349955",
+      "continew-module-system/src/main/java/top/continew/admin/system/service/UserRoleService.java": "sha256:0d1231b42fa8224ee602ceef037ffc0e60e6614e349cff3f0a60e83c55b334ca",
+      "continew-module-system/src/main/java/top/continew/admin/system/service/UserService.java": "sha256:413da98291fdde9d03a1211f41103992842460f3474cd4b1a7cc0857bfe91008",
+      "continew-module-system/src/main/java/top/continew/admin/system/service/UserSocialService.java": "sha256:9b3949534477796f3ea0c4929a2ab72d75d4bfe88f8a9d0f01a010d1992cb2fb",
+      "continew-module-system/src/main/java/top/continew/admin/system/service/impl/ClientServiceImpl.java": "sha256:cce6df21107304e698e258d41fcd0ed85e5625d0f5dfed9d1fda221e952c46f9",
+      "continew-module-system/src/main/java/top/continew/admin/system/service/impl/DashboardServiceImpl.java": "sha256:e80f282cb018918a89471ca78715293cb153157c044a1f9369ac5114e34aee35",
+      "continew-module-system/src/main/java/top/continew/admin/system/service/impl/DeptServiceImpl.java": "sha256:ede632f020cf70e97dc276e1af0c7627b3a613e58c82acb9ab9cf4cabbca6cd5",
+      "continew-module-system/src/main/java/top/continew/admin/system/service/impl/DictItemServiceImpl.java": "sha256:5b02c9ad7a5523cd555e65133bb891cc6d6e08322a3fd2ec3d9cff6802776b37",
+      "continew-module-system/src/main/java/top/continew/admin/system/service/impl/DictServiceImpl.java": "sha256:5f60b90078c8948bf2e9f3d49cc51ec14adb7ff6e4ff0b2023e092b6c5b2b803",
+      "continew-module-system/src/main/java/top/continew/admin/system/service/impl/FileServiceImpl.java": "sha256:b9f08c569d9473137e32b1c58f03720be2cfbed4ba40ed0c25135b8b42e72481",
+      "continew-module-system/src/main/java/top/continew/admin/system/service/impl/LogServiceImpl.java": "sha256:bdcd9171261d67fb45b1ffad72aec8cabc80b9a651484160da5f754ddc2975f4",
+      "continew-module-system/src/main/java/top/continew/admin/system/service/impl/MenuServiceImpl.java": "sha256:e39e9349cdae66eb0a51903c6df31d9b46ea476bad2d4bdbf7822f1952fa8109",
+      "continew-module-system/src/main/java/top/continew/admin/system/service/impl/MessageServiceImpl.java": "sha256:54402ae423c685d89b33a17d309db843aef12512abfada186fffea90ab1986af",
+      "continew-module-system/src/main/java/top/continew/admin/system/service/impl/MessageUserServiceImpl.java": "sha256:6875a1e79e3928cd9142fedd1ebf79bee00ec99f52e238468917b385380ef19e",
+      "continew-module-system/src/main/java/top/continew/admin/system/service/impl/NoticeServiceImpl.java": "sha256:1f4d24e98ae355d7d72eb6a24cfd8058e955d2d8339bbd78affef055c845cd21",
+      "continew-module-system/src/main/java/top/continew/admin/system/service/impl/OptionServiceImpl.java": "sha256:cc87087b4223881e5958daf5ba8a3be2b999a24e47bfd4797515d01bb670c98a",
+      "continew-module-system/src/main/java/top/continew/admin/system/service/impl/RoleDeptServiceImpl.java": "sha256:c7f4c1947da598a6b5ee5b76dead559d1cf2a97245edbebe355e4666576bdb68",
+      "continew-module-system/src/main/java/top/continew/admin/system/service/impl/RoleMenuServiceImpl.java": "sha256:35ceca81378f3d03b839ba8d4a8bdb19ff915d9e00b7f10dc16e5cbc4661bffd",
+      "continew-module-system/src/main/java/top/continew/admin/system/service/impl/RoleServiceImpl.java": "sha256:ce9560acbea5b1ae7ffd3b7609d45cefc6a8c184099e208967130055c9f1fd52",
+      "continew-module-system/src/main/java/top/continew/admin/system/service/impl/SmsConfigServiceImpl.java": "sha256:b7ac7491d7ae6f9a86595b54dc6b46db15d5098a15de5148e60c899601af05d7",
+      "continew-module-system/src/main/java/top/continew/admin/system/service/impl/SmsLogServiceImpl.java": "sha256:ac5b9bd98e9115967e64f73b7de606cc0ff71526ec83455bfcb4b587f9440764",
+      "continew-module-system/src/main/java/top/continew/admin/system/service/impl/StorageServiceImpl.java": "sha256:448f78c7e7c32a860d3a8b435bfa7ef9b5327c21145ddc40c464a29dc25069c9",
+      "continew-module-system/src/main/java/top/continew/admin/system/service/impl/UserPasswordHistoryServiceImpl.java": "sha256:1fade9602d654869a8e1266b2ded279206674cb5cf973128e8d2024ee24318d6",
+      "continew-module-system/src/main/java/top/continew/admin/system/service/impl/UserRoleServiceImpl.java": "sha256:d4807dbb77f284d30d06ba6ccb4d45d83d3cf01e74c383f47fea97995ded4758",
+      "continew-module-system/src/main/java/top/continew/admin/system/service/impl/UserServiceImpl.java": "sha256:28db9f24d15a6c00bdaf7aedec834f784ef6b7c543aa7d868e1977e6409796cb",
+      "continew-module-system/src/main/java/top/continew/admin/system/service/impl/UserSocialServiceImpl.java": "sha256:8c9949a41a6792bc96727c6821674039895f3b904e84859701b42b0e474d5f53",
+      "continew-module-system/src/main/java/top/continew/admin/system/util/FlexibleLongListDeserializer.java": "sha256:ca1750a133bfb36f54a0a4443f697ef204810f71eb6cfd93bfe89a972691712e",
+      "continew-module-system/src/main/java/top/continew/admin/system/validation/ValidationGroup.java": "sha256:510548cd1cf1e30b4706c8659269224b1f3e4890f8ac45d7c5d11269133451a6",
+      "continew-plugin/continew-plugin-generator/pom.xml": "sha256:356a9f411f1ea006c528f1de53a1568e714860e7a9d69162aacad0f004f576cf",
+      "continew-plugin/continew-plugin-generator/src/main/java/top/continew/admin/generator/config/properties/GeneratorProperties.java": "sha256:0192330a3900648969f117bc9f99b5c526e8f467c090b67d491408b5dad91af0",
+      "continew-plugin/continew-plugin-generator/src/main/java/top/continew/admin/generator/enums/FormTypeEnum.java": "sha256:81112d1ea4d631168d4c41f44e52f1cd52315b12887c8c3feb44c82cb5073542",
+      "continew-plugin/continew-plugin-generator/src/main/java/top/continew/admin/generator/enums/QueryTypeEnum.java": "sha256:0b6a92bddc3ad7c31cf1393c2639496c899507d8ccea84ee44ceecfb72e0c990",
+      "continew-plugin/continew-plugin-generator/src/main/java/top/continew/admin/generator/mapper/FieldConfigMapper.java": "sha256:b9bbd4cf369b5729a0d6ae8a8b1aec0b20ced3ba37efcd4972155f471509bf81",
+      "continew-plugin/continew-plugin-generator/src/main/java/top/continew/admin/generator/mapper/GenConfigMapper.java": "sha256:4907712361a815408ed75e7f72ce16863db097d6fa58cbd1d83ea0a7ff142930",
+      "continew-plugin/continew-plugin-generator/src/main/java/top/continew/admin/generator/model/entity/FieldConfigDO.java": "sha256:6f64403ed6e008e1767ac4961f30ed836673d45a6f394f98723e115ed982c4f0",
+      "continew-plugin/continew-plugin-generator/src/main/java/top/continew/admin/generator/model/entity/GenConfigDO.java": "sha256:c923f682b434b0a55d549dc3709805d81ca3cfc6a47c295b142a093fa9477b9b",
+      "continew-plugin/continew-plugin-generator/src/main/java/top/continew/admin/generator/model/entity/InnerGenConfigDO.java": "sha256:71b8baa40b510985d6e6884f6e6a8c2bf376b5b975703a9aec16d84f8e35669a",
+      "continew-plugin/continew-plugin-generator/src/main/java/top/continew/admin/generator/model/query/GenConfigQuery.java": "sha256:44d0d4cdcad6a0db0ecfca9f7610ea3bb2b19a703ee2fd37de3f1d6176af5d64",
+      "continew-plugin/continew-plugin-generator/src/main/java/top/continew/admin/generator/model/req/GenConfigReq.java": "sha256:d46d4def44ae40dbda7d544cebc765286b32174d8d05e99e632cc9632811c760",
+      "continew-plugin/continew-plugin-generator/src/main/java/top/continew/admin/generator/model/resp/GeneratePreviewResp.java": "sha256:10e4f24e687ab76578bfbef14339c296f9f6797663636ac900724bbd5e902d6c",
+      "continew-plugin/continew-plugin-generator/src/main/java/top/continew/admin/generator/service/GeneratorService.java": "sha256:fdd7812bf826ae6e15b90107738bb71939168aa390eb4c6002d5d234644d00f3",
+      "continew-plugin/continew-plugin-generator/src/main/java/top/continew/admin/generator/service/impl/GeneratorServiceImpl.java": "sha256:2d23e0281c5d0d859835c512c1f6047c0f8d287a158733859561c9bc6e5d4ca3",
+      "continew-plugin/continew-plugin-open/pom.xml": "sha256:f280da7b7beeae7416781d91a200b002e0c5ac2f9296e436542586ea0bc0da96",
+      "continew-plugin/continew-plugin-open/src/main/java/top/continew/admin/open/handler/SaCheckPermissionHandler.java": "sha256:6460101ed7a2d4de5b56013b77bc63e0e47b55bc75a9c5c5e7a28e65b1a7b639",
+      "continew-plugin/continew-plugin-open/src/main/java/top/continew/admin/open/mapper/AppMapper.java": "sha256:50504ceafb1a007b65b6fcdc677d9cbc3b653b8f768ae57fbae677891edc6ae0",
+      "continew-plugin/continew-plugin-open/src/main/java/top/continew/admin/open/model/entity/AppDO.java": "sha256:d9cbce5cb1e61c1469540eedfa587645dd4a4bab11fb4d9670e0bd5896c47b53",
+      "continew-plugin/continew-plugin-open/src/main/java/top/continew/admin/open/model/query/AppQuery.java": "sha256:c8f45f75f3f20b43c0e90e4a89feffbf531d2ffd0db49ddbae85e239ad85d357",
+      "continew-plugin/continew-plugin-open/src/main/java/top/continew/admin/open/model/req/AppReq.java": "sha256:c248e7fa271f8a27b2be898c2af11bf4fcce0ee087b6ccfd7a3bd136c720d1b7",
+      "continew-plugin/continew-plugin-open/src/main/java/top/continew/admin/open/model/resp/AppDetailResp.java": "sha256:fb450cc03c389cfac1141d3c6c14bcb78ea19f0bcd2b99699f9a8c272828bd03",
+      "continew-plugin/continew-plugin-open/src/main/java/top/continew/admin/open/model/resp/AppResp.java": "sha256:fb6d924a10a94fd9942ac15125413693834aa58d1cb2ec060921131bb717c679",
+      "continew-plugin/continew-plugin-open/src/main/java/top/continew/admin/open/model/resp/AppSecretResp.java": "sha256:396d1ec1fbaf2f43951af1d79048ff7340d282943225d9d62bd142c29880c27d",
+      "continew-plugin/continew-plugin-open/src/main/java/top/continew/admin/open/service/AppService.java": "sha256:7e9e35e802187d1183587a5eaedbe85a21ad47b46ad918d581875e1ee2c6e35a",
+      "continew-plugin/continew-plugin-open/src/main/java/top/continew/admin/open/service/impl/AppServiceImpl.java": "sha256:4467b406db7fa3fe94077f0015240e5e69aa411954ea7b844289888efd2205ca",
+      "continew-plugin/continew-plugin-open/src/main/java/top/continew/admin/open/sign/OpenApiSignTemplate.java": "sha256:e82ea4d1899877dbb5555b3063744fc20f42a6aa6b8c7eb0a4d7400d4d0a84c8",
+      "continew-plugin/continew-plugin-open/src/main/java/top/continew/admin/open/util/OpenApiUtils.java": "sha256:1145871f79d0890a8e9ee1846be9643a477ab28e1636f21c13f49658b2ce5733",
+      "continew-plugin/continew-plugin-schedule/pom.xml": "sha256:40e76a9d2bb1d2576b5010c4f44045be4d5bf18235af3e47e97b24f7f3c00c44",
+      "continew-plugin/continew-plugin-schedule/src/main/java/top/continew/admin/schedule/api/JobApi.java": "sha256:33cbd0abb9273ee25c3d7a8fdc8190c1cd060b4fa2d4c696488c8489342c0ec1",
+      "continew-plugin/continew-plugin-schedule/src/main/java/top/continew/admin/schedule/api/JobBatchApi.java": "sha256:f211e4aad9ad1a66d6b479283050e7e3639d3ca67cacc53b76f8c20b2580d164",
+      "continew-plugin/continew-plugin-schedule/src/main/java/top/continew/admin/schedule/api/JobClient.java": "sha256:fec82340e3780a5df031c34a84fe8cf9943d0ec9550a0b0910a8a3072c13bc52",
+      "continew-plugin/continew-plugin-schedule/src/main/java/top/continew/admin/schedule/api/JobGroupApi.java": "sha256:c37c390cfdf098cbdd30658ff07a33c3993c3cd553eecde97fa83bbbba33975e",
+      "continew-plugin/continew-plugin-schedule/src/main/java/top/continew/admin/schedule/config/FeignConfiguration.java": "sha256:fa7001049852d4180f57803a93e2119f25ca24048db29c50d2f38e0cca5e7b13",
+      "continew-plugin/continew-plugin-schedule/src/main/java/top/continew/admin/schedule/config/FeignRequestInterceptor.java": "sha256:e4bc3ce3bbb1fc89e7a002c60945f3159cfd676776b8086f7487c467058f4ad4",
+      "continew-plugin/continew-plugin-schedule/src/main/java/top/continew/admin/schedule/config/SnailJobConfiguration.java": "sha256:90d1e7e8f6ee03e66b9491ec354597e909c0130f33b25e931fa4fec5b1b5f2e9",
+      "continew-plugin/continew-plugin-schedule/src/main/java/top/continew/admin/schedule/constant/JobConstants.java": "sha256:047b7c05a4d8ffb818ae23f89387a1c53ddd4614f4b5ec6bca951f8bc0074448",
+      "continew-plugin/continew-plugin-schedule/src/main/java/top/continew/admin/schedule/enums/JobBlockStrategyEnum.java": "sha256:36be7fd3436b3872e5615abe046e099dba7f50f80f9c79645e24f1c637e7767b",
+      "continew-plugin/continew-plugin-schedule/src/main/java/top/continew/admin/schedule/enums/JobExecuteReasonEnum.java": "sha256:fdf3f949c026d2efddcff79a70fc5b5deae0fad25f9d209acb2a29abe75e8046",
+      "continew-plugin/continew-plugin-schedule/src/main/java/top/continew/admin/schedule/enums/JobExecuteStatusEnum.java": "sha256:eb963225b9d3e58b4031ce8e139d42c5df22f5f101018180d8f2406b801440bb",
+      "continew-plugin/continew-plugin-schedule/src/main/java/top/continew/admin/schedule/enums/JobRouteStrategyEnum.java": "sha256:14eae182223db32824ae185557745db0fc0f2fe0c18cc177e3f80182bb150d88",
+      "continew-plugin/continew-plugin-schedule/src/main/java/top/continew/admin/schedule/enums/JobStatusEnum.java": "sha256:7264e199c2eba697cb52713604b559950e4bd70689cd5a9140c520bf8d63a189",
+      "continew-plugin/continew-plugin-schedule/src/main/java/top/continew/admin/schedule/enums/JobTaskTypeEnum.java": "sha256:80dc1ab74f49c61246b0994cca58d30c63a0525027d3df7c65e80862a10c3e6f",
+      "continew-plugin/continew-plugin-schedule/src/main/java/top/continew/admin/schedule/enums/JobTriggerTypeEnum.java": "sha256:7a7121382c4bea142877366c3eadbc5a993506504fcfda16a8664f306cea92f0",
+      "continew-plugin/continew-plugin-schedule/src/main/java/top/continew/admin/schedule/model/JobInstanceLogPageResult.java": "sha256:a277cfc1aed90eb5172bfbbfa6b09977dfc559d6cc7c3080823fc94e5e3bf811",
+      "continew-plugin/continew-plugin-schedule/src/main/java/top/continew/admin/schedule/model/JobPageResult.java": "sha256:7797a9cef6676dde8909246946c40919aa979807b17a130c6d44df0921fb3731",
+      "continew-plugin/continew-plugin-schedule/src/main/java/top/continew/admin/schedule/model/query/JobInstanceLogQuery.java": "sha256:a88ae4218f5ddaa6d2ead0da9408be2f8a2917287cba47baedb6dc737638e4bd",
+      "continew-plugin/continew-plugin-schedule/src/main/java/top/continew/admin/schedule/model/query/JobInstanceQuery.java": "sha256:34a54aac0f6e15bddf862ac8b7278e70a0e1ca92b371ff8d82ee0d7906d8b48d",
+      "continew-plugin/continew-plugin-schedule/src/main/java/top/continew/admin/schedule/model/query/JobLogQuery.java": "sha256:84ac8dd3a03df15422aa0cbf4101d3937983af62431a95a19ed1c935dd299d30",
+      "continew-plugin/continew-plugin-schedule/src/main/java/top/continew/admin/schedule/model/query/JobPageQuery.java": "sha256:fc932d608a2c756949fe72959d846115ba75490403345c56e47cde8b5affdb5b",
+      "continew-plugin/continew-plugin-schedule/src/main/java/top/continew/admin/schedule/model/query/JobQuery.java": "sha256:7c10688576ddd045535453a4e28aeeda73c6d969e0cf9de9baa023a6722bb44d",
+      "continew-plugin/continew-plugin-schedule/src/main/java/top/continew/admin/schedule/model/req/JobReq.java": "sha256:77e34e9e90abcf38af341fa7b947af73912d33ecb64c578fce4caf2844ff0bc9",
+      "continew-plugin/continew-plugin-schedule/src/main/java/top/continew/admin/schedule/model/req/JobStatusReq.java": "sha256:889f48bfcb9192ff66812df4eaf3ebca28d53d498f97fb4c08f15af5d335e22d",
+      "continew-plugin/continew-plugin-schedule/src/main/java/top/continew/admin/schedule/model/req/JobTriggerReq.java": "sha256:a660ba6e4f9126e7e915fe8c29383cc7f78974ed3cfde5ee8474cc3293cc9b2b",
+      "continew-plugin/continew-plugin-schedule/src/main/java/top/continew/admin/schedule/model/resp/JobInstanceResp.java": "sha256:0e487cec9c23aa41d58ce38ba24bc827ba66efbe2c9bf36ea9354652f1af1f10",
+      "continew-plugin/continew-plugin-schedule/src/main/java/top/continew/admin/schedule/model/resp/JobLogResp.java": "sha256:03244a5a9b50e6cd3def934b8ce43e7defcd2e23e31a8e033f94e1193a9ee96c",
+      "continew-plugin/continew-plugin-schedule/src/main/java/top/continew/admin/schedule/model/resp/JobResp.java": "sha256:d901c4c1e5101940cf81600bf00fb80c12f1415f18b349e1e17c26d4e928168a",
+      "continew-plugin/continew-plugin-schedule/src/main/java/top/continew/admin/schedule/service/JobLogService.java": "sha256:511358eda4da8d1ae1a66621b8d3b1d61dbec4367d158a97091a7926f00c05f0",
+      "continew-plugin/continew-plugin-schedule/src/main/java/top/continew/admin/schedule/service/JobService.java": "sha256:e77f33cb2b3284bd45319408da6e7851bdbc9763215e1bebbbf6cca674be7d4f",
+      "continew-plugin/continew-plugin-schedule/src/main/java/top/continew/admin/schedule/service/impl/JobLogServiceImpl.java": "sha256:98c1838d3efac5613c3d912336c15e9065fb10842fc0536af0f5629610a0adcf",
+      "continew-plugin/continew-plugin-schedule/src/main/java/top/continew/admin/schedule/service/impl/JobServiceImpl.java": "sha256:d6c52a6ce50c1fada62a6526bdace7453485c6ae000f0cad5fc2d6d7e4f7f60f",
+      "continew-plugin/pom.xml": "sha256:68b55d8b53f367ba21ff88b468db62fdc8e0281653b01979d2a65adbc8d92855",
+      "continew-project/pom.xml": "sha256:3074070a57802d696d60830c4b62158db07b1e536f87c45f59844e0d717590f4",
+      "continew-project/src/main/java/top/continew/admin/project/controller/ProjectConfigController.java": "sha256:e20e92466f16944edb604d58de97622c98def7bae3fef832dbcf9b7b73b2cce8",
+      "continew-project/src/main/java/top/continew/admin/project/controller/ProjectDataBaseConfigController.java": "sha256:73ab8bedbe5baf6a47025e6ced287115f09c5b92911dada4f4e2758e603d2c5d",
+      "continew-project/src/main/java/top/continew/admin/project/controller/ProjectEnvironmentConfigController.java": "sha256:7ca6f058a624fcc8011c5781cc17ed058b87b37f907d75e73e314c51cd5b42e3",
+      "continew-project/src/main/java/top/continew/admin/project/controller/ProjectModuleConfigController.java": "sha256:e9623f2b96d6f67c6e45b3319ec1d45e78ab78cbc76718cec6d0650985c43496",
+      "continew-project/src/main/java/top/continew/admin/project/controller/ProjectServerConfigController.java": "sha256:8c5b98fb902034d3daf23c0d3503494f98369c63ea7d1628d45a543895ccb363",
+      "continew-project/src/main/java/top/continew/admin/project/controller/ProjectVersionConfigController.java": "sha256:a23c5b2a436c97a914a7df361835f71aaa0374bc913551257c6704b3db684d9e",
+      "continew-project/src/main/java/top/continew/admin/project/mapper/ProjectConfigMapper.java": "sha256:bfee50956756341e6ccc5ded1ffdb046098cb27a312ff38e5a3edd31ce7a0879",
+      "continew-project/src/main/java/top/continew/admin/project/mapper/ProjectDataBaseConfigMapper.java": "sha256:2eb541ad63b17e5e7fe0547346601c70b31f11ed1089b0efc857ccb5f74dbdf2",
+      "continew-project/src/main/java/top/continew/admin/project/mapper/ProjectEnvironmentConfigMapper.java": "sha256:cd0bea4456bdfce37739af4834d77494ba9c828a209cf9292f43d8d560e2ef2d",
+      "continew-project/src/main/java/top/continew/admin/project/mapper/ProjectEnvironmentResourceBindingMapper.java": "sha256:a4244dc26b6ba8865c5966a07562d6d6d195900d4c7c0e65338f3ffd6cc42188",
+      "continew-project/src/main/java/top/continew/admin/project/mapper/ProjectModuleConfigMapper.java": "sha256:8a103ae953a9b3f5cd18aec1e96360cdf5b00e980051ab113b4217cda2fa3937",
+      "continew-project/src/main/java/top/continew/admin/project/mapper/ProjectResourceSlotMapper.java": "sha256:7a8bf1c39bab501048e8d5fba04619ce048207e2b6edb45b2a47b65dc8f7d936",
+      "continew-project/src/main/java/top/continew/admin/project/mapper/ProjectServerConfigMapper.java": "sha256:552fc4c10b22dd09aef152458d2855bde1c064dde277da338215e19188ebbc6b",
+      "continew-project/src/main/java/top/continew/admin/project/mapper/ProjectVersionConfigMapper.java": "sha256:27474ad1015401b72dcfca60020131e1a0ee0bacb10e8fbbebf368aaf295ba20",
+      "continew-project/src/main/java/top/continew/admin/project/migration/ProjectDataBasePasswordMigrator.java": "sha256:e99f66a6dba1cfaeb5d9adf35904796d24b12d66ab6be7e74b3118c42e146339",
+      "continew-project/src/main/java/top/continew/admin/project/model/entity/ProjectConfigDO.java": "sha256:331a4ea896ecf0e165265c2d669403ecea5913a72fb771afa70a90b8f7943d0b",
+      "continew-project/src/main/java/top/continew/admin/project/model/entity/ProjectDataBaseConfigDO.java": "sha256:f7dd175781b870a2cd0474248e9bed7ab8e1200472ece7eb37bb561390d276f1",
+      "continew-project/src/main/java/top/continew/admin/project/model/entity/ProjectEnvironmentConfigDO.java": "sha256:4588c7dcd8c765a271f1124d35f4dabc1ef9d4bd51bd6c5de51249b859e00f1b",
+      "continew-project/src/main/java/top/continew/admin/project/model/entity/ProjectEnvironmentResourceBindingDO.java": "sha256:67a2275d01e24b0fa4bc33e3a360dac41ef578bfa3316a2983e765cbc5db3c9a",
+      "continew-project/src/main/java/top/continew/admin/project/model/entity/ProjectModuleConfigDO.java": "sha256:054c3d967a09097759f4ed78629a98dc71edc3287237f9e19ffa5c0ae5b6fc6c",
+      "continew-project/src/main/java/top/continew/admin/project/model/entity/ProjectResourceSlotDO.java": "sha256:8d83aa6b3370adad4739ae498bf0de04062e6c3f4578310be436acfba7537deb",
+      "continew-project/src/main/java/top/continew/admin/project/model/entity/ProjectServerConfigDO.java": "sha256:0bde4a9a7b069bb75c265a2c3db96acdc79fd5ce03754c887a5bb658133c290a",
+      "continew-project/src/main/java/top/continew/admin/project/model/entity/ProjectVersionConfigDO.java": "sha256:a0fd3810ebdb907cb3751210db19fbd80c8699da23216e4dec5bcc1084258c86",
+      "continew-project/src/main/java/top/continew/admin/project/model/query/ProjectConfigQuery.java": "sha256:62af3c7cdb254aac53a98a637cf727c9fb3085a54d6fe13f25694cb1c7ee1341",
+      "continew-project/src/main/java/top/continew/admin/project/model/query/ProjectDataBaseConfigQuery.java": "sha256:1a94e62c4747c5a27de7135e2f33091da05e644e1bf1e32bda60f9eadb5f3554",
+      "continew-project/src/main/java/top/continew/admin/project/model/query/ProjectEnvironmentConfigQuery.java": "sha256:d54f66308f820af46a7110ccc0c0e62e7fec502c4d990d38d276083cd08b9dab",
+      "continew-project/src/main/java/top/continew/admin/project/model/query/ProjectModuleConfigQuery.java": "sha256:59f1678852f5109bf4409ffe7e2be1a31e7261d88eb09661b4a13338379de455",
+      "continew-project/src/main/java/top/continew/admin/project/model/query/ProjectServerConfigQuery.java": "sha256:f6a602c932e1bb25c91be4dbddad22760fbd76f6c97d3e5bf41a11774653cb9f",
+      "continew-project/src/main/java/top/continew/admin/project/model/query/ProjectVersionConfigQuery.java": "sha256:4815ff7692976e490f942b37b3c7575e9acaddcba85aa14cd9f9a67afb274517",
+      "continew-project/src/main/java/top/continew/admin/project/model/req/ProjectConfigReq.java": "sha256:e6348198ab83002ab2542c846758a31a6006a7e79903e5b209c7671adbef74af",
+      "continew-project/src/main/java/top/continew/admin/project/model/req/ProjectDataBaseConfigReq.java": "sha256:b20a5853d8de769a4f7a0d8b2e0e562d18cbb2b7ff9d04945a089c67cd0a70f8",
+      "continew-project/src/main/java/top/continew/admin/project/model/req/ProjectEnvironmentConfigReq.java": "sha256:badb6ab7ef0f5f589b170cbb3c36dbf3c461ba8953e2188c05f44695d36be7a2",
+      "continew-project/src/main/java/top/continew/admin/project/model/req/ProjectModuleConfigReq.java": "sha256:ce03bde1efed04f4dd6eed3305c5d1e08eeb8b8c38a1b937b6edf0de65b63e42",
+      "continew-project/src/main/java/top/continew/admin/project/model/req/ProjectModuleDragReq.java": "sha256:16bb9e8611dbbc31b580ad98abf56ac920bd79366c0052b95777f3c5403fde8c",
+      "continew-project/src/main/java/top/continew/admin/project/model/req/ProjectServerConfigReq.java": "sha256:0499f23e538d9984fbb42d3927eab217d88806175dcf1d1f61af1791b2d295a4",
+      "continew-project/src/main/java/top/continew/admin/project/model/req/ProjectVersionConfigReq.java": "sha256:d032fad789dc62da9c8edd9ffffac5c003c59569c1e2ea1f77b015ef0ec9fb4c",
+      "continew-project/src/main/java/top/continew/admin/project/model/resp/ProjectConfigDetailResp.java": "sha256:bb909eb7b32c830d99ef0777b6b1be483aefb6a07169199427cb78b572887861",
+      "continew-project/src/main/java/top/continew/admin/project/model/resp/ProjectConfigResp.java": "sha256:32e63179bde9c2d41502e23f394038e46fb22e277b2145286bd07f5343b7be43",
+      "continew-project/src/main/java/top/continew/admin/project/model/resp/ProjectDataBaseConfigDetailResp.java": "sha256:21bc7985d5f7c4c7e514a5a293014e6acad5be1c7c42a35e90d454fe72dd0a4a",
+      "continew-project/src/main/java/top/continew/admin/project/model/resp/ProjectDataBaseConfigResp.java": "sha256:5000f54ddf3583384f808a6aab92c2871158c68038fc22aebdbb0289c0e3b31a",
+      "continew-project/src/main/java/top/continew/admin/project/model/resp/ProjectEnvironmentConfigDetailResp.java": "sha256:e9d78608b4eb0e4eaed08dba0aa803289d14e9cd481d7a7d940e7454327bfab3",
+      "continew-project/src/main/java/top/continew/admin/project/model/resp/ProjectEnvironmentConfigResp.java": "sha256:48ad9f4e76f02c7c3f8b604121583067e3d78b00ab415360291f3bcc0743253b",
+      "continew-project/src/main/java/top/continew/admin/project/model/resp/ProjectEnvironmentRuntimeStatusResp.java": "sha256:e4c27956464e377583ff0e5adaf111a7625ee62c434d5a39de93b9f76cf90111",
+      "continew-project/src/main/java/top/continew/admin/project/model/resp/ProjectModuleConfigDetailResp.java": "sha256:831b50a62b7b55b24781525a528c1b932006d24564959133cb31e1e7379b1e80",
+      "continew-project/src/main/java/top/continew/admin/project/model/resp/ProjectModuleConfigResp.java": "sha256:787489b576d33bb4bb8959ec5dfa7de076b807c61256b1d46d76735f9d63adf1",
+      "continew-project/src/main/java/top/continew/admin/project/model/resp/ProjectServerConfigDetailResp.java": "sha256:8a7e1c7692d3a5ed24f2774267e4f3b8a36b3c121255906a7e1a2685f6432b9d",
+      "continew-project/src/main/java/top/continew/admin/project/model/resp/ProjectServerConfigResp.java": "sha256:1691b860882b44af3a8a457ef0275c30af3a2ba3341bd8b21a74a96956d9f2e7",
+      "continew-project/src/main/java/top/continew/admin/project/model/resp/ProjectVersionConfigDetailResp.java": "sha256:f077f88ba36200d9cdebb3428d0bbc96686978256332be53b3db774fbb358c36",
+      "continew-project/src/main/java/top/continew/admin/project/model/resp/ProjectVersionConfigResp.java": "sha256:baa604dc11f41dc660ce49d530049a00a8696b5379a8ce03a4fe5c79a62718b3",
+      "continew-project/src/main/java/top/continew/admin/project/service/ProjectConfigService.java": "sha256:73727ed80b8d767e7c1c1d3c526d49c770ed4306a81390300bcd1d8b71733ea2",
+      "continew-project/src/main/java/top/continew/admin/project/service/ProjectDataBaseConfigService.java": "sha256:8bc68c58dfa41b8702763089daa62919146f533da4d86d74ccae2f40fef7a457",
+      "continew-project/src/main/java/top/continew/admin/project/service/ProjectEnvironmentConfigService.java": "sha256:433d5857099754e28595be7fac9a5d235ca47fb26f71140399556671c92107ad",
+      "continew-project/src/main/java/top/continew/admin/project/service/ProjectModuleConfigService.java": "sha256:e375533034b2fdb908ac4085dc92b00fcb31f2c142516434798b40fe5349c34a",
+      "continew-project/src/main/java/top/continew/admin/project/service/ProjectServerConfigService.java": "sha256:62a5fb8016fd79eccfce47f4976835dca04c922931d507e5df551a5d0834ed1c",
+      "continew-project/src/main/java/top/continew/admin/project/service/ProjectVersionConfigService.java": "sha256:964ef0db8d552dcb41555c75e8549e1b9e7635f601007d5d33a3012f49ecb61d",
+      "continew-project/src/main/java/top/continew/admin/project/service/impl/ProjectConfigServiceImpl.java": "sha256:88c143c1de0e6ca20e5787746ee5ac442a8fa5950d7bb34a02a8b4c074000640",
+      "continew-project/src/main/java/top/continew/admin/project/service/impl/ProjectDataBaseConfigServiceImpl.java": "sha256:28f3f92efe1441ce7148033dedad7a65f8b733ebcdd63ce297b4d918e07c5216",
+      "continew-project/src/main/java/top/continew/admin/project/service/impl/ProjectEnvironmentConfigServiceImpl.java": "sha256:ff66d8c1829b28834bbc3db9ea571e2d01db5ab5bed96f9d5642adeefd4b6158",
+      "continew-project/src/main/java/top/continew/admin/project/service/impl/ProjectModuleConfigServiceImpl.java": "sha256:ca79edf728bcd3fddaf57e4a7406f4aad6137157768a5cb9a22e1c44da0a6eb4",
+      "continew-project/src/main/java/top/continew/admin/project/service/impl/ProjectServerConfigServiceImpl.java": "sha256:9303b12b1cb08628f5c906cad8214651e1afe20665e2d9cea80d50013a729330",
+      "continew-project/src/main/java/top/continew/admin/project/service/impl/ProjectVersionConfigServiceImpl.java": "sha256:e5ec56f485c29ab4aeb236b16d588fb70019158302c174c28dee6229466ad810",
+      "continew-project/src/test/java/top/continew/admin/project/migration/ProjectDataBasePasswordMigratorTest.java": "sha256:ef646b9eb17c4eddefbd74f28f62cd328bf9e771e1051b99491f86858e3ed38c",
+      "continew-project/src/test/java/top/continew/admin/project/service/impl/ProjectDataBaseCredentialProtectionTest.java": "sha256:910f9176ac654eaa5a80df4d2a867879e72f5d5094fcf3e36451066a28d96ad6",
+      "continew-test/pom.xml": "sha256:85d23cfa9e945a6d595632ff672fbae63bd1a1efce868b23c9c8a469d0d0d403",
+      "continew-test/src/main/java/top/continew/admin/test/controller/TestMetricController.java": "sha256:29ff3135720c309dd5f17eeb49b976ec444344c26af092bfedea097aa9bf23f3",
+      "continew-test/src/main/java/top/continew/admin/test/controller/TestPlanController.java": "sha256:d1fc22e896698d95290d24d523736ebc6ae7eef35088c2d2cea1ce82495091d7",
+      "continew-test/src/main/java/top/continew/admin/test/controller/TestReportController.java": "sha256:b8af18cb0b4baf4c9fff5541a8fb1e5d4dc3e89319dc9f16aa2fd74577c4c32a",
+      "continew-test/src/main/java/top/continew/admin/test/controller/TestTimedTaskController.java": "sha256:d47c6b75943d52a7872a9bd3be55b34fdf11a172de10af77723985c79e080ff3",
+      "continew-test/src/main/java/top/continew/admin/test/job/TestPlanJobExecutor.java": "sha256:9b83a9c4f377686fa22293ba32028d7442c7450f8da4f6d23edf6ede2ea3e84d",
+      "continew-test/src/main/java/top/continew/admin/test/mapper/TestPlanMapper.java": "sha256:1af6121fd810561eef0644a057c60ae10900ed1518a8138fc2967300d58c73b9",
+      "continew-test/src/main/java/top/continew/admin/test/mapper/TestReportMapper.java": "sha256:bce1d34e27aba3a8d7e54ee03e1371f5a8dcf0bc7fe0f05679ce497d5f8efc4f",
+      "continew-test/src/main/java/top/continew/admin/test/mapper/TestTimedTaskMapper.java": "sha256:57662b88c8ac190ff8446dcf3c2d7763e2097f9a6d236e5e7ffcaf7ea4c8d170",
+      "continew-test/src/main/java/top/continew/admin/test/mapper/TestTimedTaskRunMapper.java": "sha256:fd56685b1da40ffc778296716628dd6623cfd54320df63d2ce0f78aa93915612",
+      "continew-test/src/main/java/top/continew/admin/test/model/entity/TestPlanDO.java": "sha256:c257c7cbcd99a9bddd756df55ff22425b119d36f2fa2ea1e77afb32b52964b9b",
+      "continew-test/src/main/java/top/continew/admin/test/model/entity/TestReportDO.java": "sha256:a0a333183722cc5f93a7bb29fa0f35e2e8d1e01c872f3fbd183f207529c3c310",
+      "continew-test/src/main/java/top/continew/admin/test/model/entity/TestTimedTaskDO.java": "sha256:66872aeb96568896c6b0502d226507d8ba38253d201372d241bf5c3b250d4149",
+      "continew-test/src/main/java/top/continew/admin/test/model/entity/TestTimedTaskRunDO.java": "sha256:aa27746ab979cfc68a6b8248d0d269937b9c7abee62efd0875133344e5646b93",
+      "continew-test/src/main/java/top/continew/admin/test/model/enums/TestExecutionEngineEnum.java": "sha256:b69f441d0876d146dde2e073bde8f0e7a9e7b160a43e3643f4e64e13d661fbbb",
+      "continew-test/src/main/java/top/continew/admin/test/model/query/TestMetricQuery.java": "sha256:0b159850f9a66fc66be3ad04a1f2a124fa6ba26a73ffdc8e520dda940c3008d3",
+      "continew-test/src/main/java/top/continew/admin/test/model/query/TestPlanQuery.java": "sha256:921e03407e0e7f570ea9d6685ec5caa4aafb2381be66d0e8eab354ad5e919c91",
+      "continew-test/src/main/java/top/continew/admin/test/model/query/TestReportQuery.java": "sha256:bdf89b1a9bb0648f7dd9869725c1fee5fe6be57c87aa0039987c75402b7ed119",
+      "continew-test/src/main/java/top/continew/admin/test/model/query/TestTimedTaskQuery.java": "sha256:8697e40ed8191da6c29b974c828424c79a9cd1923260bd18a614ff1bcaa176fb",
+      "continew-test/src/main/java/top/continew/admin/test/model/query/TestTimedTaskRunQuery.java": "sha256:13793d87e7c750fd8b0de68444040b1085b322923b945cda03547e7dce7004a9",
+      "continew-test/src/main/java/top/continew/admin/test/model/req/TestPlanExecuteReq.java": "sha256:67df8163ed6b298905c85f54fd5d49dccd87251f81e549e2df602590569857e9",
+      "continew-test/src/main/java/top/continew/admin/test/model/req/TestPlanReq.java": "sha256:cb581690139c9ef6f520f22e5aa3cb5a279dcfc23204b94cca1b00f97288eee0",
+      "continew-test/src/main/java/top/continew/admin/test/model/req/TestPlanSceneRelationReq.java": "sha256:83d8526c1ae9f6083a45993604fa68b5c5098bb49a09fd1bc4260da3aee644c8",
+      "continew-test/src/main/java/top/continew/admin/test/model/req/TestReportReq.java": "sha256:46452b2f57816846f5ecaed1b9452f5044da5231ebcb2fa53817980660e5bd82",
+      "continew-test/src/main/java/top/continew/admin/test/model/req/TestReportUploadReq.java": "sha256:154281ab2b392beb13daef43fd20edb8709d4ffd1f271b084033f4442c14cb1f",
+      "continew-test/src/main/java/top/continew/admin/test/model/req/TestTimedTaskExecutePayload.java": "sha256:2db7d1168034c6b800440f3ef67ed44282717f67744c9ac89b3cc9a3a0a7c534",
+      "continew-test/src/main/java/top/continew/admin/test/model/req/TestTimedTaskReq.java": "sha256:1581477a6ccada5f28caabaeb3d7ee8dcf739f79fd8ac37fc12da8562405f000",
+      "continew-test/src/main/java/top/continew/admin/test/model/resp/TestMetricResp.java": "sha256:cc98d4598767770f98a898720b680dfd608ef39573dff9a81d8ac9ca5e26f4ff",
+      "continew-test/src/main/java/top/continew/admin/test/model/resp/TestPlanDetailResp.java": "sha256:b6c7a684e864b480013a0e376918a1cf2abd867e1e20073b4f80cbdf392d7c35",
+      "continew-test/src/main/java/top/continew/admin/test/model/resp/TestPlanExecuteResp.java": "sha256:1a592abbe0724cf0043f90391b5eb43cba4dd25e6ddd75b8abae5e0064b1a012",
+      "continew-test/src/main/java/top/continew/admin/test/model/resp/TestPlanResp.java": "sha256:341de8439e7d80be68963437555a36d9423cbefc190b0db35b3f31bdde59e28f",
+      "continew-test/src/main/java/top/continew/admin/test/model/resp/TestReportDetailResp.java": "sha256:62926b68f06c2661003d670e386a55b37c70503458e0f3c4b757d66baab85b2d",
+      "continew-test/src/main/java/top/continew/admin/test/model/resp/TestReportResp.java": "sha256:7a4117b070ea06e46337368137fdc21597bf21a554a66da0c549d4cf1c6a893d",
+      "continew-test/src/main/java/top/continew/admin/test/model/resp/TestTimedTaskDetailResp.java": "sha256:6213658d9034783e0e944813dfde8adb121b424d8a6c893cf4c27c95d04f1aee",
+      "continew-test/src/main/java/top/continew/admin/test/model/resp/TestTimedTaskLogResp.java": "sha256:3310e501c3f69c20f349e5448fa2178f3ed1981f3e3094a9549d26b651f43bca",
+      "continew-test/src/main/java/top/continew/admin/test/model/resp/TestTimedTaskResp.java": "sha256:fbfab1a9a8e9b20868ad398cefeff7bc2e0102783a23cdb79a458373d40b4c7e",
+      "continew-test/src/main/java/top/continew/admin/test/model/resp/TestTimedTaskRunResp.java": "sha256:2a94a6d8983a1c593a24e5764fd5a93139ad46c6053243b492d8037635938275",
+      "continew-test/src/main/java/top/continew/admin/test/model/resp/TestTimedTaskRunSummaryResp.java": "sha256:cde9ce8a96654667f5623902eb58b6f54d6c31c67df80bdd7c3ac7f5bcb6694b",
+      "continew-test/src/main/java/top/continew/admin/test/service/TestMetricService.java": "sha256:7fd8482951d9ff80654f8e708661579ee35de7702d8e0e13a1b5754e38993895",
+      "continew-test/src/main/java/top/continew/admin/test/service/TestPlanService.java": "sha256:a95e7ec955ecdf39a6682cd1a234ae281977740a8d90c1521afb83f8d02dbe0a",
+      "continew-test/src/main/java/top/continew/admin/test/service/TestReportService.java": "sha256:d007fadb8989403eed8548fcf9a355a503feace6ed013982f0356914926c84b9",
+      "continew-test/src/main/java/top/continew/admin/test/service/TestTimedTaskNotificationService.java": "sha256:3bc49fb99cd704e56d59aea17f9ecdcca3386ed992e28186018ff9c317732efb",
+      "continew-test/src/main/java/top/continew/admin/test/service/TestTimedTaskRunService.java": "sha256:9b059d25031022e6d86041ea953ece15400d8c4d80240534aa90285868c3b51e",
+      "continew-test/src/main/java/top/continew/admin/test/service/TestTimedTaskService.java": "sha256:3d8e2edff544e8b9bdec261bb4cbde420fc721434c89576574f3535a31b4420b",
+      "continew-test/src/main/java/top/continew/admin/test/service/impl/TestMetricServiceImpl.java": "sha256:debc9b5879d2d6aa771371cf1dddfca5ca0e5cf946b1111c4a177dfc83736066",
+      "continew-test/src/main/java/top/continew/admin/test/service/impl/TestPlanExecutionDispatchService.java": "sha256:6d867c44d1c7172e75c12937f6885a8440f45cccabb6b298b6265d810831002d",
+      "continew-test/src/main/java/top/continew/admin/test/service/impl/TestPlanReportProgressServiceImpl.java": "sha256:e6eb5c494f4919cadf9cbc3bf8a885cfede93903b74310caa930926f76198419",
+      "continew-test/src/main/java/top/continew/admin/test/service/impl/TestPlanServiceImpl.java": "sha256:d13f09c1c739ee4602c7844e292da6eb11dd9b3ca1ebaff1b72504d57914cd8d",
+      "continew-test/src/main/java/top/continew/admin/test/service/impl/TestReportServiceImpl.java": "sha256:ae99c219dc529266b64bdf733bf8f0c20a0e54c0132993d776f3e3aa40152785",
+      "continew-test/src/main/java/top/continew/admin/test/service/impl/TestTimedTaskNotificationServiceImpl.java": "sha256:e3a39f1a0b03b99deaf351751cc9b81a41c3b389b48da3c62ef309d2631186d8",
+      "continew-test/src/main/java/top/continew/admin/test/service/impl/TestTimedTaskRunServiceImpl.java": "sha256:a94ea2571a38e95f68d5856daa28ada4f503b2b1e8e1cf1bcb5bacd5e732a6d1",
+      "continew-test/src/main/java/top/continew/admin/test/service/impl/TestTimedTaskServiceImpl.java": "sha256:a8238fb834fff091f02ac89f622144686b68eb3de820e8996ea00aab6215aa66",
+      "continew-test/src/test/java/top/continew/admin/test/job/TestPlanJobExecutorTest.java": "sha256:a6856e6a5e331d436199d99b8b489b34a45dd60b5e40651a62263b564b095878",
+      "continew-test/src/test/java/top/continew/admin/test/service/impl/TestPlanExecutionDispatchServiceTest.java": "sha256:d46749d98c4f3d31e4ee8783005087bb2b1e5b20f39f4a86a1caad8ce4453c2f",
+      "continew-test/src/test/java/top/continew/admin/test/service/impl/TestPlanReportProgressServiceImplTest.java": "sha256:9a104624f1b51029628fc235eacc82caca0ed69f4fd73565b5cd836ce1104c15",
+      "continew-test/src/test/java/top/continew/admin/test/service/impl/TestPlanServiceImplTest.java": "sha256:2ab2b0a9f4052b588a5306b1832acea22db201cfcb5c28cba19dc4bd561cbbea",
+      "continew-webapi/pom.xml": "sha256:8336446dd064fff259cbb53474b441e4b48f76f9b35779a970b4691f86b31ed8",
+      "continew-webapi/src/main/java/top/continew/admin/ContiNewAdminApplication.java": "sha256:d66b867db8c0abe82b271790db93560659d76d5804d013c1163312741b84663e",
+      "continew-webapi/src/main/java/top/continew/admin/config/log/LogConfiguration.java": "sha256:5ba78a9c4af7962bf562a6f611ed257d4fed7b4f17eca6cafae1e6edb36b7534",
+      "continew-webapi/src/main/java/top/continew/admin/config/log/LogDaoLocalImpl.java": "sha256:eefffd03eff29cf962e3ed4e200de924fe6814c33098c26fa59d413bcf405f77",
+      "continew-webapi/src/main/java/top/continew/admin/config/satoken/LoginPasswordProperties.java": "sha256:71082a69ae4d3e1b1301c20fc7f5bb06cb8b3cbc745edd94c1efdcd459625d12",
+      "continew-webapi/src/main/java/top/continew/admin/config/satoken/SaExtensionInterceptor.java": "sha256:16627ddd8373f89cb1524afd63783058499ae7eca75d0c864a568de87286a954",
+      "continew-webapi/src/main/java/top/continew/admin/config/satoken/SaTokenConfiguration.java": "sha256:1c2ae703bc6de26d534856784e9ec774814fab420ec3f170e41185831f9a9925",
+      "continew-webapi/src/main/java/top/continew/admin/config/satoken/SaTokenPermissionImpl.java": "sha256:8f6917ae2dc1a345701d8fb65c37d35072a856fcf8ebf1b096fd15608f2bb417",
+      "continew-webapi/src/main/java/top/continew/admin/controller/auth/AuthController.java": "sha256:f7a4c70ae2ab4a2cbc96203ef921f401e9b74405ac001cd2e6db96015313965a",
+      "continew-webapi/src/main/java/top/continew/admin/controller/code/GeneratorController.java": "sha256:f0f9c5276cf85ebfc4dc3500f6abde491db14df600c7301190031148babb43ef",
+      "continew-webapi/src/main/java/top/continew/admin/controller/common/CaptchaController.java": "sha256:6787f06a6e08d799e2e167884f36673788381552bf6295c0445a666669c7fe98",
+      "continew-webapi/src/main/java/top/continew/admin/controller/common/CommonController.java": "sha256:a9973c11df0cb2e395c997c59ef9bf2d6b54ad8223eb7aa33854bcd1a67ea5ae",
+      "continew-webapi/src/main/java/top/continew/admin/controller/common/DashboardController.java": "sha256:48f25a9e2a64267a8c9bac41213db290f53f78360c42fc39db6df8e6e249f2a8",
+      "continew-webapi/src/main/java/top/continew/admin/controller/monitor/OnlineUserController.java": "sha256:32718e9f528c8828e696ae99e06e286b769741246f806a2ac7ebfbdd13fdf6d8",
+      "continew-webapi/src/main/java/top/continew/admin/controller/open/AppController.java": "sha256:b079c1c32eca1453a2a001ee397cb20f56707c1e1a3232d20b07b345fe69b981",
+      "continew-webapi/src/main/java/top/continew/admin/controller/schedule/AutomationStorageCleanupJob.java": "sha256:4eb065c333df61d2024fe92e7356b9eee35374ba262b42b421256d576f0f8bd2",
+      "continew-webapi/src/main/java/top/continew/admin/controller/schedule/AutomationUiDefinitionProjectionJob.java": "sha256:fc206093d160597550e358574e9589cbe7b090e012916d3228b0f2483e4c2c3e",
+      "continew-webapi/src/main/java/top/continew/admin/controller/schedule/AutomationUiExecutionMigrationJob.java": "sha256:f4d9b37c39facf9ab3ffb440fca64ee47a35317aa9855c9fd8c17ae0c85aff71",
+      "continew-webapi/src/main/java/top/continew/admin/controller/schedule/AutomationUiRecordSourceMigrationJob.java": "sha256:48da0218fbee705ede80c2e4a11fdaa77dc64583938d5afd723f04bd84e50426",
+      "continew-webapi/src/main/java/top/continew/admin/controller/schedule/DemoEnvironmentJob.java": "sha256:1df9762b995b84db68099a4606005a677649c41777f6f3ff50306698d1692802",
+      "continew-webapi/src/main/java/top/continew/admin/controller/schedule/JobController.java": "sha256:8f7afebc12be96832532153c30c9c7fb0cb2f90c7da127405962623a749f05c9",
+      "continew-webapi/src/main/java/top/continew/admin/controller/schedule/JobLogController.java": "sha256:3908d2e171085c83cef21c761365a36dcea5d45809a72df0dd8390ef96049e5c",
+      "continew-webapi/src/main/java/top/continew/admin/controller/system/ClientController.java": "sha256:84434a57d23f6e7219a37f86e5415259e5e7bf08256fe4347474381c07b1abc2",
+      "continew-webapi/src/main/java/top/continew/admin/controller/system/DeptController.java": "sha256:da486031a779ff5ed4a57b5f82185bc618943ca9a4845677b8eeab3f3cd8f1c3",
+      "continew-webapi/src/main/java/top/continew/admin/controller/system/DictController.java": "sha256:8206d8096304950c5563cc692a698fb6a9ff05ed32266bce1deeba79f47b1dc2",
+      "continew-webapi/src/main/java/top/continew/admin/controller/system/DictItemController.java": "sha256:32876adfbbfb1c3c5817c53c10ebce6ea371ab9acd60d864aa39436929d4a3f8",
+      "continew-webapi/src/main/java/top/continew/admin/controller/system/FileController.java": "sha256:2a7a84967fd44871cb24c2b57d26bc20f7d039d2cf39d2e9ecfd449c76a1c65e",
+      "continew-webapi/src/main/java/top/continew/admin/controller/system/LogController.java": "sha256:7bb516be4326694aa48ff031c6742a57ea33eb950189846dbacb738fa945da0d",
+      "continew-webapi/src/main/java/top/continew/admin/controller/system/MenuController.java": "sha256:1d7b9e9ce316a4c61c74354460d769408ccff517dfc1108981a513d47cba5abc",
+      "continew-webapi/src/main/java/top/continew/admin/controller/system/MessageController.java": "sha256:d1b66fb9be1feee3a981d7d9045123bfca88ab48ec671c42cf2bc3b98df90068",
+      "continew-webapi/src/main/java/top/continew/admin/controller/system/NoticeController.java": "sha256:447fb597c1ddf8f3c3cb27ca3eaaf3e44f004fb99dc06dbf8985f900da44e9d2",
+      "continew-webapi/src/main/java/top/continew/admin/controller/system/OptionController.java": "sha256:0d3cfd5d06a3e758a471c60fc17b866f4d07d3b50867850884ff9456c73509c1",
+      "continew-webapi/src/main/java/top/continew/admin/controller/system/RoleController.java": "sha256:11fd749ba3af28f4a4a80dadc3113c5951ffdcb914732a94267774bed665e14d",
+      "continew-webapi/src/main/java/top/continew/admin/controller/system/SmsConfigController.java": "sha256:bbef04eb8be33c25933e40d1b3668f9525274741b4a15736d5c8af1b9aefebb8",
+      "continew-webapi/src/main/java/top/continew/admin/controller/system/SmsLogController.java": "sha256:777b613c77961466e1f1da7c2790f1e9cca9df82b4cc445ff1b4eff3d616aac0",
+      "continew-webapi/src/main/java/top/continew/admin/controller/system/StorageController.java": "sha256:3d8b97b16cc2a2946dd3984e3891d0416f75ddbe10f850449ebe30362b53092d",
+      "continew-webapi/src/main/java/top/continew/admin/controller/system/UserController.java": "sha256:4ea8ee33e030ce2ec176536be673f640a8e69a45ca1991f9528f9441408ec0ef",
+      "continew-webapi/src/main/java/top/continew/admin/controller/system/UserMessageController.java": "sha256:25fd4a8aaa76d908437ce4a7769c3c73f06bec2daa999691e08a30b40b31adb6",
+      "continew-webapi/src/main/java/top/continew/admin/controller/system/UserProfileController.java": "sha256:3eed409a4cb7dfdebbfe5ceec90a109a309faa4880b8ea1c0bf7c0ff93dd055c",
+      "continew-webapi/src/test/java/top/continew/admin/ContiNewAdminApplicationTests.java": "sha256:bfe188a58fd4266a651e52470479d0cc42aac85185947b6b12ad6cbacb3f07e4",
+      "continew-webapi/src/test/java/top/continew/admin/controller/schedule/AutomationUiDefinitionProjectionLiquibaseContractTest.java": "sha256:ed0a0de695b2a714293e60bbba3b97b34cf799d39156b1493551456e83c09f00",
+      "docker/docker-compose.yml": "sha256:95d447c8acb2db813cb4be445fad670317ca5129cda34c8d0adf1f583de7c318",
+      "docker/sakura-playwright/package-lock.json": "sha256:5fecf93606f68ec0213349f4fbd027a13feb06f9d57c5b606276ba2f1a319946",
+      "docker/sakura-playwright/package.json": "sha256:76b6b4dbf2f8b5dba5c9ff97d2276e978531f0a70230b5d3140ab140da611b48",
+      "docker/sakura-playwright/pnpm-lock.yaml": "sha256:139e943c73445ca5eac4bd2d5f6be98cd2ed6e10cde28e76e63e1cac14f05bdc",
+      "pom.xml": "sha256:1f1008e456c7f868576dc5a8b68ec486af95a36f6d1bd7208e5d22757045bb38"
+    }
+  },
+  "version": 2
+}

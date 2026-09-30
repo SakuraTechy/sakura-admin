@@ -16,6 +16,8 @@ databaseChangeLog:
   - include:
       file: db/changelog/mysql/main_data.sql
   - include:
+      file: db/changelog/mysql/user_contact_data_repair.sql
+  - include:
       file: db/changelog/mysql/project_menu.sql
   - include:
       file: db/changelog/mysql/test_table.sql

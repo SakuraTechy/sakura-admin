@@ -69,24 +69,18 @@
         <appender-ref ref="FILE"/>
     </appender>
 
-    <!-- 开发环境：只打印到控制台 -->
+    <!-- 如果配置的日志等级，和 application.yml 中的日志等级配置重叠，application.yml 配置优先级高 -->
+    <!-- DEBUG 是开发环境常用的日志级别，生产环境不建议使用。 -->
+    <!-- TRACE 是最低级别，用于生产排查时输出所有级别日志。 -->
+    <!-- INFO 是开发环境常用的日志级别，生产环境不建议使用。 -->
     <springProfile name="dev">
-        <!-- 如果配置的日志等级，和 application.yml 中的日志等级配置重叠，application.yml 配置优先级高 -->
-        <root level="INFO">
+        <root level="DEBUG">
             <appender-ref ref="CONSOLE"/>
             <appender-ref ref="ASYNC_FILE"/>
         </root>
     </springProfile>
-
-    <!-- 生产环境：打印到控制台并输出到文件 -->
     <springProfile name="prod">
-        <!-- 如果配置的日志等级，和 application.yml 中的日志等级配置重叠，application.yml 配置优先级高 -->
-        <!-- <root level="INFO"> 
-            <appender-ref ref="CONSOLE_PROD"/>
-            <appender-ref ref="ASYNC_FILE"/>
-        </root> -->
-        <!-- TRACE 是最低级别，用于生产排查时输出所有级别日志。 -->
-        <root level="TRACE">
+        <root level="INFO"> 
             <appender-ref ref="CONSOLE_PROD"/>
             <appender-ref ref="ASYNC_FILE"/>
         </root>

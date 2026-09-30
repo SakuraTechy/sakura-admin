@@ -144,8 +144,9 @@ continew-starter.log:
 ## 项目日志配置（配置重叠部分，优先级高于 logback-spring.xml 中的配置）
 logging:
   level:
-    top.continew.admin: DEBUG
-    top.continew.starter: DEBUG
+    root: INFO
+    top.continew.admin: INFO
+    top.continew.starter: INFO
   file:
     path: ../sakura-admin/logs
 
@@ -193,10 +194,10 @@ sms:
 # 配置文件方式和 [邮件配置] 功能可任选其一方式使用，实际开发时请注释或删除另一方
 spring.mail:
   # 根据需要更换
-  host: smtp.126.com
+  host: smtp.163.com
   port: 465
-  username: 你的邮箱
-  password: 你的邮箱授权码
+  username: angkaitest@163.com
+  password: WCEJxxxxxOADU
   properties:
     mail:
       smtp:
@@ -283,21 +284,24 @@ avatar:
 
 --- ### AI 配置（仅用于本地开发测试，不要提交到 Git）
 automation:
+  playwright-runner:
+    # 仅开发环境默认使用初始化管理员账号生成内部 Token；生产环境必须显式配置专用服务账号。
+    service-account-user-id: ${SAKURA_PLAYWRIGHT_RUNNER_SERVICE_ACCOUNT_USER_ID:1}
   ai:
     # AI 能力总开关
     enabled: true
     # 其他配置项使用默认值（从 application.yml 继承）
     provider: openai
     endpoint: http://172.19.5.223:8080/v1/chat/completions
-    model: gpt-5.6-luna
+    model: qwen3.8-27b
     # OpenAI API Key（请替换为你的真实 API Key）
-    api-key: sk-7ad92fe8e3d75f88028xxxxxxxxd79a6ac09051f
+    api-key: sk-7ad92fe8e3d75f880285f10adb7d0eaec55391ddd71a21408e6d79a6ac09051f
     
 --- ### Snail Job 配置
 snail-job:
-  enabled: false
+  enabled: true
   # 客户端地址（默认自动获取本机 IP）
-  #host: 127.0.0.1
+  host: 127.0.0.1
   # 客户端端口（默认：1789）
   port: 1789
   # 命名空间 ID

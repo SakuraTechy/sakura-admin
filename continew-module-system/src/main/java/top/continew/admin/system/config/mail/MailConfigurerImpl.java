@@ -17,15 +17,21 @@
 package top.continew.admin.system.config.mail;
 
 import cn.hutool.core.map.MapUtil;
+import jakarta.mail.MessagingException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Bean;
+import org.springframework.mail.javamail.JavaMailSenderImpl;
+import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Component;
 import top.continew.admin.common.constant.SysConstants;
 import top.continew.admin.system.enums.OptionCategoryEnum;
+import top.continew.admin.system.model.req.MailTestReq;
 import top.continew.admin.system.service.OptionService;
 import top.continew.starter.messaging.mail.core.MailConfig;
 import top.continew.starter.messaging.mail.core.MailConfigurer;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 /**
@@ -41,6 +47,46 @@ public class MailConfigurerImpl implements MailConfigurer {
 
     private final OptionService optionService;
 
+    /**
+     * 动态邮件配置存储在系统参数中，未配置 spring.mail.host 时 Spring Boot 不会自动创建邮件 Sender。
+     */
+    @Bean
+    public JavaMailSenderImpl javaMailSender() {
+        return new JavaMailSenderImpl();
+    }
+
+    /**
+     * 使用页面当前填写的配置发送测试邮件，不修改系统参数。
+     *
+     * @param req 邮件测试请求
+     * @throws MessagingException 邮件发送失败
+     */
+    public void sendTestMail(MailTestReq req) throws MessagingException {
+        MailConfig mailConfig = new MailConfig();
+        mailConfig.setProtocol(req.getProtocol());
+        mailConfig.setHost(req.getHost());
+        mailConfig.setPort(req.getPort());
+        mailConfig.setUsername(req.getUsername());
+        mailConfig.setPassword(req.getPassword());
+        mailConfig.setFrom(req.getUsername());
+        mailConfig.setSslEnabled(Boolean.TRUE.equals(req.getSslEnabled()));
+        if (mailConfig.isSslEnabled()) {
+            mailConfig.setSslPort(req.getSslPort());
+        }
+        // 让临时 Sender 与正式动态配置使用相同的 SSL、认证行为。
+        mailConfig.getProperties().put("mail.smtp.ssl.enable", String.valueOf(mailConfig.isSslEnabled()));
+
+        JavaMailSenderImpl sender = new JavaMailSenderImpl();
+        apply(mailConfig, sender);
+        MimeMessageHelper helper = new MimeMessageHelper(sender.createMimeMessage(), false, StandardCharsets.UTF_8
+            .displayName());
+        helper.setFrom(mailConfig.getFrom());
+        helper.setTo(req.getRecipient());
+        helper.setSubject("邮件配置测试");
+        helper.setText("这是一封邮件配置测试邮件，说明 SMTP 连接和实际投递均已成功。", false);
+        sender.send(helper.getMimeMessage());
+    }
+
     @Override
     public MailConfig getMailConfig() {
         // 查询邮件配置
@@ -52,7 +98,10 @@ public class MailConfigurerImpl implements MailConfigurer {
         mailConfig.setPort(MapUtil.getInt(map, "MAIL_PORT"));
         mailConfig.setUsername(MapUtil.getStr(map, "MAIL_USERNAME"));
         mailConfig.setPassword(MapUtil.getStr(map, "MAIL_PASSWORD"));
+        mailConfig.setFrom(mailConfig.getUsername());
         mailConfig.setSslEnabled(SysConstants.YES.equals(MapUtil.getInt(map, "MAIL_SSL_ENABLED")));
+        // 非空属性用于触发 starter 将 SSL、认证等配置写入 JavaMail；否则动态配置只会覆盖主机和账号。
+        mailConfig.getProperties().put("mail.smtp.ssl.enable", String.valueOf(mailConfig.isSslEnabled()));
         if (mailConfig.isSslEnabled()) {
             mailConfig.setSslPort(MapUtil.getInt(map, "MAIL_SSL_PORT"));
         }

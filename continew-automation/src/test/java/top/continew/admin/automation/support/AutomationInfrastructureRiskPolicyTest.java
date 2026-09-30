@@ -39,8 +39,23 @@ class AutomationInfrastructureRiskPolicyTest {
             .of("sql_mode", "query", "sql", "SELECT 1; DELETE FROM users")))
             .hasMessageContaining("INFRA_SQL_QUERY_MODE_VIOLATION");
         assertThatThrownBy(() -> policy.assess("database_sql", Map
+            .of("sql_mode", "query", "sql", "SELECT 1; SELECT 2")))
+            .hasMessageContaining("INFRA_SQL_QUERY_MODE_VIOLATION");
+        assertThatThrownBy(() -> policy.assess("database_sql", Map
             .of("sql_mode", "query", "sql", "WITH changed AS (UPDATE users SET enabled = 0 RETURNING id) SELECT * FROM changed")))
             .hasMessageContaining("INFRA_SQL_QUERY_MODE_VIOLATION");
+    }
+
+    @Test
+    void scriptModeShouldClassifyMixedStatementsByHighestRisk() {
+        AutomationInfrastructureRiskPolicy policy = new AutomationInfrastructureRiskPolicy("");
+
+        AutomationInfrastructureRiskPolicy.Assessment assessment = policy.assess("database_sql", Map
+            .of("sql_mode", "script", "sql", "SELECT * FROM mysql.plugin; UPDATE mysql.plugin SET name = 'name'"));
+
+        assertThat(assessment.riskLevel()).isEqualTo("write");
+        assertThat(assessment.approvalRequired()).isTrue();
+        assertThat(assessment.readOnlyTransaction()).isFalse();
     }
 
     @Test

@@ -34,6 +34,7 @@ import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 import top.continew.starter.core.exception.BadRequestException;
 import top.continew.starter.core.exception.BusinessException;
+import top.continew.starter.ratelimiter.exception.RateLimiterException;
 import top.continew.starter.web.model.R;
 
 /**
@@ -55,6 +56,17 @@ public class GlobalExceptionHandler {
     public R handleBusinessException(BusinessException e, HttpServletRequest request) {
         log.error("[{}] {}", request.getMethod(), request.getRequestURI(), e);
         return R.fail(String.valueOf(HttpStatus.INTERNAL_SERVER_ERROR.value()), e.getMessage());
+    }
+
+    /**
+     * 限流异常
+     *
+     * <p>限流提示是面向用户的业务消息，需要保留注解中配置的具体原因，不能回退为通用 error。</p>
+     */
+    @ExceptionHandler(RateLimiterException.class)
+    public R handleRateLimiterException(RateLimiterException e, HttpServletRequest request) {
+        log.warn("[{}] {}", request.getMethod(), request.getRequestURI(), e.getMessage());
+        return R.fail(String.valueOf(HttpStatus.TOO_MANY_REQUESTS.value()), e.getMessage());
     }
 
     /**

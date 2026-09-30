@@ -18,6 +18,7 @@ package top.continew.admin.test.job;
 
 import cn.hutool.core.bean.BeanUtil;
 import com.aizuda.snailjob.client.job.core.annotation.JobExecutor;
+import com.aizuda.snailjob.client.job.core.dto.JobArgs;
 import com.aizuda.snailjob.common.log.SnailJobLog;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -43,9 +44,17 @@ public class TestPlanJobExecutor {
     private final TestTimedTaskMapper timedTaskMapper;
     private final TestTimedTaskRunService timedTaskRunService;
 
+    /** 保留直接调用入口，便于单元测试和本地调试传入原始 JSON。 */
+    public void executeTestPlanJson(String args) {
+        JobArgs jobArgs = new JobArgs();
+        jobArgs.setJobParams(args);
+        executeTestPlan(jobArgs);
+    }
+
     @JobExecutor(name = EXECUTOR_NAME)
-    public void executeTestPlan(String args) {
-        TestTimedTaskExecutePayload payload = parsePayload(args);
+    public void executeTestPlan(JobArgs jobArgs) {
+        // Snail-Job 1.4.0 对带参数执行器固定传入 JobArgs；业务参数位于 jobParams。
+        TestTimedTaskExecutePayload payload = parsePayload(jobArgs == null ? null : jobArgs.getJobParams());
         if (payload.getTaskId() == null) {
             throw new BusinessException("定时任务 ID 不能为空");
         }
@@ -96,12 +105,24 @@ public class TestPlanJobExecutor {
         }
         req.setExecuteName(payload.getExecuteName() == null ? task.getExecuteName() : payload.getExecuteName());
         req.setExecuteEmail(payload.getExecuteEmail() == null ? task.getExecuteEmail() : payload.getExecuteEmail());
+        // 调度线程没有登录上下文，必须使用 payload 中的执行人，历史周期 payload 默认回退系统管理员。
+        req.setExecuteUserId(payload.getExecuteUserId() == null
+            ? ("MANUAL".equalsIgnoreCase(payload.getTriggerMode())
+                ? task.getCreateUser()
+                : TestTimedTaskExecutePayload.DEFAULT_EXECUTOR_USER_ID)
+            : payload.getExecuteUserId());
         return req;
     }
 
-    private TestTimedTaskExecutePayload parsePayload(String args) {
+    private TestTimedTaskExecutePayload parsePayload(Object args) {
         try {
-            return JsonUtil.unmarshal(args, TestTimedTaskExecutePayload.class);
+            if (args instanceof String json) {
+                return JsonUtil.unmarshal(json, TestTimedTaskExecutePayload.class);
+            }
+            if (args instanceof TestTimedTaskExecutePayload payload) {
+                return payload;
+            }
+            throw new IllegalArgumentException("任务参数类型无效");
         } catch (Exception e) {
             throw new BusinessException("定时任务参数解析失败");
         }

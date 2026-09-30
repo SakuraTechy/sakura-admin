@@ -62,6 +62,17 @@ public class TestTimedTaskController extends BaseController<TestTimedTaskService
         return super.list(query, sortQuery);
     }
 
+    /**
+     * 分页查询定时任务。显式声明根路径，避免不同 starter 版本对 CrudRequestMapping(Api.PAGE)
+     * 的路由推导不一致，前端列表统一使用分页响应。
+     */
+    @Operation(summary = "分页查询测试定时任务")
+    @SaCheckPermission("test:timedTask:list")
+    @GetMapping
+    public PageResp<TestTimedTaskResp> page(@Validated TestTimedTaskQuery query, @Validated PageQuery pageQuery) {
+        return baseService.page(query, pageQuery);
+    }
+
     @Override
     @SaCheckPermission("test:timedTask:create")
     public BaseIdResp<Long> create(@Validated(CrudValidationGroup.Create.class) @RequestBody TestTimedTaskReq req) {

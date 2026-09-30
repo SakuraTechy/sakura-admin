@@ -167,8 +167,6 @@ continew-starter.log:
 logging:
   level:
     root: INFO
-    # top.continew.admin: INFO
-    # top.continew.starter: INFO
     top.continew.admin: INFO
     top.continew.starter: INFO
   file:

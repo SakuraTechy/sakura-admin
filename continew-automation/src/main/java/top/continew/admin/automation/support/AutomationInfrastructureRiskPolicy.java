@@ -63,8 +63,9 @@ public class AutomationInfrastructureRiskPolicy {
 
     private Assessment assessSql(Map<String, Object> step) {
         String mode = text(step.getOrDefault("sql_mode", "query")).toLowerCase(Locale.ROOT);
-        SqlClassification classification = classifySql(text(step.get("sql")));
-        if ("query".equals(mode) && classification != SqlClassification.READ) {
+        LexicalSql lexical = tokenize(text(step.get("sql")));
+        SqlClassification classification = classifySql(lexical);
+        if ("query".equals(mode) && (classification != SqlClassification.READ || lexical.statementCount() != 1)) {
             throw new BusinessException("INFRA_SQL_QUERY_MODE_VIOLATION：query 模式只允许单条可确认的只读语句");
         }
         if ("call"
@@ -74,6 +75,7 @@ public class AutomationInfrastructureRiskPolicy {
         if (classification == SqlClassification.WRITE || "update".equals(mode)) {
             return new Assessment("write", true, false, null);
         }
+        // script 模式允许多条只读语句；仍使用只读事务，避免脚本绕过查询安全边界。
         return new Assessment("read", false, true, null);
     }
 
@@ -99,9 +101,8 @@ public class AutomationInfrastructureRiskPolicy {
         return new Assessment("host-privileged", true, false, null);
     }
 
-    private SqlClassification classifySql(String sql) {
-        LexicalSql lexical = tokenize(sql);
-        if (!lexical.valid() || lexical.statementCount() != 1 || lexical.tokens().isEmpty()) {
+    private SqlClassification classifySql(LexicalSql lexical) {
+        if (!lexical.valid() || lexical.tokens().isEmpty()) {
             return SqlClassification.UNKNOWN;
         }
         if (lexical.tokens().stream().anyMatch(DESTRUCTIVE_SQL::contains)) {

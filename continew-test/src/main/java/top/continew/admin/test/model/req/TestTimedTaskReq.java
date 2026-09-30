@@ -19,7 +19,6 @@ package top.continew.admin.test.model.req;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
@@ -64,7 +63,6 @@ public class TestTimedTaskReq implements Serializable {
     private String executeName;
     private String executeEmail;
 
-    @NotEmpty(message = "通知邮箱不能为空")
     @Size(max = 20, message = "通知邮箱不能超过 {max} 个")
     private List<@Email(message = "通知邮箱格式不正确") String> notificationEmails;
 

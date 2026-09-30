@@ -22,6 +22,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import top.continew.admin.automation.mapper.AutomationUiSceneMapper;
 import top.continew.admin.automation.model.entity.AutomationUiSceneDO;
 import top.continew.admin.automation.model.entity.ui.CaseDO;
@@ -79,7 +81,7 @@ public class TestPlanExecutionDispatchService {
     private final Map<String, ExecutionControl> activeExecutions = new ConcurrentHashMap<>();
 
     /**
-     * 为计划内每个场景建立报告占位记录，并返回按计划顺序排列的可执行清单。
+     * 为计划内每个场景建立报告占位记录，并返回按场景 ID 顺序排列的可执行清单。
      */
     public List<TestPlanExecuteResp.SceneExecution> initialize(TestPlanDO plan,
                                                                List<Long> executionSceneIds,
@@ -118,9 +120,22 @@ public class TestPlanExecutionDispatchService {
                                TestPlanExecuteReq req,
                                List<TestPlanExecuteResp.SceneExecution> manifest,
                                String token) {
-        ExecutionControl control = new ExecutionControl(String.valueOf(plan.getId()), reportId);
-        activeExecutions.put(reportId, control);
-        planExecutor.submit(() -> runPlan(control, req, manifest, token));
+        Runnable dispatch = () -> {
+            ExecutionControl control = new ExecutionControl(String.valueOf(plan.getId()), reportId);
+            activeExecutions.put(reportId, control);
+            planExecutor.submit(() -> runPlan(control, req, manifest, token));
+        };
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            dispatch.run();
+            return;
+        }
+        // 报告和执行占位记录提交后，异步 Runner 才能读取同一份正式报告 scope。
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                dispatch.run();
+            }
+        });
     }
 
     public void cancel(String testPlanId, String reportId) {

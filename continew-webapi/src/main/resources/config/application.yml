@@ -32,7 +32,7 @@ automation:
     # MySQL 分容器部署时，把数据盘只读挂载到 admin，并在这里配置挂载路径。
     monitored-paths: ${SAKURA_AUTOMATION_STORAGE_MONITORED_PATHS:}
     min-free-bytes: ${SAKURA_AUTOMATION_STORAGE_MIN_FREE_BYTES:5368709120}
-    max-used-percent: ${SAKURA_AUTOMATION_STORAGE_MAX_USED_PERCENT:90}
+    max-used-percent: ${SAKURA_AUTOMATION_STORAGE_MAX_USED_PERCENT:95}
     max-database-bytes: ${SAKURA_AUTOMATION_MAX_DATABASE_BYTES:0}
     cache-seconds: ${SAKURA_AUTOMATION_STORAGE_CHECK_CACHE_SECONDS:30}
   storage-cleanup:
@@ -46,7 +46,9 @@ automation:
     enabled: ${SAKURA_PLAYWRIGHT_RUNNER_ENABLED:true}
     # Docker 部署将 Runner 挂载到 /app/sakura-playwright；本机开发请通过环境变量覆盖为实际路径。
     root: ${SAKURA_PLAYWRIGHT_RUNNER_ROOT:/app/sakura-playwright}
+    # Node.js 可执行命令（生产环境请使用绝对路径，避免 PATH 被污染）
     node-command: ${SAKURA_PLAYWRIGHT_NODE_COMMAND:node}
+    # 最大并发执行数（默认 2，生产环境可适当增加）
     max-concurrent: ${SAKURA_PLAYWRIGHT_RUNNER_MAX_CONCURRENT:2}
     # Admin 托管 Runner 的稳定身份；为空时自动生成 playwright-<本机名>。
     executor-instance-id: ${SAKURA_PLAYWRIGHT_EXECUTOR_INSTANCE_ID:}
@@ -57,8 +59,14 @@ automation:
     # 登录态只保存在 Runner 节点临时目录，不进入 artifact、场景 JSON 或前端请求。
     session-state-dir: ${SAKURA_PLAYWRIGHT_SESSION_STATE_DIR:}
     session-state-retention-hours: ${SAKURA_PLAYWRIGHT_SESSION_STATE_RETENTION_HOURS:24}
-    # 无人值守计划调度专用令牌；不允许由前端请求上传。
+    # 无人值守计划调度专用令牌；不允许由前端请求上传。配置后优先使用该固定令牌。
     service-token: ${SAKURA_PLAYWRIGHT_RUNNER_SERVICE_TOKEN:}
+    # 未配置固定令牌时，使用服务账号在 Redis 中自动创建和复用 Token。
+    service-token-enabled: ${SAKURA_PLAYWRIGHT_RUNNER_SERVICE_TOKEN_ENABLED:true}
+    service-account-user-id: ${SAKURA_PLAYWRIGHT_RUNNER_SERVICE_ACCOUNT_USER_ID:}
+    service-token-timeout-seconds: ${SAKURA_PLAYWRIGHT_RUNNER_SERVICE_TOKEN_TIMEOUT_SECONDS:86400}
+    service-token-refresh-before-seconds: ${SAKURA_PLAYWRIGHT_RUNNER_SERVICE_TOKEN_REFRESH_BEFORE_SECONDS:3600}
+    service-token-device: ${SAKURA_PLAYWRIGHT_RUNNER_SERVICE_TOKEN_DEVICE:PLAYWRIGHT_RUNNER}
   playwright-artifact:
     unified-storage-enabled: ${SAKURA_PLAYWRIGHT_UNIFIED_STORAGE_ENABLED:true}
     legacy-read-enabled: ${SAKURA_PLAYWRIGHT_LEGACY_ARTIFACT_READ_ENABLED:true}
@@ -80,7 +88,7 @@ automation:
   # AI 智能能力配置（变量提取规则生成、测试用例优化建议等）
   ai:
     # AI 能力总开关（默认关闭，需显式启用并配置有效的 API 凭证）
-    enabled: ${SAKURA_AI_ENABLED:false}
+    enabled: ${SAKURA_AI_ENABLED:true}
     # AI 服务提供商类型：openai | azure-openai | anthropic | custom
     provider: ${SAKURA_AI_PROVIDER:openai}
     # API 端点（OpenAI 兼容接口完整 URL）
@@ -141,6 +149,9 @@ continew-starter.web:
     default-error-msg: error
     # 是否将原生异常错误信息填充到状态信息中
     origin-exception-using-detail-message: false
+    # 限流提示由项目异常处理器返回原始业务消息，避免被全局响应包装为 error
+    exclude-exception-types:
+      - top.continew.starter.ratelimiter.exception.RateLimiterException
     # 响应类全名（配置后 response-style 将不再生效）
     response-class-full-name: top.continew.starter.web.model.R
 
@@ -268,9 +279,9 @@ cosid:
   namespace: ${spring.application.name}
   machine:
     enabled: true
-    # 稳定的实例标识，避免容器 IP 变化导致机器号租约丢失
+    # 使用本机名生成稳定实例标识，避免多个开发环境共用默认实例导致机器号租约互相覆盖。
     stable: true
-    instance-id: ${COSID_INSTANCE_ID:sakura-admin-${HOSTNAME:default}}
+    instance-id: ${COSID_INSTANCE_ID:sakura-admin-${COMPUTERNAME:${HOSTNAME:default}}}
     # 机器号分配器
     distributor:
       type: REDIS

@@ -28,6 +28,9 @@ public class TestTimedTaskExecutePayload implements Serializable {
     @Serial
     private static final long serialVersionUID = 1L;
 
+    /** 系统初始化用户：admin，作为无人值守定时执行的默认执行人。 */
+    public static final long DEFAULT_EXECUTOR_USER_ID = 1L;
+
     private Long taskId;
     private Long testPlanId;
     private Long projectEnvironmentId;
@@ -36,6 +39,8 @@ public class TestTimedTaskExecutePayload implements Serializable {
     private Map<String, Object> executionConfig;
     /** SCHEDULE 为周期触发，MANUAL 为任务页立即执行。 */
     private String triggerMode;
+    /** 本次执行对应的用户 ID；历史 payload 缺失时由执行器按触发方式回退。 */
+    private Long executeUserId;
     private String executeName;
     private String executeEmail;
 }

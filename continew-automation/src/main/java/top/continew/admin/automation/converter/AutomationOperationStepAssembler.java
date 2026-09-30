@@ -321,7 +321,8 @@ public class AutomationOperationStepAssembler {
             case "web-setdate" -> {
                 putValue(legacy, "key", legacyDateMode(methodConfig.get("date_mode")));
                 putValue(legacy, "value", methodConfig.get("format"));
-                putValue(legacy, "script", firstValue(methodConfig, "datetime", "offset_seconds"));
+                // 旧版 script 是日期偏移算式；不能把自定义日期基准 datetime 误写成算式。
+                putValue(legacy, "script", firstValue(methodConfig, "script", "offset_seconds"));
                 putDetails(legacy, "key", methodConfig.get("variable_name"));
             }
             case "web-setsysinfo" -> {

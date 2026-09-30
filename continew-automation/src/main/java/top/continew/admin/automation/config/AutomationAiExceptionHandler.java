@@ -32,6 +32,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import top.continew.admin.automation.support.ai.AiProviderException;
+import top.continew.starter.core.exception.BusinessException;
 import top.continew.starter.web.model.R;
 
 import java.util.regex.PatternSyntaxException;
@@ -148,6 +149,17 @@ public class AutomationAiExceptionHandler {
 
         // 不暴露具体 pattern 内容，只提示语法错误
         return R.fail(String.valueOf(HttpStatus.BAD_REQUEST.value()), "正则表达式语法错误");
+    }
+
+    /**
+     * 业务异常
+     *
+     * <p>该处理器优先级高于全局异常处理器，必须显式保留业务层返回的可操作原因。</p>
+     */
+    @ExceptionHandler(BusinessException.class)
+    public R<Void> handleBusinessException(BusinessException e, HttpServletRequest request) {
+        log.error("[{}] {} - 业务异常", request.getMethod(), request.getRequestURI(), e);
+        return R.fail(String.valueOf(HttpStatus.INTERNAL_SERVER_ERROR.value()), e.getMessage());
     }
 
     /**

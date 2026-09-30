@@ -36,11 +36,13 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.dromara.sms4j.api.SmsBlend;
 import org.dromara.sms4j.api.entity.SmsResponse;
 import org.dromara.sms4j.comm.constant.SupplierConstant;
 import org.dromara.sms4j.core.factory.SmsFactory;
 import org.springframework.http.HttpHeaders;
+import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import top.continew.admin.auth.model.resp.CaptchaResp;
@@ -65,7 +67,9 @@ import top.continew.starter.web.model.R;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -80,6 +84,7 @@ import java.util.concurrent.TimeUnit;
 @Validated
 @RestController
 @RequiredArgsConstructor
+@Slf4j
 @RequestMapping("/captcha")
 public class CaptchaController {
 
@@ -147,7 +152,8 @@ public class CaptchaController {
         @RateLimiter(name = CacheConstants.CAPTCHA_KEY_PREFIX, key = "#email", rate = 100, interval = 24, unit = TimeUnit.HOURS, message = "获取验证码操作太频繁，请稍后再试"),
         @RateLimiter(name = CacheConstants.CAPTCHA_KEY_PREFIX, key = "#email", rate = 30, interval = 1, unit = TimeUnit.MINUTES, type = LimitType.IP, message = "获取验证码操作太频繁，请稍后再试")})
     public R getMailCaptcha(@NotBlank(message = "邮箱不能为空") @Email(message = "邮箱格式不正确") String email,
-                            CaptchaVO captchaReq) throws MessagingException {
+                            CaptchaVO captchaReq,
+                            HttpServletRequest request) throws MessagingException {
         // 行为验证码校验
         ResponseModel verificationRes = behaviorCaptchaService.verification(captchaReq);
         ValidationUtils.throwIfNotEqual(verificationRes.getRepCode(), RepCodeEnum.SUCCESS.getCode(), verificationRes
@@ -165,11 +171,76 @@ public class CaptchaController {
             .set("captcha", captcha)
             .set("expiration", expirationInMinutes));
         //        MailUtils.sendHtml(email, "【%s】邮箱验证码".formatted(projectProperties.getName()), content);
-        MailUtils.sendHtml(email, "【%s】邮箱验证码".formatted(siteConfig.get("SITE_TITLE")), content);
+        String subject = "【%s】邮箱验证码".formatted(siteConfig.get("SITE_TITLE"));
+        try {
+            MailUtils.sendHtml(email, subject, content);
+        } catch (MessagingException | RuntimeException e) {
+            log.error("邮箱验证码发送失败，request={}, smtp={}, recipient={}", formatRequestInfo(request), formatMailSenderInfo(), maskEmail(email), e);
+            throw e;
+        }
         // 保存验证码
         String captchaKey = CacheConstants.CAPTCHA_KEY_PREFIX + email;
         RedisUtils.set(captchaKey, captcha, Duration.ofMinutes(expirationInMinutes));
         return R.ok("发送成功，验证码有效期 %s 分钟".formatted(expirationInMinutes));
+    }
+
+    /**
+     * 记录邮件接口诊断所需的请求信息，但不记录验证码、令牌和认证凭据。
+     */
+    private String formatRequestInfo(HttpServletRequest request) {
+        StringBuilder parameters = new StringBuilder();
+        request.getParameterMap().forEach((name, values) -> {
+            if (parameters.length() > 0) {
+                parameters.append(", ");
+            }
+            parameters.append(name).append('=').append(formatParameter(name, values));
+        });
+        return "method=%s, uri=%s, clientIp=%s, userAgent=%s, parameters={%s}".formatted(request.getMethod(), request
+            .getRequestURI(), JakartaServletUtil.getClientIP(request), request
+                .getHeader(HttpHeaders.USER_AGENT), parameters);
+    }
+
+    private String formatParameter(String name, String[] values) {
+        String lowerName = name.toLowerCase(Locale.ROOT);
+        if (lowerName.contains("captcha") || lowerName.contains("token") || lowerName.contains("password") || lowerName
+            .contains("secret") || lowerName.contains("authorization")) {
+            return "[REDACTED]";
+        }
+        if (lowerName.contains("email")) {
+            return maskEmail(values.length == 0 ? null : values[0]);
+        }
+        return Arrays.toString(values);
+    }
+
+    private String formatMailSenderInfo() {
+        try {
+            JavaMailSenderImpl mailSender = MailUtils.getMailSender();
+            return "protocol=%s, host=%s, port=%s, username=%s, sslEnabled=%s, sslPort=%s, smtpAuth=%s"
+                .formatted(mailSender.getProtocol(), mailSender.getHost(), mailSender.getPort(), maskValue(mailSender
+                    .getUsername()), mailSender.getJavaMailProperties().get("mail.smtp.ssl.enable"), mailSender
+                        .getJavaMailProperties()
+                        .get("mail.smtp.socketFactory.port"), mailSender.getJavaMailProperties().get("mail.smtp.auth"));
+        } catch (Exception e) {
+            return "unavailable(" + e.getClass().getSimpleName() + ")";
+        }
+    }
+
+    private String maskEmail(String email) {
+        if (StrUtil.isBlank(email)) {
+            return "-";
+        }
+        int atIndex = email.indexOf('@');
+        if (atIndex <= 1) {
+            return "***" + (atIndex < 0 ? "" : email.substring(atIndex));
+        }
+        return email.charAt(0) + "***" + email.substring(atIndex);
+    }
+
+    private String maskValue(String value) {
+        if (StrUtil.isBlank(value)) {
+            return "-";
+        }
+        return value.charAt(0) + "***";
     }
 
     /**

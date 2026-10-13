@@ -32,6 +32,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import top.continew.admin.automation.model.resp.AutomationUiSceneGlobalRevisionResp;
 import top.continew.admin.automation.model.query.AutomationUiExecutionQuery;
+import top.continew.admin.automation.model.query.AutomationUiExecutionHistoryQuery;
+import top.continew.admin.automation.model.resp.AutomationUiExecutionHistorySummaryResp;
+import top.continew.admin.automation.model.resp.AutomationUiExecutionRunResp;
+import top.continew.admin.automation.model.resp.AutomationUiExecutionSummaryResp;
 import top.continew.admin.automation.model.query.AutomationUiExecutionCaseHistoryQuery;
 import top.continew.admin.automation.model.req.AutomationUiPageReq;
 import top.continew.admin.automation.model.resp.AutomationUiExecutionArtifactResp;
@@ -56,6 +60,36 @@ public class AutomationUiExecutionQueryController {
     private final AutomationUiSceneQueryService sceneQueryService;
     private final AutomationUiExecutionQueryService executionQueryService;
     private final AutomationPlaywrightArtifactService artifactService;
+
+    @SaCheckPermission("automation:automationUiScene:get")
+    @GetMapping("/history/runs")
+    public PageResp<AutomationUiExecutionRunResp> runHistory(
+        @Validated AutomationUiExecutionHistoryQuery query, @Validated AutomationUiPageReq pageQuery) {
+        return executionQueryService.runHistoryPage(query, pageQuery);
+    }
+
+    @SaCheckPermission("automation:automationUiScene:get")
+    @GetMapping("/history/runs/{runId}/scenes")
+    public PageResp<AutomationUiExecutionRunResp> runScenes(
+        @org.springframework.web.bind.annotation.PathVariable String runId,
+        @Validated AutomationUiExecutionHistoryQuery query, @Validated AutomationUiPageReq pageQuery) {
+        return executionQueryService.runScenes(runId, query, pageQuery);
+    }
+
+    @Operation(summary = "按完整项目范围分页查询调试历史")
+    @SaCheckPermission("automation:automationUiScene:get")
+    @GetMapping("/history")
+    public PageResp<AutomationUiExecutionSummaryResp> history(@Validated AutomationUiExecutionHistoryQuery query,
+                                                            @Validated AutomationUiPageReq pageQuery) {
+        return executionQueryService.historyPage(query, pageQuery);
+    }
+
+    @Operation(summary = "统计完整范围内场景的最新调试结果")
+    @SaCheckPermission("automation:automationUiScene:get")
+    @GetMapping("/history/summary")
+    public AutomationUiExecutionHistorySummaryResp historySummary(@Validated AutomationUiExecutionHistoryQuery query) {
+        return executionQueryService.historySummary(query);
+    }
 
     @Operation(summary = "分页查询执行历史", description = "只返回执行摘要，不包含 case、step、诊断或原始结果")
     @SaCheckPermission("automation:automationUiScene:get")

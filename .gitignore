@@ -51,3 +51,9 @@ docker/sakura-playwright/
 docker/sakura-execution-agent/
 docker/schedule-server/*.jar
 docker/.env
+
+# MySQL、Redis 运行数据和日志
+docker/mysql/data/
+docker/mysql/logs/
+docker/redis/data/
+docker/redis/logs/

@@ -134,6 +134,9 @@ public class AutomationPlaywrightCaseServiceImpl implements AutomationPlaywright
     private AutomationStoragePressureGuard storagePressureGuard;
 
     @Resource
+    private top.continew.admin.automation.service.AutomationUiExecutionRunService executionRunService;
+
+    @Resource
     private AutomationPlaywrightJobMapper automationPlaywrightJobMapper;
 
     // 产物服务的旧上传路径依赖 caseService；延迟获取避免构造循环依赖。
@@ -269,6 +272,7 @@ public class AutomationPlaywrightCaseServiceImpl implements AutomationPlaywright
             storagePressureGuard.assertExecutionAllowed();
         }
         AutomationUiSceneDO scene = resolveScene(req.getSceneKey());
+        if (StringUtils.isNotBlank(req.getRunId())) executionRunService.validateBatch(req, scene.getId());
         String executionType = StringUtils.trimToEmpty(req.getExecutionType()).toLowerCase();
         if (!List.of("playwright-runner", "extension-cdp").contains(executionType)) {
             throw new BusinessException("不支持的 Playwright 执行方式：" + executionType);
@@ -418,6 +422,7 @@ public class AutomationPlaywrightCaseServiceImpl implements AutomationPlaywright
 
         applyBatchSummaryToScene(scene, record);
         executionRecordService.saveRecord(scene, record, null);
+        if (StringUtils.isNotBlank(req.getRunId())) executionRunService.attachBatch(req.getRunId(), scene.getId(), batchId);
         notifyPlanReportProgress(record);
 
         AutomationPlaywrightBatchResp response = new AutomationPlaywrightBatchResp();

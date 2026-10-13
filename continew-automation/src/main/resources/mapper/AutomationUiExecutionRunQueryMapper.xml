@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="top.continew.admin.automation.mapper.AutomationUiExecutionQueryMapper">
+    <resultMap id="executionRunResultMap" type="top.continew.admin.automation.model.resp.AutomationUiExecutionRunResp" extends="executionSummaryResultMap">
+        <result property="runId" column="run_id"/>
+        <result property="sceneName" column="scene_name"/>
+        <result property="sceneOrder" column="scene_order"/>
+        <result property="sceneTotal" column="scene_total"/>
+        <result property="sceneCompleted" column="scene_completed"/>
+        <result property="scenePass" column="scene_pass"/>
+        <result property="sceneFail" column="scene_fail"/>
+        <result property="sceneCancelled" column="scene_cancelled"/>
+        <result property="sceneBlocked" column="scene_blocked"/>
+        <result property="sceneSkip" column="scene_skip"/>
+    </resultMap>
+
+    <sql id="runMemberColumns">
+        CONCAT(CASE WHEN r.id IS NULL THEN 'execution:' ELSE 'run:' END, COALESCE(r.id, e.id)) AS group_key,
+        TRIM(CAST(r.id AS CHAR(32))) AS run_id,
+        e.id AS execution_db_id,
+        COALESCE(e.execution_key, CONCAT('run:', r.id, ':', s.id)) AS execution_key,
+        s.id AS scene_db_id, s.scene_id AS scene_key, s.name AS scene_name,
+        COALESCE(rs.scene_order, 0) AS scene_order, e.batch_id, 'debug' AS record_source,
+        COALESCE(e.execution_engine, r.execution_engine) AS execution_engine,
+        COALESCE(e.status, rs.status) AS status,
+        COALESCE(e.result, CASE WHEN rs.status IN ('cancelled', 'failed') THEN rs.status ELSE 'pending' END) AS result,
+        COALESCE(e.execute_user_id, r.execute_user_id) AS execute_user_id,
+        COALESCE(e.execute_name, r.execute_name) AS execute_name,
+        COALESCE(e.project_environment_id, r.project_environment_id) AS project_environment_id,
+        e.project_environment_name,
+        COALESCE(e.case_total, 0) AS case_total, COALESCE(e.case_pass, 0) AS case_pass,
+        COALESCE(e.case_fail, 0) AS case_fail, COALESCE(e.case_skip, 0) AS case_skip,
+        COALESCE(e.case_cancelled, 0) AS case_cancelled,
+        COALESCE(e.step_total, 0) AS step_total, COALESCE(e.step_pass, 0) AS step_pass,
+        COALESCE(e.step_fail, 0) AS step_fail, COALESCE(e.step_skip, 0) AS step_skip,
+        e.started_at,
+        COALESCE(e.finished_at, CASE WHEN rs.status IN ('cancelled', 'failed') THEN r.finished_at END) AS finished_at,
+        COALESCE(NULLIF(e.duration_ms, 0), TIMESTAMPDIFF(MICROSECOND, e.started_at, e.finished_at) / 1000, 0) AS duration_ms,
+        COALESCE(r.create_time, e.create_time) AS create_time,
+        COALESCE(e.update_time, r.finished_at, r.create_time) AS update_time
+    </sql>
+
+    <!-- 先按项目/版本/模块/单场景和对象权限限定成员，再按任务聚合；总数和分页使用同一个集合。 -->
+    <sql id="runHistoryMembers">
+        WITH history_members AS (
+            SELECT <include refid="runMemberColumns"/>
+            FROM automation_ui_execution_run_scene rs
+            JOIN automation_ui_execution_run r ON r.id = rs.run_id
+            JOIN automation_ui_scene s ON s.id = rs.scene_id AND s.del_flag = 3
+            JOIN project_config p ON p.id = s.project_id AND p.del_flag = 3
+            JOIN project_version_config pv ON pv.id = s.version_id AND pv.project_id = s.project_id AND pv.del_flag = 3
+            JOIN project_module_config pm ON pm.id = s.module_id AND pm.project_id = s.project_id AND pm.version_id = s.version_id AND pm.del_flag = 3
+            LEFT JOIN automation_ui_execution e ON e.scene_id = rs.scene_id AND e.batch_id = rs.batch_id
+            WHERE 1 = 1
+            <include refid="historyScenePredicate"/>
+            <include refid="executionScopePredicate"/>
+            UNION ALL
+            SELECT <include refid="runMemberColumns"/>
+            FROM automation_ui_execution e
+            <include refid="authorizedExecutionJoins"/>
+            LEFT JOIN automation_ui_execution_run_scene rs ON rs.scene_id = e.scene_id AND rs.batch_id = e.batch_id
+            LEFT JOIN automation_ui_execution_run r ON r.id = rs.run_id
+            WHERE rs.run_id IS NULL
+            <include refid="historyScenePredicate"/>
+            <include refid="executionScopePredicate"/>
+        )
+    </sql>
+
+    <select id="countRunHistory" resultType="long">
+        <include refid="runHistoryMembers"/>
+        SELECT COUNT(DISTINCT group_key) FROM history_members
+    </select>
+
+    <select id="selectRunHistoryPage" resultMap="executionRunResultMap">
+        <include refid="runHistoryMembers"/>
+        SELECT MAX(run_id) AS run_id,
+               CASE WHEN MAX(run_id) IS NULL THEN MAX(execution_db_id) END AS execution_db_id,
+               group_key AS execution_key,
+               CASE WHEN COUNT(*) = 1 THEN MAX(scene_db_id) END AS scene_db_id,
+               CASE WHEN COUNT(*) = 1 THEN MAX(scene_key) END AS scene_key,
+               COALESCE(MAX(run_id), MAX(batch_id)) AS batch_id,
+               'debug' AS record_source, MAX(execution_engine) AS execution_engine,
+               MAX(execute_user_id) AS execute_user_id, MAX(execute_name) AS execute_name,
+               MAX(project_environment_id) AS project_environment_id,
+               COUNT(*) AS scene_total,
+               SUM(CASE WHEN status IN ('completed', 'passed', 'failed', 'blocked', 'skipped', 'cancelled', 'interrupted', '12', '17') THEN 1 ELSE 0 END) AS scene_completed,
+               SUM(CASE WHEN result IN ('passed', 'success', '14') THEN 1 ELSE 0 END) AS scene_pass,
+               SUM(CASE WHEN result IN ('failed', '15') THEN 1 ELSE 0 END) AS scene_fail,
+               SUM(CASE WHEN result IN ('cancelled', '17') THEN 1 ELSE 0 END) AS scene_cancelled,
+               SUM(CASE WHEN result = 'blocked' THEN 1 ELSE 0 END) AS scene_blocked,
+               SUM(CASE WHEN result IN ('skipped', '16') THEN 1 ELSE 0 END) AS scene_skip,
+               CASE WHEN SUM(CASE WHEN status NOT IN ('queued', 'waiting', 'not_started', '10') THEN 1 ELSE 0 END) = 0 THEN 'queued'
+                    WHEN SUM(CASE WHEN status NOT IN ('completed', 'passed', 'failed', 'blocked', 'skipped', 'cancelled', 'interrupted', '12', '17') THEN 1 ELSE 0 END) > 0 THEN 'running'
+                    WHEN SUM(CASE WHEN result IN ('cancelled', '17') THEN 1 ELSE 0 END) > 0 THEN 'cancelled' ELSE 'completed' END AS status,
+               CASE WHEN SUM(CASE WHEN status NOT IN ('completed', 'passed', 'failed', 'blocked', 'skipped', 'cancelled', 'interrupted', '12', '17') THEN 1 ELSE 0 END) > 0 THEN 'pending'
+                    WHEN SUM(CASE WHEN result IN ('cancelled', '17') THEN 1 ELSE 0 END) > 0 THEN 'cancelled'
+                    WHEN SUM(CASE WHEN result IN ('failed', '15') THEN 1 ELSE 0 END) > 0 THEN 'failed'
+                    WHEN SUM(CASE WHEN result = 'blocked' THEN 1 ELSE 0 END) > 0 THEN 'blocked'
+                    WHEN SUM(CASE WHEN result IN ('skipped', '16') THEN 1 ELSE 0 END) > 0 THEN 'skipped'
+                    ELSE 'passed' END AS result,
+               SUM(case_total) AS case_total, SUM(case_pass) AS case_pass, SUM(case_fail) AS case_fail,
+               SUM(case_skip) AS case_skip, SUM(case_cancelled) AS case_cancelled,
+               SUM(step_total) AS step_total, SUM(step_pass) AS step_pass, SUM(step_fail) AS step_fail, SUM(step_skip) AS step_skip,
+               COALESCE(MIN(started_at), MIN(create_time)) AS started_at,
+               CASE WHEN SUM(CASE WHEN status NOT IN ('completed', 'passed', 'failed', 'blocked', 'skipped', 'cancelled', 'interrupted', '12', '17') THEN 1 ELSE 0 END) = 0 THEN MAX(finished_at) END AS finished_at,
+               SUM(duration_ms) AS duration_ms, MIN(create_time) AS create_time, MAX(update_time) AS update_time
+        FROM history_members GROUP BY group_key
+        ORDER BY MIN(create_time) DESC, group_key DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countRunScenes" resultType="long">
+        <include refid="runHistoryMembers"/>
+        SELECT COUNT(*) FROM history_members WHERE run_id = #{runId}
+    </select>
+
+    <select id="selectRunScenes" resultMap="executionRunResultMap">
+        <include refid="runHistoryMembers"/>
+        SELECT * FROM history_members WHERE run_id = #{runId}
+        ORDER BY scene_order, scene_db_id
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+</mapper>

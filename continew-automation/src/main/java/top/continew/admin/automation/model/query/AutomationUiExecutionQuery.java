@@ -39,6 +39,10 @@ public class AutomationUiExecutionQuery {
     @Size(max = 64, message = "执行引擎长度不能超过 64")
     private String executionEngine;
 
+    /** 本次执行展开明细时精确定位子批次，不能回退到该场景最近一次记录。 */
+    @Size(max = 128, message = "批次标识长度不能超过 128")
+    private String batchId;
+
     @Positive(message = "测试计划 ID 必须为正整数")
     private Long testPlanId;
 

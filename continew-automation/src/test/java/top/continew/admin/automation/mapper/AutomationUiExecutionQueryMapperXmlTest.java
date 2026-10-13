@@ -26,6 +26,7 @@ import java.util.Map;
 
 import org.apache.ibatis.mapping.BoundSql;
 import top.continew.admin.automation.model.query.AutomationUiExecutionQuery;
+import top.continew.admin.automation.model.query.AutomationUiExecutionHistoryQuery;
 import top.continew.admin.automation.model.query.AutomationUiExecutionCaseHistoryQuery;
 import top.continew.admin.automation.model.req.AutomationUiExecutionScopeReq;
 
@@ -199,11 +200,79 @@ class AutomationUiExecutionQueryMapperXmlTest {
         }
     }
 
+    @Test
+    void batchFilterShouldApplyToCountPageAndCursorWithoutWeakeningAuthorization() throws IOException {
+        Configuration configuration = new Configuration();
+        try (InputStream input = getClass().getClassLoader().getResourceAsStream("mapper/AutomationUiExecutionQueryMapper.xml")) {
+            new XMLMapperBuilder(input, configuration, "mapper/AutomationUiExecutionQueryMapper.xml", configuration.getSqlFragments()).parse();
+        }
+        AutomationUiExecutionQuery query = new AutomationUiExecutionQuery();
+        query.setSceneDbId(8L);
+        query.setBatchId("current-batch");
+        AutomationUiExecutionScopeReq scope = new AutomationUiExecutionScopeReq();
+        scope.setRecordSource("debug");
+        Map<String, Object> parameters = new HashMap<>();
+        parameters.put("query", query);
+        parameters.put("scope", scope);
+        parameters.put("admin", false);
+        parameters.put("userId", 9L);
+        parameters.put("ascending", false);
+        parameters.put("cursorTime", null);
+        parameters.put("offset", 0L);
+        parameters.put("limit", 1);
+        for (String name : new String[] {"selectExecutionPageCount", "selectExecutionPage", "selectExecutionCursor"}) {
+            var statement = configuration.getMappedStatement("top.continew.admin.automation.mapper.AutomationUiExecutionQueryMapper." + name);
+            BoundSql bound = statement.getBoundSql(parameters);
+            assertThat(bound.getSql()).contains("e.batch_id = ?", "JSON_CONTAINS", "e.record_source = 'debug'");
+            assertThat(bound.getParameterMappings()).extracting("property").contains("query.batchId", "query.sceneDbId");
+            query.setBatchId(null);
+            assertThat(statement.getBoundSql(parameters).getSql()).doesNotContain("e.batch_id = ?");
+            query.setBatchId("current-batch");
+        }
+    }
+
     private String between(String source, String start, String end) {
         int startIndex = source.indexOf(start);
         assertThat(startIndex).isGreaterThanOrEqualTo(0);
         int endIndex = source.indexOf(end, startIndex);
         assertThat(endIndex).isGreaterThan(startIndex);
         return source.substring(startIndex, endIndex);
+    }
+
+    @Test
+    void globalHistoryQueriesShouldShareScopeAndAuthorizationWithoutScenePagingOrWideJson() throws IOException {
+        Configuration configuration = new Configuration();
+        try (InputStream input = getClass().getClassLoader().getResourceAsStream("mapper/AutomationUiExecutionQueryMapper.xml")) {
+            new XMLMapperBuilder(input, configuration, "mapper/AutomationUiExecutionQueryMapper.xml", configuration.getSqlFragments()).parse();
+        }
+        AutomationUiExecutionHistoryQuery query = new AutomationUiExecutionHistoryQuery();
+        query.setProjectId(8L);
+        query.setVersionId(7L);
+        query.setModuleIds(java.util.List.of(6L, 5L));
+        AutomationUiExecutionScopeReq scope = new AutomationUiExecutionScopeReq();
+        scope.setRecordSource("debug");
+        Map<String, Object> parameters = new HashMap<>();
+        parameters.put("query", query);
+        parameters.put("scope", scope);
+        parameters.put("admin", false);
+        parameters.put("userId", 9L);
+        parameters.put("offset", 220L);
+        parameters.put("limit", 10);
+        for (String name : new String[] {"countHistory", "selectHistoryPage", "selectHistorySummary"}) {
+            var statement = configuration.getMappedStatement("top.continew.admin.automation.mapper.AutomationUiExecutionQueryMapper." + name);
+            BoundSql bound = statement.getBoundSql(parameters);
+            assertThat(bound.getSql()).contains("s.project_id = ?", "s.version_id = ?", "s.module_id IN", "JSON_CONTAINS", "s.create_user = ?", "e.record_source = 'debug'")
+                .doesNotContain("case_list", "summary_json", "diagnostics", "LIMIT 20");
+            assertThat(bound.getParameterMappings()).extracting("property").contains("query.projectId", "query.versionId");
+            query.setSceneDbId(26L);
+            assertThat(statement.getBoundSql(parameters).getSql()).contains("s.id = ?");
+            query.setSceneDbId(null);
+        }
+        String xml = mapperXml();
+        assertThat(between(xml, "<select id=\"selectHistoryPage\"", "</select>"))
+            .contains("ORDER BY e.create_time DESC, e.id DESC", "LIMIT #{limit} OFFSET #{offset}");
+        assertThat(between(xml, "<select id=\"selectHistorySummary\"", "</select>"))
+            .contains("LEFT JOIN automation_ui_execution latest", "latest.id IS NULL", "COUNT(*) AS total", "ORDER BY e.create_time DESC, e.id DESC LIMIT 1")
+            .doesNotContain("#{limit}", "#{offset}");
     }
 }

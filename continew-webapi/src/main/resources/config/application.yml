@@ -63,7 +63,7 @@ automation:
     service-token: ${SAKURA_PLAYWRIGHT_RUNNER_SERVICE_TOKEN:}
     # 未配置固定令牌时，使用服务账号在 Redis 中自动创建和复用 Token。
     service-token-enabled: ${SAKURA_PLAYWRIGHT_RUNNER_SERVICE_TOKEN_ENABLED:true}
-    service-account-user-id: ${SAKURA_PLAYWRIGHT_RUNNER_SERVICE_ACCOUNT_USER_ID:}
+    service-account-user-id: ${SAKURA_PLAYWRIGHT_RUNNER_SERVICE_ACCOUNT_USER_ID:1}
     service-token-timeout-seconds: ${SAKURA_PLAYWRIGHT_RUNNER_SERVICE_TOKEN_TIMEOUT_SECONDS:86400}
     service-token-refresh-before-seconds: ${SAKURA_PLAYWRIGHT_RUNNER_SERVICE_TOKEN_REFRESH_BEFORE_SECONDS:3600}
     service-token-device: ${SAKURA_PLAYWRIGHT_RUNNER_SERVICE_TOKEN_DEVICE:PLAYWRIGHT_RUNNER}

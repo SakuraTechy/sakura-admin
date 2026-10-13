@@ -17,6 +17,10 @@
 package top.continew.admin.automation.service;
 
 import top.continew.admin.automation.model.query.AutomationUiExecutionQuery;
+import top.continew.admin.automation.model.query.AutomationUiExecutionHistoryQuery;
+import top.continew.admin.automation.model.resp.AutomationUiExecutionHistorySummaryResp;
+import top.continew.admin.automation.model.resp.AutomationUiExecutionRunResp;
+import top.continew.admin.automation.model.resp.AutomationUiExecutionSummaryResp;
 import top.continew.admin.automation.model.query.AutomationUiExecutionCaseHistoryQuery;
 import top.continew.admin.automation.model.req.AutomationUiPageReq;
 import top.continew.admin.automation.model.resp.AutomationUiExecutionArtifactResp;
@@ -30,6 +34,16 @@ import top.continew.starter.extension.crud.model.resp.PageResp;
 
 /** UI 自动化执行事实分层查询服务。 */
 public interface AutomationUiExecutionQueryService {
+
+    PageResp<AutomationUiExecutionRunResp> runHistoryPage(
+        AutomationUiExecutionHistoryQuery query, AutomationUiPageReq pageQuery);
+
+    PageResp<AutomationUiExecutionRunResp> runScenes(
+        String runId, AutomationUiExecutionHistoryQuery query, AutomationUiPageReq pageQuery);
+
+    PageResp<AutomationUiExecutionSummaryResp> historyPage(AutomationUiExecutionHistoryQuery query, AutomationUiPageReq pageQuery);
+
+    AutomationUiExecutionHistorySummaryResp historySummary(AutomationUiExecutionHistoryQuery query);
 
     AutomationUiExecutionPageResp page(AutomationUiExecutionQuery query, AutomationUiPageReq pageQuery);
 

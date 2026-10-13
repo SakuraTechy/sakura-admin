@@ -335,6 +335,37 @@ class AutomationPlaywrightCaseServiceImplTest {
     }
 
     @Test
+    void shouldLinkTaskOnlyAfterSavingTheRealSceneBatch() {
+        var tasks = org.mockito.Mockito.mock(top.continew.admin.automation.service.AutomationUiExecutionRunService.class);
+        ReflectionTestUtils.setField(service, "executionRunService", tasks);
+        AutomationUiSceneDO storedScene = scene(1L);
+        when(sceneMapper.selectById(100L)).thenReturn(storedScene);
+        when(environmentMapper.selectById(47L)).thenReturn(environment(1L));
+        var req = batchRequest();
+        req.setRunId("9001");
+        var response = service.createBatch(req);
+        var ordered = org.mockito.Mockito.inOrder(tasks, executionRecordService);
+        ordered.verify(tasks).validateBatch(req, 100L);
+        ordered.verify(executionRecordService).saveRecord(org.mockito.ArgumentMatchers.eq(storedScene), any(), org.mockito.ArgumentMatchers.isNull());
+        ordered.verify(tasks).attachBatch("9001", 100L, response.getBatchId());
+        assertThat(response.getBatchId()).isNotEqualTo("9001");
+        assertThat(response.getExecutionCapability()).isNotBlank();
+    }
+
+    @Test
+    void cancelledTaskRejectsBatchBeforeExecutionFactsAreWritten() {
+        var tasks = org.mockito.Mockito.mock(top.continew.admin.automation.service.AutomationUiExecutionRunService.class);
+        ReflectionTestUtils.setField(service, "executionRunService", tasks);
+        when(sceneMapper.selectById(100L)).thenReturn(scene(1L));
+        var req = batchRequest();
+        req.setRunId("9001");
+        org.mockito.Mockito.doThrow(new top.continew.starter.core.exception.BusinessException("执行任务已取消"))
+            .when(tasks).validateBatch(req, 100L);
+        assertThatThrownBy(() -> service.createBatch(req)).hasMessageContaining("已取消");
+        verify(executionRecordService, never()).saveRecord(any(), any(), any());
+    }
+
+    @Test
     void shouldRejectSelectAllCasesWhenDefinitionChanged() {
         AutomationUiSceneDO storedScene = scene(1L);
         storedScene.setDefinitionVersion(8L);

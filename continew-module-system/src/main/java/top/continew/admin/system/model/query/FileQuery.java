@@ -46,6 +46,13 @@ public class FileQuery implements Serializable {
     private String name;
 
     /**
+     * 文件 URL，用于精确查找下载文件的原始名称
+     */
+    @Schema(description = "文件 URL")
+    @Query(type = QueryType.EQ)
+    private String url;
+
+    /**
      * 绝对路径
      */
     @Schema(description = "绝对路径", example = "/2025")

@@ -42,6 +42,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import top.continew.admin.automation.mapper.AutomationUiExecutionQueryMapper;
 import top.continew.admin.automation.model.query.AutomationUiExecutionAccessRow;
 import top.continew.admin.automation.model.query.AutomationUiExecutionQuery;
+import top.continew.admin.automation.model.query.AutomationUiExecutionHistoryQuery;
+import top.continew.admin.automation.model.resp.AutomationUiExecutionHistorySummaryResp;
 import top.continew.admin.automation.model.query.AutomationUiExecutionCaseHistoryQuery;
 import top.continew.admin.automation.model.resp.AutomationUiExecutionCaseHistoryResp;
 import top.continew.admin.automation.model.req.AutomationUiExecutionScopeReq;
@@ -265,6 +267,28 @@ class AutomationUiExecutionQueryServiceImplTest {
         return query;
     }
 
+    @Test
+    void cursorShouldRejectSwitchingBatch() {
+        stubScope();
+        when(queryMapper.selectSceneAccess(8L, 9L, false)).thenReturn(access(15L));
+        List<AutomationUiExecutionSummaryResp> candidates = LongStream.rangeClosed(1, 2).mapToObj(id -> {
+            AutomationUiExecutionSummaryResp item = new AutomationUiExecutionSummaryResp();
+            item.setExecutionDbId(id);
+            item.setCreateTime(LocalDateTime.of(2026, 10, 7, 18, 0).minusSeconds(id));
+            return item;
+        }).toList();
+        when(queryMapper.selectExecutionCursor(any(), any(), eq(9L), eq(false), isNull(), isNull(), eq(2), eq(false)))
+            .thenReturn(candidates);
+        AutomationUiExecutionQuery query = query(8L, "debug");
+        query.setBatchId("current-batch");
+        query.setCursor("start");
+        AutomationUiExecutionPageResp.Cursor first = (AutomationUiExecutionPageResp.Cursor)service.page(query, page(1, 1));
+        query.setCursor(first.getNextCursor());
+        query.setBatchId("different-batch");
+        assertThatThrownBy(() -> service.page(query, page(1, 1))).isInstanceOf(BadRequestException.class)
+            .hasMessageContaining("INVALID_CURSOR_SCOPE");
+    }
+
     private AutomationUiExecutionQuery query(Long sceneDbId, String recordSource) {
         AutomationUiExecutionQuery query = new AutomationUiExecutionQuery();
         query.setSceneDbId(sceneDbId);
@@ -294,5 +318,81 @@ class AutomationUiExecutionQueryServiceImplTest {
     private void stubScope() {
         when(accessScopeResolver.currentScope()).thenReturn(new AccessScope(9L, false, Set.of("scene:get"), Set
             .of("developer")));
+    }
+
+    @Test
+    void historyShouldPageAcrossAllScenesAndKeepActualTotalAndDebugScope() {
+        stubScope();
+        AutomationUiExecutionHistoryQuery query = new AutomationUiExecutionHistoryQuery();
+        query.setProjectId(8L);
+        query.setVersionId(7L);
+        query.setModuleIds(List.of(6L, 5L));
+        when(queryMapper.countHistory(eq(query), any(), eq(9L), eq(false))).thenReturn(503L);
+        AutomationUiExecutionSummaryResp row = new AutomationUiExecutionSummaryResp();
+        row.setExecutionDbId(30L);
+        when(queryMapper.selectHistoryPage(eq(query), any(), eq(9L), eq(false), eq(220L), eq(10))).thenReturn(List.of(row));
+        var response = service.historyPage(query, page(23, 10));
+        assertThat(response.getTotal()).isEqualTo(503);
+        assertThat(response.getList()).containsExactly(row);
+        ArgumentCaptor<AutomationUiExecutionScopeReq> scope = ArgumentCaptor.forClass(AutomationUiExecutionScopeReq.class);
+        verify(queryMapper).countHistory(eq(query), scope.capture(), eq(9L), eq(false));
+        assertThat(scope.getValue().getRecordSource()).isEqualTo("debug");
+        assertThat(query.getSceneDbId()).isNull();
+    }
+
+    @Test
+    void historySummaryShouldBeIndependentOfHistoryPageAndIncludeUnexecutedScenes() {
+        stubScope();
+        AutomationUiExecutionHistoryQuery query = new AutomationUiExecutionHistoryQuery();
+        query.setProjectId(8L);
+        AutomationUiExecutionHistorySummaryResp expected = new AutomationUiExecutionHistorySummaryResp();
+        expected.setTotal(26);
+        expected.setCompleted(25);
+        expected.setNotExecuted(1);
+        when(queryMapper.selectHistorySummary(eq(query), any(), eq(9L), eq(false))).thenReturn(expected);
+        assertThat(service.historySummary(query)).isSameAs(expected);
+        verify(queryMapper, never()).selectHistoryPage(any(), any(), anyLong(), anyBoolean(), anyLong(), anyInt());
+    }
+
+    @Test
+    void historyShouldRejectUnboundedScopeAndPreservePageLimits() {
+        AutomationUiExecutionHistoryQuery query = new AutomationUiExecutionHistoryQuery();
+        assertThatThrownBy(() -> service.historyPage(query, page(1, 10))).isInstanceOf(BadRequestException.class);
+        assertThatThrownBy(() -> service.historySummary(query)).isInstanceOf(BadRequestException.class);
+        query.setProjectId(8L);
+        assertThatThrownBy(() -> service.historyPage(query, page(1, 51))).isInstanceOf(BadRequestException.class);
+        query.setSceneDbId(-1L);
+        assertThatThrownBy(() -> service.historySummary(query)).isInstanceOf(BadRequestException.class);
+        query.setSceneDbId(null);
+        query.setModuleIds(List.of(0L));
+        assertThatThrownBy(() -> service.historySummary(query)).isInstanceOf(BadRequestException.class);
+        verify(queryMapper, never()).countHistory(any(), any(), anyLong(), anyBoolean());
+    }
+
+    @Test
+    void selectedSceneSummaryShouldUseGlobalCaseCountsInsteadOfSceneSummary() {
+        stubScope();
+        var query = new AutomationUiExecutionHistoryQuery();
+        query.setProjectId(8L);
+        query.setSceneDbId(9L);
+        var expected = new AutomationUiExecutionHistorySummaryResp();
+        expected.setDimension("case");
+        expected.setTotal(32);
+        expected.setPassed(30);
+        when(queryMapper.selectHistoryCaseSummary(eq(query), any(), eq(9L), eq(false))).thenReturn(expected);
+        assertThat(service.historySummary(query)).isSameAs(expected);
+        verify(queryMapper, never()).selectHistorySummary(any(), any(), anyLong(), anyBoolean());
+        verify(queryMapper, never()).selectHistoryPage(any(), any(), anyLong(), anyBoolean(), anyLong(), anyInt());
+    }
+
+    @Test
+    void unauthorizedOrEmptyHistoryScopeShouldNotFetchAnyRows() {
+        stubScope();
+        AutomationUiExecutionHistoryQuery query = new AutomationUiExecutionHistoryQuery();
+        query.setProjectId(8L);
+        query.setSceneDbId(999L);
+        when(queryMapper.countHistory(eq(query), any(), eq(9L), eq(false))).thenReturn(0L);
+        assertThat(service.historyPage(query, page(1, 10)).getList()).isEmpty();
+        verify(queryMapper, never()).selectHistoryPage(any(), any(), anyLong(), anyBoolean(), anyLong(), anyInt());
     }
 }

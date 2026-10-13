@@ -38,6 +38,9 @@ public class AutomationPlaywrightBatchCreateReq implements Serializable {
     @NotBlank(message = "场景标识不能为空")
     private String sceneKey;
 
+    /** 普通 UI 批量任务归属；不替代子批次 ID、认证状态或测试报告 ID。 */
+    private String runId;
+
     @NotBlank(message = "执行方式不能为空")
     private String executionType;
 

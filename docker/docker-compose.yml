@@ -156,6 +156,9 @@ services:
       SAKURA_ADMIN_API: ${SAKURA_ADMIN_API:-${CUECAST_ADMIN_API:-true}}
       # Sakura Playwright Runner 与 Admin 在同一容器内，使用 Admin 的本地生产端口。
       SAKURA_ADMIN_API_BASE: ${SAKURA_ADMIN_API_BASE:-${CUECAST_API_BASE:-http://127.0.0.1:18000}}
+      # 批次原生录屏尺寸；无头 reuse-browser 默认录制 1920x1080。
+      RUNNER_VIDEO_WIDTH: ${RUNNER_VIDEO_WIDTH:-1920}
+      RUNNER_VIDEO_HEIGHT: ${RUNNER_VIDEO_HEIGHT:-1080}
       # NPM 的标准配置变量；NPM_REGISTRY 只作为 Compose 外部配置名称。
       NPM_CONFIG_REGISTRY: ${NPM_REGISTRY:-https://registry.npmmirror.com}
       # 当前 Playwright chromium 下载路径为 builds/cft，使用 npmmirror 的 Playwright 二进制镜像。

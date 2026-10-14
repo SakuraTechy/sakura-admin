@@ -70,6 +70,8 @@ public class TestPlanExecutionDispatchService {
     private static final ZoneId PLATFORM_ZONE_ID = ZoneId.of("Asia/Shanghai");
     private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private static final List<String> TERMINAL_JOB_STATUSES = List.of("passed", "failed", "cancelled");
+    private static final String RUNNER_CAPACITY_ERROR = "Playwright Runner 并发任务已达上限";
+    private static final long RUNNER_CAPACITY_RETRY_MILLIS = 1_000L;
 
     private final AutomationUiSceneMapper automationUiSceneMapper;
     private final AutomationUiExecutionRecordService executionRecordService;
@@ -304,7 +306,11 @@ public class TestPlanExecutionDispatchService {
             jobReq.setExecutionCapability(executionCapability);
             jobReq.setProjectEnvironmentId(req.getProjectEnvironmentId());
             jobReq.setOptions(options);
-            AutomationPlaywrightRunnerJobResp job = runnerJobService.create(jobReq, token);
+            AutomationPlaywrightRunnerJobResp job = createRunnerJobWhenCapacityAvailable(control, scene.getSceneKey(),
+                batchId, caseId, jobReq, token);
+            if (job == null) {
+                return;
+            }
             control.currentJobId = job.getJobId();
             updateRunningStatus(scene.getSceneKey(), batchId, caseId, job.getJobId());
             waitForJob(control, scene.getSceneKey(), batchId, caseId, job, options);
@@ -314,6 +320,34 @@ public class TestPlanExecutionDispatchService {
         } finally {
             control.currentJobId = null;
         }
+    }
+
+    private AutomationPlaywrightRunnerJobResp createRunnerJobWhenCapacityAvailable(ExecutionControl control,
+                                                                                   String sceneKey,
+                                                                                   String batchId,
+                                                                                   String caseId,
+                                                                                   AutomationPlaywrightRunnerJobReq jobReq,
+                                                                                   String token) throws InterruptedException {
+        while (!control.cancelled) {
+            try {
+                return runnerJobService.create(jobReq, token);
+            } catch (BusinessException e) {
+                if (!StringUtils.contains(e.getMessage(), RUNNER_CAPACITY_ERROR)) {
+                    throw e;
+                }
+                AutomationPlaywrightCaseCancellationResp cancellation = playwrightCaseService
+                    .getCaseCancellation(sceneKey, batchId, caseId);
+                if (cancellation.isBatchCancelRequested() || cancellation.isCaseCancelRequested()) {
+                    control.cancelled = cancellation.isBatchCancelRequested();
+                    runnerJobService.cancelBatch(batchId);
+                    playwrightCaseService.cancelBatch(sceneKey, batchId);
+                    return null;
+                }
+                // 测试计划内部按场景和用例串行，但 Runner 槽位是节点级共享资源；资源满时排队等待，不能把瞬时拥塞记为失败。
+                Thread.sleep(RUNNER_CAPACITY_RETRY_MILLIS);
+            }
+        }
+        return null;
     }
 
     private void waitForJob(ExecutionControl control,

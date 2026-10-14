@@ -39,6 +39,7 @@ import top.continew.admin.test.mapper.TestPlanMapper;
 import top.continew.admin.test.model.entity.TestPlanDO;
 import top.continew.admin.test.model.req.TestPlanExecuteReq;
 import top.continew.admin.test.model.resp.TestPlanExecuteResp;
+import top.continew.starter.core.exception.BusinessException;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -177,6 +178,35 @@ class TestPlanExecutionDispatchServiceTest {
             .getCaseKey())), anyString());
         verify(runnerJobService, never()).create(argThat(request -> "100:CASE_DISABLED".equals(request
             .getCaseKey())), anyString());
+    }
+
+    @Test
+    void shouldWaitForRunnerCapacityInsteadOfFailingPlanCase() {
+        TestPlanDO plan = new TestPlanDO();
+        plan.setId(1L);
+        TestPlanExecuteResp.SceneExecution scene = new TestPlanExecuteResp.SceneExecution();
+        scene.setSceneKey("100");
+        scene.setCaseIds(List.of("CASE_001"));
+        AutomationPlaywrightBatchResp batch = new AutomationPlaywrightBatchResp();
+        batch.setBatchId("BATCH_001");
+        batch.setExecutionCapability("capability");
+        AutomationPlaywrightBatchResp.CaseExecution execution = new AutomationPlaywrightBatchResp.CaseExecution();
+        execution.setCaseId("CASE_001");
+        execution.setStatus("queued");
+        batch.setCases(List.of(execution));
+        when(caseService.createBatch(any())).thenReturn(batch);
+        when(caseService.getCaseCancellation(anyString(), anyString(), anyString()))
+            .thenReturn(new AutomationPlaywrightCaseCancellationResp());
+        AutomationPlaywrightRunnerJobResp job = new AutomationPlaywrightRunnerJobResp();
+        job.setJobId("JOB_001");
+        job.setStatus("passed");
+        when(runnerJobService.create(any(), anyString()))
+            .thenThrow(new BusinessException("Playwright Runner 并发任务已达上限：2"))
+            .thenReturn(job);
+
+        service.dispatchRunner(plan, "REPORT_001", new TestPlanExecuteReq(), List.of(scene), "token");
+
+        verify(runnerJobService, timeout(3_000).times(2)).create(any(), anyString());
     }
 
     @Test

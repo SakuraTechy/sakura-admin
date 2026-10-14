@@ -48,8 +48,8 @@ automation:
     root: ${SAKURA_PLAYWRIGHT_RUNNER_ROOT:/app/sakura-playwright}
     # Node.js 可执行命令（生产环境请使用绝对路径，避免 PATH 被污染）
     node-command: ${SAKURA_PLAYWRIGHT_NODE_COMMAND:node}
-    # 最大并发执行数（默认 2，生产环境可适当增加）
-    max-concurrent: ${SAKURA_PLAYWRIGHT_RUNNER_MAX_CONCURRENT:2}
+    # 最大并发执行数（默认 10；测试计划内部仍按场景和用例串行）
+    max-concurrent: ${SAKURA_PLAYWRIGHT_RUNNER_MAX_CONCURRENT:5}
     # Admin 托管 Runner 的稳定身份；为空时自动生成 playwright-<本机名>。
     executor-instance-id: ${SAKURA_PLAYWRIGHT_EXECUTOR_INSTANCE_ID:}
     runtime-retention-minutes: ${SAKURA_PLAYWRIGHT_RUNTIME_RETENTION_MINUTES:30}

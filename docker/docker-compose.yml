@@ -218,6 +218,7 @@ services:
       - '${ADMIN_SNAIL_PORT:-51789}:1789'
     environment:
       TZ: Asia/Shanghai
+      SAKURA_AGENT_AVAILABLE_IP_PROBE_URL: http://${NETWORK_GATEWAY:-192.172.0.1}:19092/probe
     volumes:
       # 生产环境挂载经过带外核对的 known_hosts，不能使用仓库示例文件。
       - ./sakura-execution-agent/conf/:/app/sakura-execution-agent/conf/:rw
@@ -230,6 +231,32 @@ services:
       timeout: 5s
       retries: 12
       start_period: 10s
+  # 在宿主机网络命名空间读取物理网卡路由；只向 Docker bridge 网关绑定，不改变 Agent/Admin 网络共享。
+  available-ip-probe:
+    build:
+      context: ../../sakura-execution-agent/available-ip-probe
+    restart: unless-stopped
+    network_mode: host
+    env_file: *execution-agent-env-file
+    environment:
+      SAKURA_AVAILABLE_IP_PROBE_BIND: ${NETWORK_GATEWAY:-192.172.0.1}
+      SAKURA_AVAILABLE_IP_PROBE_PORT: 19092
+      SAKURA_AVAILABLE_IP_PROBE_ALLOWED_SOURCE: ${NETWORK_SUBNET:-192.172.0.0/24}
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_RAW
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://${NETWORK_GATEWAY:-192.172.0.1}:19092/health', timeout=2)"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+      start_period: 3s
 
   nginx:
     image: nginx:1.25.3

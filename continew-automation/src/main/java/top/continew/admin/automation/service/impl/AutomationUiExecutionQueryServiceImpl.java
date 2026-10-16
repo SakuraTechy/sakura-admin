@@ -63,31 +63,43 @@ public class AutomationUiExecutionQueryServiceImpl implements AutomationUiExecut
 
     @Override
     @org.springframework.transaction.annotation.Transactional(readOnly = true)
-    public PageResp<AutomationUiExecutionRunResp> runHistoryPage(AutomationUiExecutionHistoryQuery query, AutomationUiPageReq pageQuery) {
+    public PageResp<AutomationUiExecutionRunResp> runHistoryPage(AutomationUiExecutionHistoryQuery query,
+                                                                 AutomationUiPageReq pageQuery) {
         validateHistoryQuery(query);
         PageBounds bounds = pageBounds(pageQuery, "createTime");
-        if (bounds.ascending()) throw new BadRequestException("普通执行历史按任务创建时间倒序排列");
+        if (bounds.ascending())
+            throw new BadRequestException("普通执行历史按任务创建时间倒序排列");
         AccessScope access = accessScopeResolver.currentScope();
         var scope = debugHistoryScope();
         long total = queryMapper.countRunHistory(query, scope, access.userId(), access.admin());
-        return new PageResp<>(total == 0 ? List.of() : queryMapper.selectRunHistoryPage(query, scope, access.userId(), access.admin(), bounds.offset(), bounds.size()), total);
+        return new PageResp<>(total == 0
+            ? List.of()
+            : queryMapper.selectRunHistoryPage(query, scope, access.userId(), access.admin(), bounds.offset(), bounds
+                .size()), total);
     }
 
     @Override
     @org.springframework.transaction.annotation.Transactional(readOnly = true)
-    public PageResp<AutomationUiExecutionRunResp> runScenes(String runId, AutomationUiExecutionHistoryQuery query, AutomationUiPageReq pageQuery) {
+    public PageResp<AutomationUiExecutionRunResp> runScenes(String runId,
+                                                            AutomationUiExecutionHistoryQuery query,
+                                                            AutomationUiPageReq pageQuery) {
         validateHistoryQuery(query);
-        if (runId == null || !runId.matches("[1-9][0-9]{0,18}")) throw new BadRequestException("执行任务标识无效");
+        if (runId == null || !runId.matches("[1-9][0-9]{0,18}"))
+            throw new BadRequestException("执行任务标识无效");
         PageBounds bounds = pageBounds(pageQuery, null);
         AccessScope access = accessScopeResolver.currentScope();
         var scope = debugHistoryScope();
         long total = queryMapper.countRunScenes(runId, query, scope, access.userId(), access.admin());
-        return new PageResp<>(total == 0 ? List.of() : queryMapper.selectRunScenes(runId, query, scope, access.userId(), access.admin(), bounds.offset(), bounds.size()), total);
+        return new PageResp<>(total == 0
+            ? List.of()
+            : queryMapper.selectRunScenes(runId, query, scope, access.userId(), access.admin(), bounds.offset(), bounds
+                .size()), total);
     }
 
     @Override
     @org.springframework.transaction.annotation.Transactional(readOnly = true)
-    public PageResp<AutomationUiExecutionSummaryResp> historyPage(AutomationUiExecutionHistoryQuery query, AutomationUiPageReq pageQuery) {
+    public PageResp<AutomationUiExecutionSummaryResp> historyPage(AutomationUiExecutionHistoryQuery query,
+                                                                  AutomationUiPageReq pageQuery) {
         validateHistoryQuery(query);
         PageBounds bounds = pageBounds(pageQuery, "createTime");
         if (bounds.ascending()) {
@@ -96,7 +108,10 @@ public class AutomationUiExecutionQueryServiceImpl implements AutomationUiExecut
         AccessScope access = accessScopeResolver.currentScope();
         AutomationUiExecutionScopeReq scope = debugHistoryScope();
         long total = queryMapper.countHistory(query, scope, access.userId(), access.admin());
-        return new PageResp<>(total == 0 ? List.of() : queryMapper.selectHistoryPage(query, scope, access.userId(), access.admin(), bounds.offset(), bounds.size()), total);
+        return new PageResp<>(total == 0
+            ? List.of()
+            : queryMapper.selectHistoryPage(query, scope, access.userId(), access.admin(), bounds.offset(), bounds
+                .size()), total);
     }
 
     @Override
@@ -117,12 +132,16 @@ public class AutomationUiExecutionQueryServiceImpl implements AutomationUiExecut
     }
 
     private void validateHistoryQuery(AutomationUiExecutionHistoryQuery query) {
-        if (query == null) throw new BadRequestException("INVALID_HISTORY_SCOPE：必须指定项目范围");
+        if (query == null)
+            throw new BadRequestException("INVALID_HISTORY_SCOPE：必须指定项目范围");
         requirePositive(query.getProjectId(), "projectId");
-        if (query.getVersionId() != null) requirePositive(query.getVersionId(), "versionId");
-        if (query.getSceneDbId() != null) requirePositive(query.getSceneDbId(), "sceneDbId");
+        if (query.getVersionId() != null)
+            requirePositive(query.getVersionId(), "versionId");
+        if (query.getSceneDbId() != null)
+            requirePositive(query.getSceneDbId(), "sceneDbId");
         if (query.getModuleIds() != null) {
-            if (query.getModuleIds().size() > 1000) throw new BadRequestException("INVALID_HISTORY_SCOPE：模块范围不能超过 1000 个");
+            if (query.getModuleIds().size() > 1000)
+                throw new BadRequestException("INVALID_HISTORY_SCOPE：模块范围不能超过 1000 个");
             query.getModuleIds().forEach(id -> requirePositive(id, "moduleId"));
         }
     }
@@ -375,10 +394,10 @@ public class AutomationUiExecutionQueryServiceImpl implements AutomationUiExecut
     private String cursorFilterDigest(AutomationUiExecutionQuery query,
                                       AutomationUiExecutionScopeReq scope,
                                       boolean ascending) {
-        List<String> parts = new ArrayList<>(List.of(String.valueOf(query.getSceneDbId()), scope.getRecordSource(), String
-            .valueOf(scope.getTestPlanId()), String.valueOf(scope.getTestReportId()), String.valueOf(scope
-                .getBuildNumber()), String.valueOf(query.getStatus()), String.valueOf(query.getResult()), String
-                    .valueOf(query.getExecutionEngine()), ascending ? "asc" : "desc"));
+        List<String> parts = new ArrayList<>(List.of(String.valueOf(query.getSceneDbId()), scope
+            .getRecordSource(), String.valueOf(scope.getTestPlanId()), String.valueOf(scope.getTestReportId()), String
+                .valueOf(scope.getBuildNumber()), String.valueOf(query.getStatus()), String.valueOf(query
+                    .getResult()), String.valueOf(query.getExecutionEngine()), ascending ? "asc" : "desc"));
         // 未指定批次时保留旧游标签名；指定后不允许借用其他批次的游标。
         if (query.getBatchId() != null && !query.getBatchId().isBlank()) {
             parts.add("batch:" + query.getBatchId());

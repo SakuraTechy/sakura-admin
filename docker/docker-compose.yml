@@ -236,6 +236,7 @@ services:
     build:
       context: ../../sakura-execution-agent/available-ip-probe
     restart: unless-stopped
+    container_name: sakura-execution-agent-available-ip-probe
     network_mode: host
     env_file: *execution-agent-env-file
     environment:

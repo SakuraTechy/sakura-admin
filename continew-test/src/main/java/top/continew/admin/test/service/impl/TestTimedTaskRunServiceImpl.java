@@ -143,13 +143,15 @@ public class TestTimedTaskRunServiceImpl implements TestTimedTaskRunService {
             return;
         }
         LocalDateTime now = LocalDateTime.now();
-        run.setStatus("PASSED".equalsIgnoreCase(report.getStatus()) ? "PASSED" : "FAILED");
+        run.setStatus(resolveRunStatus(report.getStatus()));
         run.setEndTime(now);
         run.setRunTime(report.getRunTime() == null ? duration(run.getStartTime(), now) : report.getRunTime());
         run.setBuildNumber(report.getBuildNumber());
         run.setConsoleUrl(report.getConsoleUrl());
         run.setReportUrl(report.getReportUrl());
-        if ("FAILED".equals(run.getStatus()) && report.getRuntimeEnvironment() != null) {
+        if ("CANCELLED".equals(run.getStatus())) {
+            run.setFailureReason("测试计划执行已取消");
+        } else if ("FAILED".equals(run.getStatus()) && report.getRuntimeEnvironment() != null) {
             Object error = report.getRuntimeEnvironment().get("dispatchError");
             run.setFailureReason(error == null ? "测试计划执行失败" : String.valueOf(error));
         }
@@ -239,8 +241,19 @@ public class TestTimedTaskRunServiceImpl implements TestTimedTaskRunService {
         }
     }
 
-    private boolean isTerminal(String status) {
-        return "PASSED".equalsIgnoreCase(status) || "FAILED".equalsIgnoreCase(status);
+    static boolean isTerminal(String status) {
+        return "PASSED".equalsIgnoreCase(status) || "FAILED".equalsIgnoreCase(status) || "CANCELLED"
+            .equalsIgnoreCase(status);
+    }
+
+    static String resolveRunStatus(String reportStatus) {
+        if ("PASSED".equalsIgnoreCase(reportStatus)) {
+            return "PASSED";
+        }
+        if ("CANCELLED".equalsIgnoreCase(reportStatus)) {
+            return "CANCELLED";
+        }
+        return "FAILED";
     }
 
     private void notifyAfterCommit(Long runId) {

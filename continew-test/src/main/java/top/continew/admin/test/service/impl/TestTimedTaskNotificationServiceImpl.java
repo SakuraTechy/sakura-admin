@@ -22,6 +22,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import top.continew.admin.project.mapper.ProjectEnvironmentConfigMapper;
+import top.continew.admin.project.model.entity.ProjectEnvironmentConfigDO;
+import top.continew.admin.project.model.entity.ProjectServerConfigDO;
+import top.continew.admin.project.model.entity.ProjectVersionConfigDO;
 import top.continew.admin.test.mapper.TestReportMapper;
 import top.continew.admin.test.mapper.TestPlanMapper;
 import top.continew.admin.test.mapper.TestTimedTaskMapper;
@@ -58,6 +62,7 @@ public class TestTimedTaskNotificationServiceImpl implements TestTimedTaskNotifi
     private final TestTimedTaskMapper taskMapper;
     private final TestPlanMapper testPlanMapper;
     private final TestReportMapper reportMapper;
+    private final ProjectEnvironmentConfigMapper projectEnvironmentMapper;
     private final ProjectProperties projectProperties;
 
     @Async
@@ -128,13 +133,18 @@ public class TestTimedTaskNotificationServiceImpl implements TestTimedTaskNotifi
 
     private String buildContent(TestTimedTaskRunDO run) {
         TestPlanDO plan = run.getTestPlanId() == null ? null : testPlanMapper.selectById(run.getTestPlanId());
+        TestTimedTaskDO task = run.getTimedTaskId() == null ? null : taskMapper.selectById(run.getTimedTaskId());
+        ProjectEnvironmentConfigDO environment = task == null || task.getProjectEnvironmentId() == null
+            ? null
+            : projectEnvironmentMapper.selectById(task.getProjectEnvironmentId());
         TestReportDO report = run.getTestReportId() == null ? null : reportMapper.selectById(run.getTestReportId());
         Map<String, Object> statistic = resolveUiStatistic(report);
         StringBuilder content = new StringBuilder(1024);
         content.append("<h3>SakurA Platform 测试计划执行结果</h3><table style=\"border-collapse:collapse\">");
-        row(content, "测试任务", run.getTaskName());
+        row(content, "任务名称", run.getTaskName());
         row(content, "测试计划", run.getTestPlanName());
         row(content, "计划类型", plan == null ? "-" : plan.getType());
+        appendEnvironmentRows(content, environment);
         row(content, "触发方式", "SCHEDULE".equals(run.getTriggerMode()) ? "定时执行" : "手动执行");
         row(content, "开始时间", formatDateTime(run.getStartTime()));
         row(content, "结束时间", formatDateTime(run.getEndTime()));
@@ -148,6 +158,38 @@ public class TestTimedTaskNotificationServiceImpl implements TestTimedTaskNotifi
         appendLink(content, "查看测试报告", buildReportPageUrl(run, report));
         appendLink(content, "查看 Jenkins 控制台", run.getConsoleUrl());
         return content.toString();
+    }
+
+    private void appendEnvironmentRows(StringBuilder content, ProjectEnvironmentConfigDO environment) {
+        if (environment == null) {
+            return;
+        }
+        if (environment.getVersionConfig() == null) {
+            return;
+        }
+        for (Object item : environment.getVersionConfig()) {
+            ProjectVersionConfigDO version = cn.hutool.core.bean.BeanUtil.toBean(item, ProjectVersionConfigDO.class);
+            row(content, "测试版本", version.getName());
+            row(content, "版本描述", version.getDescription());
+        }
+        // row(content, "环境名称", environment.getName());
+        // row(content, "环境描述", environment.getDescription());
+        if (environment.getServerConfig() == null) {
+            return;
+        }
+        for (Object item : environment.getServerConfig()) {
+            ProjectServerConfigDO server = cn.hutool.core.bean.BeanUtil.toBean(item, ProjectServerConfigDO.class);
+            if (server == null) {
+                continue;
+            }
+            row(content, "测试环境", server.getIp());
+            row(content, "环境描述", environment.getName());
+            // row(content, "服务器端口", server.getPort());
+            // row(content, "服务器类型", server.getType());
+            // row(content, "服务器版本", server.getVersion());
+            // row(content, "服务器描述", server.getDescription());
+        }
+
     }
 
     private String formatDateTime(LocalDateTime dateTime) {

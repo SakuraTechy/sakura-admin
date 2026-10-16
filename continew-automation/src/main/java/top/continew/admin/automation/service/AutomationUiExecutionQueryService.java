@@ -35,13 +35,15 @@ import top.continew.starter.extension.crud.model.resp.PageResp;
 /** UI 自动化执行事实分层查询服务。 */
 public interface AutomationUiExecutionQueryService {
 
-    PageResp<AutomationUiExecutionRunResp> runHistoryPage(
-        AutomationUiExecutionHistoryQuery query, AutomationUiPageReq pageQuery);
+    PageResp<AutomationUiExecutionRunResp> runHistoryPage(AutomationUiExecutionHistoryQuery query,
+                                                          AutomationUiPageReq pageQuery);
 
-    PageResp<AutomationUiExecutionRunResp> runScenes(
-        String runId, AutomationUiExecutionHistoryQuery query, AutomationUiPageReq pageQuery);
+    PageResp<AutomationUiExecutionRunResp> runScenes(String runId,
+                                                     AutomationUiExecutionHistoryQuery query,
+                                                     AutomationUiPageReq pageQuery);
 
-    PageResp<AutomationUiExecutionSummaryResp> historyPage(AutomationUiExecutionHistoryQuery query, AutomationUiPageReq pageQuery);
+    PageResp<AutomationUiExecutionSummaryResp> historyPage(AutomationUiExecutionHistoryQuery query,
+                                                           AutomationUiPageReq pageQuery);
 
     AutomationUiExecutionHistorySummaryResp historySummary(AutomationUiExecutionHistoryQuery query);
 

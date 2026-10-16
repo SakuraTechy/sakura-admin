@@ -146,6 +146,7 @@ class TestPlanReportProgressServiceImplTest {
             .containsEntry("caseCancelled", 1)
             .containsEntry("caseSkip", 0);
         assertThat(report.getStatus()).isEqualTo("CANCELLED");
+        verify(timedTaskRunService).completeByReport(report);
     }
 
     @Test

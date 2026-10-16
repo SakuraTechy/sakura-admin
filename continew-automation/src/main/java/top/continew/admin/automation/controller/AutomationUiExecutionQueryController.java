@@ -63,16 +63,16 @@ public class AutomationUiExecutionQueryController {
 
     @SaCheckPermission("automation:automationUiScene:get")
     @GetMapping("/history/runs")
-    public PageResp<AutomationUiExecutionRunResp> runHistory(
-        @Validated AutomationUiExecutionHistoryQuery query, @Validated AutomationUiPageReq pageQuery) {
+    public PageResp<AutomationUiExecutionRunResp> runHistory(@Validated AutomationUiExecutionHistoryQuery query,
+                                                             @Validated AutomationUiPageReq pageQuery) {
         return executionQueryService.runHistoryPage(query, pageQuery);
     }
 
     @SaCheckPermission("automation:automationUiScene:get")
     @GetMapping("/history/runs/{runId}/scenes")
-    public PageResp<AutomationUiExecutionRunResp> runScenes(
-        @org.springframework.web.bind.annotation.PathVariable String runId,
-        @Validated AutomationUiExecutionHistoryQuery query, @Validated AutomationUiPageReq pageQuery) {
+    public PageResp<AutomationUiExecutionRunResp> runScenes(@org.springframework.web.bind.annotation.PathVariable String runId,
+                                                            @Validated AutomationUiExecutionHistoryQuery query,
+                                                            @Validated AutomationUiPageReq pageQuery) {
         return executionQueryService.runScenes(runId, query, pageQuery);
     }
 
@@ -80,7 +80,7 @@ public class AutomationUiExecutionQueryController {
     @SaCheckPermission("automation:automationUiScene:get")
     @GetMapping("/history")
     public PageResp<AutomationUiExecutionSummaryResp> history(@Validated AutomationUiExecutionHistoryQuery query,
-                                                            @Validated AutomationUiPageReq pageQuery) {
+                                                              @Validated AutomationUiPageReq pageQuery) {
         return executionQueryService.historyPage(query, pageQuery);
     }
 

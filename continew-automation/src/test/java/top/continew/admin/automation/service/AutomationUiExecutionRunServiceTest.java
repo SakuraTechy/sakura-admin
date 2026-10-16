@@ -1,3 +1,19 @@
+/*
+ * Copyright (c) 2022-present Charles7c Authors. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package top.continew.admin.automation.service;
 
 import static org.assertj.core.api.Assertions.*;
@@ -43,7 +59,8 @@ public class AutomationUiExecutionRunServiceTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        var source = new DriverManagerDataSource("jdbc:h2:mem:run-" + UUID.randomUUID() + ";MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1", "sa", "");
+        var source = new DriverManagerDataSource("jdbc:h2:mem:run-" + UUID
+            .randomUUID() + ";MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1", "sa", "");
         source.setDriverClassName("org.h2.Driver");
         jdbc = new JdbcTemplate(source);
         jdbc.execute("CREATE ALIAS JSON_CONTAINS FOR 'top.continew.admin.automation.service.AutomationUiExecutionRunServiceTest.jsonContains'");
@@ -57,7 +74,8 @@ public class AutomationUiExecutionRunServiceTest {
         jdbc.execute("CREATE TABLE automation_ui_execution_case(id bigint PRIMARY KEY, execution_id bigint, case_id varchar(128), attempt_no int, status varchar(32), result varchar(32), execute_status varchar(32), execute_result varchar(32))");
         jdbc.execute("CREATE TABLE automation_ui_execution(id bigint PRIMARY KEY, execution_key varchar(128), scene_id bigint, scene_key varchar(128), batch_id varchar(128), record_source varchar(32), record_type varchar(64), test_plan_id bigint, test_report_id bigint, trigger_type varchar(32), execution_engine varchar(32), status varchar(32), result varchar(32), execute_user_id bigint, execute_name varchar(128), project_environment_id bigint, project_environment_name varchar(128), case_total int, case_pass int, case_fail int, case_skip int, case_cancelled int, step_total int, step_pass int, step_fail int, step_skip int, started_at timestamp, finished_at timestamp, duration_ms bigint, create_time timestamp, update_time timestamp)");
         try (var connection = source.getConnection()) {
-            ScriptUtils.executeSqlScript(connection, new FileSystemResource(Path.of("../continew-webapi/src/main/resources/db/changelog/mysql/automation_ui_execution_run.sql")));
+            ScriptUtils.executeSqlScript(connection, new FileSystemResource(Path
+                .of("../continew-webapi/src/main/resources/db/changelog/mysql/automation_ui_execution_run.sql")));
         }
         jdbc.update("INSERT INTO project_config VALUES (1, 3, 9, '[]')");
         jdbc.update("INSERT INTO project_version_config VALUES (1, 1, 3)");
@@ -77,7 +95,8 @@ public class AutomationUiExecutionRunServiceTest {
         session = new SqlSessionFactoryBuilder().build(config).openSession(true);
         mapper = session.getMapper(AutomationUiExecutionQueryMapper.class);
         resolver = mock(AutomationUiSceneAccessScopeResolver.class);
-        when(resolver.currentScope()).thenReturn(new AutomationUiSceneAccessScopeResolver.AccessScope(9L, false, Set.of(), Set.of()));
+        when(resolver.currentScope()).thenReturn(new AutomationUiSceneAccessScopeResolver.AccessScope(9L, false, Set
+            .of(), Set.of()));
         UserContext user = new UserContext();
         user.setId(9L);
         user.setUsername("测试用户");
@@ -92,12 +111,19 @@ public class AutomationUiExecutionRunServiceTest {
     @AfterEach
     void close() {
         UserContextHolder.clearContext();
-        if (session != null) session.close();
-        if (jdbc != null) jdbc.execute("SHUTDOWN");
+        if (session != null)
+            session.close();
+        if (jdbc != null)
+            jdbc.execute("SHUTDOWN");
     }
 
-    public static boolean jsonContains(String json, String value) { return json != null && json.contains(value); }
-    public static String jsonQuote(String value) { return "\"" + value + "\""; }
+    public static boolean jsonContains(String json, String value) {
+        return json != null && json.contains(value);
+    }
+
+    public static String jsonQuote(String value) {
+        return "\"" + value + "\"";
+    }
 
     private String create(long count) {
         var req = new AutomationUiExecutionRunCreateReq();
@@ -118,15 +144,18 @@ public class AutomationUiExecutionRunServiceTest {
 
     private void execute(String runId, long sceneId, long executionId, String status, String result) {
         String batchId = "batch-" + executionId;
-        if (runId != null) service.validateBatch(batch(runId, sceneId), sceneId);
+        if (runId != null)
+            service.validateBatch(batch(runId, sceneId), sceneId);
         jdbc.update("INSERT INTO automation_ui_execution (id, execution_key, scene_id, scene_key, batch_id, record_source, execution_engine, status, result, execute_user_id, execute_name, case_total, case_pass, case_fail, case_skip, case_cancelled, started_at, finished_at, duration_ms, create_time, update_time) VALUES (?, ?, ?, ?, ?, 'debug', 'playwright-runner', ?, ?, 9, '测试用户', 2, 2, 0, 0, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1000, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)", executionId, batchId, sceneId, "SCENE_" + sceneId, batchId, status, result);
-        if (runId != null) service.attachBatch(runId, sceneId, batchId);
+        if (runId != null)
+            service.attachBatch(runId, sceneId, batchId);
     }
 
     @Test
     void all26ScenesRemainOnePersistentHistoryRowAndChildrenArePagedInOrder() {
         String runId = create(26);
-        for (long scene = 1; scene <= 26; scene++) execute(runId, scene, scene, "completed", "passed");
+        for (long scene = 1; scene <= 26; scene++)
+            execute(runId, scene, scene, "completed", "passed");
         service.finish(runId, null);
         assertThat(mapper.countRunHistory(query, scope, 9L, false)).isEqualTo(1);
         var row = mapper.selectRunHistoryPage(query, scope, 9L, false, 0, 10).get(0);
@@ -138,8 +167,8 @@ public class AutomationUiExecutionRunServiceTest {
         assertThat(row.getCaseTotal()).isEqualTo(52);
         assertThat(row.getDurationMs()).isEqualTo(26000);
         assertThat(mapper.countRunScenes(runId, query, scope, 9L, false)).isEqualTo(26);
-        assertThat(mapper.selectRunScenes(runId, query, scope, 9L, false, 20, 20))
-            .extracting(item -> item.getSceneDbId()).containsExactly(21L, 22L, 23L, 24L, 25L, 26L);
+        assertThat(mapper.selectRunScenes(runId, query, scope, 9L, false, 20, 20)).extracting(item -> item
+            .getSceneDbId()).containsExactly(21L, 22L, 23L, 24L, 25L, 26L);
     }
 
     @Test
@@ -173,7 +202,8 @@ public class AutomationUiExecutionRunServiceTest {
         assertThat(mapper.selectRunHistoryPage(query, scope, 9L, false, 1, 1)).hasSize(1);
         query.setSceneDbId(2L);
         assertThat(mapper.countRunHistory(query, scope, 9L, false)).isEqualTo(2);
-        assertThat(mapper.selectRunHistoryPage(query, scope, 9L, false, 0, 10)).allSatisfy(row -> assertThat(row.getSceneTotal()).isEqualTo(1));
+        assertThat(mapper.selectRunHistoryPage(query, scope, 9L, false, 0, 10)).allSatisfy(row -> assertThat(row
+            .getSceneTotal()).isEqualTo(1));
     }
 
     @Test
@@ -191,7 +221,8 @@ public class AutomationUiExecutionRunServiceTest {
         assertThatThrownBy(() -> service.validateBatch(batch(runId, 3), 3L)).hasMessageContaining("不属于当前任务");
         execute(runId, 1, 301, "completed", "passed");
         assertThatThrownBy(() -> service.validateBatch(batch(runId, 1), 1L)).hasMessageContaining("已创建子批次");
-        when(resolver.currentScope()).thenReturn(new AutomationUiSceneAccessScopeResolver.AccessScope(8L, false, Set.of(), Set.of()));
+        when(resolver.currentScope()).thenReturn(new AutomationUiSceneAccessScopeResolver.AccessScope(8L, false, Set
+            .of(), Set.of()));
         assertThatThrownBy(() -> service.cancel(runId)).hasMessageContaining("无权操作");
         assertThat(mapper.countRunHistory(query, scope, 8L, false)).isZero();
         assertThat(mapper.countRunScenes(runId, query, scope, 8L, false)).isZero();
@@ -211,8 +242,8 @@ public class AutomationUiExecutionRunServiceTest {
     @Test
     void cancellationWaitsForCreatingChildTransactionAndIncludesThatChild() throws Exception {
         String runId = create(2);
-        var transaction = new org.springframework.transaction.support.TransactionTemplate(
-            new org.springframework.jdbc.datasource.DataSourceTransactionManager(jdbc.getDataSource()));
+        var transaction = new org.springframework.transaction.support.TransactionTemplate(new org.springframework.jdbc.datasource.DataSourceTransactionManager(jdbc
+            .getDataSource()));
         var entered = new java.util.concurrent.CountDownLatch(1);
         var release = new java.util.concurrent.CountDownLatch(1);
         var cancelling = new java.util.concurrent.CountDownLatch(1);
@@ -222,8 +253,11 @@ public class AutomationUiExecutionRunServiceTest {
                 service.validateBatch(batch(runId, 1), 1L);
                 entered.countDown();
                 try {
-                    if (!release.await(5, java.util.concurrent.TimeUnit.SECONDS)) throw new IllegalStateException("测试创建事务等待超时");
-                } catch (InterruptedException error) { throw new IllegalStateException(error); }
+                    if (!release.await(5, java.util.concurrent.TimeUnit.SECONDS))
+                        throw new IllegalStateException("测试创建事务等待超时");
+                } catch (InterruptedException error) {
+                    throw new IllegalStateException(error);
+                }
                 execute(runId, 1, 501, "running", "pending");
             }));
             assertThat(entered.await(5, java.util.concurrent.TimeUnit.SECONDS)).isTrue();
@@ -245,13 +279,14 @@ public class AutomationUiExecutionRunServiceTest {
     @Test
     void failedChildTransactionRollsBackExecutionAndItsMembershipTogether() {
         String runId = create(2);
-        var transaction = new org.springframework.transaction.support.TransactionTemplate(
-            new org.springframework.jdbc.datasource.DataSourceTransactionManager(jdbc.getDataSource()));
+        var transaction = new org.springframework.transaction.support.TransactionTemplate(new org.springframework.jdbc.datasource.DataSourceTransactionManager(jdbc
+            .getDataSource()));
         assertThatThrownBy(() -> transaction.executeWithoutResult(status -> {
             execute(runId, 1, 601, "running", "pending");
             throw new IllegalStateException("模拟提交前失败");
         })).hasMessageContaining("模拟提交前失败");
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM automation_ui_execution WHERE id = 601", Integer.class)).isZero();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM automation_ui_execution WHERE id = 601", Integer.class))
+            .isZero();
         service.validateBatch(batch(runId, 1), 1L);
     }
 
@@ -277,7 +312,8 @@ public class AutomationUiExecutionRunServiceTest {
         jdbc.update("UPDATE automation_ui_execution SET record_source = 'test', test_plan_id = 7 WHERE id = 803");
         var statuses = List.of("passed", "failed", "blocked", "cancelled", "skipped", "running");
         for (int i = 0; i < statuses.size(); i++) {
-            jdbc.update("INSERT INTO automation_ui_execution_case VALUES (?, 801, ?, 1, ?, ?, NULL, NULL)", i + 1, "CASE_" + i, statuses.get(i), statuses.get(i));
+            jdbc.update("INSERT INTO automation_ui_execution_case VALUES (?, 801, ?, 1, ?, ?, NULL, NULL)", i + 1, "CASE_" + i, statuses
+                .get(i), statuses.get(i));
         }
         jdbc.update("INSERT INTO automation_ui_execution_case VALUES (20, 802, 'CASE_0', 1, 'failed', 'failed', NULL, NULL), (21, 803, 'CASE_0', 1, 'failed', 'failed', NULL, NULL)");
         query.setSceneDbId(1L);

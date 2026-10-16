@@ -282,7 +282,8 @@ class AutomationUiExecutionQueryServiceImplTest {
         AutomationUiExecutionQuery query = query(8L, "debug");
         query.setBatchId("current-batch");
         query.setCursor("start");
-        AutomationUiExecutionPageResp.Cursor first = (AutomationUiExecutionPageResp.Cursor)service.page(query, page(1, 1));
+        AutomationUiExecutionPageResp.Cursor first = (AutomationUiExecutionPageResp.Cursor)service
+            .page(query, page(1, 1));
         query.setCursor(first.getNextCursor());
         query.setBatchId("different-batch");
         assertThatThrownBy(() -> service.page(query, page(1, 1))).isInstanceOf(BadRequestException.class)
@@ -330,11 +331,13 @@ class AutomationUiExecutionQueryServiceImplTest {
         when(queryMapper.countHistory(eq(query), any(), eq(9L), eq(false))).thenReturn(503L);
         AutomationUiExecutionSummaryResp row = new AutomationUiExecutionSummaryResp();
         row.setExecutionDbId(30L);
-        when(queryMapper.selectHistoryPage(eq(query), any(), eq(9L), eq(false), eq(220L), eq(10))).thenReturn(List.of(row));
+        when(queryMapper.selectHistoryPage(eq(query), any(), eq(9L), eq(false), eq(220L), eq(10))).thenReturn(List
+            .of(row));
         var response = service.historyPage(query, page(23, 10));
         assertThat(response.getTotal()).isEqualTo(503);
         assertThat(response.getList()).containsExactly(row);
-        ArgumentCaptor<AutomationUiExecutionScopeReq> scope = ArgumentCaptor.forClass(AutomationUiExecutionScopeReq.class);
+        ArgumentCaptor<AutomationUiExecutionScopeReq> scope = ArgumentCaptor
+            .forClass(AutomationUiExecutionScopeReq.class);
         verify(queryMapper).countHistory(eq(query), scope.capture(), eq(9L), eq(false));
         assertThat(scope.getValue().getRecordSource()).isEqualTo("debug");
         assertThat(query.getSceneDbId()).isNull();

@@ -203,8 +203,10 @@ class AutomationUiExecutionQueryMapperXmlTest {
     @Test
     void batchFilterShouldApplyToCountPageAndCursorWithoutWeakeningAuthorization() throws IOException {
         Configuration configuration = new Configuration();
-        try (InputStream input = getClass().getClassLoader().getResourceAsStream("mapper/AutomationUiExecutionQueryMapper.xml")) {
-            new XMLMapperBuilder(input, configuration, "mapper/AutomationUiExecutionQueryMapper.xml", configuration.getSqlFragments()).parse();
+        try (InputStream input = getClass().getClassLoader()
+            .getResourceAsStream("mapper/AutomationUiExecutionQueryMapper.xml")) {
+            new XMLMapperBuilder(input, configuration, "mapper/AutomationUiExecutionQueryMapper.xml", configuration
+                .getSqlFragments()).parse();
         }
         AutomationUiExecutionQuery query = new AutomationUiExecutionQuery();
         query.setSceneDbId(8L);
@@ -221,10 +223,12 @@ class AutomationUiExecutionQueryMapperXmlTest {
         parameters.put("offset", 0L);
         parameters.put("limit", 1);
         for (String name : new String[] {"selectExecutionPageCount", "selectExecutionPage", "selectExecutionCursor"}) {
-            var statement = configuration.getMappedStatement("top.continew.admin.automation.mapper.AutomationUiExecutionQueryMapper." + name);
+            var statement = configuration
+                .getMappedStatement("top.continew.admin.automation.mapper.AutomationUiExecutionQueryMapper." + name);
             BoundSql bound = statement.getBoundSql(parameters);
             assertThat(bound.getSql()).contains("e.batch_id = ?", "JSON_CONTAINS", "e.record_source = 'debug'");
-            assertThat(bound.getParameterMappings()).extracting("property").contains("query.batchId", "query.sceneDbId");
+            assertThat(bound.getParameterMappings()).extracting("property")
+                .contains("query.batchId", "query.sceneDbId");
             query.setBatchId(null);
             assertThat(statement.getBoundSql(parameters).getSql()).doesNotContain("e.batch_id = ?");
             query.setBatchId("current-batch");
@@ -242,8 +246,10 @@ class AutomationUiExecutionQueryMapperXmlTest {
     @Test
     void globalHistoryQueriesShouldShareScopeAndAuthorizationWithoutScenePagingOrWideJson() throws IOException {
         Configuration configuration = new Configuration();
-        try (InputStream input = getClass().getClassLoader().getResourceAsStream("mapper/AutomationUiExecutionQueryMapper.xml")) {
-            new XMLMapperBuilder(input, configuration, "mapper/AutomationUiExecutionQueryMapper.xml", configuration.getSqlFragments()).parse();
+        try (InputStream input = getClass().getClassLoader()
+            .getResourceAsStream("mapper/AutomationUiExecutionQueryMapper.xml")) {
+            new XMLMapperBuilder(input, configuration, "mapper/AutomationUiExecutionQueryMapper.xml", configuration
+                .getSqlFragments()).parse();
         }
         AutomationUiExecutionHistoryQuery query = new AutomationUiExecutionHistoryQuery();
         query.setProjectId(8L);
@@ -259,11 +265,14 @@ class AutomationUiExecutionQueryMapperXmlTest {
         parameters.put("offset", 220L);
         parameters.put("limit", 10);
         for (String name : new String[] {"countHistory", "selectHistoryPage", "selectHistorySummary"}) {
-            var statement = configuration.getMappedStatement("top.continew.admin.automation.mapper.AutomationUiExecutionQueryMapper." + name);
+            var statement = configuration
+                .getMappedStatement("top.continew.admin.automation.mapper.AutomationUiExecutionQueryMapper." + name);
             BoundSql bound = statement.getBoundSql(parameters);
-            assertThat(bound.getSql()).contains("s.project_id = ?", "s.version_id = ?", "s.module_id IN", "JSON_CONTAINS", "s.create_user = ?", "e.record_source = 'debug'")
+            assertThat(bound.getSql())
+                .contains("s.project_id = ?", "s.version_id = ?", "s.module_id IN", "JSON_CONTAINS", "s.create_user = ?", "e.record_source = 'debug'")
                 .doesNotContain("case_list", "summary_json", "diagnostics", "LIMIT 20");
-            assertThat(bound.getParameterMappings()).extracting("property").contains("query.projectId", "query.versionId");
+            assertThat(bound.getParameterMappings()).extracting("property")
+                .contains("query.projectId", "query.versionId");
             query.setSceneDbId(26L);
             assertThat(statement.getBoundSql(parameters).getSql()).contains("s.id = ?");
             query.setSceneDbId(null);

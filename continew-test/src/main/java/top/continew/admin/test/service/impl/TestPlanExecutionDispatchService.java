@@ -306,8 +306,8 @@ public class TestPlanExecutionDispatchService {
             jobReq.setExecutionCapability(executionCapability);
             jobReq.setProjectEnvironmentId(req.getProjectEnvironmentId());
             jobReq.setOptions(options);
-            AutomationPlaywrightRunnerJobResp job = createRunnerJobWhenCapacityAvailable(control, scene.getSceneKey(),
-                batchId, caseId, jobReq, token);
+            AutomationPlaywrightRunnerJobResp job = createRunnerJobWhenCapacityAvailable(control, scene
+                .getSceneKey(), batchId, caseId, jobReq, token);
             if (job == null) {
                 return;
             }

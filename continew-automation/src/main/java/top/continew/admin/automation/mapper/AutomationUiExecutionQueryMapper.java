@@ -43,34 +43,51 @@ public interface AutomationUiExecutionQueryMapper {
 
     long countRunHistory(@Param("query") AutomationUiExecutionHistoryQuery query,
                          @Param("scope") AutomationUiExecutionScopeReq scope,
-                         @Param("userId") Long userId, @Param("admin") boolean admin);
+                         @Param("userId") Long userId,
+                         @Param("admin") boolean admin);
 
     List<AutomationUiExecutionRunResp> selectRunHistoryPage(@Param("query") AutomationUiExecutionHistoryQuery query,
-        @Param("scope") AutomationUiExecutionScopeReq scope, @Param("userId") Long userId,
-        @Param("admin") boolean admin, @Param("offset") long offset, @Param("limit") int limit);
+                                                            @Param("scope") AutomationUiExecutionScopeReq scope,
+                                                            @Param("userId") Long userId,
+                                                            @Param("admin") boolean admin,
+                                                            @Param("offset") long offset,
+                                                            @Param("limit") int limit);
 
-    long countRunScenes(@Param("runId") String runId, @Param("query") AutomationUiExecutionHistoryQuery query,
-        @Param("scope") AutomationUiExecutionScopeReq scope, @Param("userId") Long userId, @Param("admin") boolean admin);
+    long countRunScenes(@Param("runId") String runId,
+                        @Param("query") AutomationUiExecutionHistoryQuery query,
+                        @Param("scope") AutomationUiExecutionScopeReq scope,
+                        @Param("userId") Long userId,
+                        @Param("admin") boolean admin);
 
     List<AutomationUiExecutionRunResp> selectRunScenes(@Param("runId") String runId,
-        @Param("query") AutomationUiExecutionHistoryQuery query, @Param("scope") AutomationUiExecutionScopeReq scope,
-        @Param("userId") Long userId, @Param("admin") boolean admin, @Param("offset") long offset, @Param("limit") int limit);
+                                                       @Param("query") AutomationUiExecutionHistoryQuery query,
+                                                       @Param("scope") AutomationUiExecutionScopeReq scope,
+                                                       @Param("userId") Long userId,
+                                                       @Param("admin") boolean admin,
+                                                       @Param("offset") long offset,
+                                                       @Param("limit") int limit);
 
     long countHistory(@Param("query") AutomationUiExecutionHistoryQuery query,
                       @Param("scope") AutomationUiExecutionScopeReq scope,
-                      @Param("userId") Long userId, @Param("admin") boolean admin);
+                      @Param("userId") Long userId,
+                      @Param("admin") boolean admin);
 
     List<AutomationUiExecutionSummaryResp> selectHistoryPage(@Param("query") AutomationUiExecutionHistoryQuery query,
-                                                            @Param("scope") AutomationUiExecutionScopeReq scope,
-                                                            @Param("userId") Long userId, @Param("admin") boolean admin,
-                                                            @Param("offset") long offset, @Param("limit") int limit);
+                                                             @Param("scope") AutomationUiExecutionScopeReq scope,
+                                                             @Param("userId") Long userId,
+                                                             @Param("admin") boolean admin,
+                                                             @Param("offset") long offset,
+                                                             @Param("limit") int limit);
 
     AutomationUiExecutionHistorySummaryResp selectHistorySummary(@Param("query") AutomationUiExecutionHistoryQuery query,
                                                                  @Param("scope") AutomationUiExecutionScopeReq scope,
-                                                                 @Param("userId") Long userId, @Param("admin") boolean admin);
+                                                                 @Param("userId") Long userId,
+                                                                 @Param("admin") boolean admin);
 
     AutomationUiExecutionHistorySummaryResp selectHistoryCaseSummary(@Param("query") AutomationUiExecutionHistoryQuery query,
-        @Param("scope") AutomationUiExecutionScopeReq scope, @Param("userId") Long userId, @Param("admin") boolean admin);
+                                                                     @Param("scope") AutomationUiExecutionScopeReq scope,
+                                                                     @Param("userId") Long userId,
+                                                                     @Param("admin") boolean admin);
 
     AutomationUiExecutionAccessRow selectSceneAccess(@Param("sceneDbId") Long sceneDbId,
                                                      @Param("userId") Long userId,

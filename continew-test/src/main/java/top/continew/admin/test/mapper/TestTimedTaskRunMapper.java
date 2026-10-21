@@ -17,9 +17,13 @@
 package top.continew.admin.test.mapper;
 
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Select;
 import top.continew.admin.test.model.entity.TestTimedTaskRunDO;
 import top.continew.starter.data.mp.base.BaseMapper;
 
 @Mapper
 public interface TestTimedTaskRunMapper extends BaseMapper<TestTimedTaskRunDO> {
+
+    @Select("SELECT * FROM test_timed_task_run WHERE id = #{id} FOR UPDATE")
+    TestTimedTaskRunDO selectByIdForUpdate(Long id);
 }

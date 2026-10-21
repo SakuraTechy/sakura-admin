@@ -38,6 +38,8 @@ public interface TestTimedTaskRunService {
 
     void completeByReport(TestReportDO report);
 
+    void suppressNotificationByReport(Long reportId);
+
     PageResp<TestTimedTaskRunResp> page(Long taskId, TestTimedTaskRunQuery query, PageQuery pageQuery);
 
     Map<Long, TestTimedTaskRunSummaryResp> latestByTaskIds(Collection<Long> taskIds);

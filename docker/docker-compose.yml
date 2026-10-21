@@ -221,7 +221,7 @@ services:
       SAKURA_AGENT_AVAILABLE_IP_PROBE_URL: http://${NETWORK_GATEWAY:-192.172.0.1}:19092/probe
     volumes:
       # 生产环境挂载经过带外核对的 known_hosts，不能使用仓库示例文件。
-      - ./sakura-execution-agent/conf/:/app/sakura-execution-agent/conf/:rw
+      - ./sakura-execution-agent/conf/:/app/sakura-execution-agent/conf/
       - ./sakura-execution-agent/data/:/app/sakura-execution-agent/data/
       - ./sakura-execution-agent/logs/:/app/sakura-execution-agent/logs/
       - ./sakura-execution-agent/workspace/:/app/sakura-execution-agent/workspace/

@@ -81,7 +81,7 @@ import top.continew.starter.core.exception.BusinessException;
  * 基础设施任务控制面实现。
  *
  * <p>这里不执行 SSH/JDBC，也不保存凭据；执行节点根据任务身份领取受控执行快照。
- * SQL 和服务器命令仅通过任务所有者受控接口从不可变定义快照读取，连接信息和运行时参数始终不回传浏览器。</p>
+ * SQL 和服务器命令仅通过任务所有者或测试计划成员的受控接口从不可变定义快照读取，连接信息和运行时参数始终不回传浏览器。</p>
  */
 @Service
 @RequiredArgsConstructor
@@ -261,7 +261,7 @@ public class AutomationInfrastructureTaskServiceImpl implements AutomationInfras
     @Override
     public AutomationInfrastructureTaskResp get(String taskId, Long afterSequence, String executionCapability) {
         AutomationInfrastructureTaskDO task = requireTask(taskId);
-        requireTaskAccess(task, executionCapability);
+        requireTaskReadAccess(task, executionCapability);
         Map<String, Object> agentResponse = task.getDisposition() == null ? refreshFromAgent(task) : Map.of();
         return toResp(task, logsAfter(taskId, afterSequence), safeAgentResult(task, agentResponse));
     }
@@ -269,8 +269,8 @@ public class AutomationInfrastructureTaskServiceImpl implements AutomationInfras
     @Override
     public AutomationInfrastructureStatementResp getStatement(String taskId) {
         AutomationInfrastructureTaskDO task = requireTask(taskId);
-        // SQL/命令读取不接受 Runner capability，必须由登录任务所有者通过独立权限接口访问。
-        requireTaskAccess(task);
+        // 定义快照不接受 Runner capability，只允许任务所有者或所属测试计划成员读取。
+        requireTaskReadAccess(task, null);
         String actionType = task.getActionType();
         if (!"database_sql".equals(actionType) && !"server_command".equals(actionType)) {
             throw new BusinessException("当前任务不支持读取 SQL 或命令定义快照");
@@ -373,7 +373,7 @@ public class AutomationInfrastructureTaskServiceImpl implements AutomationInfras
     @Override
     public ArtifactDownload downloadArtifact(String taskId, String executionCapability) {
         AutomationInfrastructureTaskDO task = requireTask(taskId);
-        requireTaskAccess(task, executionCapability);
+        requireTaskReadAccess(task, executionCapability);
         if ("server_command".equals(task.getActionType()) && booleanValue(frozenTaskStep(task)
             .get("value_masked"), false)) {
             throw new BusinessException("SENSITIVE_RESULT_RESTRICTED：敏感 Shell 步骤不提供原始输出附件");
@@ -1299,6 +1299,20 @@ public class AutomationInfrastructureTaskServiceImpl implements AutomationInfras
         requireTaskAccess(task, null);
     }
 
+    private void requireTaskReadAccess(AutomationInfrastructureTaskDO task, String executionCapability) {
+        Long currentUserId = UserContextHolder.getUserId();
+        if (currentUserId != null && Objects.equals(task.getOwnerUserId(), currentUserId))
+            return;
+        if (isTestPlanMember(task, currentUserId))
+            return;
+        if (matchesExecutionCapability(task, executionCapability))
+            return;
+        if (currentUserId == null) {
+            throw new BusinessException("EXECUTION_SCOPE_DENIED：无法识别当前执行主体");
+        }
+        throw new BusinessException("EXECUTION_SCOPE_DENIED：当前主体无权访问该基础设施任务");
+    }
+
     private void requireTaskAccess(AutomationInfrastructureTaskDO task, String executionCapability) {
         Long currentUserId = UserContextHolder.getUserId();
         if (currentUserId != null && Objects.equals(task.getOwnerUserId(), currentUserId))
@@ -1309,6 +1323,21 @@ public class AutomationInfrastructureTaskServiceImpl implements AutomationInfras
             throw new BusinessException("EXECUTION_SCOPE_DENIED：无法识别当前执行主体");
         }
         throw new BusinessException("EXECUTION_SCOPE_DENIED：当前主体无权访问该基础设施任务");
+    }
+
+    private boolean isTestPlanMember(AutomationInfrastructureTaskDO task, Long currentUserId) {
+        if (currentUserId == null || task.getExecutionId() == null)
+            return false;
+        Long executionId;
+        try {
+            executionId = Long.valueOf(task.getExecutionId());
+        } catch (NumberFormatException e) {
+            return false;
+        }
+        Long memberCount = jdbcTemplate
+            .queryForObject("SELECT COUNT(*) FROM automation_ui_execution e" + " JOIN test_plan p ON p.id = e.test_plan_id" + " WHERE e.id = ? AND p.del_flag = ?" + " AND JSON_CONTAINS(p.member_ids, CAST(? AS JSON))", Long.class, executionId, StatusTypeEnum.NORMAL
+                .getValue(), String.valueOf(currentUserId));
+        return memberCount != null && memberCount > 0;
     }
 
     private boolean matchesExecutionCapability(AutomationInfrastructureTaskDO task, String executionCapability) {

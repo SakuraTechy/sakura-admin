@@ -151,12 +151,27 @@ public class TestTimedTaskRunServiceImpl implements TestTimedTaskRunService {
         run.setReportUrl(report.getReportUrl());
         if ("CANCELLED".equals(run.getStatus())) {
             run.setFailureReason("测试计划执行已取消");
+            run.setNotificationStatus("SKIPPED");
         } else if ("FAILED".equals(run.getStatus()) && report.getRuntimeEnvironment() != null) {
             Object error = report.getRuntimeEnvironment().get("dispatchError");
             run.setFailureReason(error == null ? "测试计划执行失败" : String.valueOf(error));
         }
         runMapper.updateById(run);
-        notifyAfterCommit(run.getId());
+        if (!"CANCELLED".equals(run.getStatus())) {
+            notifyAfterCommit(run.getId());
+        }
+    }
+
+    @Override
+    public void suppressNotificationByReport(Long reportId) {
+        if (reportId == null) {
+            return;
+        }
+        runMapper.lambdaUpdate()
+            .eq(TestTimedTaskRunDO::getTestReportId, reportId)
+            .in(TestTimedTaskRunDO::getNotificationStatus, "PENDING", "SENDING")
+            .set(TestTimedTaskRunDO::getNotificationStatus, "SKIPPED")
+            .update();
     }
 
     @Override

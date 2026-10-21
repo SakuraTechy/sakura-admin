@@ -37,6 +37,7 @@ import top.continew.admin.test.mapper.TestReportMapper;
 import top.continew.admin.test.mapper.TestTimedTaskMapper;
 import top.continew.admin.test.model.entity.TestPlanDO;
 import top.continew.admin.test.model.enums.TestExecutionEngineEnum;
+import top.continew.admin.test.service.TestTimedTaskRunService;
 
 @ExtendWith(MockitoExtension.class)
 class TestPlanServiceImplTest {
@@ -60,13 +61,16 @@ class TestPlanServiceImplTest {
     private TestPlanExecutionDispatchService dispatchService;
 
     @Mock
+    private TestTimedTaskRunService timedTaskRunService;
+
+    @Mock
     private AutomationPlaywrightServiceTokenProvider serviceTokenProvider;
 
     private TestPlanServiceImpl service;
 
     @BeforeEach
     void setUp() {
-        service = new TestPlanServiceImpl(sceneMapper, executionRecordService, sceneService, reportMapper, timedTaskMapper, dispatchService, serviceTokenProvider);
+        service = new TestPlanServiceImpl(sceneMapper, executionRecordService, sceneService, reportMapper, timedTaskMapper, dispatchService, serviceTokenProvider, timedTaskRunService);
     }
 
     @Test

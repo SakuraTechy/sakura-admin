@@ -36,7 +36,6 @@ import top.continew.admin.test.model.entity.TestTimedTaskDO;
 import top.continew.admin.test.model.entity.TestTimedTaskRunDO;
 import top.continew.admin.test.service.TestTimedTaskNotificationService;
 import top.continew.starter.core.autoconfigure.project.ProjectProperties;
-import top.continew.starter.messaging.mail.util.MailUtils;
 
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -64,12 +63,22 @@ public class TestTimedTaskNotificationServiceImpl implements TestTimedTaskNotifi
     private final TestReportMapper reportMapper;
     private final ProjectEnvironmentConfigMapper projectEnvironmentMapper;
     private final ProjectProperties projectProperties;
+    private final TestTimedTaskNotificationDeliveryService deliveryService;
 
     @Async
     @Override
     public void send(Long runId) {
         TestTimedTaskRunDO run = runMapper.selectById(runId);
-        if (run == null) {
+        if (run == null || "CANCELLED".equalsIgnoreCase(run.getStatus()) || "SKIPPED".equalsIgnoreCase(run
+            .getNotificationStatus())) {
+            return;
+        }
+        boolean claimed = runMapper.lambdaUpdate()
+            .eq(TestTimedTaskRunDO::getId, runId)
+            .eq(TestTimedTaskRunDO::getNotificationStatus, "PENDING")
+            .set(TestTimedTaskRunDO::getNotificationStatus, "SENDING")
+            .update();
+        if (!claimed) {
             return;
         }
         List<String> recipients = resolveRecipients(run);
@@ -82,7 +91,9 @@ public class TestTimedTaskNotificationServiceImpl implements TestTimedTaskNotifi
         String content = buildContent(run);
         for (String recipient : recipients) {
             try {
-                sendToRecipient(recipient, subject, content);
+                if (!deliveryService.sendRecipient(runId, recipient, subject, content).delivered()) {
+                    return;
+                }
                 log.info("测试定时任务通知发送成功，runId={}，recipient={}", runId, recipient);
             } catch (Exception e) {
                 // 单个收件人失败不能中断后续地址；SMTP 异常可能以运行时异常形式抛出。
@@ -96,10 +107,6 @@ public class TestTimedTaskNotificationServiceImpl implements TestTimedTaskNotifi
         } else {
             updateStatus(runId, "FAILED", CharSequenceUtil.subWithLength(String.join("；", errors), 0, 500));
         }
-    }
-
-    private void sendToRecipient(String recipient, String subject, String content) throws Exception {
-        MailUtils.sendHtml(recipient, subject, content);
     }
 
     private List<String> resolveRecipients(TestTimedTaskRunDO run) {
@@ -305,6 +312,7 @@ public class TestTimedTaskNotificationServiceImpl implements TestTimedTaskNotifi
     private void updateStatus(Long runId, String status, String error) {
         runMapper.lambdaUpdate()
             .eq(TestTimedTaskRunDO::getId, runId)
+            .eq(TestTimedTaskRunDO::getNotificationStatus, "SENDING")
             .set(TestTimedTaskRunDO::getNotificationStatus, status)
             .set(TestTimedTaskRunDO::getNotificationError, error)
             .update();

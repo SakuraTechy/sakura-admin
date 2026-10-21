@@ -42,6 +42,7 @@ import top.continew.admin.test.model.resp.TestPlanDetailResp;
 import top.continew.admin.test.model.resp.TestPlanResp;
 import top.continew.admin.test.model.resp.TestPlanExecuteResp;
 import top.continew.admin.test.service.TestPlanService;
+import top.continew.admin.test.service.TestTimedTaskRunService;
 import top.continew.starter.core.exception.BusinessException;
 import top.continew.starter.core.validation.CheckUtils;
 import top.continew.starter.extension.crud.service.BaseServiceImpl;
@@ -68,6 +69,7 @@ public class TestPlanServiceImpl extends BaseServiceImpl<TestPlanMapper, TestPla
     private final TestTimedTaskMapper testTimedTaskMapper;
     private final TestPlanExecutionDispatchService executionDispatchService;
     private final AutomationPlaywrightServiceTokenProvider serviceTokenProvider;
+    private final TestTimedTaskRunService timedTaskRunService;
 
     @Override
     public List<TestPlanDetailResp> selectByIds(List<Long> ids) {
@@ -224,6 +226,7 @@ public class TestPlanServiceImpl extends BaseServiceImpl<TestPlanMapper, TestPla
         CheckUtils.throwIf(!Objects.equals(report.getTestPlanId(), id), "测试报告不属于当前测试计划");
         CheckUtils.throwIf(TestExecutionEngineEnum.SELENIUM.name()
             .equalsIgnoreCase(report.getReportType()), "Selenium/Jenkins 执行请在 Jenkins 中取消");
+        timedTaskRunService.suppressNotificationByReport(reportId);
         // 报告聚合状态可能先于 Runner 进程进入终态，取消请求仍需下发到调度器和进程树。
         executionDispatchService.cancel(String.valueOf(id), String.valueOf(reportId));
     }

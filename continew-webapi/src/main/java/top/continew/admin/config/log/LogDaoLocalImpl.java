@@ -71,6 +71,7 @@ public class LogDaoLocalImpl implements LogDao {
     private static final long LOG_PERSIST_FAILURE_WARNING_INTERVAL_MS = 60_000L;
     private static final AtomicLong LAST_LOG_PERSIST_FAILURE_WARNING = new AtomicLong();
 
+    private static final int MAX_PERSISTED_URL_LENGTH = 512;
     private static final int MAX_PERSISTED_BODY_LENGTH = 8 * 1024;
     private static final String TRUNCATED_SUFFIX = "...[已截断]";
     private static final Set<String> SENSITIVE_HEADER_NAMES = Set
@@ -133,7 +134,7 @@ public class LogDaoLocalImpl implements LogDao {
      */
     private void setRequest(LogDO logDO, LogRequest logRequest, boolean compactAutomationLog) {
         logDO.setRequestMethod(logRequest.getMethod());
-        logDO.setRequestUrl(logRequest.getUrl().toString());
+        logDO.setRequestUrl(this.truncateRequestUrl(logRequest.getUrl().toString()));
         logDO.setRequestHeaders(JSONUtil.toJsonStr(this.sanitizeHeaders(logRequest.getHeaders())));
         logDO.setRequestBody(compactAutomationLog ? null : this.truncateBody(logRequest.getBody()));
         logDO.setIp(logRequest.getIp());
@@ -198,6 +199,13 @@ public class LogDaoLocalImpl implements LogDao {
             return body;
         }
         return body.substring(0, MAX_PERSISTED_BODY_LENGTH) + TRUNCATED_SUFFIX;
+    }
+
+    static String truncateRequestUrl(String requestUrl) {
+        if (requestUrl == null || requestUrl.length() <= MAX_PERSISTED_URL_LENGTH) {
+            return requestUrl;
+        }
+        return requestUrl.substring(0, MAX_PERSISTED_URL_LENGTH - TRUNCATED_SUFFIX.length()) + TRUNCATED_SUFFIX;
     }
 
     /**

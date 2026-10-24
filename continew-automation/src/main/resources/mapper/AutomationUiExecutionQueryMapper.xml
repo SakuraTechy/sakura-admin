@@ -25,8 +25,10 @@
         <result property="projectEnvironmentId" column="project_environment_id"/>
         <result property="projectEnvironmentName" column="project_environment_name"/>
         <result property="caseTotal" column="case_total"/>
+        <result property="caseCompleted" column="case_completed"/>
         <result property="casePass" column="case_pass"/>
         <result property="caseFail" column="case_fail"/>
+        <result property="caseBlocked" column="case_blocked"/>
         <result property="caseSkip" column="case_skip"/>
         <result property="caseCancelled" column="case_cancelled"/>
         <result property="stepTotal" column="step_total"/>
@@ -191,8 +193,20 @@
     <!-- 单场景汇总扫描完整授权历史，按用例取最新一次/最后一次重试，不能累加当前页批次或借用其他场景同名用例。 -->
     <select id="selectHistoryCaseSummary" resultType="top.continew.admin.automation.model.resp.AutomationUiExecutionHistorySummaryResp">
         WITH ranked_cases AS (
-            SELECT COALESCE(NULLIF(c.execute_status, ''), c.status) AS status,
-                   COALESCE(NULLIF(c.execute_result, ''), NULLIF(c.result, ''), c.status) AS result,
+            SELECT CASE
+                       WHEN LOWER(COALESCE(c.status, '')) IN ('completed', 'passed', 'failed', 'blocked', 'skipped', 'cancelled', 'interrupted', '12', '17')
+                           THEN c.status
+                       ELSE COALESCE(NULLIF(c.execute_status, ''), c.status)
+                   END AS status,
+                   CASE
+                       WHEN LOWER(COALESCE(c.execute_result, '')) IN ('passed', 'success', 'failed', 'blocked', 'skipped', 'cancelled', '14', '15', '16', '17')
+                           THEN c.execute_result
+                       WHEN LOWER(COALESCE(c.result, '')) IN ('passed', 'success', 'failed', 'blocked', 'skipped', 'cancelled', '14', '15', '16', '17')
+                           THEN c.result
+                       WHEN LOWER(COALESCE(c.status, '')) IN ('passed', 'failed', 'blocked', 'skipped', 'cancelled', '14', '15', '16', '17')
+                           THEN c.status
+                       ELSE COALESCE(NULLIF(c.execute_result, ''), NULLIF(c.result, ''), c.status)
+                   END AS result,
                    ROW_NUMBER() OVER (
                        PARTITION BY e.scene_id, c.case_id
                        ORDER BY e.create_time DESC, e.id DESC, c.attempt_no DESC, c.id DESC
@@ -323,8 +337,28 @@
         e.project_environment_id,
         e.project_environment_name,
         e.case_total,
+        (SELECT COUNT(DISTINCT CASE
+               WHEN cc.status IN ('completed', 'passed', 'failed', 'blocked', 'skipped', 'cancelled', 'interrupted', '12', '17')
+                   OR cc.execute_status IN ('completed', 'passed', 'failed', 'blocked', 'skipped', 'cancelled', 'interrupted', '12', '17')
+                   OR cc.execute_result IN ('passed', 'success', 'failed', 'blocked', 'skipped', 'cancelled', '14', '15', '16', '17')
+                   OR cc.result IN ('passed', 'success', 'failed', 'blocked', 'skipped', 'cancelled', '14', '15', '16', '17')
+                   THEN COALESCE(NULLIF(cc.case_id, ''), NULLIF(cc.case_key, ''), CONCAT('execution-case:', cc.id))
+               ELSE NULL
+           END)
+         FROM automation_ui_execution_case cc
+         WHERE cc.execution_id = e.id) AS case_completed,
         e.case_pass,
         e.case_fail,
+        (SELECT COUNT(DISTINCT CASE
+               WHEN cb.execute_status = 'blocked'
+                   OR cb.status = 'blocked'
+                   OR cb.execute_result = 'blocked'
+                   OR cb.result = 'blocked'
+                   THEN COALESCE(NULLIF(cb.case_id, ''), NULLIF(cb.case_key, ''), CONCAT('execution-case:', cb.id))
+               ELSE NULL
+           END)
+         FROM automation_ui_execution_case cb
+         WHERE cb.execution_id = e.id) AS case_blocked,
         e.case_skip,
         e.case_cancelled,
         e.step_total,
@@ -552,8 +586,20 @@
         c.job_id,
         c.status,
         c.result,
-        c.execute_status,
-        c.execute_result,
+        CASE
+            WHEN LOWER(COALESCE(c.status, '')) IN ('completed', 'passed', 'failed', 'blocked', 'skipped', 'cancelled', 'interrupted', '12', '17')
+                THEN c.status
+            ELSE c.execute_status
+        END AS execute_status,
+        CASE
+            WHEN LOWER(COALESCE(c.status, '')) IN ('passed', 'failed', 'blocked', 'skipped', 'cancelled', '14', '15', '16', '17')
+                THEN c.status
+            WHEN LOWER(COALESCE(c.execute_result, '')) IN ('passed', 'success', 'failed', 'blocked', 'skipped', 'cancelled', '14', '15', '16', '17')
+                THEN c.execute_result
+            WHEN LOWER(COALESCE(c.result, '')) IN ('passed', 'success', 'failed', 'blocked', 'skipped', 'cancelled', '14', '15', '16', '17')
+                THEN c.result
+            ELSE COALESCE(NULLIF(c.execute_result, ''), NULLIF(c.result, ''), c.status)
+        END AS execute_result,
         c.step_total,
         c.step_pass,
         c.step_fail,

@@ -29,7 +29,27 @@
         COALESCE(e.project_environment_id, r.project_environment_id) AS project_environment_id,
         e.project_environment_name,
         COALESCE(e.case_total, 0) AS case_total, COALESCE(e.case_pass, 0) AS case_pass,
+        (SELECT COUNT(DISTINCT CASE
+               WHEN cc.status IN ('completed', 'passed', 'failed', 'blocked', 'skipped', 'cancelled', 'interrupted', '12', '17')
+                   OR cc.execute_status IN ('completed', 'passed', 'failed', 'blocked', 'skipped', 'cancelled', 'interrupted', '12', '17')
+                   OR cc.execute_result IN ('passed', 'success', 'failed', 'blocked', 'skipped', 'cancelled', '14', '15', '16', '17')
+                   OR cc.result IN ('passed', 'success', 'failed', 'blocked', 'skipped', 'cancelled', '14', '15', '16', '17')
+                   THEN COALESCE(NULLIF(cc.case_id, ''), NULLIF(cc.case_key, ''), CONCAT('execution-case:', cc.id))
+               ELSE NULL
+           END)
+         FROM automation_ui_execution_case cc
+         WHERE cc.execution_id = e.id) AS case_completed,
         COALESCE(e.case_fail, 0) AS case_fail, COALESCE(e.case_skip, 0) AS case_skip,
+        (SELECT COUNT(DISTINCT CASE
+               WHEN cb.execute_status = 'blocked'
+                   OR cb.status = 'blocked'
+                   OR cb.execute_result = 'blocked'
+                   OR cb.result = 'blocked'
+                   THEN COALESCE(NULLIF(cb.case_id, ''), NULLIF(cb.case_key, ''), CONCAT('execution-case:', cb.id))
+               ELSE NULL
+           END)
+         FROM automation_ui_execution_case cb
+         WHERE cb.execution_id = e.id) AS case_blocked,
         COALESCE(e.case_cancelled, 0) AS case_cancelled,
         COALESCE(e.step_total, 0) AS step_total, COALESCE(e.step_pass, 0) AS step_pass,
         COALESCE(e.step_fail, 0) AS step_fail, COALESCE(e.step_skip, 0) AS step_skip,
@@ -99,6 +119,7 @@
                     WHEN SUM(CASE WHEN result IN ('skipped', '16') THEN 1 ELSE 0 END) > 0 THEN 'skipped'
                     ELSE 'passed' END AS result,
                SUM(case_total) AS case_total, SUM(case_pass) AS case_pass, SUM(case_fail) AS case_fail,
+               SUM(case_completed) AS case_completed, SUM(case_blocked) AS case_blocked,
                SUM(case_skip) AS case_skip, SUM(case_cancelled) AS case_cancelled,
                SUM(step_total) AS step_total, SUM(step_pass) AS step_pass, SUM(step_fail) AS step_fail, SUM(step_skip) AS step_skip,
                COALESCE(MIN(started_at), MIN(create_time)) AS started_at,

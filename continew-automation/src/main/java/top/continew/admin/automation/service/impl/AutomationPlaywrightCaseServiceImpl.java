@@ -606,6 +606,39 @@ public class AutomationPlaywrightCaseServiceImpl implements AutomationPlaywright
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    public void failUnfinishedBatchCases(String sceneKey, String batchId, String error) {
+        AutomationUiSceneDO scene = resolveScene(sceneKey);
+        Map<String, Object> batch = requireBatch(scene, batchId);
+        String failure = StringUtils.defaultIfBlank(error, "批次调度结束，但用例未收到 Runner 终态结果");
+        boolean changed = false;
+        for (Object item : listValue(batch.get("caseResults"))) {
+            Map<String, Object> caseResult = mapReference(item);
+            if (caseResult == null) {
+                caseResult = asObjectMap(item);
+            }
+            if (TERMINAL_CASE_STATUSES.contains(stringValue(caseResult.get("status")))) {
+                continue;
+            }
+            caseResult.put("status", "failed");
+            applyCaseExecutionState(caseResult);
+            caseResult.put("finished_at", now());
+            caseResult.put("error", failure);
+            changed = true;
+        }
+        if (!changed) {
+            return;
+        }
+        recomputeBatch(batch, false);
+        applyBatchSummaryToScene(scene, batch);
+        executionRecordService.saveRecord(scene, batch, null);
+        notifyPlanReportProgress(batch);
+        if (isTerminalBatch(batch)) {
+            sessionStateService.cleanupBatch(batchId);
+        }
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
     public void cancelBatch(String sceneKey, String batchId) {
         AutomationUiSceneDO scene = resolveScene(sceneKey);
         Map<String, Object> batch = requireBatch(scene, batchId);
@@ -795,7 +828,8 @@ public class AutomationPlaywrightCaseServiceImpl implements AutomationPlaywright
         caseResult.putIfAbsent("case_key", caseKey);
         caseResult.putIfAbsent("case_id", caseId);
         caseResult.putIfAbsent("case_name", caseName);
-        caseResult.putIfAbsent("status", passed ? "passed" : "failed");
+        // 请求状态反映 Runner 最终执行结果；case_result 中可能仍保留执行中的旧快照。
+        caseResult.put("status", passed ? "passed" : "failed");
         caseResult.put("execution_id", executionId);
         caseResult.put("steps", stepResults);
         caseResult.put("step_total", stepTotal);

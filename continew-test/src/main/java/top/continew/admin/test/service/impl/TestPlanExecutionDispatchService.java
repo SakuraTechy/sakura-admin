@@ -219,27 +219,35 @@ public class TestPlanExecutionDispatchService {
         }
         Map<String, AutomationPlaywrightBatchResp.CaseExecution> executions = new LinkedHashMap<>();
         batch.getCases().forEach(item -> executions.put(item.getCaseId(), item));
-        for (String caseId : scene.getCaseIds()) {
-            AutomationPlaywrightCaseCancellationResp cancellation = playwrightCaseService.getCaseCancellation(scene
-                .getSceneKey(), batch.getBatchId(), caseId);
-            if (control.cancelled || cancellation.isBatchCancelRequested()) {
-                control.cancelled = true;
-                runnerJobService.cancelBatch(batch.getBatchId());
-                playwrightCaseService.cancelBatch(scene.getSceneKey(), batch.getBatchId());
-                return;
+        try {
+            for (String caseId : scene.getCaseIds()) {
+                AutomationPlaywrightCaseCancellationResp cancellation = playwrightCaseService.getCaseCancellation(scene
+                    .getSceneKey(), batch.getBatchId(), caseId);
+                if (control.cancelled || cancellation.isBatchCancelRequested()) {
+                    control.cancelled = true;
+                    runnerJobService.cancelBatch(batch.getBatchId());
+                    playwrightCaseService.cancelBatch(scene.getSceneKey(), batch.getBatchId());
+                    return;
+                }
+                if (cancellation.isCaseCancelRequested()) {
+                    continue;
+                }
+                AutomationPlaywrightBatchResp.CaseExecution execution = executions.get(caseId);
+                if (execution == null || !"queued".equalsIgnoreCase(execution.getStatus())) {
+                    // 只有 queued 用例允许启动 Runner；禁用用例不会进入批次执行范围。
+                    continue;
+                }
+                AutomationPlaywrightRunnerOptionsReq effectiveOptions = toRunnerOptions(execution
+                    .getEffectiveExecutionConfig(), options);
+                runCase(control, req, scene, batch.getBatchId(), batch
+                    .getExecutionCapability(), caseId, execution, effectiveOptions, token);
             }
-            if (cancellation.isCaseCancelRequested()) {
-                continue;
+        } finally {
+            if (!control.cancelled) {
+                // 调度异常或 Runner 状态读取失败时，不能让批次残留非终态用例。
+                playwrightCaseService.failUnfinishedBatchCases(scene.getSceneKey(), batch
+                    .getBatchId(), "批次调度结束，但用例未收到 Runner 终态结果");
             }
-            AutomationPlaywrightBatchResp.CaseExecution execution = executions.get(caseId);
-            if (execution == null || !"queued".equalsIgnoreCase(execution.getStatus())) {
-                // 只有 queued 用例允许启动 Runner；禁用用例不会进入批次执行范围。
-                continue;
-            }
-            AutomationPlaywrightRunnerOptionsReq effectiveOptions = toRunnerOptions(execution
-                .getEffectiveExecutionConfig(), options);
-            runCase(control, req, scene, batch.getBatchId(), batch
-                .getExecutionCapability(), caseId, execution, effectiveOptions, token);
         }
     }
 
@@ -569,6 +577,11 @@ public class TestPlanExecutionDispatchService {
         if (record == null || terminal(record)) {
             return;
         }
+        String batchId = record.get("batchId") == null ? "" : String.valueOf(record.get("batchId")).trim();
+        if (StringUtils.isNotBlank(batchId)) {
+            playwrightCaseService.failUnfinishedBatchCases(sceneKey, batchId, error);
+            return;
+        }
         record.put("executeStatus", "completed");
         record.put("executeResult", "failed");
         record.put("finishedAt", now());
@@ -582,6 +595,8 @@ public class TestPlanExecutionDispatchService {
                     String status = String.valueOf(caseResult.get("status"));
                     if (!List.of("passed", "failed", "cancelled", "blocked", "skipped").contains(status)) {
                         caseResult.put("status", "failed");
+                        caseResult.put("executeStatus", "completed");
+                        caseResult.put("executeResult", "failed");
                         caseResult.put("finished_at", now());
                         caseResult.put("error", error);
                     }

@@ -282,6 +282,10 @@ cosid:
     # 使用本机名生成稳定实例标识，避免多个开发环境共用默认实例导致机器号租约互相覆盖。
     stable: true
     instance-id: ${COSID_INSTANCE_ID:sakura-admin-${COMPUTERNAME:${HOSTNAME:default}}}
+    # 稳定实例的本地机器号必须与 Redis 租约一起持久化，容器重建时不能回到临时目录。
+    state-storage:
+      local:
+        state-location: ${COSID_STATE_LOCATION:${user.home}/.cosid-machine-state}
     # 机器号分配器
     distributor:
       type: REDIS
@@ -289,7 +293,7 @@ cosid:
       # 开启机器号守护
       enabled: true
       # 心跳间隔（默认 60 秒），适当缩短以应对网络抖动
-      duration: 45
+      delay: 45s
   snowflake:
     enabled: true
     zone-id: Asia/Shanghai

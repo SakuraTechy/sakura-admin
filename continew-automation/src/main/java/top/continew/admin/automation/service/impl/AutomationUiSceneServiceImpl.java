@@ -84,6 +84,7 @@ import top.continew.starter.core.exception.BusinessException;
 import top.continew.starter.core.validation.CheckUtils;
 import top.continew.starter.extension.crud.service.BaseServiceImpl;
 import top.continew.admin.common.context.UserContextHolder;
+import top.continew.admin.common.enums.StatusTypeEnum;
 import top.continew.admin.automation.mapper.AutomationUiSceneMapper;
 import top.continew.admin.automation.model.entity.AutomationUiSceneDO;
 import top.continew.admin.automation.model.query.AutomationUiSceneQuery;
@@ -568,6 +569,8 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
         List<AutomationUiSceneDO> sceneList = baseMapper.selectBatchIds(req.getSceneIds());
         CheckUtils.throwIf(sceneList == null || sceneList.isEmpty(), "执行失败：未找到可执行场景");
         CheckUtils.throwIf(sceneList.size() != req.getSceneIds().size(), "执行失败：部分场景不存在");
+        CheckUtils.throwIf(sceneList.stream()
+            .anyMatch(scene -> !StatusTypeEnum.ENABLE.equals(scene.getStatus())), "执行失败：所选场景中包含已禁用场景，请刷新后重试");
         sceneList.sort(Comparator.comparing(AutomationUiSceneDO::getSceneId, Comparator.nullsLast(String::compareTo)));
 
         Long projectId = sceneList.get(0).getProjectId();
@@ -740,6 +743,7 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
     @Override
     @Transactional(rollbackFor = Exception.class)
     public AutomationUiSceneExecResp execAll(AutomationUiSceneExecAllReq req) {
+        CheckUtils.throwIf(req.getStatus() != null && !StatusTypeEnum.ENABLE.equals(req.getStatus()), "执行失败：仅允许执行启用场景");
         AutomationUiSceneQuery query = new AutomationUiSceneQuery();
         query.setProjectId(req.getProjectId());
         query.setVersionId(req.getVersionId());
@@ -748,7 +752,8 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
         query.setLevel(req.getLevel());
         query.setExecuteStatus(req.getExecuteStatus());
         query.setExecuteResult(req.getExecuteResult());
-        query.setStatus(req.getStatus());
+        // 执行全部仅允许启用场景，不能由请求参数扩大到禁用场景。
+        query.setStatus(StatusTypeEnum.ENABLE);
         List<AutomationUiSceneResp> sceneRespList = super.list(query, null);
         CheckUtils.throwIf(sceneRespList == null || sceneRespList.isEmpty(), "执行失败：当前查询条件未匹配到场景");
 

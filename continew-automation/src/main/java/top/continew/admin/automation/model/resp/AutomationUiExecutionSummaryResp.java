@@ -50,8 +50,10 @@ public class AutomationUiExecutionSummaryResp implements Serializable {
     private Long projectEnvironmentId;
     private String projectEnvironmentName;
     private Integer caseTotal;
+    private Integer caseCompleted;
     private Integer casePass;
     private Integer caseFail;
+    private Integer caseBlocked;
     private Integer caseSkip;
     private Integer caseCancelled;
     private Integer stepTotal;

@@ -133,6 +133,8 @@ services:
       # CosId 稳定实例标识，避免容器 IP 变化导致机器号租约丢失
       HOSTNAME: sakura-admin-server
       COSID_INSTANCE_ID: sakura-admin-docker
+      # 与 Redis 租约配套持久化本地机器号，避免容器重建后本地状态与 Redis 失配
+      COSID_STATE_LOCATION: /app/data/cosid-machine-state
       DB_HOST: mysql
       DB_PORT: 3306
       DB_USER: root
@@ -188,6 +190,7 @@ services:
     volumes:
       - ./continew-admin/config/:/app/config/
       - ./continew-admin/data/file/:/app/data/file/
+      - ./continew-admin/data/cosid-machine-state/:/app/data/cosid-machine-state/
       - ./continew-admin/logs/:/app/logs/
       - ./continew-admin/lib/:/app/lib/
       # 服务器上需准备 ./sakura-playwright，启动命令会自动安装 npm 依赖和 Chromium。

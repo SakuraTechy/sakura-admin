@@ -57,6 +57,8 @@ public interface AutomationPlaywrightCaseService {
                                String caseId,
                                AutomationPlaywrightBatchCaseStatusReq req);
 
+    void failUnfinishedBatchCases(String sceneKey, String batchId, String error);
+
     void cancelBatch(String sceneKey, String batchId);
 
     /**

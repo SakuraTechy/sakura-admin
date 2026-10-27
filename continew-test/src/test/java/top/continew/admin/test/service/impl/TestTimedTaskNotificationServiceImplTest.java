@@ -34,6 +34,15 @@ import top.continew.starter.core.autoconfigure.project.ProjectProperties;
 class TestTimedTaskNotificationServiceImplTest {
 
     @Test
+    void shouldFormatExecutionDurationWithChineseHourMinuteSecondUnits() {
+        assertThat(TestTimedTaskNotificationServiceImpl.formatDurationMillis(7751L)).isEqualTo("7秒");
+        assertThat(TestTimedTaskNotificationServiceImpl.formatDurationMillis(3_661_999L)).isEqualTo("1时1分1秒");
+        assertThat(TestTimedTaskNotificationServiceImpl.formatDurationMillis(60_000L)).isEqualTo("1分");
+        assertThat(TestTimedTaskNotificationServiceImpl.formatDurationMillis(0L)).isEqualTo("0秒");
+        assertThat(TestTimedTaskNotificationServiceImpl.formatDurationMillis(null)).isEqualTo("-");
+    }
+
+    @Test
     void shouldRejectDeliveryWhenRunWasCancelled() {
         TestTimedTaskRunMapper runMapper = mock(TestTimedTaskRunMapper.class);
         TestTimedTaskRunDO run = new TestTimedTaskRunDO();

@@ -87,9 +87,17 @@ public class AutomationPlaywrightRunnerJobController {
     public ResponseEntity<byte[]> liveFrame(@PathVariable String jobId,
                                             @RequestParam(required = false) Long afterSequence) {
         AutomationPlaywrightRunnerJobResp job = runnerJobService.get(jobId);
-        LiveFrame frame = runnerJobService.getLiveFrame(jobId);
+        LiveFrame frame = afterSequence == null
+            ? runnerJobService.getLiveFrame(jobId)
+            : runnerJobService.awaitLiveFrame(jobId, afterSequence, 2500L);
+        // 等待期间任务可能已经结束，必须重新读取状态，避免 204 响应继续标记为 running。
+        if (afterSequence != null) {
+            job = runnerJobService.get(jobId);
+        }
         if (frame == null) {
-            HttpStatus status = job.isLiveAvailable() ? HttpStatus.NO_CONTENT : HttpStatus.GONE;
+            HttpStatus status = afterSequence != null && isTerminal(job.getStatus())
+                ? HttpStatus.GONE
+                : job.isLiveAvailable() ? HttpStatus.NO_CONTENT : HttpStatus.GONE;
             return ResponseEntity.status(status).cacheControl(CacheControl.noStore()).build();
         }
         if (afterSequence != null && frame.sequence() <= afterSequence) {
@@ -105,6 +113,11 @@ public class AutomationPlaywrightRunnerJobController {
             .header("X-Sakura-Frame-Sequence", String.valueOf(frame.sequence()))
             .header("X-Sakura-Job-Status", job.getStatus())
             .body(frame.content());
+    }
+
+    private boolean isTerminal(String status) {
+        return "passed".equals(status) || "failed".equals(status) || "cancelled".equals(status) || "interrupted"
+            .equals(status) || "completed".equals(status) || "blocked".equals(status) || "skipped".equals(status);
     }
 
     ResponseEntity<byte[]> liveFrame(String jobId) {

@@ -52,6 +52,11 @@ public interface AutomationPlaywrightRunnerJobService {
     LiveFrame getLiveFrame(String jobId);
 
     /**
+     * 等待指定序号之后的新帧，减少前端在两帧之间反复收到 204 的空轮询。
+     */
+    LiveFrame awaitLiveFrame(String jobId, Long afterSequence, long timeoutMillis);
+
+    /**
      * 实时画面帧只存在任务内存中，不进入场景主数据。
      */
     record LiveFrame(long sequence, byte[] content) {

@@ -6,6 +6,9 @@
 INSERT IGNORE INTO `sys_menu`
 (`id`, `title`, `parent_id`, `type`, `path`, `name`, `component`, `redirect`, `icon`, `is_external`, `is_cache`, `is_hidden`, `permission`, `sort`, `status`, `create_user`, `create_time`)
 VALUES
+(900, '仪表盘', 0, 1, '/', 'Dashboard', 'Layout', '/dashboard/workplace', 'dashboard', b'0', b'0', b'0', NULL, 0, 1, 1, NOW()),
+(910, '工作台', 900, 2, '/dashboard/workplace', 'Workplace', 'dashboard/workplace/index', NULL, 'desktop', b'0', b'0', b'0', NULL, 1, 1, 1, NOW()),
+(920, '分析页', 900, 2, '/dashboard/analysis', 'Analysis', 'dashboard/analysis/index', NULL, 'insert-chart', b'0', b'0', b'0', NULL, 2, 1, 1, NOW()),
 (1000, '系统管理', 0, 1, '/system', 'System', 'Layout', '/system/user', 'settings', b'0', b'0', b'0', NULL, 1, 1, 1, NOW()),
 (1010, '用户管理', 1000, 2, '/system/user', 'SystemUser', 'system/user/index', NULL, 'user', b'0', b'0', b'0', NULL, 1, 1, 1, NOW()),
 (1011, '列表', 1010, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'system:user:list', 1, 1, 1, NOW()),
@@ -239,6 +242,12 @@ VALUES
 INSERT IGNORE INTO `sys_role_menu`
 (`role_id`, `menu_id`)
 VALUES
+(2, 900),
+(2, 910),
+(2, 920),
+(3, 900),
+(3, 910),
+(3, 920),
 (2,	1000),
 (2,	1010),
 (2,	1011),

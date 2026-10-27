@@ -1,0 +1,338 @@
+Picked up JAVA_TOOL_OPTIONS: -Dfile.encoding=UTF-8
+ Consume Time：5 ms 2026-10-26 14:31:03
+ Execute SQL：SELECT EXTRA FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = 'continew_admin' AND TABLE_NAME = 'databasechangelog' AND COLUMN_NAME = 'ID'
+
+ Consume Time：1 ms 2026-10-26 14:31:03
+ Execute SQL：SELECT EXTRA FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = 'continew_admin' AND TABLE_NAME = 'databasechangelog' AND COLUMN_NAME = 'AUTHOR'
+
+ Consume Time：1 ms 2026-10-26 14:31:03
+ Execute SQL：SELECT EXTRA FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = 'continew_admin' AND TABLE_NAME = 'databasechangelog' AND COLUMN_NAME = 'FILENAME'
+
+ Consume Time：1 ms 2026-10-26 14:31:03
+ Execute SQL：SELECT EXTRA FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = 'continew_admin' AND TABLE_NAME = 'databasechangelog' AND COLUMN_NAME = 'DATEEXECUTED'
+
+ Consume Time：1 ms 2026-10-26 14:31:03
+ Execute SQL：SELECT EXTRA FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = 'continew_admin' AND TABLE_NAME = 'databasechangelog' AND COLUMN_NAME = 'ORDEREXECUTED'
+
+ Consume Time：1 ms 2026-10-26 14:31:03
+ Execute SQL：SELECT EXTRA FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = 'continew_admin' AND TABLE_NAME = 'databasechangelog' AND COLUMN_NAME = 'EXECTYPE'
+
+ Consume Time：1 ms 2026-10-26 14:31:03
+ Execute SQL：SELECT EXTRA FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = 'continew_admin' AND TABLE_NAME = 'databasechangelog' AND COLUMN_NAME = 'MD5SUM'
+
+ Consume Time：1 ms 2026-10-26 14:31:03
+ Execute SQL：SELECT EXTRA FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = 'continew_admin' AND TABLE_NAME = 'databasechangelog' AND COLUMN_NAME = 'DESCRIPTION'
+
+ Consume Time：1 ms 2026-10-26 14:31:03
+ Execute SQL：SELECT EXTRA FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = 'continew_admin' AND TABLE_NAME = 'databasechangelog' AND COLUMN_NAME = 'COMMENTS'
+
+ Consume Time：1 ms 2026-10-26 14:31:03
+ Execute SQL：SELECT EXTRA FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = 'continew_admin' AND TABLE_NAME = 'databasechangelog' AND COLUMN_NAME = 'TAG'
+
+ Consume Time：0 ms 2026-10-26 14:31:03
+ Execute SQL：SELECT EXTRA FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = 'continew_admin' AND TABLE_NAME = 'databasechangelog' AND COLUMN_NAME = 'LIQUIBASE'
+
+ Consume Time：0 ms 2026-10-26 14:31:03
+ Execute SQL：SELECT EXTRA FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = 'continew_admin' AND TABLE_NAME = 'databasechangelog' AND COLUMN_NAME = 'CONTEXTS'
+
+ Consume Time：1 ms 2026-10-26 14:31:03
+ Execute SQL：SELECT EXTRA FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = 'continew_admin' AND TABLE_NAME = 'databasechangelog' AND COLUMN_NAME = 'LABELS'
+
+ Consume Time：1 ms 2026-10-26 14:31:03
+ Execute SQL：SELECT EXTRA FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = 'continew_admin' AND TABLE_NAME = 'databasechangelog' AND COLUMN_NAME = 'DEPLOYMENT_ID'
+
+ Consume Time：1 ms 2026-10-26 14:31:03
+ Execute SQL：SELECT MD5SUM FROM continew_admin.databasechangelog WHERE MD5SUM IS NOT NULL
+
+ Consume Time：1 ms 2026-10-26 14:31:03
+ Execute SQL：SELECT COUNT(*) FROM continew_admin.databasechangelog
+
+ Consume Time：1 ms 2026-10-26 14:31:03
+ Execute SQL：SELECT * FROM continew_admin.databasechangelog ORDER BY DATEEXECUTED ASC, ORDEREXECUTED ASC
+
+ Consume Time：1 ms 2026-10-26 14:31:03
+ Execute SQL：SELECT COUNT(*) FROM continew_admin.databasechangeloglock
+
+ Consume Time：0 ms 2026-10-26 14:31:03
+ Execute SQL：SELECT COUNT(*) FROM continew_admin.databasechangeloglock
+
+
+
+ Consume Time：0 ms 2026-10-26 14:31:03
+ Execute SQL：SELECT COUNT(*) FROM continew_admin.databasechangelog
+
+ Consume Time：0 ms 2026-10-26 14:31:03
+ Execute SQL：SELECT * FROM continew_admin.databasechangelog ORDER BY DATEEXECUTED ASC, ORDEREXECUTED ASC
+
+
+ Consume Time：0 ms 2026-10-26 14:31:03
+ Execute SQL：UPDATE continew_admin.databasechangeloglock SET `LOCKED` = 0, LOCKEDBY = NULL, LOCKGRANTED = NULL WHERE ID = 1
+
+
+ Consume Time：4 ms 2026-10-26 14:31:09
+ Execute SQL：UPDATE automation_playwright_job SET status = 'interrupted', error_code = 'ADMIN_RESTARTED', error_message = 'admin 重启或执行节点失联，Runner 任务已中断', finished_at = '2026-10-26T14:31:08.907269900' WHERE (status IN ('queued', 'running') AND (heartbeat_at < '2026-10-26T14:29:38.882812500' OR heartbeat_at IS NULL))
+
+ Consume Time：0 ms 2026-10-26 14:31:16
+ Execute SQL：SELECT id, pass_word FROM project_data_base_config
+
+ Consume Time：1 ms 2026-10-26 14:31:17
+ Execute SQL：SELECT id, data_base_config FROM project_environment_config
+
+ Consume Time：5 ms 2026-10-26 14:31:17
+ Execute SQL：SELECT id, name, supplier, access_key, secret_key, signature, template_id, weight, retry_interval, max_retries, maximum, supplier_config, status, create_user, create_time, update_user, update_time FROM sys_sms_config WHERE (((status = 1)))
+
+ Consume Time：1 ms 2026-10-26 14:31:18
+ Execute SQL：SELECT id, name, code, type, access_key, secret_key, endpoint, bucket_name, domain, description, is_default, sort, status, create_user, create_time, update_user, update_time FROM sys_storage WHERE (((status = 1)))
+
+ Consume Time：1 ms 2026-10-26 14:31:18
+ Execute SQL：SELECT id, project_id, project_name, version_name, test_plan_id, test_plan_name, name, description, trigger_mode, execute_mode, report_type, project_config, automation_config, runtime_environment, statistic_analysis, run_time, build_number, console_url, report_url, video_url, status, del_flag, create_user, create_time, update_user, update_time FROM test_report WHERE (status = 'RUNNING' AND report_type <> 'SELENIUM')
+
+ Consume Time：1 ms 2026-10-26 14:38:28
+ Execute SQL：SELECT id, username, nickname, password, gender, email, phone, avatar, description, status, is_system, pwd_reset_time, dept_id, create_user, create_time, update_user, update_time FROM sys_user WHERE id = 903688327171932161
+
+ Consume Time：1 ms 2026-10-26 14:38:28
+ Execute SQL：SELECT role_id FROM sys_user_role WHERE (user_id = 903688327171932161)
+
+ Consume Time：0 ms 2026-10-26 14:38:28
+ Execute SQL：SELECT name FROM sys_role WHERE (id IN (2))
+
+ Consume Time：1 ms 2026-10-26 14:38:28
+ Execute SQL：SELECT id, name, parent_id, ancestors, description, sort, status, is_system, create_user, create_time, update_user, update_time FROM sys_dept WHERE id = 1
+
+ Consume Time：0 ms 2026-10-26 14:38:29
+ Execute SQL：SELECT role_id FROM sys_user_role WHERE (user_id = 903688327171932161)
+
+ Consume Time：0 ms 2026-10-26 14:38:29
+ Execute SQL：SELECT id, code, data_scope FROM sys_role WHERE (id IN (2))
+
+ Consume Time：16 ms 2026-10-26 14:38:29
+ Execute SQL：SELECT COUNT(t1.message_id) FROM sys_message_user AS t1 LEFT JOIN sys_message AS t2 ON t2.id = t1.message_id WHERE t1.user_id = 903688327171932161 AND t1.is_read = false
+
+ Consume Time：1 ms 2026-10-26 14:38:29
+ Execute SQL：SELECT id, name, abbreviate, member, description, last_domain, last_version, status, dept_id, update_ip, remark, version, del_flag, automation_operation_catalog_v2, operation_diagnostic_v1, create_user, create_time, update_user, update_time FROM project_config WHERE (((del_flag = 3))) ORDER BY create_time DESC
+
+ Consume Time：1 ms 2026-10-26 14:38:29
+ Execute SQL：SELECT id, project_id, project_name, version_name, test_plan_id, test_plan_name, name, description, trigger_mode, execute_mode, report_type, project_config, automation_config, runtime_environment, statistic_analysis, run_time, build_number, console_url, report_url, video_url, status, del_flag, create_user, create_time, update_user, update_time FROM test_report WHERE id = 905096794696843330
+
+ Consume Time：2 ms 2026-10-26 14:38:29
+ Execute SQL：INSERT INTO sys_log ( id, description, module, request_url, request_method, request_headers, status_code, response_headers, time_taken, ip, address, status, create_time ) VALUES ( 905103581621780481, '查询数据', '项目管理-项目配置管理', 'http://localhost:8000/project/projectConfig/list?sort=createTime%2Cdesc', 'GET', '{}', 200, '{}', 55, '0:0:0:0:0:0:0:1', '内网IP', 1, '2026-10-26T14:38:29.779315' )
+
+ Consume Time：0 ms 2026-10-26 14:38:29
+ Execute SQL：SELECT COUNT(*) AS total FROM test_report WHERE (((del_flag = 3)))
+
+ Consume Time：0 ms 2026-10-26 14:38:29
+ Execute SQL：SELECT COUNT(*) AS total FROM test_plan WHERE (((del_flag = 3)))
+
+ Consume Time：1 ms 2026-10-26 14:38:29
+ Execute SQL：INSERT INTO sys_log ( id, description, module, request_url, request_method, request_headers, status_code, response_headers, time_taken, ip, address, status, create_time ) VALUES ( 905103581651140610, '查询详情', '测试报告管理', 'http://localhost:8000/test/testReport/905096794696843330', 'GET', '{}', 200, '{}', 43, '0:0:0:0:0:0:0:1', '内网IP', 1, '2026-10-26T14:38:29.830892400' )
+
+ Consume Time：1 ms 2026-10-26 14:38:29
+ Execute SQL：SELECT id, project_id, project_name, type, name, abbreviate, description, member_ids, principal_ids, planned_start_time, planned_end_time, actual_start_time, actual_end_time, timed_tasks_config, project_config, automation_config, functional_scene, ui_test_scene, scene_count, executed_count, passed_count, test_progress, run_time, status, del_flag, create_user, create_time, update_user, update_time FROM test_plan WHERE (((del_flag = 3))) ORDER BY create_time DESC LIMIT 10
+
+ Consume Time：1 ms 2026-10-26 14:38:29
+ Execute SQL：SELECT id, project_id, project_name, version_name, test_plan_id, test_plan_name, name, description, trigger_mode, execute_mode, report_type, project_config, automation_config, runtime_environment, statistic_analysis, run_time, build_number, console_url, report_url, video_url, status, del_flag, create_user, create_time, update_user, update_time FROM test_report WHERE (((del_flag = 3))) ORDER BY create_time DESC LIMIT 10
+
+ Consume Time：39 ms 2026-10-26 14:38:29
+ Execute SQL：SELECT COUNT(*) AS total FROM test_report WHERE (((id LIKE '%905096794696843330%')) AND ((test_plan_id = 903698866249924768)) AND ((del_flag = 3)))
+
+ Consume Time：2 ms 2026-10-26 14:38:29
+ Execute SQL：INSERT INTO sys_log ( id, description, module, request_url, request_method, request_headers, status_code, response_headers, time_taken, ip, address, status, create_time ) VALUES ( 905103581831495684, '分页查询列表', '测试报告管理', 'http://localhost:8000/test/testReport?page=1&size=10&sort=createTime%2Cdesc', 'GET', '{}', 200, '{}', 164, '0:0:0:0:0:0:0:1', '内网IP', 1, '2026-10-26T14:38:29.752621800' )
+
+ Consume Time：2 ms 2026-10-26 14:38:29
+ Execute SQL：INSERT INTO sys_log ( id, description, module, request_url, request_method, request_headers, status_code, response_headers, time_taken, ip, address, status, create_time ) VALUES ( 905103581831495683, '分页查询列表', '测试计划管理', 'http://localhost:8000/test/testPlan?sort=createTime%2Cdesc', 'GET', '{}', 200, '{}', 161, '0:0:0:0:0:0:0:1', '内网IP', 1, '2026-10-26T14:38:29.756136900' )
+
+ Consume Time：1 ms 2026-10-26 14:38:29
+ Execute SQL：SELECT id, project_id, project_name, version_name, test_plan_id, test_plan_name, name, description, trigger_mode, execute_mode, report_type, project_config, automation_config, runtime_environment, statistic_analysis, run_time, build_number, console_url, report_url, video_url, status, del_flag, create_user, create_time, update_user, update_time FROM test_report WHERE (((id LIKE '%905096794696843330%')) AND ((test_plan_id = 903698866249924768)) AND ((del_flag = 3))) ORDER BY create_time DESC LIMIT 10
+
+ Consume Time：1 ms 2026-10-26 14:38:29
+ Execute SQL：INSERT INTO sys_log ( id, description, module, request_url, request_method, request_headers, status_code, response_headers, time_taken, ip, address, status, create_time ) VALUES ( 905103581915381765, '分页查询列表', '测试报告管理', 'http://localhost:8000/test/testReport?id=905096794696843330&page=1&size=10&sort=createTime%2Cdesc&testPlanId=903698866249924768', 'GET', '{}', 200, '{}', 181, '0:0:0:0:0:0:0:1', '内网IP', 1, '2026-10-26T14:38:29.756136900' )
+
+ Consume Time：21 ms 2026-10-26 14:38:29
+ Execute SQL：SELECT id, project_id, project_name, version_name, test_plan_id, test_plan_name, name, description, trigger_mode, execute_mode, report_type, project_config, automation_config, runtime_environment, statistic_analysis, run_time, build_number, console_url, report_url, video_url, status, del_flag, create_user, create_time, update_user, update_time FROM test_report WHERE id = 905096794696843330
+
+ Consume Time：2 ms 2026-10-26 14:38:29
+ Execute SQL：INSERT INTO sys_log ( id, description, module, request_url, request_method, request_headers, status_code, response_headers, time_taken, ip, address, status, create_time ) VALUES ( 905103582057988102, '查询详情', '测试报告管理', 'http://localhost:8000/test/testReport/905096794696843330', 'GET', '{}', 200, '{}', 34, '0:0:0:0:0:0:0:1', '内网IP', 1, '2026-10-26T14:38:29.936062900' )
+
+ Consume Time：3 ms 2026-10-26 14:38:30
+ Execute SQL：SELECT COUNT(*) FROM automation_ui_scene s JOIN project_config p ON p.id = s.project_id AND p.del_flag = 3 JOIN project_version_config pv ON pv.id = s.version_id AND pv.project_id = s.project_id AND pv.del_flag = 3 JOIN project_module_config pm ON pm.id = s.module_id AND pm.project_id = s.project_id AND pm.version_id = s.version_id AND pm.del_flag = 3 LEFT JOIN automation_ui_execution scoped_latest ON scoped_latest.id = (SELECT candidate.id FROM automation_ui_execution candidate WHERE candidate.scene_id = s.id AND (candidate.record_source = 'test' OR (candidate.record_source IS NULL AND (candidate.record_type IS NULL OR LOWER(Trim( candidate.record_type )) NOT IN ('internal-interactive-context', 'interactive-execution-context')) AND (candidate.test_plan_id IS NOT NULL OR candidate.test_report_id IS NOT NULL OR LOWER(Trim( candidate.trigger_type )) IN ('test-plan', 'schedule')))) AND candidate.test_plan_id = 903698866249924768 AND candidate.test_report_id = 905096794696843330 ORDER BY candidate.create_time DESC, candidate.id DESC LIMIT 1) WHERE s.del_flag = 3 AND (false = TRUE OR s.create_user = 903688327171932161 OR p.create_user = 903688327171932161 OR JSON_CONTAINS(COALESCE(p.member, JSON_ARRAY( ) ), JSON_QUOTE(CAST(903688327171932161 AS CHAR)))) AND scoped_latest.id IS NOT NULL
+
+ Consume Time：2 ms 2026-10-26 14:38:30
+ Execute SQL：SELECT s.id AS scene_db_id, s.scene_id AS scene_key, s.name, s.description, s.project_id AS project_db_id, p.name AS project_name, s.version_id AS version_db_id, pv.name AS version_name, s.module_id AS module_db_id, pm.path AS module_path, s.level, s.status, s.tags, COALESCE(s.definition_version, 0) AS definition_version, COALESCE(es.execution_revision, 0) AS global_execution_revision, COALESCE(cu.nickname, '-') AS create_user_string, COALESCE(uu.nickname, '-') AS update_user_string, s.create_time, s.update_time FROM automation_ui_scene s JOIN project_config p ON p.id = s.project_id AND p.del_flag = 3 JOIN project_version_config pv ON pv.id = s.version_id AND pv.project_id = s.project_id AND pv.del_flag = 3 JOIN project_module_config pm ON pm.id = s.module_id AND pm.project_id = s.project_id AND pm.version_id = s.version_id AND pm.del_flag = 3 LEFT JOIN automation_ui_scene_execution_state es ON es.scene_id = s.id LEFT JOIN sys_user cu ON cu.id = s.create_user LEFT JOIN sys_user uu ON uu.id = s.update_user LEFT JOIN automation_ui_execution scoped_latest ON scoped_latest.id = (SELECT candidate.id FROM automation_ui_execution candidate WHERE candidate.scene_id = s.id AND (candidate.record_source = 'test' OR (candidate.record_source IS NULL AND (candidate.record_type IS NULL OR LOWER(Trim( candidate.record_type )) NOT IN ('internal-interactive-context', 'interactive-execution-context')) AND (candidate.test_plan_id IS NOT NULL OR candidate.test_report_id IS NOT NULL OR LOWER(Trim( candidate.trigger_type )) IN ('test-plan', 'schedule')))) AND candidate.test_plan_id = 903698866249924768 AND candidate.test_report_id = 905096794696843330 ORDER BY candidate.create_time DESC, candidate.id DESC LIMIT 1) WHERE s.del_flag = 3 AND (false = TRUE OR s.create_user = 903688327171932161 OR p.create_user = 903688327171932161 OR JSON_CONTAINS(COALESCE(p.member, JSON_ARRAY( ) ), JSON_QUOTE(CAST(903688327171932161 AS CHAR)))) AND scoped_latest.id IS NOT NULL ORDER BY s.id ASC, s.id ASC LIMIT 50 OFFSET 0
+
+ Consume Time：2 ms 2026-10-26 14:38:30
+ Execute SQL：SELECT e.id AS execution_db_id, e.execution_key, e.scene_id AS scene_db_id, e.scene_key, e.batch_id, COALESCE(e.record_source, CASE WHEN LOWER(Trim( e.record_type )) IN ('internal-interactive-context', 'interactive-execution-context') THEN 'internal' WHEN e.test_plan_id IS NOT NULL OR e.test_report_id IS NOT NULL OR LOWER(Trim( e.trigger_type )) IN ('test-plan', 'schedule') THEN 'test' ELSE 'debug' END) AS record_source, e.test_plan_id, e.test_report_id, e.build_number, e.record_type, e.trigger_type, e.execution_engine, e.status, e.result, e.execute_user_id, e.execute_username, e.execute_name, e.execute_email, e.project_environment_id, e.project_environment_name, e.case_total, (SELECT COUNT(DISTINCT CASE WHEN cc.status IN ('completed', 'passed', 'failed', 'blocked', 'skipped', 'cancelled', 'interrupted', '12', '17') OR cc.execute_status IN ('completed', 'passed', 'failed', 'blocked', 'skipped', 'cancelled', 'interrupted', '12', '17') OR cc.execute_result IN ('passed', 'success', 'failed', 'blocked', 'skipped', 'cancelled', '14', '15', '16', '17') OR cc.result IN ('passed', 'success', 'failed', 'blocked', 'skipped', 'cancelled', '14', '15', '16', '17') THEN COALESCE(NULLIF(cc.case_id, ''), NULLIF(cc.case_key, ''), CONCAT('execution-case:', cc.id)) ELSE NULL END) FROM automation_ui_execution_case cc WHERE cc.execution_id = e.id) AS case_completed, e.case_pass, e.case_fail, (SELECT COUNT(DISTINCT CASE WHEN cb.execute_status = 'blocked' OR cb.status = 'blocked' OR cb.execute_result = 'blocked' OR cb.result = 'blocked' THEN COALESCE(NULLIF(cb.case_id, ''), NULLIF(cb.case_key, ''), CONCAT('execution-case:', cb.id)) ELSE NULL END) FROM automation_ui_execution_case cb WHERE cb.execution_id = e.id) AS case_blocked, e.case_skip, e.case_cancelled, e.step_total, e.step_pass, e.step_fail, e.step_skip, e.started_at, e.finished_at, COALESCE(NULLIF(e.duration_ms, 0), CASE WHEN e.started_at IS NOT NULL AND e.finished_at IS NOT NULL THEN TIMESTAMPDIFF(MICROSECOND, e.started_at, e.finished_at) / 1000 ELSE (SELECT COALESCE(SUM(COALESCE(NULLIF(cw.wall_clock_duration_ms, 0), NULLIF(cw.duration_ms, 0), CASE WHEN cw.started_at IS NOT NULL AND cw.finished_at IS NOT NULL THEN TIMESTAMPDIFF(MICROSECOND, cw.started_at, cw.finished_at) / 1000 ELSE 0 END)), 0) FROM automation_ui_execution_case cw WHERE cw.execution_id = e.id) END, 0) AS duration_ms, e.error_code, LEFT(e.error_message, 512) AS error_message, e.create_time, e.update_time FROM (SELECT candidate.*, ROW_NUMBER() OVER (PARTITION BY candidate.scene_id ORDER BY candidate.create_time DESC, candidate.id DESC) AS scoped_rank FROM automation_ui_execution candidate WHERE candidate.scene_id IN (887657618946917337) AND (candidate.record_source = 'test' OR (candidate.record_source IS NULL AND (candidate.record_type IS NULL OR LOWER(Trim( candidate.record_type )) NOT IN ('internal-interactive-context', 'interactive-execution-context')) AND (candidate.test_plan_id IS NOT NULL OR candidate.test_report_id IS NOT NULL OR LOWER(Trim( candidate.trigger_type )) IN ('test-plan', 'schedule')))) AND candidate.test_plan_id = 903698866249924768 AND candidate.test_report_id = 905096794696843330) e JOIN automation_ui_scene s ON s.id = e.scene_id AND s.del_flag = 3 JOIN project_config p ON p.id = s.project_id AND p.del_flag = 3 JOIN project_version_config pv ON pv.id = s.version_id AND pv.project_id = s.project_id AND pv.del_flag = 3 JOIN project_module_config pm ON pm.id = s.module_id AND pm.project_id = s.project_id AND pm.version_id = s.version_id AND pm.del_flag = 3 WHERE e.scoped_rank = 1 AND (false = TRUE OR s.create_user = 903688327171932161 OR p.create_user = 903688327171932161 OR JSON_CONTAINS(COALESCE(p.member, JSON_ARRAY( ) ), JSON_QUOTE(CAST(903688327171932161 AS CHAR)))) ORDER BY e.scene_id
+
+ Consume Time：1 ms 2026-10-26 14:38:30
+ Execute SQL：INSERT INTO sys_log ( id, description, module, request_url, request_method, request_headers, status_code, response_headers, time_taken, ip, address, status, create_time ) VALUES ( 905103584587153415, '分页查询场景摘要', '自动化管理-UI 自动化场景管理', 'http://localhost:8000/automation/automationUiScene/summaries/page?executionMatchedOnly=true&page=1&recordSource=test&scopeTestPlanId=903698866249924768&scopeTestReportId=905096794696843330&size=50&sort=sceneDbId%2Casc', 'GET', '{}', 200, '{}', 444, '0:0:0:0:0:0:0:1', '内网IP', 1, '2026-10-26T14:38:30.130415800' )
+
+ Consume Time：1 ms 2026-10-26 14:38:30
+ Execute SQL：SELECT s.id AS scene_db_id, COALESCE(es.execution_revision, 0) AS global_execution_revision, es.update_time FROM automation_ui_scene s JOIN project_config p ON p.id = s.project_id AND p.del_flag = 3 JOIN project_version_config pv ON pv.id = s.version_id AND pv.project_id = s.project_id AND pv.del_flag = 3 JOIN project_module_config pm ON pm.id = s.module_id AND pm.project_id = s.project_id AND pm.version_id = s.version_id AND pm.del_flag = 3 LEFT JOIN automation_ui_scene_execution_state es ON es.scene_id = s.id WHERE s.del_flag = 3 AND s.id IN (887657618946917337) AND (false = TRUE OR s.create_user = 903688327171932161 OR p.create_user = 903688327171932161 OR JSON_CONTAINS(COALESCE(p.member, JSON_ARRAY( ) ), JSON_QUOTE(CAST(903688327171932161 AS CHAR)))) ORDER BY s.id
+
+ Consume Time：1 ms 2026-10-26 14:38:30
+ Execute SQL：SELECT s.id AS scene_db_id, e.id AS execution_db_id, COALESCE(es.execution_revision, 0) AS global_execution_revision, COUNT(c.id) AS total FROM automation_ui_execution e JOIN automation_ui_scene s ON s.id = e.scene_id AND s.del_flag = 3 JOIN project_config p ON p.id = s.project_id AND p.del_flag = 3 JOIN project_version_config pv ON pv.id = s.version_id AND pv.project_id = s.project_id AND pv.del_flag = 3 JOIN project_module_config pm ON pm.id = s.module_id AND pm.project_id = s.project_id AND pm.version_id = s.version_id AND pm.del_flag = 3 LEFT JOIN automation_ui_scene_execution_state es ON es.scene_id = s.id LEFT JOIN automation_ui_execution_case c ON c.execution_id = e.id WHERE e.id = 905096796374564935 AND (false = TRUE OR s.create_user = 903688327171932161 OR p.create_user = 903688327171932161 OR JSON_CONTAINS(COALESCE(p.member, JSON_ARRAY( ) ), JSON_QUOTE(CAST(903688327171932161 AS CHAR)))) GROUP BY s.id, e.id, es.execution_revision
+
+ Consume Time：2 ms 2026-10-26 14:38:30
+ Execute SQL：INSERT INTO sys_log ( id, description, module, request_url, request_method, request_headers, status_code, response_headers, time_taken, ip, address, status, create_time ) VALUES ( 905103585136607240, '查询场景全局执行版本', '自动化管理-UI 自动化执行轻量查询', 'http://localhost:8000/automation/executions/revisions?sceneIds=887657618946917337', 'GET', '{}', 200, '{}', 21, '0:0:0:0:0:0:0:1', '内网IP', 1, '2026-10-26T14:38:30.681884500' )
+
+ Consume Time：1 ms 2026-10-26 14:38:30
+ Execute SQL：SELECT c.id AS case_execution_db_id, c.execution_id AS execution_db_id, c.case_id AS definition_case_id, c.case_key, c.case_execution_key, c.case_name, c.case_index, c.attempt_no, c.job_id, c.status, c.result, CASE WHEN LOWER(COALESCE(c.status, '')) IN ('completed', 'passed', 'failed', 'blocked', 'skipped', 'cancelled', 'interrupted', '12', '17') THEN c.status ELSE c.execute_status END AS execute_status, CASE WHEN LOWER(COALESCE(c.status, '')) IN ('passed', 'failed', 'blocked', 'skipped', 'cancelled', '14', '15', '16', '17') THEN c.status WHEN LOWER(COALESCE(c.execute_result, '')) IN ('passed', 'success', 'failed', 'blocked', 'skipped', 'cancelled', '14', '15', '16', '17') THEN c.execute_result WHEN LOWER(COALESCE(c.result, '')) IN ('passed', 'success', 'failed', 'blocked', 'skipped', 'cancelled', '14', '15', '16', '17') THEN c.result ELSE COALESCE(NULLIF(c.execute_result, ''), NULLIF(c.result, ''), c.status) END AS execute_result, c.step_total, c.step_pass, c.step_fail, c.step_skip, c.started_at, c.finished_at, c.duration_ms, c.step_duration_ms, c.wall_clock_duration_ms, c.error_code, LEFT(c.error_message, 512) AS error_message, c.event_sequence, c.create_time, c.update_time FROM automation_ui_execution_case c JOIN automation_ui_execution e ON e.id = c.execution_id JOIN automation_ui_scene s ON s.id = e.scene_id AND s.del_flag = 3 JOIN project_config p ON p.id = s.project_id AND p.del_flag = 3 JOIN project_version_config pv ON pv.id = s.version_id AND pv.project_id = s.project_id AND pv.del_flag = 3 JOIN project_module_config pm ON pm.id = s.module_id AND pm.project_id = s.project_id AND pm.version_id = s.version_id AND pm.del_flag = 3 WHERE e.id = 905096796374564935 AND (false = TRUE OR s.create_user = 903688327171932161 OR p.create_user = 903688327171932161 OR JSON_CONTAINS(COALESCE(p.member, JSON_ARRAY( ) ), JSON_QUOTE(CAST(903688327171932161 AS CHAR)))) ORDER BY c.case_index, c.attempt_no, c.id LIMIT 20 OFFSET 0
+
+ Consume Time：2 ms 2026-10-26 14:38:30
+ Execute SQL：INSERT INTO sys_log ( id, description, module, request_url, request_method, request_headers, status_code, response_headers, time_taken, ip, address, status, create_time ) VALUES ( 905103585207910409, '分页查询执行用例', '自动化管理-UI 自动化执行轻量查询', 'http://localhost:8000/automation/executions/905096796374564935/cases?page=1&size=20', 'GET', '{}', 200, '{}', 40, '0:0:0:0:0:0:0:1', '内网IP', 1, '2026-10-26T14:38:30.681884500' )
+
+ Consume Time：21 ms 2026-10-26 14:38:30
+ Execute SQL：SELECT id, project_id, project_name, version_name, test_plan_id, test_plan_name, name, description, trigger_mode, execute_mode, report_type, project_config, automation_config, runtime_environment, statistic_analysis, run_time, build_number, console_url, report_url, video_url, status, del_flag, create_user, create_time, update_user, update_time FROM test_report WHERE id = 905096794696843330
+
+ Consume Time：2 ms 2026-10-26 14:38:30
+ Execute SQL：INSERT INTO sys_log ( id, description, module, request_url, request_method, request_headers, status_code, response_headers, time_taken, ip, address, status, create_time ) VALUES ( 905103585929330698, '查询详情', '测试报告管理', 'http://localhost:8000/test/testReport/905096794696843330', 'GET', '{}', 200, '{}', 142, '0:0:0:0:0:0:0:1', '内网IP', 1, '2026-10-26T14:38:30.752700300' )
+
+ Consume Time：1 ms 2026-10-26 14:38:33
+ Execute SQL：SELECT s.id AS scene_db_id, e.id AS execution_db_id, COALESCE(es.execution_revision, 0) AS global_execution_revision, COUNT(a.id) AS total FROM automation_ui_execution e JOIN automation_ui_scene s ON s.id = e.scene_id AND s.del_flag = 3 JOIN project_config p ON p.id = s.project_id AND p.del_flag = 3 JOIN project_version_config pv ON pv.id = s.version_id AND pv.project_id = s.project_id AND pv.del_flag = 3 JOIN project_module_config pm ON pm.id = s.module_id AND pm.project_id = s.project_id AND pm.version_id = s.version_id AND pm.del_flag = 3 LEFT JOIN automation_ui_scene_execution_state es ON es.scene_id = s.id LEFT JOIN automation_ui_execution_artifact a ON a.execution_id = e.id WHERE e.id = 905096796374564935 AND (false = TRUE OR s.create_user = 903688327171932161 OR p.create_user = 903688327171932161 OR JSON_CONTAINS(COALESCE(p.member, JSON_ARRAY( ) ), JSON_QUOTE(CAST(903688327171932161 AS CHAR)))) GROUP BY s.id, e.id, es.execution_revision
+
+ Consume Time：1 ms 2026-10-26 14:38:33
+ Execute SQL：SELECT s.id AS scene_db_id, e.id AS execution_db_id, c.id AS case_execution_db_id, COALESCE(es.execution_revision, 0) AS global_execution_revision, COUNT(st.id) AS total FROM automation_ui_execution_case c JOIN automation_ui_execution e ON e.id = c.execution_id JOIN automation_ui_scene s ON s.id = e.scene_id AND s.del_flag = 3 JOIN project_config p ON p.id = s.project_id AND p.del_flag = 3 JOIN project_version_config pv ON pv.id = s.version_id AND pv.project_id = s.project_id AND pv.del_flag = 3 JOIN project_module_config pm ON pm.id = s.module_id AND pm.project_id = s.project_id AND pm.version_id = s.version_id AND pm.del_flag = 3 LEFT JOIN automation_ui_scene_execution_state es ON es.scene_id = s.id LEFT JOIN automation_ui_execution_step st ON st.execution_case_id = c.id WHERE c.id = 905096796684943445 AND (false = TRUE OR s.create_user = 903688327171932161 OR p.create_user = 903688327171932161 OR JSON_CONTAINS(COALESCE(p.member, JSON_ARRAY( ) ), JSON_QUOTE(CAST(903688327171932161 AS CHAR)))) GROUP BY s.id, e.id, c.id, es.execution_revision
+
+ Consume Time：1 ms 2026-10-26 14:38:33
+ Execute SQL：SELECT a.id AS artifact_db_id, a.execution_id AS execution_db_id, NULLIF(a.execution_case_id, 0) AS case_execution_db_id, NULLIF(a.execution_step_id, 0) AS step_execution_db_id, a.artifact_type, a.storage_status, a.size_bytes, a.expires_at, a.create_time, a.update_time FROM automation_ui_execution_artifact a JOIN automation_ui_execution e ON e.id = a.execution_id JOIN automation_ui_scene s ON s.id = e.scene_id AND s.del_flag = 3 JOIN project_config p ON p.id = s.project_id AND p.del_flag = 3 JOIN project_version_config pv ON pv.id = s.version_id AND pv.project_id = s.project_id AND pv.del_flag = 3 JOIN project_module_config pm ON pm.id = s.module_id AND pm.project_id = s.project_id AND pm.version_id = s.version_id AND pm.del_flag = 3 WHERE e.id = 905096796374564935 AND (false = TRUE OR s.create_user = 903688327171932161 OR p.create_user = 903688327171932161 OR JSON_CONTAINS(COALESCE(p.member, JSON_ARRAY( ) ), JSON_QUOTE(CAST(903688327171932161 AS CHAR)))) ORDER BY a.create_time DESC, a.id DESC LIMIT 50 OFFSET 0
+
+ Consume Time：1 ms 2026-10-26 14:38:33
+ Execute SQL：SELECT st.id AS step_execution_db_id, st.execution_case_id AS case_execution_db_id, st.step_id AS definition_step_id, st.source_step_id, st.step_index, st.attempt_no, st.action_type, st.step_name, st.description, st.status, st.duration_ms, st.locator_source, st.locator_type, st.error_code, LEFT(st.error_message, 512) AS error_message, st.event_sequence, st.create_time, st.update_time FROM automation_ui_execution_step st JOIN automation_ui_execution_case c ON c.id = st.execution_case_id JOIN automation_ui_execution e ON e.id = c.execution_id JOIN automation_ui_scene s ON s.id = e.scene_id AND s.del_flag = 3 JOIN project_config p ON p.id = s.project_id AND p.del_flag = 3 JOIN project_version_config pv ON pv.id = s.version_id AND pv.project_id = s.project_id AND pv.del_flag = 3 JOIN project_module_config pm ON pm.id = s.module_id AND pm.project_id = s.project_id AND pm.version_id = s.version_id AND pm.del_flag = 3 WHERE c.id = 905096796684943445 AND (false = TRUE OR s.create_user = 903688327171932161 OR p.create_user = 903688327171932161 OR JSON_CONTAINS(COALESCE(p.member, JSON_ARRAY( ) ), JSON_QUOTE(CAST(903688327171932161 AS CHAR)))) ORDER BY st.step_index, st.attempt_no, st.id LIMIT 50 OFFSET 0
+
+ Consume Time：1 ms 2026-10-26 14:38:33
+ Execute SQL：INSERT INTO sys_log ( id, description, module, request_url, request_method, request_headers, status_code, response_headers, time_taken, ip, address, status, create_time ) VALUES ( 905103595009998859, '分页查询执行 Artifact 安全元数据', '自动化管理-UI 自动化执行轻量查询', 'http://localhost:8000/automation/executions/905096796374564935/artifacts?page=1&size=50', 'GET', '{}', 200, '{}', 34, '0:0:0:0:0:0:0:1', '内网IP', 1, '2026-10-26T14:38:33.024116500' )
+
+ Consume Time：1 ms 2026-10-26 14:38:33
+ Execute SQL：INSERT INTO sys_log ( id, description, module, request_url, request_method, request_headers, status_code, response_headers, time_taken, ip, address, status, create_time ) VALUES ( 905103595077107724, '分页查询用例执行步骤', '自动化管理-UI 自动化用例执行查询', 'http://localhost:8000/automation/execution-cases/905096796684943445/steps?page=1&size=50', 'GET', '{}', 200, '{}', 50, '0:0:0:0:0:0:0:1', '内网IP', 1, '2026-10-26T14:38:33.024116500' )
+
+ Consume Time：0 ms 2026-10-26 14:38:33
+ Execute SQL：SELECT a.file_id FROM automation_ui_execution_artifact a JOIN automation_ui_execution e ON e.id = a.execution_id JOIN automation_ui_scene s ON s.id = e.scene_id AND s.del_flag = 3 JOIN project_config p ON p.id = s.project_id AND p.del_flag = 3 JOIN project_version_config pv ON pv.id = s.version_id AND pv.project_id = s.project_id AND pv.del_flag = 3 JOIN project_module_config pm ON pm.id = s.module_id AND pm.project_id = s.project_id AND pm.version_id = s.version_id AND pm.del_flag = 3 WHERE a.id = 905096998602932589 AND e.id = 905096796374564935 AND (false = TRUE OR s.create_user = 903688327171932161 OR p.create_user = 903688327171932161 OR JSON_CONTAINS(COALESCE(p.member, JSON_ARRAY( ) ), JSON_QUOTE(CAST(903688327171932161 AS CHAR))))
+
+ Consume Time：0 ms 2026-10-26 14:38:33
+ Execute SQL：SELECT id, name, size, url, parent_path, abs_path, extension, content_type, type, md5, metadata, thumbnail_size, thumbnail_url, thumbnail_metadata, storage_id, create_user, create_time, update_user, update_time FROM sys_file WHERE id = 905096978180866394
+
+ Consume Time：1 ms 2026-10-26 14:38:33
+ Execute SQL：SELECT s.id FROM automation_ui_scene s JOIN project_config p ON p.id = s.project_id AND p.del_flag = 3 JOIN project_version_config pv ON pv.id = s.version_id AND pv.project_id = s.project_id AND pv.del_flag = 3 JOIN project_module_config pm ON pm.id = s.module_id AND pm.project_id = s.project_id AND pm.version_id = s.version_id AND pm.del_flag = 3 WHERE (s.scene_id = 'AAS_DBSG_SMOKE_006' OR CAST(s.id AS CHAR) = 'AAS_DBSG_SMOKE_006') AND s.del_flag = 3 AND (false = TRUE OR s.create_user = 903688327171932161 OR p.create_user = 903688327171932161 OR JSON_CONTAINS(COALESCE(p.member, JSON_ARRAY( ) ), JSON_QUOTE(CAST(903688327171932161 AS CHAR)))) ORDER BY CASE WHEN s.scene_id = 'AAS_DBSG_SMOKE_006' THEN 0 ELSE 1 END LIMIT 1
+
+ Consume Time：1 ms 2026-10-26 14:38:33
+ Execute SQL：SELECT id, name, code, type, access_key, secret_key, endpoint, bucket_name, domain, description, is_default, sort, status, create_user, create_time, update_user, update_time FROM sys_storage WHERE id = 1
+
+ Consume Time：1 ms 2026-10-26 14:38:33
+ Execute SQL：SELECT s.id AS scene_db_id, e.id AS execution_db_id, COALESCE(es.execution_revision, 0) AS global_execution_revision, COUNT(a.id) AS total FROM automation_ui_execution e JOIN automation_ui_scene s ON s.id = e.scene_id AND s.del_flag = 3 JOIN project_config p ON p.id = s.project_id AND p.del_flag = 3 JOIN project_version_config pv ON pv.id = s.version_id AND pv.project_id = s.project_id AND pv.del_flag = 3 JOIN project_module_config pm ON pm.id = s.module_id AND pm.project_id = s.project_id AND pm.version_id = s.version_id AND pm.del_flag = 3 LEFT JOIN automation_ui_scene_execution_state es ON es.scene_id = s.id LEFT JOIN automation_ui_execution_artifact a ON a.execution_id = e.id WHERE e.id = 905096796374564935 AND (false = TRUE OR s.create_user = 903688327171932161 OR p.create_user = 903688327171932161 OR JSON_CONTAINS(COALESCE(p.member, JSON_ARRAY( ) ), JSON_QUOTE(CAST(903688327171932161 AS CHAR)))) GROUP BY s.id, e.id, es.execution_revision
+
+ Consume Time：1 ms 2026-10-26 14:38:33
+ Execute SQL：SELECT a.id AS artifact_db_id, a.execution_id AS execution_db_id, NULLIF(a.execution_case_id, 0) AS case_execution_db_id, NULLIF(a.execution_step_id, 0) AS step_execution_db_id, a.artifact_type, a.storage_status, a.size_bytes, a.expires_at, a.create_time, a.update_time FROM automation_ui_execution_artifact a JOIN automation_ui_execution e ON e.id = a.execution_id JOIN automation_ui_scene s ON s.id = e.scene_id AND s.del_flag = 3 JOIN project_config p ON p.id = s.project_id AND p.del_flag = 3 JOIN project_version_config pv ON pv.id = s.version_id AND pv.project_id = s.project_id AND pv.del_flag = 3 JOIN project_module_config pm ON pm.id = s.module_id AND pm.project_id = s.project_id AND pm.version_id = s.version_id AND pm.del_flag = 3 WHERE e.id = 905096796374564935 AND (false = TRUE OR s.create_user = 903688327171932161 OR p.create_user = 903688327171932161 OR JSON_CONTAINS(COALESCE(p.member, JSON_ARRAY( ) ), JSON_QUOTE(CAST(903688327171932161 AS CHAR)))) ORDER BY a.create_time DESC, a.id DESC LIMIT 50 OFFSET 0
+
+ Consume Time：1 ms 2026-10-26 14:38:33
+ Execute SQL：INSERT INTO sys_log ( id, description, module, request_url, request_method, request_headers, status_code, response_headers, time_taken, ip, address, status, create_time ) VALUES ( 905103595421040653, '分页查询执行 Artifact 安全元数据', '自动化管理-UI 自动化执行轻量查询', 'http://localhost:8000/automation/executions/905096796374564935/artifacts?page=1&size=50', 'GET', '{}', 200, '{}', 24, '0:0:0:0:0:0:0:1', '内网IP', 1, '2026-10-26T14:38:33.133188900' )
+
+ Consume Time：1 ms 2026-10-26 14:38:33
+ Execute SQL：SELECT a.file_id FROM automation_ui_execution_artifact a JOIN automation_ui_execution e ON e.id = a.execution_id JOIN automation_ui_scene s ON s.id = e.scene_id AND s.del_flag = 3 JOIN project_config p ON p.id = s.project_id AND p.del_flag = 3 JOIN project_version_config pv ON pv.id = s.version_id AND pv.project_id = s.project_id AND pv.del_flag = 3 JOIN project_module_config pm ON pm.id = s.module_id AND pm.project_id = s.project_id AND pm.version_id = s.version_id AND pm.del_flag = 3 WHERE a.id = 905096998602932589 AND e.id = 905096796374564935 AND (false = TRUE OR s.create_user = 903688327171932161 OR p.create_user = 903688327171932161 OR JSON_CONTAINS(COALESCE(p.member, JSON_ARRAY( ) ), JSON_QUOTE(CAST(903688327171932161 AS CHAR))))
+
+ Consume Time：1 ms 2026-10-26 14:38:33
+ Execute SQL：SELECT id, name, size, url, parent_path, abs_path, extension, content_type, type, md5, metadata, thumbnail_size, thumbnail_url, thumbnail_metadata, storage_id, create_user, create_time, update_user, update_time FROM sys_file WHERE id = 905096978180866394
+
+ Consume Time：1 ms 2026-10-26 14:38:33
+ Execute SQL：INSERT INTO sys_log ( id, description, module, request_url, request_method, request_headers, status_code, response_headers, time_taken, ip, address, status, create_time ) VALUES ( 905103595605590030, '读取已授权执行 Artifact 内容', '自动化管理-UI 自动化执行轻量查询', 'http://localhost:8000/automation/executions/905096796374564935/artifacts/905096998602932589/content', 'GET', '{}', 200, '{}', 101, '0:0:0:0:0:0:0:1', '内网IP', 1, '2026-10-26T14:38:33.100133200' )
+
+ Consume Time：1 ms 2026-10-26 14:38:33
+ Execute SQL：SELECT s.id FROM automation_ui_scene s JOIN project_config p ON p.id = s.project_id AND p.del_flag = 3 JOIN project_version_config pv ON pv.id = s.version_id AND pv.project_id = s.project_id AND pv.del_flag = 3 JOIN project_module_config pm ON pm.id = s.module_id AND pm.project_id = s.project_id AND pm.version_id = s.version_id AND pm.del_flag = 3 WHERE (s.scene_id = 'AAS_DBSG_SMOKE_006' OR CAST(s.id AS CHAR) = 'AAS_DBSG_SMOKE_006') AND s.del_flag = 3 AND (false = TRUE OR s.create_user = 903688327171932161 OR p.create_user = 903688327171932161 OR JSON_CONTAINS(COALESCE(p.member, JSON_ARRAY( ) ), JSON_QUOTE(CAST(903688327171932161 AS CHAR)))) ORDER BY CASE WHEN s.scene_id = 'AAS_DBSG_SMOKE_006' THEN 0 ELSE 1 END LIMIT 1
+
+ Consume Time：0 ms 2026-10-26 14:38:33
+ Execute SQL：SELECT id, name, code, type, access_key, secret_key, endpoint, bucket_name, domain, description, is_default, sort, status, create_user, create_time, update_user, update_time FROM sys_storage WHERE id = 1
+
+ Consume Time：1 ms 2026-10-26 14:38:33
+ Execute SQL：INSERT INTO sys_log ( id, description, module, request_url, request_method, request_headers, status_code, response_headers, time_taken, ip, address, status, create_time ) VALUES ( 905103595685281807, '读取已授权执行 Artifact 内容', '自动化管理-UI 自动化执行轻量查询', 'http://localhost:8000/automation/executions/905096796374564935/artifacts/905096998602932589/content', 'GET', '{}', 200, '{}', 30, '0:0:0:0:0:0:0:1', '内网IP', 1, '2026-10-26T14:38:33.190196400' )
+
+ Consume Time：1 ms 2026-10-26 14:38:34
+ Execute SQL：SELECT s.id AS scene_db_id, e.id AS execution_db_id, c.id AS case_execution_db_id, COALESCE(es.execution_revision, 0) AS global_execution_revision, COUNT(st.id) AS total FROM automation_ui_execution_case c JOIN automation_ui_execution e ON e.id = c.execution_id JOIN automation_ui_scene s ON s.id = e.scene_id AND s.del_flag = 3 JOIN project_config p ON p.id = s.project_id AND p.del_flag = 3 JOIN project_version_config pv ON pv.id = s.version_id AND pv.project_id = s.project_id AND pv.del_flag = 3 JOIN project_module_config pm ON pm.id = s.module_id AND pm.project_id = s.project_id AND pm.version_id = s.version_id AND pm.del_flag = 3 LEFT JOIN automation_ui_scene_execution_state es ON es.scene_id = s.id LEFT JOIN automation_ui_execution_step st ON st.execution_case_id = c.id WHERE c.id = 905096796684943445 AND (false = TRUE OR s.create_user = 903688327171932161 OR p.create_user = 903688327171932161 OR JSON_CONTAINS(COALESCE(p.member, JSON_ARRAY( ) ), JSON_QUOTE(CAST(903688327171932161 AS CHAR)))) GROUP BY s.id, e.id, c.id, es.execution_revision
+
+ Consume Time：1 ms 2026-10-26 14:38:34
+ Execute SQL：SELECT st.id AS step_execution_db_id, st.execution_case_id AS case_execution_db_id, st.step_id AS definition_step_id, st.source_step_id, st.step_index, st.attempt_no, st.action_type, st.step_name, st.description, st.status, st.duration_ms, st.locator_source, st.locator_type, st.error_code, LEFT(st.error_message, 512) AS error_message, st.event_sequence, st.create_time, st.update_time, st.locator_value, st.diagnostics FROM automation_ui_execution_step st JOIN automation_ui_execution_case c ON c.id = st.execution_case_id JOIN automation_ui_execution e ON e.id = c.execution_id JOIN automation_ui_scene s ON s.id = e.scene_id AND s.del_flag = 3 JOIN project_config p ON p.id = s.project_id AND p.del_flag = 3 JOIN project_version_config pv ON pv.id = s.version_id AND pv.project_id = s.project_id AND pv.del_flag = 3 JOIN project_module_config pm ON pm.id = s.module_id AND pm.project_id = s.project_id AND pm.version_id = s.version_id AND pm.del_flag = 3 WHERE st.id = 905096796798189661 AND (false = TRUE OR s.create_user = 903688327171932161 OR p.create_user = 903688327171932161 OR JSON_CONTAINS(COALESCE(p.member, JSON_ARRAY( ) ), JSON_QUOTE(CAST(903688327171932161 AS CHAR))))
+
+ Consume Time：1 ms 2026-10-26 14:38:34
+ Execute SQL：SELECT st.id AS step_execution_db_id, st.execution_case_id AS case_execution_db_id, st.step_id AS definition_step_id, st.source_step_id, st.step_index, st.attempt_no, st.action_type, st.step_name, st.description, st.status, st.duration_ms, st.locator_source, st.locator_type, st.error_code, LEFT(st.error_message, 512) AS error_message, st.event_sequence, st.create_time, st.update_time FROM automation_ui_execution_step st JOIN automation_ui_execution_case c ON c.id = st.execution_case_id JOIN automation_ui_execution e ON e.id = c.execution_id JOIN automation_ui_scene s ON s.id = e.scene_id AND s.del_flag = 3 JOIN project_config p ON p.id = s.project_id AND p.del_flag = 3 JOIN project_version_config pv ON pv.id = s.version_id AND pv.project_id = s.project_id AND pv.del_flag = 3 JOIN project_module_config pm ON pm.id = s.module_id AND pm.project_id = s.project_id AND pm.version_id = s.version_id AND pm.del_flag = 3 WHERE c.id = 905096796684943445 AND (false = TRUE OR s.create_user = 903688327171932161 OR p.create_user = 903688327171932161 OR JSON_CONTAINS(COALESCE(p.member, JSON_ARRAY( ) ), JSON_QUOTE(CAST(903688327171932161 AS CHAR)))) ORDER BY st.step_index, st.attempt_no, st.id LIMIT 50 OFFSET 0
+
+ Consume Time：2 ms 2026-10-26 14:38:34
+ Execute SQL：INSERT INTO sys_log ( id, description, module, request_url, request_method, request_headers, status_code, response_headers, time_taken, ip, address, status, create_time ) VALUES ( 905103600005414928, '查询步骤执行诊断详情', '自动化管理-UI 自动化步骤执行查询', 'http://localhost:8000/automation/execution-steps/905096796798189661', 'GET', '{}', 200, '{}', 209, '0:0:0:0:0:0:0:1', '内网IP', 1, '2026-10-26T14:38:34.002797600' )
+
+ Consume Time：1 ms 2026-10-26 14:38:34
+ Execute SQL：INSERT INTO sys_log ( id, description, module, request_url, request_method, request_headers, status_code, response_headers, time_taken, ip, address, status, create_time ) VALUES ( 905103600122855441, '分页查询用例执行步骤', '自动化管理-UI 自动化用例执行查询', 'http://localhost:8000/automation/execution-cases/905096796684943445/steps?page=1&size=50', 'GET', '{}', 200, '{}', 265, '0:0:0:0:0:0:0:1', '内网IP', 1, '2026-10-26T14:38:33.967185500' )
+
+ Consume Time：45 ms 2026-10-26 14:38:34
+ Execute SQL：SELECT st.id AS step_execution_db_id, st.execution_case_id AS case_execution_db_id, st.step_id AS definition_step_id, st.source_step_id, st.step_index, st.attempt_no, st.action_type, st.step_name, st.description, st.status, st.duration_ms, st.locator_source, st.locator_type, st.error_code, LEFT(st.error_message, 512) AS error_message, st.event_sequence, st.create_time, st.update_time, st.locator_value, st.diagnostics FROM automation_ui_execution_step st JOIN automation_ui_execution_case c ON c.id = st.execution_case_id JOIN automation_ui_execution e ON e.id = c.execution_id JOIN automation_ui_scene s ON s.id = e.scene_id AND s.del_flag = 3 JOIN project_config p ON p.id = s.project_id AND p.del_flag = 3 JOIN project_version_config pv ON pv.id = s.version_id AND pv.project_id = s.project_id AND pv.del_flag = 3 JOIN project_module_config pm ON pm.id = s.module_id AND pm.project_id = s.project_id AND pm.version_id = s.version_id AND pm.del_flag = 3 WHERE st.id = 905096796798189661 AND (false = TRUE OR s.create_user = 903688327171932161 OR p.create_user = 903688327171932161 OR JSON_CONTAINS(COALESCE(p.member, JSON_ARRAY( ) ), JSON_QUOTE(CAST(903688327171932161 AS CHAR))))
+
+ Consume Time：1 ms 2026-10-26 14:38:34
+ Execute SQL：INSERT INTO sys_log ( id, description, module, request_url, request_method, request_headers, status_code, response_headers, time_taken, ip, address, status, create_time ) VALUES ( 905103601502781458, '查询步骤执行诊断详情', '自动化管理-UI 自动化步骤执行查询', 'http://localhost:8000/automation/execution-steps/905096796798189661', 'GET', '{}', 200, '{}', 151, '0:0:0:0:0:0:0:1', '内网IP', 1, '2026-10-26T14:38:34.415781400' )
+
+ Consume Time：1 ms 2026-10-26 14:38:35
+ Execute SQL：SELECT st.id AS step_execution_db_id, st.execution_case_id AS case_execution_db_id, st.step_id AS definition_step_id, st.source_step_id, st.step_index, st.attempt_no, st.action_type, st.step_name, st.description, st.status, st.duration_ms, st.locator_source, st.locator_type, st.error_code, LEFT(st.error_message, 512) AS error_message, st.event_sequence, st.create_time, st.update_time, st.locator_value, st.diagnostics FROM automation_ui_execution_step st JOIN automation_ui_execution_case c ON c.id = st.execution_case_id JOIN automation_ui_execution e ON e.id = c.execution_id JOIN automation_ui_scene s ON s.id = e.scene_id AND s.del_flag = 3 JOIN project_config p ON p.id = s.project_id AND p.del_flag = 3 JOIN project_version_config pv ON pv.id = s.version_id AND pv.project_id = s.project_id AND pv.del_flag = 3 JOIN project_module_config pm ON pm.id = s.module_id AND pm.project_id = s.project_id AND pm.version_id = s.version_id AND pm.del_flag = 3 WHERE st.id = 905096796760440921 AND (false = TRUE OR s.create_user = 903688327171932161 OR p.create_user = 903688327171932161 OR JSON_CONTAINS(COALESCE(p.member, JSON_ARRAY( ) ), JSON_QUOTE(CAST(903688327171932161 AS CHAR))))
+
+ Consume Time：1 ms 2026-10-26 14:38:35
+ Execute SQL：INSERT INTO sys_log ( id, description, module, request_url, request_method, request_headers, status_code, response_headers, time_taken, ip, address, status, create_time ) VALUES ( 905103605197963283, '查询步骤执行诊断详情', '自动化管理-UI 自动化步骤执行查询', 'http://localhost:8000/automation/execution-steps/905096796760440921', 'GET', '{}', 200, '{}', 50, '0:0:0:0:0:0:0:1', '内网IP', 1, '2026-10-26T14:38:35.432739800' )
+
+ Consume Time：1 ms 2026-10-26 14:38:35
+ Execute SQL：SELECT st.id AS step_execution_db_id, st.execution_case_id AS case_execution_db_id, st.step_id AS definition_step_id, st.source_step_id, st.step_index, st.attempt_no, st.action_type, st.step_name, st.description, st.status, st.duration_ms, st.locator_source, st.locator_type, st.error_code, LEFT(st.error_message, 512) AS error_message, st.event_sequence, st.create_time, st.update_time, st.locator_value, st.diagnostics FROM automation_ui_execution_step st JOIN automation_ui_execution_case c ON c.id = st.execution_case_id JOIN automation_ui_execution e ON e.id = c.execution_id JOIN automation_ui_scene s ON s.id = e.scene_id AND s.del_flag = 3 JOIN project_config p ON p.id = s.project_id AND p.del_flag = 3 JOIN project_version_config pv ON pv.id = s.version_id AND pv.project_id = s.project_id AND pv.del_flag = 3 JOIN project_module_config pm ON pm.id = s.module_id AND pm.project_id = s.project_id AND pm.version_id = s.version_id AND pm.del_flag = 3 WHERE st.id = 905096796768829530 AND (false = TRUE OR s.create_user = 903688327171932161 OR p.create_user = 903688327171932161 OR JSON_CONTAINS(COALESCE(p.member, JSON_ARRAY( ) ), JSON_QUOTE(CAST(903688327171932161 AS CHAR))))
+
+ Consume Time：1 ms 2026-10-26 14:38:35
+ Execute SQL：INSERT INTO sys_log ( id, description, module, request_url, request_method, request_headers, status_code, response_headers, time_taken, ip, address, status, create_time ) VALUES ( 905103606934405140, '查询步骤执行诊断详情', '自动化管理-UI 自动化步骤执行查询', 'http://localhost:8000/automation/execution-steps/905096796768829530', 'GET', '{}', 200, '{}', 17, '0:0:0:0:0:0:0:1', '内网IP', 1, '2026-10-26T14:38:35.884702900' )
+
+ Consume Time：1 ms 2026-10-26 14:38:35
+ Execute SQL：SELECT id, task_id, case_key, step_id, action_type, execution_id, owner_user_id, project_environment_id, scene_id, definition_version, definition_revision_id, step_execution_id, target_kind, target_config_id, target_binding_key, attempt, idempotency_key, payload_digest, risk_level, approval_digest, approval_at, command_template_id, read_only_transaction, executor_node, status, error_code, error_message, exit_code, affected_rows, result_summary, result_json, started_at, finished_at, cancel_requested_at, disposition, disposition_user_id, disposition_at, disposition_note_digest, create_user, create_time, update_user, update_time FROM automation_infrastructure_task WHERE (task_id = 'INFRA_2a97d244f0834dae8199e8de3e963685')
+
+ Consume Time：1 ms 2026-10-26 14:38:35
+ Execute SQL：SELECT COUNT(*) FROM automation_ui_execution e JOIN automation_ui_scene s ON s.id = e.scene_id LEFT JOIN test_report r ON r.id = e.test_report_id JOIN test_plan p ON (p.id = COALESCE(e.test_plan_id, r.test_plan_id) OR (e.test_plan_id IS NULL AND r.test_plan_id IS NULL AND JSON_CONTAINS(COALESCE(s.test_plan_id, JSON_ARRAY()), CAST(p.id AS JSON)))) WHERE e.id = 905096938028794129 AND p.del_flag IN (1, 3) AND (JSON_CONTAINS(p.member_ids, CAST('903688327171932161' AS JSON)) OR JSON_CONTAINS(p.member_ids, JSON_QUOTE('903688327171932161')))
+
+ Consume Time：6 ms 2026-10-26 14:38:35
+ Execute SQL：SELECT definition_json FROM automation_ui_scene_definition_revision WHERE id = 904046936951096430 LIMIT 1
+
+ Consume Time：3 ms 2026-10-26 14:38:36
+ Execute SQL：INSERT INTO sys_log ( id, description, module, request_url, request_method, request_headers, status_code, response_headers, time_taken, ip, address, status, create_time ) VALUES ( 905103607446110229, '查询基础设施 SQL 或命令定义快照', '自动化管理基础设施任务', 'http://localhost:8000/automation/infrastructure/tasks/INFRA_2a97d244f0834dae8199e8de3e963685/statement', 'GET', '{}', 200, '{}', 90, '0:0:0:0:0:0:0:1', '内网IP', 1, '2026-10-26T14:38:35.933703700' )
+
+ Consume Time：1 ms 2026-10-26 14:38:36
+ Execute SQL：SELECT st.id AS step_execution_db_id, st.execution_case_id AS case_execution_db_id, st.step_id AS definition_step_id, st.source_step_id, st.step_index, st.attempt_no, st.action_type, st.step_name, st.description, st.status, st.duration_ms, st.locator_source, st.locator_type, st.error_code, LEFT(st.error_message, 512) AS error_message, st.event_sequence, st.create_time, st.update_time, st.locator_value, st.diagnostics FROM automation_ui_execution_step st JOIN automation_ui_execution_case c ON c.id = st.execution_case_id JOIN automation_ui_execution e ON e.id = c.execution_id JOIN automation_ui_scene s ON s.id = e.scene_id AND s.del_flag = 3 JOIN project_config p ON p.id = s.project_id AND p.del_flag = 3 JOIN project_version_config pv ON pv.id = s.version_id AND pv.project_id = s.project_id AND pv.del_flag = 3 JOIN project_module_config pm ON pm.id = s.module_id AND pm.project_id = s.project_id AND pm.version_id = s.version_id AND pm.del_flag = 3 WHERE st.id = 905096796781412443 AND (false = TRUE OR s.create_user = 903688327171932161 OR p.create_user = 903688327171932161 OR JSON_CONTAINS(COALESCE(p.member, JSON_ARRAY( ) ), JSON_QUOTE(CAST(903688327171932161 AS CHAR))))
+
+ Consume Time：1 ms 2026-10-26 14:38:36
+ Execute SQL：INSERT INTO sys_log ( id, description, module, request_url, request_method, request_headers, status_code, response_headers, time_taken, ip, address, status, create_time ) VALUES ( 905103609643925526, '查询步骤执行诊断详情', '自动化管理-UI 自动化步骤执行查询', 'http://localhost:8000/automation/execution-steps/905096796781412443', 'GET', '{}', 200, '{}', 12, '0:0:0:0:0:0:0:1', '内网IP', 1, '2026-10-26T14:38:36.535886' )
+
+ Consume Time：1 ms 2026-10-26 14:38:36
+ Execute SQL：SELECT id, task_id, case_key, step_id, action_type, execution_id, owner_user_id, project_environment_id, scene_id, definition_version, definition_revision_id, step_execution_id, target_kind, target_config_id, target_binding_key, attempt, idempotency_key, payload_digest, risk_level, approval_digest, approval_at, command_template_id, read_only_transaction, executor_node, status, error_code, error_message, exit_code, affected_rows, result_summary, result_json, started_at, finished_at, cancel_requested_at, disposition, disposition_user_id, disposition_at, disposition_note_digest, create_user, create_time, update_user, update_time FROM automation_infrastructure_task WHERE (task_id = 'INFRA_994838a703264c309ccbe21adcb2cca7')
+
+ Consume Time：0 ms 2026-10-26 14:38:36
+ Execute SQL：SELECT COUNT(*) FROM automation_ui_execution e JOIN automation_ui_scene s ON s.id = e.scene_id LEFT JOIN test_report r ON r.id = e.test_report_id JOIN test_plan p ON (p.id = COALESCE(e.test_plan_id, r.test_plan_id) OR (e.test_plan_id IS NULL AND r.test_plan_id IS NULL AND JSON_CONTAINS(COALESCE(s.test_plan_id, JSON_ARRAY()), CAST(p.id AS JSON)))) WHERE e.id = 905096942416036145 AND p.del_flag IN (1, 3) AND (JSON_CONTAINS(p.member_ids, CAST('903688327171932161' AS JSON)) OR JSON_CONTAINS(p.member_ids, JSON_QUOTE('903688327171932161')))
+
+ Consume Time：1 ms 2026-10-26 14:38:36
+ Execute SQL：SELECT definition_json FROM automation_ui_scene_definition_revision WHERE id = 904046936951096430 LIMIT 1
+
+ Consume Time：1 ms 2026-10-26 14:38:36
+ Execute SQL：INSERT INTO sys_log ( id, description, module, request_url, request_method, request_headers, status_code, response_headers, time_taken, ip, address, status, create_time ) VALUES ( 905103609899778071, '查询基础设施 SQL 或命令定义快照', '自动化管理基础设施任务', 'http://localhost:8000/automation/infrastructure/tasks/INFRA_994838a703264c309ccbe21adcb2cca7/statement', 'GET', '{}', 200, '{}', 32, '0:0:0:0:0:0:0:1', '内网IP', 1, '2026-10-26T14:38:36.577836400' )
+
+ Consume Time：1 ms 2026-10-26 14:38:37
+ Execute SQL：SELECT st.id AS step_execution_db_id, st.execution_case_id AS case_execution_db_id, st.step_id AS definition_step_id, st.source_step_id, st.step_index, st.attempt_no, st.action_type, st.step_name, st.description, st.status, st.duration_ms, st.locator_source, st.locator_type, st.error_code, LEFT(st.error_message, 512) AS error_message, st.event_sequence, st.create_time, st.update_time, st.locator_value, st.diagnostics FROM automation_ui_execution_step st JOIN automation_ui_execution_case c ON c.id = st.execution_case_id JOIN automation_ui_execution e ON e.id = c.execution_id JOIN automation_ui_scene s ON s.id = e.scene_id AND s.del_flag = 3 JOIN project_config p ON p.id = s.project_id AND p.del_flag = 3 JOIN project_version_config pv ON pv.id = s.version_id AND pv.project_id = s.project_id AND pv.del_flag = 3 JOIN project_module_config pm ON pm.id = s.module_id AND pm.project_id = s.project_id AND pm.version_id = s.version_id AND pm.del_flag = 3 WHERE st.id = 905096796789801052 AND (false = TRUE OR s.create_user = 903688327171932161 OR p.create_user = 903688327171932161 OR JSON_CONTAINS(COALESCE(p.member, JSON_ARRAY( ) ), JSON_QUOTE(CAST(903688327171932161 AS CHAR))))
+
+ Consume Time：23 ms 2026-10-26 14:38:37
+ Execute SQL：INSERT INTO sys_log ( id, description, module, request_url, request_method, request_headers, status_code, response_headers, time_taken, ip, address, status, create_time ) VALUES ( 905103611703328792, '查询步骤执行诊断详情', '自动化管理-UI 自动化步骤执行查询', 'http://localhost:8000/automation/execution-steps/905096796789801052', 'GET', '{}', 200, '{}', 14, '0:0:0:0:0:0:0:1', '内网IP', 1, '2026-10-26T14:38:37.024287500' )
+
+ Consume Time：1 ms 2026-10-26 14:38:37
+ Execute SQL：SELECT id, task_id, case_key, step_id, action_type, execution_id, owner_user_id, project_environment_id, scene_id, definition_version, definition_revision_id, step_execution_id, target_kind, target_config_id, target_binding_key, attempt, idempotency_key, payload_digest, risk_level, approval_digest, approval_at, command_template_id, read_only_transaction, executor_node, status, error_code, error_message, exit_code, affected_rows, result_summary, result_json, started_at, finished_at, cancel_requested_at, disposition, disposition_user_id, disposition_at, disposition_note_digest, create_user, create_time, update_user, update_time FROM automation_infrastructure_task WHERE (task_id = 'INFRA_994838a703264c309ccbe21adcb2cca7')
+
+ Consume Time：0 ms 2026-10-26 14:38:37
+ Execute SQL：SELECT COUNT(*) FROM automation_ui_execution e JOIN automation_ui_scene s ON s.id = e.scene_id LEFT JOIN test_report r ON r.id = e.test_report_id JOIN test_plan p ON (p.id = COALESCE(e.test_plan_id, r.test_plan_id) OR (e.test_plan_id IS NULL AND r.test_plan_id IS NULL AND JSON_CONTAINS(COALESCE(s.test_plan_id, JSON_ARRAY()), CAST(p.id AS JSON)))) WHERE e.id = 905096942416036145 AND p.del_flag IN (1, 3) AND (JSON_CONTAINS(p.member_ids, CAST('903688327171932161' AS JSON)) OR JSON_CONTAINS(p.member_ids, JSON_QUOTE('903688327171932161')))
+
+ Consume Time：2 ms 2026-10-26 14:38:37
+ Execute SQL：SELECT definition_json FROM automation_ui_scene_definition_revision WHERE id = 904046936951096430 LIMIT 1
+
+ Consume Time：2 ms 2026-10-26 14:38:37
+ Execute SQL：INSERT INTO sys_log ( id, description, module, request_url, request_method, request_headers, status_code, response_headers, time_taken, ip, address, status, create_time ) VALUES ( 905103613175529497, '查询基础设施 SQL 或命令定义快照', '自动化管理基础设施任务', 'http://localhost:8000/automation/infrastructure/tasks/INFRA_994838a703264c309ccbe21adcb2cca7/statement', 'GET', '{}', 200, '{}', 26, '0:0:0:0:0:0:0:1', '内网IP', 1, '2026-10-26T14:38:37.365614400' )
+
+ Consume Time：1 ms 2026-10-26 14:38:37
+ Execute SQL：SELECT id, task_id, case_key, step_id, action_type, execution_id, owner_user_id, project_environment_id, scene_id, definition_version, definition_revision_id, step_execution_id, target_kind, target_config_id, target_binding_key, attempt, idempotency_key, payload_digest, risk_level, approval_digest, approval_at, command_template_id, read_only_transaction, executor_node, status, error_code, error_message, exit_code, affected_rows, result_summary, result_json, started_at, finished_at, cancel_requested_at, disposition, disposition_user_id, disposition_at, disposition_note_digest, create_user, create_time, update_user, update_time FROM automation_infrastructure_task WHERE (task_id = 'INFRA_2a97d244f0834dae8199e8de3e963685')
+
+ Consume Time：1 ms 2026-10-26 14:38:37
+ Execute SQL：SELECT COUNT(*) FROM automation_ui_execution e JOIN automation_ui_scene s ON s.id = e.scene_id LEFT JOIN test_report r ON r.id = e.test_report_id JOIN test_plan p ON (p.id = COALESCE(e.test_plan_id, r.test_plan_id) OR (e.test_plan_id IS NULL AND r.test_plan_id IS NULL AND JSON_CONTAINS(COALESCE(s.test_plan_id, JSON_ARRAY()), CAST(p.id AS JSON)))) WHERE e.id = 905096938028794129 AND p.del_flag IN (1, 3) AND (JSON_CONTAINS(p.member_ids, CAST('903688327171932161' AS JSON)) OR JSON_CONTAINS(p.member_ids, JSON_QUOTE('903688327171932161')))
+
+ Consume Time：1 ms 2026-10-26 14:38:37
+ Execute SQL：SELECT definition_json FROM automation_ui_scene_definition_revision WHERE id = 904046936951096430 LIMIT 1
+
+ Consume Time：2 ms 2026-10-26 14:38:37
+ Execute SQL：INSERT INTO sys_log ( id, description, module, request_url, request_method, request_headers, status_code, response_headers, time_taken, ip, address, status, create_time ) VALUES ( 905103614471569434, '查询基础设施 SQL 或命令定义快照', '自动化管理基础设施任务', 'http://localhost:8000/automation/infrastructure/tasks/INFRA_2a97d244f0834dae8199e8de3e963685/statement', 'GET', '{}', 200, '{}', 22, '0:0:0:0:0:0:0:1', '内网IP', 1, '2026-10-26T14:38:37.678589300' )
+

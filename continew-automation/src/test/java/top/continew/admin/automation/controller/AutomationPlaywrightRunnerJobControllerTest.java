@@ -59,6 +59,29 @@ class AutomationPlaywrightRunnerJobControllerTest {
         assertThat(controller.liveFrame("JOB_FINISHED").getStatusCode()).isEqualTo(HttpStatus.GONE);
     }
 
+    @Test
+    void shouldWaitForNewFrameWhenAfterSequenceIsProvided() {
+        byte[] jpeg = {(byte)0xFF, (byte)0xD8, 0x02, (byte)0xFF, (byte)0xD9};
+        when(service.get("JOB_002")).thenReturn(job("running", true));
+        when(service.awaitLiveFrame("JOB_002", 3L, 2500L)).thenReturn(new LiveFrame(4, jpeg));
+
+        ResponseEntity<byte[]> response = controller.liveFrame("JOB_002", 3L);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getHeaders().getFirst("X-Sakura-Frame-Sequence")).isEqualTo("4");
+        assertThat(response.getBody()).isEqualTo(jpeg);
+    }
+
+    @Test
+    void shouldEndAfterLastFrameInsteadOfPollingRetainedTerminalFrame() {
+        when(service.get("JOB_003")).thenReturn(job("passed", true));
+        when(service.awaitLiveFrame("JOB_003", 3L, 2500L)).thenReturn(null);
+
+        ResponseEntity<byte[]> response = controller.liveFrame("JOB_003", 3L);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.GONE);
+    }
+
     private AutomationPlaywrightRunnerJobResp job(String status, boolean liveAvailable) {
         AutomationPlaywrightRunnerJobResp job = new AutomationPlaywrightRunnerJobResp();
         job.setStatus(status);

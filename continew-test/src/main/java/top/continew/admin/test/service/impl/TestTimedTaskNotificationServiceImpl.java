@@ -41,8 +41,6 @@ import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -211,7 +209,28 @@ public class TestTimedTaskNotificationServiceImpl implements TestTimedTaskNotifi
             return "-";
         }
         // 开始和结束时间是定时任务的完整执行区间，不能使用测试报告内部耗时替代。
-        return BigDecimal.valueOf(runTime).movePointLeft(3).setScale(2, RoundingMode.HALF_UP).toPlainString() + "s";
+        return formatDurationMillis(runTime);
+    }
+
+    static String formatDurationMillis(Long milliseconds) {
+        if (milliseconds == null || milliseconds < 0) {
+            return "-";
+        }
+        long totalSeconds = milliseconds / 1000;
+        long hours = totalSeconds / 3600;
+        long minutes = (totalSeconds % 3600) / 60;
+        long seconds = totalSeconds % 60;
+        StringBuilder formatted = new StringBuilder();
+        if (hours > 0) {
+            formatted.append(hours).append('时');
+        }
+        if (minutes > 0) {
+            formatted.append(minutes).append('分');
+        }
+        if (seconds > 0 || formatted.isEmpty()) {
+            formatted.append(seconds).append('秒');
+        }
+        return formatted.toString();
     }
 
     private void appendStatistic(StringBuilder content, Map<String, Object> statistic) {

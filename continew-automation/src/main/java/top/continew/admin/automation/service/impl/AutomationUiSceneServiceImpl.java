@@ -402,6 +402,7 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
 
         AutomationUiSceneDO target = BeanUtil.copyProperties(source, AutomationUiSceneDO.class);
         target.setId(null);
+        resetCopyAuditFields(target);
 
         // 覆盖新场景基础字段，继承来源场景结构数据
         target.setSceneId(req.getSceneId());
@@ -476,6 +477,14 @@ public class AutomationUiSceneServiceImpl extends BaseServiceImpl<AutomationUiSc
         if (definitionProjectionService != null)
             definitionProjectionService.recordDefinitionWrite(target.getId(), 0L, copiedCases);
         return target.getId();
+    }
+
+    static void resetCopyAuditFields(AutomationUiSceneDO target) {
+        // 复制场景必须生成新的创建时间，不能沿用源场景的审计字段。
+        target.setCreateUser(null);
+        target.setCreateTime(null);
+        target.setUpdateUser(null);
+        target.setUpdateTime(null);
     }
 
     public String addCase(CaseDO caseDO, Long id) {

@@ -380,6 +380,9 @@ public class AutomationPlaywrightRunnerJobServiceImpl implements AutomationPlayw
             runtime.status = "cancelled";
             runtime.finishedAt = now();
             runtime.terminalAt = System.currentTimeMillis();
+            synchronized (runtime.liveFrameMonitor) {
+                runtime.liveFrameMonitor.notifyAll();
+            }
             if (runtime.process != null) {
                 terminateProcessTree(runtime.process);
             }
@@ -407,6 +410,7 @@ public class AutomationPlaywrightRunnerJobServiceImpl implements AutomationPlayw
             // 仅保留最新一帧，避免实时画面变成长期截图存储或撑大场景 JSON。
             runtime.liveFrame = frame.clone();
             runtime.liveFrameSequence++;
+            runtime.liveFrameMonitor.notifyAll();
         }
     }
 
@@ -418,6 +422,36 @@ public class AutomationPlaywrightRunnerJobServiceImpl implements AutomationPlayw
                 return null;
             return new LiveFrame(runtime.liveFrameSequence, runtime.liveFrame.clone());
         }
+    }
+
+    @Override
+    public LiveFrame awaitLiveFrame(String jobId, Long afterSequence, long timeoutMillis) {
+        JobRuntime runtime = requireJob(jobId);
+        long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(Math.max(0, timeoutMillis));
+        synchronized (runtime.liveFrameMonitor) {
+            while (isFrameUnavailable(runtime, afterSequence)) {
+                if (TERMINAL_STATUSES.contains(runtime.status)) {
+                    return null;
+                }
+                long remainingNanos = deadline - System.nanoTime();
+                if (remainingNanos <= 0) {
+                    return null;
+                }
+                try {
+                    TimeUnit.NANOSECONDS.timedWait(runtime.liveFrameMonitor, remainingNanos);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    return null;
+                }
+            }
+            return runtime.liveFrame == null
+                ? null
+                : new LiveFrame(runtime.liveFrameSequence, runtime.liveFrame.clone());
+        }
+    }
+
+    private boolean isFrameUnavailable(JobRuntime runtime, Long afterSequence) {
+        return runtime.liveFrame == null || afterSequence != null && runtime.liveFrameSequence <= afterSequence;
     }
 
     private void run(JobRuntime runtime, String token) {
@@ -556,6 +590,9 @@ public class AutomationPlaywrightRunnerJobServiceImpl implements AutomationPlayw
             }
             runtime.terminalAt = System.currentTimeMillis();
             runtime.heartbeatAt = LocalDateTime.now(PLATFORM_ZONE_ID);
+            synchronized (runtime.liveFrameMonitor) {
+                runtime.liveFrameMonitor.notifyAll();
+            }
             updateJobRecord(runtime);
             scheduleLiveFrameCleanup(runtime);
             scheduleRuntimeCleanup(runtime);

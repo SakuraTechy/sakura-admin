@@ -18,7 +18,10 @@ package top.continew.admin.automation.service.impl;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.time.LocalDateTime;
+
 import org.junit.jupiter.api.Test;
+import top.continew.admin.automation.model.entity.AutomationUiSceneDO;
 import top.continew.admin.automation.model.query.AutomationUiSceneQuery;
 import top.continew.starter.data.core.annotation.Query;
 import top.continew.starter.data.core.enums.QueryType;
@@ -61,5 +64,21 @@ class AutomationUiSceneServiceImplTest {
 
         assertThat(AutomationUiSceneServiceImpl.shouldSelectExecutionRecords(query)).isTrue();
         assertThat(AutomationUiSceneServiceImpl.requiresExecutionRecordMatch(query)).isTrue();
+    }
+
+    @Test
+    void shouldResetAuditFieldsWhenCopyingScene() {
+        AutomationUiSceneDO target = new AutomationUiSceneDO();
+        target.setCreateUser(1L);
+        target.setCreateTime(LocalDateTime.of(2026, 1, 1, 10, 0));
+        target.setUpdateUser(2L);
+        target.setUpdateTime(LocalDateTime.of(2026, 1, 2, 10, 0));
+
+        AutomationUiSceneServiceImpl.resetCopyAuditFields(target);
+
+        assertThat(target.getCreateUser()).isNull();
+        assertThat(target.getCreateTime()).isNull();
+        assertThat(target.getUpdateUser()).isNull();
+        assertThat(target.getUpdateTime()).isNull();
     }
 }

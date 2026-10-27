@@ -1335,8 +1335,8 @@ public class AutomationInfrastructureTaskServiceImpl implements AutomationInfras
             return false;
         }
         Long memberCount = jdbcTemplate
-            .queryForObject("SELECT COUNT(*) FROM automation_ui_execution e" + " JOIN test_plan p ON p.id = e.test_plan_id" + " WHERE e.id = ? AND p.del_flag = ?" + " AND JSON_CONTAINS(p.member_ids, CAST(? AS JSON))", Long.class, executionId, StatusTypeEnum.NORMAL
-                .getValue(), String.valueOf(currentUserId));
+            .queryForObject("SELECT COUNT(*) FROM automation_ui_execution e" + " JOIN automation_ui_scene s ON s.id = e.scene_id" + " LEFT JOIN test_report r ON r.id = e.test_report_id" + " JOIN test_plan p ON (p.id = COALESCE(e.test_plan_id, r.test_plan_id)" + " OR (e.test_plan_id IS NULL AND r.test_plan_id IS NULL" + " AND JSON_CONTAINS(COALESCE(s.test_plan_id, JSON_ARRAY()), CAST(p.id AS JSON))))" + " WHERE e.id = ? AND p.del_flag IN (1, ?)" + " AND (JSON_CONTAINS(p.member_ids, CAST(? AS JSON))" + " OR JSON_CONTAINS(p.member_ids, JSON_QUOTE(?)))", Long.class, executionId, StatusTypeEnum.NORMAL
+                .getValue(), String.valueOf(currentUserId), String.valueOf(currentUserId));
         return memberCount != null && memberCount > 0;
     }
 
